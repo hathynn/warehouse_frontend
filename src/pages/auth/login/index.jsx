@@ -1,6 +1,31 @@
 import { FcGoogle } from "react-icons/fc";
 import bg from "@/assets/bg.png"
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { login } from "@/redux/features/userSlice";
+
 const Login = () => {
+  const nav = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = () => {
+    let role = null;
+    if (email === "admin@gmail.com" && password === "admin") {
+      role = "ADMIN";
+    } else if (email === "user@gmail.com" && password === "user") {
+      role = "USER";
+    }
+console.log("Email", email)
+    if (role) {
+      // dispatch(login({ user: email, role }));
+      // console.log("Redux", user)
+      nav("/home");
+    } else {
+      alert("Email hoặc mật khẩu không đúng!");
+    }
+  };
+
   return (
     <div style={{ backgroundImage:`url(${bg})` }} className="bg-cover bg-center flex items-center justify-center h-screen bg-gradient-to-br from-pink-200 to-purple-300">
       <div className="bg-white p-8 rounded-lg shadow-lg w-96">
@@ -8,10 +33,12 @@ const Login = () => {
         <form>
 
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium">Email</label>
+            <label  className="block text-gray-700 font-medium">Email</label>
             <input
               type="email"
               placeholder="Nhập email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 mt-2 border rounded-lg focus:outline-none focus:ring-2 focus:black"
             />
           </div>
@@ -21,6 +48,8 @@ const Login = () => {
             <input
               type="password"
               placeholder="Nhập mật khẩu"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 mt-2 border rounded-lg focus:outline-none focus:ring-2 focus:black"
             />
           </div>
@@ -37,7 +66,7 @@ const Login = () => {
           </div>
 
 
-          <button className="w-full bg-black text-white py-2 rounded-lg font-medium hover:opacity-80">
+          <button onClick={handleLogin} className="w-full bg-black text-white py-2 rounded-lg font-medium hover:opacity-80">
             Đăng nhập
           </button>
 

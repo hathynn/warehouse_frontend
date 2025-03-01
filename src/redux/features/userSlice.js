@@ -4,10 +4,18 @@ const initialState = null;
 
 export const userSlice = createSlice({
   name: "user",
-  initialState, //initialState : initialState, : viết tắt khi tên field và tên biến trùng nhau
+  initialState, 
   reducers: {
-    login: (state, action) => (state = action.payload),
-    logout: () => initialState,
+    // login: (state, action) => (state = action.payload),
+    login: (state, action) => {
+      state.user = action.payload.user;
+      state.role = action.payload.role;
+    },
+    // logout: () => initialState,
+    logout: (state) => {
+      state.user = null;
+      state.role = null;
+    },
   },
 });
 
