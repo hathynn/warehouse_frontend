@@ -3,7 +3,7 @@ import { Table, Button, Descriptions, Modal } from "antd";
 import { Link } from "react-router-dom";
 import "./index.scss";
 
-const ReportDetail = () => {
+const ImportReportDetail = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
@@ -266,4 +266,4 @@ const ReportDetail = () => {
   );
 };
 
-export default ReportDetail;
+export default ImportReportDetail;

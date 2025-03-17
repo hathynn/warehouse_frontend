@@ -21,7 +21,7 @@ export const menuItemsByRole = {
       label: "Nhập hàng",
       key: "import",
       icon: <ImportOutlined />,
-      path: DEPARTMENT_ROUTER.IMPORT,
+      path: DEPARTMENT_ROUTER.IMPORT.ROOT,
     },
   ],
   USER: [

@@ -3,7 +3,7 @@ import { Table, Button, Input } from "antd";
 import { Link } from "react-router-dom";
 import "./index.scss";
 
-const ImportList = () => {
+const ImportReportList = () => {
   const items = [
     {
       order: 1,
@@ -116,4 +116,4 @@ const ImportList = () => {
   );
 };
 
-export default ImportList;
+export default ImportReportList;

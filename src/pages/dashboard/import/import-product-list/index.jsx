@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { Table, Button, Input } from "antd";
 import { Link } from "react-router-dom";
 import "./index.scss";
+import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
 const ImportProductList = () => {
   const items = [
     {
-      id: "#143567",
+      id: "143567",
       name: "Vải Kaki",
       quantity: "100",
       importQuantity: "20",
@@ -18,7 +19,7 @@ const ImportProductList = () => {
       importDate: "07/03/2025",
     },
     {
-      id: "#143569",
+      id: "143569",
       name: "Vải nhung",
       quantity: "100",
       importQuantity: "0",
@@ -80,8 +81,8 @@ const ImportProductList = () => {
     {
       title: "Chi tiết",
       key: "detail",
-      render: (text, record) => (
-        <Link to={``}>
+      render: (record) => (
+        <Link to={`${DEPARTMENT_ROUTER.IMPORT.REPORT.DETAIL(record.id)}`}>
           <Button id="btn-detail" type="link">
             Chi tiết
           </Button>

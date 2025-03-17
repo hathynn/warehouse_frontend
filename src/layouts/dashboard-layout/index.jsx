@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Layout, Menu } from "antd";
+import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import HeaderDashboard from "@/components/header";
-import "./index.scss";
-import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { menuItemsByRole } from "@/constants/menuItems";
-import { Outlet, useNavigate } from "react-router-dom";
+import "./index.scss";
 
 const { Sider, Content } = Layout;
 
@@ -16,16 +16,17 @@ const DashboardLayout = () => {
   const [selectedKey, setSelectedKey] = useState("1");
   const nav = useNavigate();
 
-  // Lấy menu items dựa trên role của user
+  // Get menu items based on user role
   const menuItems = menuItemsByRole[role] || [];
+  
   const handleMenuClick = (e) => {
     setSelectedKey(e.key);
     const item = menuItems.find((item) => item.key === e.key);
     if (item?.path) {
       nav(item.path);
-      console.log(item.path)
     }
   };
+
   return (
     <Layout className="dashboard h-screen flex">
       <div className="p-5 h-full relative">
@@ -35,8 +36,7 @@ const DashboardLayout = () => {
           trigger={null}
           className="!bg-black h-full rounded-3xl shadow-lg"
         >
-    
-         <div className="h-16 flex items-center justify-center text-white font-bold text-lg">
+          <div className="h-16 flex items-center justify-center text-white font-bold text-lg">
             {collapsed ? "D" : "Dappr"}
           </div>
 
@@ -61,8 +61,6 @@ const DashboardLayout = () => {
               </Menu.Item>
             ))}
           </Menu>
-      
-
         </Sider>
 
         <button
@@ -73,14 +71,14 @@ const DashboardLayout = () => {
         </button>
       </div>
 
-      {/* Nội dung chính */}
+      {/* Main content */}
       <Layout className="flex-1">
         <div className="mr-7">
           <HeaderDashboard />
         </div>
 
         <Content className="p-6 bg-gray-100 h-full">
-         <Outlet/>
+          <Outlet />
         </Content>
       </Layout>
     </Layout>
