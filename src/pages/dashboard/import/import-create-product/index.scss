@@ -1,0 +1,84 @@
+// .product-form-container {
+//   width: 450px;
+//   padding: 20px;
+//   background-color: #ffffff;
+//   border-radius: 8px;
+//   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+//   color: #000;
+// }
+
+.product-form-container {
+  max-width: 800px; // Điều chỉnh độ rộng tối đa của form
+  margin: 0 auto; // Canh giữa form
+  padding: 20px;
+
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .form-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr; // Chia thành 2 cột bằng nhau
+    gap: 20px; // Khoảng cách giữa hai cột
+  }
+
+  .form-left,
+  .form-right {
+    display: flex;
+    flex-direction: column;
+    gap: 16px; // Khoảng cách giữa các Form.Item
+  }
+
+  .submit-button {
+    width: 100%;
+    margin-top: 20px; // Khoảng cách giữa nút submit và form
+  }
+}
+
+.product-form-container h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #000;
+}
+
+.product-form-container .ant-form-item-label {
+  font-weight: 500;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.product-form-container .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.input-field {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.input-field:hover {
+  border-color: #d3d3d3;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #000;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+}
+
+.submit-button:hover {
+  background-color: #333;
+}
+
+input {
+  background-color: white !important;
+}

@@ -2,16 +2,13 @@ import React, { useState } from "react";
 import { Table, Button, Input } from "antd";
 import { Link } from "react-router-dom";
 import "./index.scss";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
 const ImportProductList = () => {
   const items = [
     {
-      id: "143567",
+      id: "#143567",
       name: "Vải Kaki",
       quantity: "100",
-      importQuantity: "20",
-      price: 20320,
       unit: "Xấp",
       supplier: "Nhà cung cấp ABC",
       warehouseLocation: "Kho A",
@@ -19,11 +16,9 @@ const ImportProductList = () => {
       importDate: "07/03/2025",
     },
     {
-      id: "143569",
+      id: "#143569",
       name: "Vải nhung",
       quantity: "100",
-      importQuantity: "0",
-      price: 20320,
       unit: "Xấp",
       supplier: "Nhà cung cấp XYZ",
       warehouseLocation: "Kho B",
@@ -39,7 +34,7 @@ const ImportProductList = () => {
   };
 
   const filteredItems = items.filter((item) =>
-    item.id.toLowerCase().includes(searchTerm.toLowerCase())
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
@@ -54,24 +49,14 @@ const ImportProductList = () => {
       key: "name",
     },
     {
-      title: "Số lượng",
+      title: "Số lượng tồn kho",
       dataIndex: "quantity",
       key: "quantity",
-    },
-    {
-      title: "Số lượng cần nhập",
-      dataIndex: "importQuantity",
-      key: "importQuantity",
     },
     {
       title: "Đơn vị tính",
       dataIndex: "unit",
       key: "unit",
-    },
-    {
-      title: "Đơn giá",
-      dataIndex: "price",
-      key: "price",
     },
     {
       title: "Nhà phân phối",
@@ -81,8 +66,8 @@ const ImportProductList = () => {
     {
       title: "Chi tiết",
       key: "detail",
-      render: (record) => (
-        <Link to={`${DEPARTMENT_ROUTER.IMPORT.REPORT.DETAIL(record.id)}`}>
+      render: (text, record) => (
+        <Link to={``}>
           <Button id="btn-detail" type="link">
             Chi tiết
           </Button>
@@ -96,9 +81,11 @@ const ImportProductList = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Danh sách hàng hóa</h1>
         <div className="space-x-2">
-          <Button type="primary" className="btn" id="btn-detail">
-            Thêm hàng hóa
-          </Button>
+          <Link to="add-product">
+            <Button type="primary" className="btn" id="btn-detail">
+              Thêm hàng hóa
+            </Button>
+          </Link>
           <Link to="report-list">
             <Button className="btn" id="btn-detail">
               Danh sách phiếu nhập

@@ -1,38 +1,38 @@
 import React, { useState } from "react";
 import { Table, Button, Descriptions, Modal } from "antd";
-import { Link } from "react-router-dom";
 import "./index.scss";
 
-const ImportReportDetail = () => {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+const ReportDetail = () => {
+  const [isModalVisible, setIsModalVisible] = useState(false); // State để điều khiển hiển thị modal
+  const [selectedOrder, setSelectedOrder] = useState(null); // State để lưu thông tin của dòng được chọn
+  const [showOrderList, setShowOrderList] = useState(false); // Trạng thái để hiển thị danh sách đơn nhập
 
   const itemDetail = {
     id: "#143567",
     importStatus: "Đang xử lý",
-    itemStatus: "Thiếu",
-    supplier: "Nhà cung cấp ABC",
-    phoneNumber: "0903897675",
-    createdBy: "John Doe",
-    expectedDate: "12/3/2025",
+    createdBy: "Nguyễn Văn A",
+    createdDate: "12/3/2025",
     reason: "Nhập khẩu định kỳ",
+    expectedCompleteDate: "20/3/2025",
+    endDate: "",
+    priority: "Cao",
   };
 
   const additionalItems = [
     {
       id: "I145678",
-      name: "Item A",
+      name: "Vải Kaki",
       quantityRequired: 20,
       quantityShipped: 10,
-      unit: "Xấp",
+      unit: "Cuộn",
       status: "Thiếu",
     },
     {
       id: "I234567",
-      name: "Item B",
+      name: "Chỉ hồng",
       quantityRequired: 30,
       quantityShipped: 20,
-      unit: "Xấp",
+      unit: "Cuộn",
       status: "Thiếu",
     },
   ];
@@ -79,7 +79,7 @@ const ImportReportDetail = () => {
         <Button
           type="primary"
           className="btn"
-          onClick={() => showDetailModal(record)}
+          onClick={() => handleExpandRow(record)}
         >
           Chi tiết
         </Button>
@@ -120,20 +120,14 @@ const ImportReportDetail = () => {
     },
   ];
 
-  const showModal = () => {
-    setIsModalVisible(true);
+  const handleExpandRow = (record) => {
+    setSelectedOrder(record); // Lưu thông tin của dòng được chọn
+    setIsModalVisible(true); // Mở modal
   };
 
-  const hideModal = () => {
-    setIsModalVisible(false);
-  };
-
-  const showDetailModal = (record) => {
-    setIsDetailModalVisible(true);
-  };
-
-  const hideDetailModal = () => {
-    setIsDetailModalVisible(false);
+  const handleCloseModal = () => {
+    setIsModalVisible(false); // Đóng modal
+    setSelectedOrder(null); // Xóa thông tin của dòng được chọn
   };
 
   return (
@@ -145,23 +139,23 @@ const ImportReportDetail = () => {
       </div>
 
       <Descriptions title="Thông tin chi tiết" bordered>
-        <Descriptions.Item label="Trạng thái nhập">
+        <Descriptions.Item label="Trạng thái phiếu nhập">
           {itemDetail.importStatus}
         </Descriptions.Item>
-        <Descriptions.Item label="Trạng thái hàng">
-          {itemDetail.itemStatus}
+        <Descriptions.Item label="Ngày cần hoàn thành">
+          {itemDetail.expectedCompleteDate}
         </Descriptions.Item>
-        <Descriptions.Item label="Nhà cung cấp">
-          {itemDetail.supplier}
-        </Descriptions.Item>
-        <Descriptions.Item label="Số điện thoại">
-          {itemDetail.phoneNumber}
+        <Descriptions.Item label="Độ ưu tiên">
+          {itemDetail.priority}
         </Descriptions.Item>
         <Descriptions.Item label="Người tạo phiếu">
           {itemDetail.createdBy}
         </Descriptions.Item>
-        <Descriptions.Item label="Ngày giao dự kiến">
-          {itemDetail.expectedDate}
+        <Descriptions.Item label="Ngày tạo phiếu">
+          {itemDetail.createdDate}
+        </Descriptions.Item>
+        <Descriptions.Item label="Ngày kết thúc">
+          {itemDetail.endDate}
         </Descriptions.Item>
         <Descriptions.Item label="Lý do nhập kho">
           {itemDetail.reason}
@@ -177,93 +171,64 @@ const ImportReportDetail = () => {
       />
 
       <div className="mt-4">
-        <Button type="primary" className="btn" onClick={showModal}>
+        <Button
+          type="primary"
+          className="btn"
+          onClick={() => setShowOrderList(!showOrderList)}
+        >
           Danh sách đơn nhập thuộc phiếu nhập
         </Button>
       </div>
 
-      {/* Modal danh sách đơn nhập */}
+      {/* Hiển thị danh sách đơn nhập trực tiếp bên dưới */}
+      {showOrderList && (
+        <div className="order-list-section mt-4">
+          <Table
+            columns={columns}
+            dataSource={orderData}
+            pagination={false}
+            rowKey="key"
+          />
+        </div>
+      )}
+
+      {/* Modal hiển thị thông tin chi tiết */}
       <Modal
-        title="Danh sách đơn nhập thuộc phiếu nhập"
+        title={`Chi tiết đơn nhập ${selectedOrder?.id}`}
         visible={isModalVisible}
-        onCancel={hideModal}
+        onCancel={handleCloseModal}
         footer={null}
         width={800}
         className="modal-custom"
       >
-        <Table
-          columns={columns}
-          dataSource={orderData}
-          pagination={false}
-          rowKey="key"
-        />
-      </Modal>
-
-      {/* Modal chi tiết đơn nhập */}
-      <Modal
-        visible={isDetailModalVisible}
-        onCancel={hideDetailModal}
-        footer={null}
-        width={1000}
-        className="modal-custom"
-      >
-        <Descriptions
-          title="Thông tin chi tiết đơn nhập"
-          className="des"
-          bordered
-        >
-          <Descriptions.Item label="Nhân viên được assign">
-            Nguyễn Văn A
-          </Descriptions.Item>
-          <Descriptions.Item label="Ngày giờ giao hàng">
-            12/3/2025
-          </Descriptions.Item>
-          <Descriptions.Item label="Trạng thái phiếu nhập">
-            Đang xử lý
-          </Descriptions.Item>
-          <Descriptions.Item label="Mã phiếu nhập">#12345</Descriptions.Item>
-        </Descriptions>
-
-        <Table
-          columns={[
-            {
-              title: "Mã hàng",
-              dataIndex: "id",
-              key: "id",
-            },
-            {
-              title: "Tên hàng",
-              dataIndex: "name",
-              key: "name",
-            },
-            {
-              title: "Số lượng cần giao",
-              dataIndex: "quantityRequired",
-              key: "quantityRequired",
-            },
-            {
-              title: "Số lượng đã giao",
-              dataIndex: "quantityShipped",
-              key: "quantityShipped",
-            },
-            {
-              title: "Đơn vị tính",
-              dataIndex: "unit",
-              key: "unit",
-            },
-            {
-              title: "Trạng thái item",
-              dataIndex: "status",
-              key: "status",
-            },
-          ]}
-          dataSource={additionalItems}
-          pagination={false}
-          rowKey="id"
-        />
+        {selectedOrder && (
+          <div className="detail-section">
+            <Descriptions bordered>
+              <Descriptions.Item label="Nhân viên được assign">
+                {selectedOrder.assignedTo}
+              </Descriptions.Item>
+              <Descriptions.Item label="Ngày giờ giao hàng">
+                12/3/2025
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái phiếu nhập">
+                {selectedOrder.status}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã phiếu nhập">
+                {selectedOrder.id}
+              </Descriptions.Item>
+            </Descriptions>
+            <Table
+              columns={columnsMain}
+              dataSource={additionalItems}
+              pagination={false}
+              rowKey="id"
+              className="mt-4"
+            />
+          </div>
+        )}
       </Modal>
     </div>
   );
 };
 
-export default ImportReportDetail;
+export default ReportDetail;

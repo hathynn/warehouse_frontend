@@ -2,8 +2,13 @@
   width: 80%;
   margin: auto;
   margin-top: -4rem !important;
+  overflow: hidden;
 }
 
+.flex-1 {
+  overflow: scroll !important;
+  overflow-x: hidden !important;
+}
 #btn-back {
   font-weight: bold;
 }
