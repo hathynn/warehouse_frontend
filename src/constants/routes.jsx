@@ -11,6 +11,9 @@ export const DEPARTMENT_ROUTER = {
       LIST: "import/report-list",
       DETAIL: (id = ":reportId") => `/import/report-list/${id}`,
     },
-    EXCEL: "import/excel"
-  }
+    EXCEL: "import/excel",
+    PRODUCT: {
+      CREATE: "import/add-product",
+    },
+  },
 };

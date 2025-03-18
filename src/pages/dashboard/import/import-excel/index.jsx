@@ -46,23 +46,31 @@ const ImportExcel = () => {
               <label htmlFor="ly-do" className="label">
                 Lý do nhập kho
               </label>
-              <input type="text" id="ly-do" placeholder="Nhập lý do" />
-            </div>
-            <div>
-              <label htmlFor="ngay-giao" className="label">
-                Ngày giao hàng dự kiến
-              </label>
-              <input type="date" id="ngay-giao" />
-            </div>
-            <div>
-              <label htmlFor="nguoi-tao" className="label">
-                Người tạo
-              </label>
               <input
                 type="text"
-                id="nguoi-tao"
-                placeholder="Nhập theo yêu cầu"
+                id="ly-do"
+                placeholder="Nhập lý do"
+                maxLength="255"
+                className="long-input"
               />
+            </div>
+            <div className="input-row">
+              <div className="short-input">
+                <label htmlFor="ngay-giao" className="label">
+                  Ngày giao hàng dự kiến
+                </label>
+                <input type="date" id="ngay-giao" />
+              </div>
+              <div className="short-input">
+                <label htmlFor="nguoi-tao" className="label">
+                  Người tạo
+                </label>
+                <input
+                  type="text"
+                  id="nguoi-tao"
+                  placeholder="Nhập theo yêu cầu"
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="nha-cung-cap" className="label">

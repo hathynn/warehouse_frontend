@@ -11,6 +11,27 @@
   margin-bottom: 20px;
 }
 
+#wrap-gen-date-per {
+  display: flex;
+}
+
+#ngay-giao-wrapper {
+  display: flex;
+  flex-direction: column;
+  #ngay-giao {
+    margin-right: 1.5rem;
+    width: 12.5rem;
+  }
+}
+
+#nguoi-tao-wrapper {
+  display: flex;
+  flex-direction: column;
+  #nguoi-tao {
+    width: 12.5rem;
+  }
+}
+
 .upload-button {
   background-color: #212121;
   color: white;
@@ -94,4 +115,48 @@ button.submit-btn:hover {
   margin-top: -2rem;
   font-size: 28px;
   margin-left: 5.7rem;
+}
+
+.main-content {
+  display: flex;
+  gap: 20px;
+
+  .form-container {
+    flex: 0.6;
+
+    .input-fields {
+      display: flex;
+      flex-direction: column;
+
+      .input-row {
+        display: flex;
+        gap: 15px;
+
+        .short-input {
+          flex: 1;
+        }
+      }
+
+      .long-input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .label {
+        font-weight: bold;
+        margin-bottom: 5px;
+        display: block;
+      }
+
+      input[type="text"],
+      input[type="date"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+    }
+  }
 }
