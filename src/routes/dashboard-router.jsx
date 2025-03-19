@@ -5,7 +5,7 @@ import ImportProductList from "@/pages/dashboard/import/import-product-list";
 import ImportReportList from "@/pages/dashboard/import/import-report-list";
 import ImportReportDetail from "@/pages/dashboard/import/import-report-detail";
 import ImportExcel from "@/pages/dashboard/import/import-excel";
-import ProductForm from "@/pages/dashboard/import/import-create-product";
+import ImportCreateProduct from "@/pages/dashboard/import/import-create-product";
 
 const dashboardRouter = [
   {
@@ -38,7 +38,7 @@ const dashboardRouter = [
   },
   {
     path: DEPARTMENT_ROUTER.IMPORT.PRODUCT.CREATE,
-    element: <ProductForm />,
+    element: <ImportCreateProduct />,
   },
 ];
 

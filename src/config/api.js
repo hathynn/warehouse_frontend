@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  // baseURL: "http://14.225.217.207:8081/api/",
+  // baseURL: "http://localhost:8080",
+  baseURL: "https://sharemebackend.online"
 });
 
 api.interceptors.request.use(
