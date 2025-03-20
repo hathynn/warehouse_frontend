@@ -27,8 +27,6 @@ const useProviderService = () => {
   // Lấy danh sách nhà cung cấp
   const getAllProviders = async (page = 1, limit = 10) => {
     try {
-
-      console.log("getAllProviders called");
       const response = await callApi(
         "get", 
         `/providers?page=${page}&limit=${limit}`
@@ -49,7 +47,7 @@ const useProviderService = () => {
   const getProviderById = async (providerId: number) => {
     try {
       const response = await callApi("get", `/providers/${providerId}`);
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy thông tin nhà cung cấp");
       console.error("Error fetching provider:", error);
@@ -63,7 +61,7 @@ const useProviderService = () => {
       const response = await callApi("post", "/providers", requestData);
       toast.success("Tạo nhà cung cấp thành công");
       await getAllProviders(); // Refresh danh sách sau khi tạo
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể tạo nhà cung cấp");
       console.error("Error creating provider:", error);

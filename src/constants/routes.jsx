@@ -7,11 +7,16 @@ export const DEPARTMENT_ROUTER = {
   OVERVIEW: "/overview",
   IMPORT: {
     ROOT: "/import",
-    REPORT: {
-      LIST: "import/report-list",
-      DETAIL: (id = ":reportId") => `/import/report-list/${id}`,
+    REQUEST: {
+      CREATE: "import/create-request",
+      LIST: "import/request-list",
+      DETAIL: (id = ":importRequestId") => `/import/request-list/${id}`,
     },
-    EXCEL: "import/excel",
+  
+    ORDER: 
+    {
+      CREATE: "import/create-order",
+    },
     PRODUCT: {
       CREATE: "import/add-product",
     },

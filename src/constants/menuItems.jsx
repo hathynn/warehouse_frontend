@@ -18,10 +18,10 @@ export const menuItemsByRole = {
       path: DEPARTMENT_ROUTER.OVERVIEW,
     },
     {
-      label: "Nhập hàng",
+      label: "Quản lý phiếu nhập",
       key: "import",
       icon: <ImportOutlined />,
-      path: DEPARTMENT_ROUTER.IMPORT.ROOT,
+      path: DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST,
     },
   ],
   USER: [

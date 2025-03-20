@@ -24,10 +24,10 @@ const useItemService = () => {
   const createItem = async (requestData: ItemRequest) => {
     try {
       const response = await callApi("post", "/items", requestData);
-      if (response && response.data) {
-        setItemId(response.data.id);
+      if (response && response.content) {
+        setItemId(response.content.id);
         toast.success("Tạo sản phẩm thành công");
-        return response.data;
+        return response.content;
       }
     } catch (error) {
       toast.error("Không thể tạo sản phẩm");
@@ -56,7 +56,7 @@ const useItemService = () => {
         "get", 
         `/items?page=${page}&limit=${limit}`
       );
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm");
       console.error("Error fetching items:", error);
@@ -68,7 +68,7 @@ const useItemService = () => {
   const getItemById = async (itemId: number) => {
     try {
       const response = await callApi("get", `/items/${itemId}`);
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
       console.error("Error fetching item:", error);
@@ -96,7 +96,7 @@ const useItemService = () => {
         "get", 
         `/items/category/${categoryId}?page=${page}&limit=${limit}`
       );
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo danh mục");
       console.error("Error fetching items by category:", error);
@@ -111,7 +111,7 @@ const useItemService = () => {
         "get", 
         `/items/provider/${providerId}?page=${page}&limit=${limit}`
       );
-      return response.data;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo nhà cung cấp");
       console.error("Error fetching items by provider:", error);

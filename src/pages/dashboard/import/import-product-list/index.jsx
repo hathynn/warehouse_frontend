@@ -1,40 +1,41 @@
-import React, { useState } from "react";
-import { Table, Button, Input } from "antd";
+import React, { useState, useEffect } from "react";
+import { Table, Button, Input, message } from "antd";
 import { Link } from "react-router-dom";
+import useItemService from "../../../../hooks/useItemService";
 import "./index.scss";
 
 const ImportProductList = () => {
-  const items = [
-    {
-      id: "#143567",
-      name: "Vải Kaki",
-      quantity: "100",
-      unit: "Xấp",
-      supplier: "Nhà cung cấp ABC",
-      warehouseLocation: "Kho A",
-      status: "Thiếu",
-      importDate: "07/03/2025",
-    },
-    {
-      id: "#143569",
-      name: "Vải nhung",
-      quantity: "100",
-      unit: "Xấp",
-      supplier: "Nhà cung cấp XYZ",
-      warehouseLocation: "Kho B",
-      status: "Đủ",
-      importDate: "07/03/2025",
-    },
-  ];
-
+  const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  
+  const { getItems, loading } = useItemService();
+
+  useEffect(() => {
+    fetchItems();
+  }, [currentPage, pageSize]);
+
+  const fetchItems = async () => {
+    try {
+      const response = await getItems(currentPage, pageSize);
+      console.log(response);
+      if (response && Array.isArray(response)) {
+        setItems(response);
+        setTotal(response.length > 0 ? response.length : 0);
+      }
+    } catch (error) {
+      message.error("Không thể tải danh sách hàng hóa");
+      console.error("Error fetching items:", error);
+    }
+  };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
   const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    item.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
@@ -49,25 +50,32 @@ const ImportProductList = () => {
       key: "name",
     },
     {
-      title: "Số lượng tồn kho",
-      dataIndex: "quantity",
-      key: "quantity",
-    },
-    {
       title: "Đơn vị tính",
-      dataIndex: "unit",
-      key: "unit",
+      dataIndex: "measurementUnit",
+      key: "measurementUnit",
     },
     {
-      title: "Nhà phân phối",
-      dataIndex: "supplier",
-      key: "supplier",
+      title: "Loại đơn vị",
+      dataIndex: "unitType",
+      key: "unitType",
+    },
+    {
+      title: "Số lượng tối thiểu",
+      dataIndex: "minimumStockQuantity",
+      key: "minimumStockQuantity",
+      render: (text) => text || "Chưa thiết lập",
+    },
+    {
+      title: "Số lượng tối đa",
+      dataIndex: "maximumStockQuantity",
+      key: "maximumStockQuantity",
+      render: (text) => text || "Chưa thiết lập",
     },
     {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link to={``}>
+        <Link to={`/dashboard/items/${record.id}`}>
           <Button id="btn-detail" type="link">
             Chi tiết
           </Button>
@@ -86,9 +94,14 @@ const ImportProductList = () => {
               Thêm hàng hóa
             </Button>
           </Link>
-          <Link to="report-list">
+          <Link to="request-list">
             <Button className="btn" id="btn-detail">
               Danh sách phiếu nhập
+            </Button>
+          </Link>
+          <Link to="import-order-list">
+            <Button className="btn" id="btn-detail">
+              Danh sách đơn nhập
             </Button>
           </Link>
         </div>
@@ -98,24 +111,17 @@ const ImportProductList = () => {
         placeholder="Tìm kiếm tên hàng"
         value={searchTerm}
         onChange={handleSearchChange}
-        className="search-input"
+        className="!mb-4"
       />
 
       <Table
         columns={columns}
         dataSource={filteredItems}
-        pagination={false}
         rowKey="id"
         className="custom-table"
+        loading={loading}
+        pagination={{ pageSize: 1 }}
       />
-
-      <div className="mt-4">
-        <Link to="excel">
-          <Button type="primary" className="btn" id="btn-detail">
-            Tạo Phiếu Nhập
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 };

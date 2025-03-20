@@ -9,8 +9,8 @@ const { TextArea } = Input;
 
 // Danh mục giả định (sau này sẽ được thay thế bằng API)
 const fakeCategories = [
-  { id: 1, name: "Vải thô" },
-  { id: 2, name: "Phụ liệu may mặc" },
+  { id: 3, name: "Vải thô" },
+  { id: 4, name: "Phụ liệu may mặc" },
 ];
 
 const ImportCreateProduct = () => {

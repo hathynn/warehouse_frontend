@@ -34,7 +34,7 @@ const DashboardLayout = () => {
           collapsible
           collapsed={collapsed}
           trigger={null}
-          className="!bg-black h-full rounded-3xl shadow-lg"
+          className="!bg-blue h-full rounded-3xl shadow-lg"
         >
           <div className="h-16 flex items-center justify-center text-white font-bold text-lg">
             {collapsed ? "D" : "Dappr"}

@@ -2,10 +2,11 @@ import { DEPARTMENT_ROUTER, USER_ROUTER } from "@/constants/routes";
 import Overview from "@/components/overview";
 import { Navigate } from "react-router-dom";
 import ImportProductList from "@/pages/dashboard/import/import-product-list";
-import ImportReportList from "@/pages/dashboard/import/import-report-list";
-import ImportReportDetail from "@/pages/dashboard/import/import-report-detail";
-import ImportExcel from "@/pages/dashboard/import/import-excel";
+import ImportRequestList from "@/pages/dashboard/import/import-request-list";
+import ImportRequestDetail from "@/pages/dashboard/import/import-request-detail";
 import ImportCreateProduct from "@/pages/dashboard/import/import-create-product";
+import ImportOrderCreate from "@/pages/dashboard/import/import-order-create";
+import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
 
 const dashboardRouter = [
   {
@@ -25,16 +26,20 @@ const dashboardRouter = [
     element: <ImportProductList />,
   },
   {
-    path: DEPARTMENT_ROUTER.IMPORT.EXCEL,
-    element: <ImportExcel />,
+    path: DEPARTMENT_ROUTER.IMPORT.REQUEST.CREATE,
+    element: <ImportRequestCreate />,
   },
   {
-    path: DEPARTMENT_ROUTER.IMPORT.REPORT.LIST,
-    element: <ImportReportList />,
+    path: DEPARTMENT_ROUTER.IMPORT.ORDER.CREATE,
+    element: <ImportOrderCreate />,
   },
   {
-    path: DEPARTMENT_ROUTER.IMPORT.REPORT.DETAIL(),
-    element: <ImportReportDetail />,
+    path: DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST,
+    element: <ImportRequestList />,
+  },
+  {
+    path: DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(),
+    element: <ImportRequestDetail />,
   },
   {
     path: DEPARTMENT_ROUTER.IMPORT.PRODUCT.CREATE,
