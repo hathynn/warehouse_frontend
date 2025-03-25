@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, Spin } from "antd";
-import { Link } from "react-router-dom";
-import useImportRequestService from "../../../../hooks/useImportRequestService";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { Link, useParams } from "react-router-dom";
+import useImportOrderService from "../../../../hooks/useImportOrderService";
+import { SearchOutlined } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
-const ImportRequestList = () => {
-  const [importRequests, setImportRequests] = useState([]);
+const ImportOrderList = () => {
+  const { importRequestId } = useParams();
+  const [importOrders, setImportOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
     current: 1,
@@ -15,21 +16,27 @@ const ImportRequestList = () => {
   });
 
   const {
-    getImportRequestsByPage,
+    getImportOrdersByRequestId,
     loading
-  } = useImportRequestService();
+  } = useImportOrderService();
 
   useEffect(() => {
-    fetchImportRequests();
-  }, [pagination.current, pagination.pageSize]);
+    fetchImportOrders();
+  }, [pagination.current, pagination.pageSize, importRequestId]);
 
-  const fetchImportRequests = async () => {
+  const fetchImportOrders = async () => {
     try {
-      const response = await getImportRequestsByPage(pagination.current, pagination.pageSize);
+      if (!importRequestId) return;
+      
+      const response = await getImportOrdersByRequestId(
+        parseInt(importRequestId), 
+        pagination.current, 
+        pagination.pageSize
+      );
       
       // Update state with the content array from the response
       if (response && response.content) {
-        setImportRequests(response.content);
+        setImportOrders(response.content);
       }
       
       // Update pagination with metadata
@@ -41,7 +48,7 @@ const ImportRequestList = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to fetch import requests:", error);
+      console.error("Failed to fetch import orders:", error);
     }
   };
 
@@ -68,26 +75,23 @@ const ImportRequestList = () => {
       case "CANCELLED":
         return <Tag color="error">Đã hủy</Tag>;
       default:
-        return <Tag color="default">{status}</Tag>;
+        return <Tag color="default">Không xác định</Tag>;
     }
   };
 
-  const getImportTypeText = (type) => {
-    switch (type) {
-      case "ORDER":
-        return "Đơn hàng";
-      case "RETURN":
-        return "Trả hàng";
-      default:
-        return type;
-    }
-  };
-
-  const filteredItems = importRequests.filter((item) =>
+  const filteredItems = importOrders.filter((item) =>
+    item.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
     item.importRequestId.toString().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
+    {
+      title: "Mã đơn nhập",
+      dataIndex: "importOrderId",
+      key: "importOrderId",
+      render: (id) => `#${id}`,
+      width: '10%',
+    },
     {
       title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
@@ -96,28 +100,27 @@ const ImportRequestList = () => {
       width: '10%',
     },
     {
-      title: "Loại nhập",
-      dataIndex: "importType",
-      key: "importType",
-      render: (type) => getImportTypeText(type),
+      title: "Ngày nhận hàng",
+      dataIndex: "dateReceived",
+      key: "dateReceived",
+      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
-      title: "Lý do nhập",
-      dataIndex: "importReason",
-      key: "importReason",
-      ellipsis: true,
-      width: '20%'
+      title: "Giờ nhận hàng",
+      dataIndex: "timeReceived",
+      key: "timeReceived",
     },
     {
-      title: "Mã nhà cung cấp",
-      dataIndex: "providerId",
-      key: "providerId",
+      title: "Người tạo",
+      dataIndex: "createdBy",
+      key: "createdBy",
+      render: (createdBy) => createdBy || "-",
     },
     {
       title: "Ngày tạo",
       dataIndex: "createdDate",
       key: "createdDate",
-      render: (date) => new Date(date).toLocaleDateString("vi-VN"),
+      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Ngày cập nhật",
@@ -135,7 +138,7 @@ const ImportRequestList = () => {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(record.importRequestId)}>
+        <Link to={DEPARTMENT_ROUTER.IMPORT.ORDER.DETAIL(record.importOrderId)}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -147,12 +150,12 @@ const ImportRequestList = () => {
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Danh sách phiếu nhập</h1>
+        <h1 className="text-xl font-bold">Danh sách đơn nhập</h1>
       </div>
 
       <div className="mb-4">
         <Input
-          placeholder="Tìm kiếm theo mã phiếu nhập"
+          placeholder="Tìm kiếm theo mã đơn nhập hoặc mã phiếu nhập"
           value={searchTerm}
           onChange={handleSearchChange}
           prefix={<SearchOutlined />}
@@ -160,34 +163,27 @@ const ImportRequestList = () => {
         />
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={filteredItems}
-        rowKey="importRequestId"
-        className="custom-table mb-4"
-        loading={loading}
-        onChange={handleTableChange}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '50'],
-          showTotal: (total) => `Tổng cộng có ${total} phiếu nhập`,
-        }}
-      />
-
-      <div className="mt-4">
-        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.CREATE}>
-          <Button
-            type="primary"
-            id="btn-create"
-            icon={<PlusOutlined />}
-          >
-            Tạo Phiếu Nhập
-          </Button>
-        </Link>
-      </div>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Spin size="large" />
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={filteredItems}
+          rowKey="importOrderId"
+          className="custom-table mb-4"
+          onChange={handleTableChange}
+          pagination={{
+            ...pagination,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '50'],
+            showTotal: (total) => `Tổng cộng có ${total} đơn nhập`,
+          }}
+        />
+      )}
     </div>
   );
 };
 
-export default ImportRequestList;
+export default ImportOrderList;

@@ -7,31 +7,61 @@ import "./index.scss";
 const ImportProductList = () => {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
   
-  const { getItems, loading } = useItemService();
+  const { getItems } = useItemService();
 
   useEffect(() => {
     fetchItems();
-  }, [currentPage, pageSize]);
+  }, [pagination.current, pagination.pageSize]);
 
   const fetchItems = async () => {
     try {
-      const response = await getItems(currentPage, pageSize);
-      console.log(response);
-      if (response && Array.isArray(response)) {
+      setLoading(true);
+      const { current, pageSize } = pagination;
+      const response = await getItems(current, pageSize);
+      
+      if (response && response.content) {
+        setItems(response.content);
+        
+        // Update pagination with metadata from response
+        setPagination(prev => ({
+          ...prev,
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
+        }));
+      } else if (Array.isArray(response)) {
+        // Fallback for API that returns array without pagination metadata
         setItems(response);
-        setTotal(response.length > 0 ? response.length : 0);
+        setPagination(prev => ({
+          ...prev,
+          total: response.length,
+        }));
       }
     } catch (error) {
       message.error("Không thể tải danh sách hàng hóa");
       console.error("Error fetching items:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  const handleTableChange = (pagination) => {
+    setPagination({
+      ...pagination,
+      current: pagination.current,
+      pageSize: pagination.pageSize,
+    });
   };
 
   const filteredItems = items.filter((item) =>
@@ -99,11 +129,6 @@ const ImportProductList = () => {
               Danh sách phiếu nhập
             </Button>
           </Link>
-          <Link to="import-order-list">
-            <Button className="btn" id="btn-detail">
-              Danh sách đơn nhập
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -120,7 +145,13 @@ const ImportProductList = () => {
         rowKey="id"
         className="custom-table"
         loading={loading}
-        pagination={{ pageSize: 1 }}
+        onChange={handleTableChange}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50'],
+          showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mục`,
+        }}
       />
     </div>
   );

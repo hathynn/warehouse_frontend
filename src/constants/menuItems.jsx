@@ -19,10 +19,10 @@ export const menuItemsByRole = {
     },
     {
       label: "Quản lý phiếu nhập",
-      key: "import",
+      key: "import-request",
       icon: <ImportOutlined />,
       path: DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST,
-    },
+    }
   ],
   USER: [
     { label: "Trang chủ", key: "home", icon: <HomeOutlined /> },

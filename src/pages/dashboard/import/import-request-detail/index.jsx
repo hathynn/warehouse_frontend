@@ -1,113 +1,123 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { 
-  Table, 
-  Button, 
-  Card, 
-  Descriptions, 
-  Tag, 
-  Spin, 
-  Pagination, 
-  Modal, 
-  message 
+import React, { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  Table,
+  Button,
+  Card,
+  Descriptions,
+  Tag,
+  Spin,
+  message
 } from "antd";
-import { ArrowLeftOutlined, EditOutlined, FileAddOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import useImportRequestService from "../../../../hooks/useImportRequestService";
+import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
 const ImportRequestDetail = () => {
   const { importRequestId } = useParams();
   const navigate = useNavigate();
   const [importRequest, setImportRequest] = useState(null);
   const [importRequestDetails, setImportRequestDetails] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  const { 
+  const {
+    getImportRequestById,
     getImportRequestDetails,
-    updateImportRequestDetails
   } = useImportRequestService();
 
-  useEffect(() => {
-    fetchImportRequestDetails();
-  }, [importRequestId, currentPage, pageSize]);
+  // Fetch import request data
+  const fetchImportRequestData = useCallback(async () => {
+    if (!importRequestId) return;
 
-  const fetchImportRequestDetails = async () => {
     try {
       setLoading(true);
-      // In a real implementation, you would also fetch the import request data
-      // For now, we'll focus on the details
-      const data = await getImportRequestDetails(parseInt(importRequestId), currentPage, pageSize);
-      setImportRequestDetails(data);
-      setTotal(data.length > 0 ? data.length * 10 : 0); // Temporary solution until API provides total
-      
-      // Mock import request data (in real implementation, this would come from an API call)
-      setImportRequest({
-        importRequestId: parseInt(importRequestId),
-        importReason: "Nhập hàng theo kế hoạch",
-        importType: "ORDER",
-        status: "IN_PROGRESS",
-        providerId: 123,
-        exportRequestId: null,
-        importOrdersId: [456, 789],
-        createdBy: "admin",
-        updatedBy: "admin",
-        createdDate: new Date().toISOString(),
-        updatedDate: new Date().toISOString()
-      });
-      
+      const data = await getImportRequestById(parseInt(importRequestId));
+      setImportRequest(data);
+    } catch (error) {
+      console.error("Failed to fetch import request:", error);
+      message.error("Không thể tải thông tin phiếu nhập");
+    } finally {
       setLoading(false);
+    }
+  }, [importRequestId, getImportRequestById]);
+
+  // Fetch import request details with pagination
+  const fetchImportRequestDetails = useCallback(async () => {
+    if (!importRequestId) return;
+
+    try {
+      setDetailsLoading(true);
+      const { current, pageSize } = pagination;
+      const response = await getImportRequestDetails(
+        parseInt(importRequestId),
+        current,
+        pageSize
+      );
+
+      if (response && response.content) {
+        setImportRequestDetails(response.content);
+
+        // Update pagination with metadata from response
+        setPagination(prev => ({
+          ...prev,
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
+        }));
+      }
     } catch (error) {
       console.error("Failed to fetch import request details:", error);
-      setLoading(false);
+      message.error("Không thể tải danh sách chi tiết phiếu nhập");
+    } finally {
+      setDetailsLoading(false);
     }
-  };
+  }, [importRequestId, getImportRequestDetails]);
 
+  useEffect(() => {
+    fetchImportRequestData();
+  }, []);
+
+  // Load details when pagination changes
+  useEffect(() => {
+    fetchImportRequestDetails();
+  }, []);
+
+  // Status tag renderers
   const getStatusTag = (status) => {
-    switch (status) {
-      case "NOT_STARTED":
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-      case "IN_PROGRESS":
-        return <Tag color="processing">Đang xử lý</Tag>;
-      case "COMPLETED":
-        return <Tag color="success">Hoàn tất</Tag>;
-      case "CANCELLED":
-        return <Tag color="error">Đã hủy</Tag>;
-      default:
-        return <Tag color="default">{status}</Tag>;
-    }
+    const statusMap = {
+      "NOT_STARTED": { color: "default", text: "Chưa bắt đầu" },
+      "IN_PROGRESS": { color: "processing", text: "Đang xử lý" },
+      "COMPLETED": { color: "success", text: "Hoàn tất" },
+      "CANCELLED": { color: "error", text: "Đã hủy" }
+    };
+
+    const statusInfo = statusMap[status] || { color: "default", text: status };
+    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
-  const getDetailStatusTag = (status) => {
-    switch (status) {
-      case "NOT_STARTED":
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-      case "IN_PROGRESS":
-        return <Tag color="processing">Đang xử lý</Tag>;
-      case "COMPLETED":
-        return <Tag color="success">Hoàn tất</Tag>;
-      case "CANCELLED":
-        return <Tag color="error">Đã hủy</Tag>;
-      default:
-        return <Tag color="default">{status}</Tag>;
-    }
-  };
-
+  // Import type text renderer
   const getImportTypeText = (type) => {
-    switch (type) {
-      case "ORDER":
-        return "Đơn hàng";
-      case "RETURN":
-        return "Trả hàng";
-      default:
-        return type;
-    }
+    const typeMap = {
+      "ORDER": "Nhập theo kế hoạch",
+      "RETURN": "Nhập trả"
+    };
+
+    return typeMap[type] || type;
   };
 
-  const handlePageChange = (page, pageSize) => {
-    setCurrentPage(page);
-    setPageSize(pageSize);
+  // Table pagination handler
+  const handleTableChange = (pagination) => {
+    setPagination({
+      ...pagination,
+      current: pagination.current,
+      pageSize: pagination.pageSize,
+    });
   };
 
   const handleBack = () => {
@@ -115,17 +125,15 @@ const ImportRequestDetail = () => {
   };
 
   const handleCreateImportOrder = () => {
-    // Navigate to create import order page with the import request id
-    navigate(`/import/order/create?importRequestId=${id}`);
+    navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
+  };
+  
+  const handleViewImportOrders = () => {
+    navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
   };
 
+  // Table columns definition
   const columns = [
-    {
-      title: "STT",
-      key: "index",
-      render: (text, record, index) => (currentPage - 1) * pageSize + index + 1,
-      width: 70,
-    },
     {
       title: "Mã chi tiết",
       dataIndex: "importRequestDetailId",
@@ -144,12 +152,12 @@ const ImportRequestDetail = () => {
       ellipsis: true,
     },
     {
-      title: "Số lượng dự kiến",
+      title: "Số lượng nhập dự kiến",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
     },
     {
-      title: "Số lượng thực tế",
+      title: "Số lượng nhập thực tế",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
     },
@@ -157,11 +165,12 @@ const ImportRequestDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => getDetailStatusTag(status),
+      render: getStatusTag,
     }
   ];
 
-  if (loading) {
+  // Show loading spinner when initially loading the page
+  if (loading && !importRequest) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
@@ -172,8 +181,8 @@ const ImportRequestDetail = () => {
   return (
     <div className="mx-auto p-5">
       <div className="flex items-center mb-4">
-        <Button 
-          icon={<ArrowLeftOutlined />} 
+        <Button
+          icon={<ArrowLeftOutlined />}
           onClick={handleBack}
           className="mr-4"
         >
@@ -191,7 +200,7 @@ const ImportRequestDetail = () => {
           <Descriptions.Item label="Mã nhà cung cấp">{importRequest?.providerId}</Descriptions.Item>
           <Descriptions.Item label="Người tạo">{importRequest?.createdBy}</Descriptions.Item>
           <Descriptions.Item label="Ngày tạo">
-            {new Date(importRequest?.createdDate).toLocaleDateString("vi-VN")}
+            {importRequest?.createdDate ? new Date(importRequest?.createdDate).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Ngày cập nhật">
             {importRequest?.updatedDate ? new Date(importRequest?.updatedDate).toLocaleDateString("vi-VN") : "-"}
@@ -213,32 +222,40 @@ const ImportRequestDetail = () => {
 
       <div className="flex justify-between items-center mt-16 mb-4">
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
-        {importRequest?.status !== "COMPLETED" && importRequest?.status !== "CANCELLED" && (
-          <Button 
-            type="primary" 
-            icon={<FileAddOutlined />}
-            onClick={handleCreateImportOrder}
-          >
-            Tạo đơn nhập hàng
-          </Button>
-        )}
+        <div className="space-x-3">
+          {importRequest?.importOrdersId && importRequest?.importOrdersId.length > 0 && (
+            <Button
+              type="primary"
+              icon={<UnorderedListOutlined />}
+              onClick={handleViewImportOrders}
+            >
+              Xem danh sách đơn nhập
+            </Button>
+          )}
+          {importRequest?.status !== "COMPLETED" && importRequest?.status !== "CANCELLED" && (
+            <Button
+              type="primary"
+              icon={<FileAddOutlined />}
+              onClick={handleCreateImportOrder}
+            >
+              Tạo đơn nhập hàng
+            </Button>
+          )}
+        </div>
       </div>
 
       <Table
         columns={columns}
         dataSource={importRequestDetails}
-        pagination={false}
         rowKey="importRequestDetailId"
-        className="mb-4"
-      />
-
-      <Pagination
-        current={currentPage}
-        pageSize={pageSize}
-        total={total}
-        onChange={handlePageChange}
-        showSizeChanger
-        showTotal={(total) => `Tổng ${total} chi tiết`}
+        loading={detailsLoading}
+        onChange={handleTableChange}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '50'],
+          showTotal: (total) => `Tổng cộng ${total} sản phẩm trong phiếu nhập`,
+        }}
       />
     </div>
   );

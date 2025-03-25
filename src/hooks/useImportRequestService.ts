@@ -75,7 +75,7 @@ const useImportRequestService = () => {
         `/import-request/page?page=${page}&limit=${limit}`
       );
       if (response && response.content) {
-        return response.content;
+        return response;
       }
       return [];
     } catch (error) {
@@ -130,7 +130,7 @@ const useImportRequestService = () => {
         "get", 
         `/import-request-detail/page/${importRequestId}?page=${page}&limit=${limit}`
       );
-      return response.content;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách chi tiết phiếu nhập");
       console.error("Error fetching import request details:", error);
