@@ -97,7 +97,7 @@ const ImportOrderCreate = () => {
     if (selectedImportRequest) {
       fetchImportRequestDetails();
     }
-  }, []);
+  }, [selectedImportRequest, pagination.current, pagination.pageSize]);
 
   const fetchImportRequestDetails = useCallback(async () => {
     if (!selectedImportRequest) return;
@@ -343,21 +343,11 @@ const ImportOrderCreate = () => {
         <Card title="Thông tin đơn nhập" className="w-2/5">
           <Space direction="vertical" className="w-full">
             <div>
-              <label className="block mb-1">Chọn phiếu nhập <span className="text-red-500">*</span></label>
-              <Select
-                placeholder="Chọn phiếu nhập"
-                value={selectedImportRequest}
-                onChange={handleImportRequestChange}
-                className="w-full"
-                disabled={!!paramImportRequestId} // Disable if importRequestId is provided in URL
-              >
-                {importRequests.map((request) => (
-                  <Option key={request.importRequestId} value={request.importRequestId}>
-                    Phiếu nhập #{request.importRequestId} - {request.importReason?.substring(0, 30)}
-                    {request.importReason?.length > 30 ? "..." : ""}
-                  </Option>
-                ))}
-              </Select>
+              <div className="text-gray-700 py-1 font-bold text-md">
+                {importRequests.find(request => request.importRequestId === selectedImportRequest)
+                  ? `Phiếu nhập #${selectedImportRequest} - ${importRequests.find(request => request.importRequestId === selectedImportRequest).importReason}`
+                  : 'Chưa chọn phiếu nhập'}
+              </div>
             </div>
 
             <div>

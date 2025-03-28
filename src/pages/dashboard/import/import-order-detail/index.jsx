@@ -66,7 +66,6 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, getImportOrderById]);
 
-  // Fetch import order details with pagination
   const fetchImportOrderDetails = useCallback(async () => {
     if (!importOrderId) return;
 
@@ -82,14 +81,19 @@ const ImportOrderDetail = () => {
       if (response) {
         setImportOrderDetails(response);
 
-        // Update pagination with metadata from response
+        // Only update pagination if metadata exists and if any values differ
         if (response.metaDataDTO) {
-          setPagination(prev => ({
-            ...prev,
-            current: response.metaDataDTO.page,
-            pageSize: response.metaDataDTO.limit,
-            total: response.metaDataDTO.total,
-          }));
+          const { page, limit, total } = response.metaDataDTO;
+          if (page !== pagination.current ||
+            limit !== pagination.pageSize ||
+            total !== pagination.total) {
+            setPagination(prev => ({
+              ...prev,
+              current: page,
+              pageSize: limit,
+              total: total,
+            }));
+          }
         }
       }
     } catch (error) {
@@ -100,14 +104,21 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
 
+
   useEffect(() => {
     fetchImportOrderData();
-  }, []);
+  }, [fetchImportOrderData]);
 
-  // Load details when pagination changes
   useEffect(() => {
     fetchImportOrderDetails();
-  }, []);
+  }, [importOrderId]); // Only depend on importOrderId for initial fetch
+
+  // Handle pagination changes
+  useEffect(() => {
+    if (pagination.current > 0) {
+      fetchImportOrderDetails();
+    }
+  }, [pagination.current, pagination.pageSize]); // Only re-fetch when these specific values change
 
   // Status tag renderers
   const getStatusTag = (status) => {
@@ -179,8 +190,8 @@ const ImportOrderDetail = () => {
     },
     beforeUpload: (file) => {
       // Check if file is Excel
-      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-                      file.type === 'application/vnd.ms-excel';
+      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.type === 'application/vnd.ms-excel';
       if (!isExcel) {
         message.error('Chỉ chấp nhận file Excel!');
         return Upload.LIST_IGNORE;
@@ -210,25 +221,25 @@ const ImportOrderDetail = () => {
       const row = await form.validateFields();
       const newData = [...importOrderDetails];
       const index = newData.findIndex(item => key === item.importOrderDetailId);
-      
+
       if (index > -1) {
         const item = newData[index];
         const updatedItem = { ...item, ...row };
-        
+
         // Prepare data for API
         const updateData = [{
           itemId: updatedItem.itemId,
           quantity: updatedItem.expectQuantity,
           actualQuantity: updatedItem.actualQuantity
         }];
-        
+
         await updateImportOrderDetails(parseInt(importOrderId), updateData);
-        
+
         // Update local state
         newData.splice(index, 1, updatedItem);
         setImportOrderDetails(newData);
         setEditingKey('');
-        
+
         // Refresh data
         fetchImportOrderDetails();
       }
@@ -299,8 +310,8 @@ const ImportOrderDetail = () => {
         const editable = isEditing(record);
         return editable ? (
           <Space>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={() => save(record.importOrderDetailId)}
               icon={<SaveOutlined />}
             >
@@ -309,8 +320,8 @@ const ImportOrderDetail = () => {
             <Button onClick={cancel} icon={<CloseOutlined />}>Hủy</Button>
           </Space>
         ) : (
-          <Button 
-            disabled={editingKey !== '' || importOrder?.status === ImportStatus.COMPLETED || importOrder?.status === ImportStatus.CANCELLED} 
+          <Button
+            disabled={editingKey !== '' || importOrder?.status === ImportStatus.COMPLETED || importOrder?.status === ImportStatus.CANCELLED}
             onClick={() => edit(record)}
             icon={<EditOutlined />}
           >
@@ -349,7 +360,7 @@ const ImportOrderDetail = () => {
     ...restProps
   }) => {
     const inputNode = inputType === 'number' ? <InputNumber min={0} /> : <InputNumber min={0} disabled />;
-    
+
     return (
       <td {...restProps}>
         {editing ? (

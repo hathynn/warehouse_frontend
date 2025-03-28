@@ -75,7 +75,7 @@ const ImportOrderList = () => {
       case "CANCELLED":
         return <Tag color="error">Đã hủy</Tag>;
       default:
-        return <Tag color="default">Không xác định</Tag>;
+        return <Tag color="default">Chưa bắt đầu</Tag>;
     }
   };
 
