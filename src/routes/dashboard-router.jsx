@@ -9,6 +9,9 @@ import ImportOrderCreate from "@/pages/dashboard/import/import-order-create";
 import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
 import ImportOrderList from "@/pages/dashboard/import/import-order-list";
 import ImportOrderDetail from "@/pages/dashboard/import/import-order-detail";
+import ExportRequestList from "@/pages/dashboard/export/export-request-list";
+import ExportRequestCreate from "@/pages/dashboard/export/export-request-create";
+import ExportRequestDetail from "@/pages/dashboard/export/export-request-detail";
 // import ImportOrderDetail from "@/pages/dashboard/import/import-order-detail";
 
 const dashboardRouter = [
@@ -59,6 +62,19 @@ const dashboardRouter = [
   {
     path: DEPARTMENT_ROUTER.IMPORT.PRODUCT.CREATE,
     element: <ImportCreateProduct />,
+  },
+
+  {
+    path: DEPARTMENT_ROUTER.EXPORT.REQUEST.LIST,
+    element: <ExportRequestList />,
+  },
+  {
+    path: DEPARTMENT_ROUTER.EXPORT.REQUEST.CREATE,
+    element: <ExportRequestCreate />,
+  },
+  {
+    path: DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(),
+    element: <ExportRequestDetail />,
   },
 ];
 
