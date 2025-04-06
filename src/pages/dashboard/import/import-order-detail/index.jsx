@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -8,23 +8,17 @@ import {
   Tag,
   Spin,
   message,
-  Upload,
   Modal,
-  Form,
   InputNumber,
-  Select,
+  QRCode,
   Space
 } from "antd";
 import {
-  ArrowLeftOutlined,
-  UploadOutlined,
-  EditOutlined,
-  SaveOutlined,
-  CloseOutlined
+  ArrowLeftOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "../../../../hooks/useImportOrderService";
 import useImportOrderDetailService from "../../../../hooks/useImportOrderDetailService";
-import { ImportStatus } from "../../../../hooks/useImportOrderService";
+import useInventoryItemService from "../../../../hooks/useInventoryItemService";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams();
@@ -33,22 +27,28 @@ const ImportOrderDetail = () => {
   const [importOrderDetails, setImportOrderDetails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [editingKey, setEditingKey] = useState('');
-  const [form] = Form.useForm();
-  const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
-  const [fileList, setFileList] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [numberOfQrCodes, setNumberOfQrCodes] = useState(1);
+  const [qrGenerating, setQrGenerating] = useState(false);
+  const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
+  const [qrCodes, setQrCodes] = useState([]);
+  const [qrCodesLoading, setQrCodesLoading] = useState(false);
 
-  const { getImportOrderById, updateImportOrderStatus } = useImportOrderService();
+  const { getImportOrderById } = useImportOrderService();
   const {
-    getImportOrderDetailsPaginated,
-    uploadImportOrderDetail,
-    updateImportOrderDetails
+    getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
+  const { 
+    createInventoryItemWithQrCode,
+    getListQrCodes,
+    getByImportOrderDetailId
+  } = useInventoryItemService();
 
   // Fetch import order data
   const fetchImportOrderData = useCallback(async () => {
@@ -66,7 +66,6 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, getImportOrderById]);
 
-  // Fetch import order details with pagination
   const fetchImportOrderDetails = useCallback(async () => {
     if (!importOrderId) return;
 
@@ -82,14 +81,19 @@ const ImportOrderDetail = () => {
       if (response) {
         setImportOrderDetails(response);
 
-        // Update pagination with metadata from response
+        // Only update pagination if metadata exists and if any values differ
         if (response.metaDataDTO) {
-          setPagination(prev => ({
-            ...prev,
-            current: response.metaDataDTO.page,
-            pageSize: response.metaDataDTO.limit,
-            total: response.metaDataDTO.total,
-          }));
+          const { page, limit, total } = response.metaDataDTO;
+          if (page !== pagination.current ||
+            limit !== pagination.pageSize ||
+            total !== pagination.total) {
+            setPagination(prev => ({
+              ...prev,
+              current: page,
+              pageSize: limit,
+              total: total,
+            }));
+          }
         }
       }
     } catch (error) {
@@ -100,14 +104,21 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
 
+
   useEffect(() => {
     fetchImportOrderData();
-  }, []);
+  }, [importOrderId]);
 
-  // Load details when pagination changes
   useEffect(() => {
     fetchImportOrderDetails();
-  }, []);
+  }, [importOrderId]); // Only depend on importOrderId for initial fetch
+
+  // Handle pagination changes
+  useEffect(() => {
+    if (pagination.current > 0) {
+      fetchImportOrderDetails();
+    }
+  }, [pagination.current, pagination.pageSize]); // Only re-fetch when these specific values change
 
   // Status tag renderers
   const getStatusTag = (status) => {
@@ -147,117 +158,88 @@ const ImportOrderDetail = () => {
     navigate(-1);
   };
 
-  // Handle upload modal
-  const showUploadModal = () => {
-    setIsUploadModalVisible(true);
+  const handleOpenQrModal = (record) => {
+    setSelectedRecord(record);
+    setQrModalVisible(true);
   };
 
-  const handleUploadCancel = () => {
-    setIsUploadModalVisible(false);
-    setFileList([]);
+  const handleCloseQrModal = () => {
+    setQrModalVisible(false);
+    setSelectedRecord(null);
+    setNumberOfQrCodes(1);
   };
 
-  const handleUploadOk = async () => {
-    if (fileList.length === 0) {
-      message.warning("Vui lòng chọn file để tải lên");
+  const handleGenerateQrCodes = async () => {
+    if (!selectedRecord || !numberOfQrCodes || numberOfQrCodes < 1) {
+      message.error("Vui lòng nhập số lượng QR code cần tạo");
       return;
     }
 
     try {
-      await uploadImportOrderDetail(fileList[0].originFileObj, parseInt(importOrderId));
-      setIsUploadModalVisible(false);
-      setFileList([]);
-      fetchImportOrderDetails();
-    } catch (error) {
-      console.error("Upload failed:", error);
-    }
-  };
-
-  const uploadProps = {
-    onRemove: () => {
-      setFileList([]);
-    },
-    beforeUpload: (file) => {
-      // Check if file is Excel
-      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-                      file.type === 'application/vnd.ms-excel';
-      if (!isExcel) {
-        message.error('Chỉ chấp nhận file Excel!');
-        return Upload.LIST_IGNORE;
-      }
-      setFileList([file]);
-      return false;
-    },
-    fileList,
-  };
-
-  // Editing functionality
-  const isEditing = (record) => record.importOrderDetailId === editingKey;
-
-  const edit = (record) => {
-    form.setFieldsValue({
-      ...record,
-    });
-    setEditingKey(record.importOrderDetailId);
-  };
-
-  const cancel = () => {
-    setEditingKey('');
-  };
-
-  const save = async (key) => {
-    try {
-      const row = await form.validateFields();
-      const newData = [...importOrderDetails];
-      const index = newData.findIndex(item => key === item.importOrderDetailId);
+      setQrGenerating(true);
       
-      if (index > -1) {
-        const item = newData[index];
-        const updatedItem = { ...item, ...row };
+      const request = {
+        itemId: selectedRecord.itemId,
+        importOrderDetailId: selectedRecord.importOrderDetailId,
+        numberOfQrCodes: numberOfQrCodes
+      };
+      
+      const response = await createInventoryItemWithQrCode(request);
+      
+      if (response) {
+        message.success(`Đã tạo thành công ${numberOfQrCodes} mã QR cho sản phẩm ${selectedRecord.itemName}`);
+        handleCloseQrModal();
         
-        // Prepare data for API
-        const updateData = [{
-          itemId: updatedItem.itemId,
-          quantity: updatedItem.expectQuantity,
-          actualQuantity: updatedItem.actualQuantity
-        }];
-        
-        await updateImportOrderDetails(parseInt(importOrderId), updateData);
-        
-        // Update local state
-        newData.splice(index, 1, updatedItem);
-        setImportOrderDetails(newData);
-        setEditingKey('');
-        
-        // Refresh data
+        // Refresh import order details to reflect the changes
         fetchImportOrderDetails();
       }
-    } catch (errInfo) {
-      console.log('Validate Failed:', errInfo);
+    } catch (error) {
+      console.error("Failed to generate QR codes:", error);
+    } finally {
+      setQrGenerating(false);
     }
   };
 
-  // Update import order status
-  const handleUpdateStatus = async (newStatus) => {
+  // Function to fetch and show QR codes
+  const handleViewQrCodes = async (record) => {
     try {
-      await updateImportOrderStatus(parseInt(importOrderId), newStatus);
-      message.success(`Cập nhật trạng thái thành công: ${getStatusTag(newStatus).props.children}`);
-      fetchImportOrderData();
+      setQrCodesLoading(true);
+      
+      // First, get inventory items associated with this import order detail
+      const inventoryItems = await getByImportOrderDetailId(record.importOrderDetailId);
+      
+      if (inventoryItems && inventoryItems.length > 0) {
+        // Extract IDs for QR code lookup
+        const inventoryItemIds = inventoryItems.map(item => item.id);
+        
+        // Fetch QR codes
+        const qrCodeData = await getListQrCodes(inventoryItemIds);
+        
+        if (qrCodeData && qrCodeData.length > 0) {
+          setQrCodes(qrCodeData);
+          setQrViewModalVisible(true);
+        } else {
+          message.info("Không tìm thấy mã QR cho sản phẩm này");
+        }
+      } else {
+        message.info("Không tìm thấy sản phẩm trong kho cho chi tiết đơn nhập này");
+      }
     } catch (error) {
-      console.error("Failed to update status:", error);
-      message.error("Không thể cập nhật trạng thái");
+      console.error("Failed to fetch QR codes:", error);
+      message.error("Không thể tải mã QR");
+    } finally {
+      setQrCodesLoading(false);
     }
+  };
+  
+  // Function to close QR view modal
+  const handleCloseQrViewModal = () => {
+    setQrViewModalVisible(false);
+    setQrCodes([]);
   };
 
   // Table columns definition
   const columns = [
-    {
-      title: "Mã chi tiết",
-      dataIndex: "importOrderDetailId",
-      key: "importOrderDetailId",
-      render: (id) => `#${id}`,
-      width: '10%',
-    },
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
@@ -272,18 +254,16 @@ const ImportOrderDetail = () => {
       width: '20%',
     },
     {
-      title: "Số lượng dự kiến",
+      title: "Số lượng nhập dự tính của đơn này",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       width: '15%',
-      editable: true,
     },
     {
-      title: "Số lượng thực tế",
+      title: "Số lượng nhập thực tế của đơn ngày",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       width: '15%',
-      editable: true,
     },
     {
       title: "Trạng thái",
@@ -295,82 +275,26 @@ const ImportOrderDetail = () => {
     {
       title: "Thao tác",
       key: "action",
-      render: (_, record) => {
-        const editable = isEditing(record);
-        return editable ? (
-          <Space>
-            <Button 
-              type="primary" 
-              onClick={() => save(record.importOrderDetailId)}
-              icon={<SaveOutlined />}
-            >
-              Lưu
-            </Button>
-            <Button onClick={cancel} icon={<CloseOutlined />}>Hủy</Button>
-          </Space>
-        ) : (
-          <Button 
-            disabled={editingKey !== '' || importOrder?.status === ImportStatus.COMPLETED || importOrder?.status === ImportStatus.CANCELLED} 
-            onClick={() => edit(record)}
-            icon={<EditOutlined />}
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleOpenQrModal(record)}
+            disabled={record.status === "CANCELLED"}
           >
-            Sửa
+            Tạo QR-Code
           </Button>
-        );
-      },
-      width: '15%',
+          <Button
+            onClick={() => handleViewQrCodes(record)}
+            disabled={record.status === "CANCELLED"}
+          >
+            Xem QR-Code
+          </Button>
+        </Space>
+      ),
+      width: '20%',
     },
   ];
-
-  const mergedColumns = columns.map((col) => {
-    if (!col.editable) {
-      return col;
-    }
-    return {
-      ...col,
-      onCell: (record) => ({
-        record,
-        inputType: col.dataIndex === 'actualQuantity' ? 'number' : 'text',
-        dataIndex: col.dataIndex,
-        title: col.title,
-        editing: isEditing(record),
-      }),
-    };
-  });
-
-  const EditableCell = ({
-    editing,
-    dataIndex,
-    title,
-    inputType,
-    record,
-    index,
-    children,
-    ...restProps
-  }) => {
-    const inputNode = inputType === 'number' ? <InputNumber min={0} /> : <InputNumber min={0} disabled />;
-    
-    return (
-      <td {...restProps}>
-        {editing ? (
-          <Form.Item
-            name={dataIndex}
-            style={{ margin: 0 }}
-            rules={[
-              {
-                required: true,
-                message: `Vui lòng nhập ${title}!`,
-              },
-            ]}
-          >
-            {inputNode}
-          </Form.Item>
-        ) : (
-          children
-        )}
-      </td>
-    );
-  };
 
   // Show loading spinner when initially loading the page
   if (loading && !importOrder) {
@@ -419,70 +343,93 @@ const ImportOrderDetail = () => {
       </Card>
 
       <div className="flex justify-between items-center mt-16 mb-4">
-        {/* <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
-        <div className="space-x-3">
-          {importOrder?.status !== ImportStatus.COMPLETED && importOrder?.status !== ImportStatus.CANCELLED && (
-            <>
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={showUploadModal}
-              >
-                Tải lên danh sách sản phẩm
-              </Button>
-              <Select
-                placeholder="Cập nhật trạng thái"
-                style={{ width: 200 }}
-                onChange={handleUpdateStatus}
-                value={importOrder?.status}
-              >
-                <Select.Option value={ImportStatus.NOT_STARTED}>Chưa bắt đầu</Select.Option>
-                <Select.Option value={ImportStatus.IN_PROGRESS}>Đang xử lý</Select.Option>
-                <Select.Option value={ImportStatus.COMPLETED}>Hoàn tất</Select.Option>
-                <Select.Option value={ImportStatus.CANCELLED}>Đã hủy</Select.Option>
-              </Select>
-            </>
-          )}
-        </div> */}
       </div>
 
-      <Form form={form} component={false}>
-        <Table
-          components={{
-            body: {
-              cell: EditableCell,
-            },
-          }}
-          columns={mergedColumns}
-          dataSource={importOrderDetails}
-          rowKey="importOrderDetailId"
-          loading={detailsLoading}
-          onChange={handleTableChange}
-          pagination={{
-            ...pagination,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '50'],
-            showTotal: (total) => `Tổng cộng ${total} sản phẩm trong đơn nhập`,
-          }}
-        />
-      </Form>
+      <Table
+        columns={columns}
+        dataSource={importOrderDetails}
+        rowKey="importOrderDetailId"
+        loading={detailsLoading}
+        onChange={handleTableChange}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '50'],
+          showTotal: (total) => `Tổng cộng ${total} sản phẩm trong đơn nhập`,
+        }}
+      />
 
-      {/* Upload Modal */}
       <Modal
-        title="Tải lên danh sách sản phẩm"
-        visible={isUploadModalVisible}
-        onOk={handleUploadOk}
-        onCancel={handleUploadCancel}
-        okText="Tải lên"
-        cancelText="Hủy"
+        title="Xem mã QR"
+        open={qrViewModalVisible}
+        onCancel={handleCloseQrViewModal}
+        footer={[
+          <Button key="close" onClick={handleCloseQrViewModal}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
       >
-        <p className="mb-4">Tải lên file Excel chứa danh sách sản phẩm cho đơn nhập này.</p>
-        <Upload {...uploadProps} maxCount={1}>
-          <Button icon={<UploadOutlined />}>Chọn file Excel</Button>
-        </Upload>
-        <p className="mt-2 text-gray-500 text-sm">
-          Lưu ý: Chỉ chấp nhận file Excel (.xlsx, .xls)
-        </p>
+        {qrCodesLoading ? (
+          <div className="flex justify-center items-center py-8">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <div>
+            <p className="mb-4">Tổng cộng: {qrCodes.length} mã QR</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {qrCodes.map((qrCode, index) => (
+                <div key={index} className="border p-4 rounded-md flex flex-col items-center">
+                  <QRCode
+                    value={JSON.stringify(qrCode)}
+                    size={150}
+                    bordered={false}
+                  />
+                  <div className="mt-2 text-xs text-center">
+                    <p>Mã sản phẩm trong kho: #{qrCode.id}</p>
+                    <p>Số lượng trong kho: {qrCode.quantity || 0}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        title={`Tạo mã QR cho sản phẩm: ${selectedRecord?.itemName}`}
+        open={qrModalVisible}
+        onCancel={handleCloseQrModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseQrModal}>
+            Hủy
+          </Button>,
+          <Button 
+            key="submit" 
+            type="primary" 
+            loading={qrGenerating}
+            onClick={handleGenerateQrCodes}
+          >
+            Tạo mã QR
+          </Button>,
+        ]}
+      >
+        <div className="my-4">
+          <p>Sản phẩm: {selectedRecord?.itemName}</p>
+          <p>Mã sản phẩm: {selectedRecord?.itemId}</p>
+          <p>Chi tiết đơn nhập ID: {selectedRecord?.importOrderDetailId}</p>
+          
+          <div className="mt-4">
+            <label className="block mb-2">Số lượng mã QR cần tạo:</label>
+            <InputNumber
+              min={1}
+              max={100}
+              value={numberOfQrCodes}
+              onChange={setNumberOfQrCodes}
+              className="w-full"
+            />
+          </div>
+        </div>
       </Modal>
     </div>
   );

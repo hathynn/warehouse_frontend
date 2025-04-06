@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Form, Input, Select, Button, message, InputNumber, Spin } from "antd";
-import "./index.scss";
 import useItemService from "../../../../hooks/useItemService";
 import useProviderService from "../../../../hooks/useProviderService";
 

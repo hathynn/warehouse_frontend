@@ -5,9 +5,8 @@ import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import HeaderDashboard from "@/components/header";
-import { menuItemsByRole } from "@/constants/menuItems";
-import "./index.scss";
-
+import { menuItems } from "@/constants/menu-items";
+import { pageTitles } from "@/constants/page-titles";
 const { Sider, Content } = Layout;
 
 const DashboardLayout = () => {
@@ -20,22 +19,42 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
 
   // Get menu items based on user role
-  const menuItems = menuItemsByRole[role] || [];
+  const menuItemsByRole = menuItems[role] || [];
 
   useEffect(() => {
-    // Find active menu item based on current path
-    const activeItem = menuItems.find(item => location.pathname.includes(item.path));
+    // Find the current page title based on pathname
+    let currentTitle = "";
+    
+    // First try to find an exact path match
+    if (pageTitles[location.pathname]) {
+      currentTitle = pageTitles[location.pathname];
+    } else {
+      // If no exact match, try to find a partial match for dynamic routes
+      const pathKeys = Object.keys(pageTitles);
+      const matchingPath = pathKeys.find(path => 
+        location.pathname.includes(path) && path.length > 1
+      );
+      
+      if (matchingPath) {
+        currentTitle = pageTitles[matchingPath];
+      }
+    }
+    
+    if (currentTitle) {
+      setPageTitle(currentTitle);
+    }
+    
+    // Update the selected menu key
+    const activeItem = menuItemsByRole.find(item => location.pathname.includes(item.path));
     if (activeItem) {
       setSelectedKey(activeItem.key);
-      setPageTitle(activeItem.label);
     }
-  }, [location.pathname, menuItems]);
+  }, [location.pathname, menuItemsByRole]);
 
   const handleMenuClick = (e) => {
     setSelectedKey(e.key);
-    const item = menuItems.find((item) => item.key === e.key);
+    const item = menuItemsByRole.find((item) => item.key === e.key);
     if (item?.path) {
-      setPageTitle(item.label);
       navigate(item.path);
     }
   };
@@ -64,7 +83,7 @@ const DashboardLayout = () => {
             selectedKeys={[selectedKey]}
             onClick={handleMenuClick}
           >
-            {menuItems.map((item) => (
+            {menuItemsByRole.map((item) => (
               <Menu.Item
                 key={item.key}
                 icon={item.icon}

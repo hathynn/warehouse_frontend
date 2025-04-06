@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, Input, Select, Table, Typography, Space, Card, DatePicker, TimePicker, Alert, message, Upload } from "antd";
+import { useState, useEffect, useCallback } from "react";
+import { Button, Input, Table, Typography, Space, Card, DatePicker, TimePicker, message, Upload } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import useImportOrderService from "../../../../hooks/useImportOrderService";
 import useImportRequestService from "../../../../hooks/useImportRequestService";
@@ -10,11 +10,10 @@ import { useSelector } from "react-redux";
 import { DEPARTMENT_ROUTER } from "../../../../constants/routes";
 import { InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx"
+import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 
 const { Title } = Typography;
-const { Option } = Select;
 const { TextArea } = Input;
-const { Dragger } = Upload;
 
 const ImportOrderCreate = () => {
   const { importRequestId: paramImportRequestId } = useParams();
@@ -44,17 +43,22 @@ const ImportOrderCreate = () => {
     status: "NOT_STARTED" // Using the enum from useImportOrderService
   });
 
-  const {
-    loading: importOrderLoading,
-    createImportOrder,
-  } = useImportOrderService();
 
   const {
     loading: importRequestLoading,
     getAllImportRequests,
-    getImportRequestDetails,
     getImportRequestById
   } = useImportRequestService();
+
+  const {
+    loading: importRequestDetailLoading,
+    getImportRequestDetails,
+  } = useImportRequestDetailService();
+
+  const {
+    loading: importOrderLoading,
+    createImportOrder,
+  } = useImportOrderService();
 
   const {
     loading: importOrderDetailLoading,
@@ -97,7 +101,7 @@ const ImportOrderCreate = () => {
     if (selectedImportRequest) {
       fetchImportRequestDetails();
     }
-  }, []);
+  }, [selectedImportRequest, pagination.current, pagination.pageSize]);
 
   const fetchImportRequestDetails = useCallback(async () => {
     if (!selectedImportRequest) return;
@@ -136,19 +140,6 @@ const ImportOrderCreate = () => {
     }
   }, [selectedImportRequest, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
-  const handleImportRequestChange = (value) => {
-    setSelectedImportRequest(value);
-    setPagination(prev => ({
-      ...prev,
-      current: 1 // Reset to first page when changing import request
-    }));
-    setFormData(prev => ({
-      ...prev,
-      importRequestId: value
-    }));
-    // Reset uploaded details when changing import request
-    setUploadedDetails([]);
-  };
 
   const handleDateChange = (date) => {
     setFormData({
@@ -289,9 +280,9 @@ const ImportOrderCreate = () => {
       width: "30%"
     },
     {
-      title: "Số lượng yêu cầu",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
+      title: "Số lượng đã lên đơn nhập",
+      dataIndex: "orderedQuantity",
+      key: "orderedQuantity",
     },
     // Update the column definition for "Số lượng sẽ nhập (dự tính)"
     {
@@ -318,14 +309,14 @@ const ImportOrderCreate = () => {
 
   ];
 
-  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
+  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
 
   // Excel upload props
   const uploadProps = {
     name: 'file',
     multiple: false,
     accept: '.xlsx, .xls',
-    customRequest: ({ file, onSuccess }) => {
+    customRequest: ({ onSuccess }) => {
       setTimeout(() => {
         onSuccess("ok");
       }, 0);
@@ -340,24 +331,14 @@ const ImportOrderCreate = () => {
       </div>
 
       <div className="flex gap-6">
-        <Card title="Thông tin đơn nhập" className="w-2/5">
+        <Card title="Thông tin đơn nhập" className="w-3/10">
           <Space direction="vertical" className="w-full">
             <div>
-              <label className="block mb-1">Chọn phiếu nhập <span className="text-red-500">*</span></label>
-              <Select
-                placeholder="Chọn phiếu nhập"
-                value={selectedImportRequest}
-                onChange={handleImportRequestChange}
-                className="w-full"
-                disabled={!!paramImportRequestId} // Disable if importRequestId is provided in URL
-              >
-                {importRequests.map((request) => (
-                  <Option key={request.importRequestId} value={request.importRequestId}>
-                    Phiếu nhập #{request.importRequestId} - {request.importReason?.substring(0, 30)}
-                    {request.importReason?.length > 30 ? "..." : ""}
-                  </Option>
-                ))}
-              </Select>
+              <div className="text-gray-700 py-1 font-bold text-md">
+                {importRequests.find(request => request.importRequestId === selectedImportRequest)
+                  ? `Phiếu nhập #${selectedImportRequest} - ${importRequests.find(request => request.importRequestId === selectedImportRequest).importReason}`
+                  : 'Chưa chọn phiếu nhập'}
+              </div>
             </div>
 
             <div>
@@ -418,7 +399,7 @@ const ImportOrderCreate = () => {
           </Space>
         </Card>
 
-        <div className="w-3/5">
+        <div className="w-7/10">
           <Card title={`Chi tiết hàng hóa cần nhập từ phiếu nhập  #${selectedImportRequest}`}>
             {importRequestDetails.length > 0 ? (
               <Table

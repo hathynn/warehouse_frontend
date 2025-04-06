@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { Button, Input, Select, Table, Typography, Space, Card, Alert } from "antd";
 import { UploadOutlined, DownloadOutlined } from "@ant-design/icons";
@@ -8,6 +8,7 @@ import useItemService from "../../../../hooks/useItemService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -31,8 +32,12 @@ const ImportRequestCreate = () => {
   const {
     loading: importLoading,
     createImportRequest,
-    uploadImportRequestDetail,
   } = useImportRequestService();
+
+  const {
+    loading: importRequestDetailLoading,
+    uploadImportRequestDetail
+  } = useImportRequestDetailService();
 
   const {
     loading: providerLoading,
@@ -204,7 +209,7 @@ const ImportRequestCreate = () => {
     }
   ];
 
-  const loading = importLoading || providerLoading || itemLoading;
+  const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
     <div className="container mx-auto p-5">
