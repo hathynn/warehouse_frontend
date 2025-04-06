@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
@@ -12,7 +12,7 @@ import {
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import useImportRequestService from "../../../../hooks/useImportRequestService";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
-
+import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 const ImportRequestDetail = () => {
   const { importRequestId } = useParams();
   const navigate = useNavigate();
@@ -28,8 +28,11 @@ const ImportRequestDetail = () => {
 
   const {
     getImportRequestById,
-    getImportRequestDetails,
   } = useImportRequestService();
+
+  const {
+    getImportRequestDetails
+  } = useImportRequestDetailService();
 
   // Fetch import request data
   const fetchImportRequestData = useCallback(async () => {
@@ -129,7 +132,7 @@ const ImportRequestDetail = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST);
   };
 
   const handleCreateImportOrder = () => {
@@ -143,15 +146,10 @@ const ImportRequestDetail = () => {
   // Table columns definition
   const columns = [
     {
-      title: "Mã chi tiết",
-      dataIndex: "importRequestDetailId",
-      key: "importRequestDetailId",
-      render: (id) => `#${id}`,
-    },
-    {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
+      width: '15%',
     },
     {
       title: "Tên sản phẩm",
@@ -160,14 +158,14 @@ const ImportRequestDetail = () => {
       ellipsis: true,
     },
     {
-      title: "Số lượng nhập dự kiến",
+      title: "Số lượng phải nhập theo phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
     },
     {
-      title: "Số lượng nhập thực tế",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
+      title: "Số lượng đã lên đơn nhập",
+      dataIndex: "orderedQuantity",
+      key: "orderedQuantity",
     },
     {
       title: "Trạng thái",

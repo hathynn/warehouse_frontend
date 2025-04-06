@@ -9,7 +9,7 @@ import {
 import { DEPARTMENT_ROUTER } from "./routes";
 
 
-export const menuItemsByRole = {
+export const menuItems = {
   DEPARTMENT: [
     {
       label: "Tổng quan",

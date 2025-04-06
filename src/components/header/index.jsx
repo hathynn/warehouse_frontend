@@ -1,4 +1,3 @@
-import React from 'react';
 import { Avatar, Dropdown } from 'antd';
 import { UserOutlined, SettingOutlined, LogoutOutlined } from '@ant-design/icons';
 

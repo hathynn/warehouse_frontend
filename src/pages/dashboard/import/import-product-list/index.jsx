@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Table, Button, Input, message } from "antd";
 import { Link } from "react-router-dom";
 import useItemService from "../../../../hooks/useItemService";
-import "./index.scss";
 
 const ImportProductList = () => {
   const [items, setItems] = useState([]);

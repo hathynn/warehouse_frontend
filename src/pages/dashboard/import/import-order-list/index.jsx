@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, Spin } from "antd";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService from "../../../../hooks/useImportOrderService";
-import { SearchOutlined } from "@ant-design/icons";
+import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
 const ImportOrderList = () => {
   const { importRequestId } = useParams();
+  const navigate = useNavigate();
   const [importOrders, setImportOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
@@ -27,18 +28,18 @@ const ImportOrderList = () => {
   const fetchImportOrders = async () => {
     try {
       if (!importRequestId) return;
-      
+
       const response = await getImportOrdersByRequestId(
-        parseInt(importRequestId), 
-        pagination.current, 
+        parseInt(importRequestId),
+        pagination.current,
         pagination.pageSize
       );
-      
+
       // Update state with the content array from the response
       if (response && response.content) {
         setImportOrders(response.content);
       }
-      
+
       // Update pagination with metadata
       if (response && response.metaDataDTO) {
         setPagination({
@@ -147,11 +148,22 @@ const ImportOrderList = () => {
     },
   ];
 
+  const handleBackToImportRequest = () => {
+    navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(importRequestId));
+  };
+
   return (
     <div className={`mx-auto`}>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Danh sách đơn nhập</h1>
+      <div className="flex justify-between items-center mb-3">
+          <Button
+            type="primary"
+            icon={<ArrowLeftOutlined />}
+            onClick={handleBackToImportRequest}
+          >
+            Quay lại - Phiếu nhập #{importRequestId}
+          </Button>
       </div>
+      <h1 className="text-xl font-bold mr-4 mb-3">Danh sách đơn nhập</h1>
 
       <div className="mb-4">
         <Input

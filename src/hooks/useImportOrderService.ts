@@ -145,93 +145,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // IMPORT ORDER DETAIL METHODS
-
-  // Get paginated import order details by import order ID
-  const getImportOrderDetailsPaginated = async (
-    importOrderId: number,
-    page = 1,
-    limit = 10
-  ): Promise<{ items: ImportOrderDetailResponse[], metadata: any } | undefined> => {
-    try {
-      const response = await callApi(
-        "get",
-        `/import-order-detail/page/${importOrderId}?page=${page}&limit=${limit}`
-      );
-      if (response) {
-        return response
-      }
-    } catch (error) {
-      toast.error("Không thể lấy danh sách chi tiết đơn nhập");
-      console.error("Error fetching import order details:", error);
-      throw error;
-    }
-  };
-
-  // Get all import order details by import order ID (non-paginated)
-  const getAllImportOrderDetails = async (
-    importOrderId: number
-  ): Promise<ImportOrderDetailResponse[] | undefined> => {
-    try {
-      const response = await callApi("get", `/import-order-detail/${importOrderId}`);
-      if (response && response.content) {
-        return response.content;
-      }
-    } catch (error) {
-      toast.error("Không thể lấy chi tiết đơn nhập");
-      console.error("Error fetching import order details:", error);
-      throw error;
-    }
-  };
-
-  // Create import order details from Excel file
-  const createImportOrderDetailsFromFile = async (
-    importOrderId: number,
-    file: File
-  ): Promise<void> => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      await callApi(
-        "post",
-        `/import-order-detail/${importOrderId}`,
-        formData
-      );
-      toast.success("Tạo chi tiết đơn nhập từ file thành công");
-    } catch (error) {
-      toast.error("Không thể tạo chi tiết đơn nhập từ file");
-      console.error("Error creating import order details from file:", error);
-      throw error;
-    }
-  };
-  // Update import order details
-  const updateImportOrderDetails = async (
-    importOrderId: number,
-    detailsList: ImportOrderDetailRequest[]
-  ): Promise<void> => {
-    try {
-      await callApi("put", `/import-order-detail/${importOrderId}`, detailsList);
-      toast.success("Cập nhật chi tiết đơn nhập thành công");
-    } catch (error) {
-      toast.error("Không thể cập nhật chi tiết đơn nhập");
-      console.error("Error updating import order details:", error);
-      throw error;
-    }
-  };
-
-  // Delete import order details by import order ID
-  const deleteImportOrderDetails = async (importOrderId: number): Promise<void> => {
-    try {
-      await callApi("delete", `/import-order-detail/${importOrderId}`);
-      toast.success("Xóa chi tiết đơn nhập thành công");
-    } catch (error) {
-      toast.error("Không thể xóa chi tiết đơn nhập");
-      console.error("Error deleting import order details:", error);
-      throw error;
-    }
-  };
-
   return {
     loading,
     importOrderId,
@@ -241,12 +154,6 @@ const useImportOrderService = () => {
     deleteImportOrder,
     getImportOrderById,
     getImportOrdersByRequestId,
-    // Import Order Detail methods
-    getImportOrderDetailsPaginated,
-    getAllImportOrderDetails,
-    createImportOrderDetailsFromFile,
-    updateImportOrderDetails,
-    deleteImportOrderDetails
   };
 };
 

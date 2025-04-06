@@ -1,7 +1,5 @@
-import React from "react";
 import { Outlet } from "react-router-dom";
 import bg from "@/assets/bg.png";
-import "./index.scss";
 
 /**
  * AuthLayout serves as a wrapper for authentication-related pages
