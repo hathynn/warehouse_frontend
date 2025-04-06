@@ -5,6 +5,7 @@ import {
   PaperClipOutlined,
   SettingOutlined,
   ShopOutlined,
+  ExportOutlined,
 } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "./routes";
 
@@ -22,7 +23,13 @@ export const menuItems = {
       key: "import-request",
       icon: <ImportOutlined />,
       path: DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST,
-    }
+    },
+    {
+      label: "Quản lý phiếu xuất",
+      key: "export-request",
+      icon: <ExportOutlined />,
+      path: DEPARTMENT_ROUTER.EXPORT.REQUEST.LIST,
+    },
   ],
   USER: [
     { label: "Trang chủ", key: "home", icon: <HomeOutlined /> },
