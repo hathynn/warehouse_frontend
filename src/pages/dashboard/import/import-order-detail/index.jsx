@@ -14,11 +14,13 @@ import {
   Space
 } from "antd";
 import {
-  ArrowLeftOutlined
+  ArrowLeftOutlined,
+  UserAddOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "../../../../hooks/useImportOrderService";
 import useImportOrderDetailService from "../../../../hooks/useImportOrderDetailService";
 import useInventoryItemService from "../../../../hooks/useInventoryItemService";
+import useAccountService, { AccountRole } from "../../../../hooks/useAccountService";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams();
@@ -39,8 +41,13 @@ const ImportOrderDetail = () => {
   const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
   const [qrCodes, setQrCodes] = useState([]);
   const [qrCodesLoading, setQrCodesLoading] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [warehouseKeepers, setWarehouseKeepers] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [assigningStaff, setAssigningStaff] = useState(false);
 
-  const { getImportOrderById } = useImportOrderService();
+  const { getImportOrderById, assignWarehouseKeeper } = useImportOrderService();
   const {
     getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
@@ -49,6 +56,7 @@ const ImportOrderDetail = () => {
     getListQrCodes,
     getByImportOrderDetailId
   } = useInventoryItemService();
+  const { getAccountsByRole } = useAccountService();
 
   // Fetch import order data
   const fetchImportOrderData = useCallback(async () => {
@@ -104,6 +112,57 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
 
+  const fetchWarehouseKeepers = async () => {
+    try {
+      setLoadingStaff(true);
+      const staff = await getAccountsByRole(AccountRole.WAREHOUSE_KEEPER);
+      setWarehouseKeepers(staff);
+    } catch (error) {
+      console.error("Failed to fetch warehouse keepers:", error);
+      message.error("Không thể tải danh sách nhân viên kho");
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
+
+  const handleOpenAssignModal = () => {
+    setSelectedStaffId(null);
+    fetchWarehouseKeepers();
+    setAssignModalVisible(true);
+  };
+
+  const handleCloseAssignModal = () => {
+    setAssignModalVisible(false);
+    setSelectedStaffId(null);
+  };
+
+  const handleSelectStaff = (staffId) => {
+    setSelectedStaffId(staffId);
+  };
+
+  const handleAssignStaff = async () => {
+    if (!selectedStaffId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+
+    try {
+      setAssigningStaff(true);
+      await assignWarehouseKeeper(
+        parseInt(importOrderId),
+        selectedStaffId
+      );
+      
+      // Refresh import order data to show the assigned staff
+      await fetchImportOrderData();
+      
+      handleCloseAssignModal();
+    } catch (error) {
+      console.error("Failed to assign warehouse keeper:", error);
+    } finally {
+      setAssigningStaff(false);
+    }
+  };
 
   useEffect(() => {
     fetchImportOrderData();
@@ -306,7 +365,7 @@ const ImportOrderDetail = () => {
   }
 
   return (
-    <div className="mx-auto p-5">
+    <div className="mx-auto p-4">
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -316,6 +375,14 @@ const ImportOrderDetail = () => {
           Quay lại
         </Button>
         <h1 className="text-xl font-bold m-0">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
+        <Button 
+          type="primary" 
+          icon={<UserAddOutlined />} 
+          onClick={handleOpenAssignModal}
+          className="ml-auto"
+        >
+          Phân công nhân viên
+        </Button>
       </div>
 
       <Card className="mb-6">
@@ -358,6 +425,81 @@ const ImportOrderDetail = () => {
           showTotal: (total) => `Tổng cộng ${total} sản phẩm trong đơn nhập`,
         }}
       />
+
+      {/* Staff Assignment Modal */}
+      <Modal
+        title="Phân công nhân viên kho"
+        open={assignModalVisible}
+        onCancel={handleCloseAssignModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseAssignModal}>
+            Đóng
+          </Button>,
+          <Button 
+            key="submit" 
+            type="primary" 
+            onClick={handleAssignStaff}
+            loading={assigningStaff}
+            disabled={!selectedStaffId}
+          >
+            Xác nhận phân công
+          </Button>,
+        ]}
+        width={700}
+      >
+        {loadingStaff ? (
+          <div className="flex justify-center items-center py-8">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <div>
+            <p className="mb-4">Chọn nhân viên kho để phân công cho đơn nhập #{importOrder?.importOrderId}</p>
+            <Table 
+              dataSource={warehouseKeepers}
+              rowKey="id"
+              pagination={false}
+              columns={[
+                {
+                  title: "Họ tên",
+                  dataIndex: "fullName",
+                  key: "fullName",
+                },
+                {
+                  title: "Số điện thoại",
+                  dataIndex: "phone",
+                  key: "phone",
+                },
+                {
+                  title: "Trạng thái",
+                  dataIndex: "status",
+                  key: "status",
+                  render: (status) => {
+                    const statusMap = {
+                      "ACTIVE": { color: "green", text: "Hoạt động" },
+                      "INACTIVE": { color: "red", text: "Không hoạt động" },
+                    };
+                    const statusInfo = statusMap[status] || { color: "default", text: status };
+                    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+                  }
+                },
+                {
+                  title: "Thao tác",
+                  key: "action",
+                  render: (_, record) => (
+                    <Button 
+                      type={selectedStaffId === record.id ? "primary" : "default"}
+                      size="small"
+                      onClick={() => handleSelectStaff(record.id)}
+                    >
+                      {selectedStaffId === record.id ? "Đã chọn" : "Chọn"}
+                    </Button>
+                  )
+                }
+              ]}
+            />
+          </div>
+        )}
+      </Modal>
 
       <Modal
         title="Xem mã QR"

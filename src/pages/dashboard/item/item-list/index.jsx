@@ -3,7 +3,7 @@ import { Table, Button, Input, message } from "antd";
 import { Link } from "react-router-dom";
 import useItemService from "../../../../hooks/useItemService";
 
-const ImportProductList = () => {
+const ItemList = () => {
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -156,4 +156,4 @@ const ImportProductList = () => {
   );
 };
 
-export default ImportProductList;
+export default ItemList;

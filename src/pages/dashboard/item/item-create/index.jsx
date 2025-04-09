@@ -12,7 +12,7 @@ const fakeCategories = [
   { id: 4, name: "Phụ liệu may mặc" },
 ];
 
-const ImportCreateProduct = () => {
+const ItemCreate = () => {
   const [form] = Form.useForm();
   const [phone, setPhone] = useState("");
   const { createItem, loading: itemLoading } = useItemService();
@@ -187,4 +187,4 @@ const ImportCreateProduct = () => {
   );
 };
 
-export default ImportCreateProduct;
+export default ItemCreate;

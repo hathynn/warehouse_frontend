@@ -1,10 +1,10 @@
 import { DEPARTMENT_ROUTER, USER_ROUTER } from "@/constants/routes";
 import Overview from "@/components/overview";
 import { Navigate } from "react-router-dom";
-import ImportProductList from "@/pages/dashboard/import/import-product-list";
+import ItemList from "@/pages/dashboard/item/item-list";
 import ImportRequestList from "@/pages/dashboard/import/import-request-list";
 import ImportRequestDetail from "@/pages/dashboard/import/import-request-detail";
-import ImportCreateProduct from "@/pages/dashboard/import/import-product-create";
+import ItemCreate from "@/pages/dashboard/item/item-create";
 import ImportOrderCreate from "@/pages/dashboard/import/import-order-create";
 import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
 import ImportOrderList from "@/pages/dashboard/import/import-order-list";
@@ -26,10 +26,6 @@ const dashboardRouter = [
   {
     path: DEPARTMENT_ROUTER.OVERVIEW,
     element: <Overview />,
-  },
-  {
-    path: DEPARTMENT_ROUTER.IMPORT.ROOT,
-    element: <ImportProductList />,
   },
   {
     path: DEPARTMENT_ROUTER.IMPORT.REQUEST.CREATE,
@@ -60,10 +56,13 @@ const dashboardRouter = [
     element: <ImportRequestDetail />,
   },
   {
-    path: DEPARTMENT_ROUTER.IMPORT.PRODUCT.CREATE,
-    element: <ImportCreateProduct />,
+    path: DEPARTMENT_ROUTER.ITEM.CREATE,
+    element: <ItemCreate />,
   },
-
+  {
+    path: DEPARTMENT_ROUTER.ITEM.LIST,
+    element: <ItemList />,
+  },
   {
     path: DEPARTMENT_ROUTER.EXPORT.REQUEST.LIST,
     element: <ExportRequestList />,

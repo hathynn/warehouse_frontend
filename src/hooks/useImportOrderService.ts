@@ -145,6 +145,28 @@ const useImportOrderService = () => {
     }
   };
 
+  // Assign warehouse keeper to an import order
+  const assignWarehouseKeeper = async (
+    importOrderId: number,
+    accountId: number
+  ): Promise<ImportOrderResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/import-order/assign-warehouse-keeper",
+        { importOrderId, accountId }
+      );
+      if (response && response.content) {
+        toast.success("Phân công nhân viên kho thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể phân công nhân viên kho");
+      console.error("Error assigning warehouse keeper:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     importOrderId,
@@ -154,6 +176,7 @@ const useImportOrderService = () => {
     deleteImportOrder,
     getImportOrderById,
     getImportOrdersByRequestId,
+    assignWarehouseKeeper,
   };
 };
 

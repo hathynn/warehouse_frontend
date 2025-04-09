@@ -21,10 +21,7 @@ export const DEPARTMENT_ROUTER = {
         `/import/order-list/${id}`, // Function for parameterized path
       DETAIL: (id = ":importOrderId") =>
         `/import/order-list/order-detail/${id}`, // Function for parameterized path
-    },
-    PRODUCT: {
-      CREATE: "/import/add-product",
-    },
+    }
   },
   EXPORT: {
     REQUEST: {
@@ -33,5 +30,10 @@ export const DEPARTMENT_ROUTER = {
       DETAIL: (id = ":exportRequestId") =>
         `/export/request-list/request-detail/${id}`,
     },
+  },
+  ITEM: {
+    CREATE: "/item/create",
+    LIST: "/item/list",
+    DETAIL: (id = ":itemId") => `/item/list/item-detail/${id}`,
   },
 };
