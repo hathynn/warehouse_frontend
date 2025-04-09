@@ -9,18 +9,23 @@ const ExcelDataTable = ({ data }) => {
       key: "itemId",
     },
     {
+      title: "Tên hàng",
+      dataIndex: "itemName",
+      key: "itemName",
+    },
+    {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
     },
   ];
+
   return (
     <Table
       columns={columns}
       dataSource={data}
       rowKey={(record, index) => index}
       pagination={{ pageSize: 10 }}
-      className="custom-table"
     />
   );
 };
@@ -28,6 +33,12 @@ const ExcelDataTable = ({ data }) => {
 import PropTypes from "prop-types";
 
 ExcelDataTable.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.object).isRequired,
+  data: PropTypes.arrayOf(
+    PropTypes.shape({
+      itemId: PropTypes.string,
+      itemName: PropTypes.string,
+      quantity: PropTypes.number,
+    })
+  ).isRequired,
 };
 export default ExcelDataTable;

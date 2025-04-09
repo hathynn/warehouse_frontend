@@ -3,100 +3,7 @@ import { Table, Button, Input, Tag } from "antd";
 import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
-
-// Dữ liệu cứng cho danh sách phiếu xuất, bổ sung thêm trường status
-const fakeExportRequestsData = [
-  {
-    exportRequestId: 1,
-    exportDate: "2025-03-20T00:00:00Z",
-    creator: "Nguyễn Văn A",
-    receiver: "Trần Thị B",
-    exportType: "RETURN", // Xuất trả
-    status: "PROCESSING", // Chưa duyệt
-  },
-  {
-    exportRequestId: 2,
-    exportDate: "2025-03-19T00:00:00Z",
-    creator: "Phạm Văn C",
-    receiver: "Lê Thị D",
-    exportType: "PRODUCTION", // Xuất sản xuất
-    status: "CHECKED", // Đã duyệt
-  },
-  {
-    exportRequestId: 3,
-    exportDate: "2025-03-18T00:00:00Z",
-    creator: "Hoàng Văn E",
-    receiver: "Mai Thị F",
-    exportType: "PRODUCTION", // Xuất thanh lý
-    status: "EXPORTED", // Đã xuất
-  },
-  {
-    exportRequestId: 4,
-    exportDate: "2025-03-17T00:00:00Z",
-    creator: "Trần Văn G",
-    receiver: "Vũ Thị H",
-    exportType: "LOAN", // Xuất mượn
-    status: "CANCELLED", // Đã hủy
-  },
-  {
-    exportRequestId: 5,
-    exportDate: "2025-03-16T00:00:00Z",
-    creator: "Nguyễn Thị I",
-    receiver: "Lê Văn K",
-    exportType: "RETURN",
-    status: "EXPORTED", // Đã duyệt
-  },
-  // Có thể thêm nhiều object khác nếu cần
-];
-
-// Hàm mô phỏng API: phân trang dữ liệu cứng
-const simulateFetchExportRequests = (page, pageSize) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const total = fakeExportRequestsData.length;
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const content = fakeExportRequestsData.slice(startIndex, endIndex);
-      resolve({
-        content,
-        metaDataDTO: {
-          page,
-          limit: pageSize,
-          total,
-        },
-      });
-    }, 500);
-  });
-};
-
-// Hàm trả về thẻ Tag hiển thị trạng thái phiếu
-const getStatusTag = (status) => {
-  switch (status) {
-    case "PROCESSING":
-      return <Tag color="default">Đang xử lý</Tag>;
-    case "CHECKED":
-      return <Tag color="processing">Đã kiểm kho</Tag>;
-    case "EXPORTED":
-      return <Tag color="success">Đã xuất kho</Tag>;
-    case "CANCELLED":
-      return <Tag color="error">Đã hủy</Tag>;
-    default:
-      return <Tag>{status}</Tag>;
-  }
-};
-
-const getExportTypeText = (type) => {
-  switch (type) {
-    case "RETURN":
-      return "Xuất trả nhà sản xuất";
-    case "PRODUCTION":
-      return "Xuất sản xuất";
-    case "LOAN":
-      return "Xuất mượn";
-    default:
-      return type;
-  }
-};
+import useExportRequestService from "../../../../hooks/useExportRequestService";
 
 const ExportRequestList = () => {
   const [exportRequests, setExportRequests] = useState([]);
@@ -106,7 +13,8 @@ const ExportRequestList = () => {
     pageSize: 10,
     total: 0,
   });
-  const [loading, setLoading] = useState(false);
+
+  const { getExportRequestsByPage, loading } = useExportRequestService();
 
   useEffect(() => {
     fetchExportRequests();
@@ -114,25 +22,34 @@ const ExportRequestList = () => {
   }, [pagination.current, pagination.pageSize]);
 
   const fetchExportRequests = async () => {
-    setLoading(true);
     try {
-      const response = await simulateFetchExportRequests(
+      const response = await getExportRequestsByPage(
         pagination.current,
         pagination.pageSize
       );
       if (response && response.content) {
-        setExportRequests(response.content);
-      }
-      if (response && response.metaDataDTO) {
-        setPagination((prev) => ({
-          ...prev,
-          total: response.metaDataDTO.total,
+        // Mapping các trường từ API:
+        // Sử dụng item.exportRequestId làm id (do response trả về exportRequestId, không phải item.id)
+        const mappedRequests = response.content.map((item) => ({
+          id: item.exportRequestId, // Sử dụng trường exportRequestId từ API
+          exportDate: item.exportDate,
+          createdBy: item.createdBy ? item.createdBy : "anonymousUser",
+          receiverName: item.receiverName,
+          exportType: item.type,
+          status: item.status,
         }));
+        setExportRequests(mappedRequests);
+      }
+      // Cập nhật phân trang theo cấu trúc metaDataDTO (theo mẫu của luồng nhập)
+      if (response && response.metaDataDTO) {
+        setPagination({
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
+        });
       }
     } catch (error) {
       console.error("Failed to fetch export requests:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -148,11 +65,45 @@ const ExportRequestList = () => {
     });
   };
 
+  const getStatusTag = (status) => {
+    switch (status) {
+      case "PROCESSING":
+        return <Tag color="default">Đang xử lý</Tag>;
+      case "CHECKED":
+        return <Tag color="processing">Đã kiểm kho</Tag>;
+      case "EXPORTED":
+        return <Tag color="success">Đã xuất kho</Tag>;
+      case "CANCELLED":
+        return <Tag color="error">Đã hủy</Tag>;
+      default:
+        return <Tag color="default">{status}</Tag>;
+    }
+  };
+
+  const getExportTypeText = (type) => {
+    switch (type) {
+      case "RETURN":
+        return "Xuất trả nhà cung cấp";
+      case "USE":
+        return "Xuất sử dụng (nội bộ, sản xuất)";
+      case "LOAN":
+        return "Xuất mượn";
+      default:
+        return type;
+    }
+  };
+
+  // Lọc danh sách theo mã phiếu xuất
+  const filteredItems = exportRequests.filter((item) => {
+    const idStr = item.id ? item.id.toString() : "";
+    return idStr.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   const columns = [
     {
       title: "Mã phiếu xuất",
-      dataIndex: "exportRequestId",
-      key: "exportRequestId",
+      dataIndex: "id",
+      key: "id",
       render: (id) => `#${id}`,
       width: "15%",
     },
@@ -164,13 +115,13 @@ const ExportRequestList = () => {
     },
     {
       title: "Người lập phiếu",
-      dataIndex: "creator",
-      key: "creator",
+      dataIndex: "createdBy",
+      key: "createdBy",
     },
     {
       title: "Người nhận hàng",
-      dataIndex: "receiver",
-      key: "receiver",
+      dataIndex: "receiverName",
+      key: "receiverName",
     },
     {
       title: "Loại xuất",
@@ -188,9 +139,7 @@ const ExportRequestList = () => {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link
-          to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.exportRequestId)}
-        >
+        <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.id)}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -199,17 +148,9 @@ const ExportRequestList = () => {
     },
   ];
 
-  const filteredItems = exportRequests.filter((item) =>
-    item.exportRequestId
-      .toString()
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="mx-auto">
       <h1 className="text-xl font-bold mb-4">Danh sách phiếu xuất</h1>
-
       <div className="flex justify-between items-center mb-4">
         <Input
           placeholder="Tìm kiếm theo mã phiếu xuất"
@@ -228,7 +169,7 @@ const ExportRequestList = () => {
       <Table
         columns={columns}
         dataSource={filteredItems}
-        rowKey="exportRequestId"
+        rowKey="id"
         className="custom-table mb-4"
         loading={loading}
         onChange={handleTableChange}
@@ -246,3 +187,389 @@ const ExportRequestList = () => {
 };
 
 export default ExportRequestList;
+
+// import React, { useState, useEffect } from "react";
+// import { Table, Button, Input, Tag } from "antd";
+// import { Link } from "react-router-dom";
+// import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+// import { DEPARTMENT_ROUTER } from "@/constants/routes";
+// import useExportRequestService from "../../../../hooks/useExportRequestService";
+
+// const ExportRequestList = () => {
+//   const [exportRequests, setExportRequests] = useState([]);
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [pagination, setPagination] = useState({
+//     current: 1,
+//     pageSize: 10,
+//     total: 0,
+//   });
+
+//   const { getExportRequestsByPage, loading } = useExportRequestService();
+
+//   useEffect(() => {
+//     fetchExportRequests();
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [pagination.current, pagination.pageSize]);
+
+//   const fetchExportRequests = async () => {
+//     try {
+//       const response = await getExportRequestsByPage(
+//         pagination.current,
+//         pagination.pageSize
+//       );
+//       if (response && response.content) {
+//         // Mapping các trường từ API:
+//         // Sử dụng item.exportRequestId làm id (do response trả về exportRequestId, không phải item.id)
+//         const mappedRequests = response.content.map((item) => ({
+//           id: item.exportRequestId, // Sử dụng trường exportRequestId từ API
+//           exportDate: item.exportDate,
+//           createdBy: item.createdBy ? item.createdBy : "anonymousUser",
+//           receiverName: item.receiverName,
+//           exportType: item.type,
+//           status: item.status,
+//         }));
+//         setExportRequests(mappedRequests);
+//       }
+//       // Nếu API không cung cấp metaData (trong trường hợp metaDataDTO là null),
+//       // ta sử dụng số lượng phần tử trả về để set total.
+//       if (response && response.totalElements !== undefined) {
+//         setPagination({
+//           current: response.number,
+//           pageSize: response.size,
+//           total: response.totalElements,
+//         });
+//       } else if (response && response.content) {
+//         setPagination((prev) => ({
+//           ...prev,
+//           total: response.content.length,
+//         }));
+//       }
+//     } catch (error) {
+//       console.error("Failed to fetch export requests:", error);
+//     }
+//   };
+
+//   const handleSearchChange = (e) => {
+//     setSearchTerm(e.target.value);
+//   };
+
+//   const handleTableChange = (pag) => {
+//     setPagination({
+//       ...pagination,
+//       current: pag.current,
+//       pageSize: pag.pageSize,
+//     });
+//   };
+
+//   const getStatusTag = (status) => {
+//     switch (status) {
+//       case "PROCESSING":
+//         return <Tag color="default">Đang xử lý</Tag>;
+//       case "CHECKED":
+//         return <Tag color="processing">Đã kiểm kho</Tag>;
+//       case "EXPORTED":
+//         return <Tag color="success">Đã xuất kho</Tag>;
+//       case "CANCELLED":
+//         return <Tag color="error">Đã hủy</Tag>;
+//       default:
+//         return <Tag color="default">{status}</Tag>;
+//     }
+//   };
+
+//   const getExportTypeText = (type) => {
+//     switch (type) {
+//       case "RETURN":
+//         return "Xuất trả nhà cung cấp";
+//       case "USE":
+//         return "Xuất sử dụng (nội bộ, sản xuất)";
+//       case "LOAN":
+//         return "Xuất mượn";
+//       default:
+//         return type;
+//     }
+//   };
+
+//   // Lọc danh sách theo mã phiếu xuất
+//   const filteredItems = exportRequests.filter((item) => {
+//     const idStr = item.id ? item.id.toString() : "";
+//     return idStr.toLowerCase().includes(searchTerm.toLowerCase());
+//   });
+
+//   const columns = [
+//     {
+//       title: "Mã phiếu xuất",
+//       dataIndex: "id",
+//       key: "id",
+//       render: (id) => `#${id}`,
+//       width: "15%",
+//     },
+//     {
+//       title: "Ngày xuất",
+//       dataIndex: "exportDate",
+//       key: "exportDate",
+//       render: (date) => new Date(date).toLocaleDateString("vi-VN"),
+//     },
+//     {
+//       title: "Người lập phiếu",
+//       dataIndex: "createdBy",
+//       key: "createdBy",
+//     },
+//     {
+//       title: "Người nhận hàng",
+//       dataIndex: "receiverName",
+//       key: "receiverName",
+//     },
+//     {
+//       title: "Loại xuất",
+//       dataIndex: "exportType",
+//       key: "exportType",
+//       render: (type) => getExportTypeText(type),
+//     },
+//     {
+//       title: "Trạng thái phiếu",
+//       dataIndex: "status",
+//       key: "status",
+//       render: (status) => getStatusTag(status),
+//     },
+//     {
+//       title: "Chi tiết",
+//       key: "detail",
+//       render: (text, record) => (
+//         <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.id)}>
+//           <Button id="btn-detail" className="!p-0" type="link">
+//             Chi tiết
+//           </Button>
+//         </Link>
+//       ),
+//     },
+//   ];
+
+//   return (
+//     <div className="mx-auto">
+//       <h1 className="text-xl font-bold mb-4">Danh sách phiếu xuất</h1>
+//       <div className="flex justify-between items-center mb-4">
+//         <Input
+//           placeholder="Tìm kiếm theo mã phiếu xuất"
+//           value={searchTerm}
+//           onChange={handleSearchChange}
+//           prefix={<SearchOutlined />}
+//           className="max-w-md"
+//         />
+//         <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.CREATE}>
+//           <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
+//             Tạo Phiếu Xuất
+//           </Button>
+//         </Link>
+//       </div>
+
+//       <Table
+//         columns={columns}
+//         dataSource={filteredItems}
+//         rowKey="id"
+//         className="custom-table mb-4"
+//         loading={loading}
+//         onChange={handleTableChange}
+//         pagination={{
+//           current: pagination.current,
+//           pageSize: pagination.pageSize,
+//           total: pagination.total,
+//           showSizeChanger: true,
+//           pageSizeOptions: ["10", "50"],
+//           showTotal: (total) => `Tổng cộng có ${total} phiếu xuất`,
+//         }}
+//       />
+//     </div>
+//   );
+// };
+
+// export default ExportRequestList;
+
+// import React, { useState, useEffect } from "react";
+// import { Table, Button, Input, Tag } from "antd";
+// import { Link } from "react-router-dom";
+// import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+// import { DEPARTMENT_ROUTER } from "@/constants/routes";
+// import useExportRequestService from "../../../../hooks/useExportRequestService";
+
+// const ExportRequestList = () => {
+//   const [exportRequests, setExportRequests] = useState([]);
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [pagination, setPagination] = useState({
+//     current: 1,
+//     pageSize: 10,
+//     total: 0,
+//   });
+
+//   const { getExportRequestsByPage, loading } = useExportRequestService();
+
+//   useEffect(() => {
+//     fetchExportRequests();
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [pagination.current, pagination.pageSize]);
+
+//   const fetchExportRequests = async () => {
+//     try {
+//       const response = await getExportRequestsByPage(
+//         pagination.current,
+//         pagination.pageSize
+//       );
+//       if (response && response.content) {
+//         // Map các trường từ API cho phù hợp với giao diện bảng.
+//         // Nếu createdBy không có thì gán mặc định là "anonymousUser"
+//         const mappedRequests = response.content.map((item) => ({
+//           id: item.id, // sử dụng trường id từ API làm mã phiếu xuất
+//           exportDate: item.exportDate,
+//           createdBy: item.createdBy ? item.createdBy : "anonymousUser",
+//           receiverName: item.receiverName,
+//           exportType: item.type,
+//           status: item.status,
+//         }));
+//         setExportRequests(mappedRequests);
+//       }
+//       if (response && response.totalElements !== undefined) {
+//         setPagination({
+//           current: response.number,
+//           pageSize: response.size,
+//           total: response.totalElements,
+//         });
+//       }
+//     } catch (error) {
+//       console.error("Failed to fetch export requests:", error);
+//     }
+//   };
+
+//   const handleSearchChange = (e) => {
+//     setSearchTerm(e.target.value);
+//   };
+
+//   const handleTableChange = (pag) => {
+//     setPagination({
+//       ...pagination,
+//       current: pag.current,
+//       pageSize: pag.pageSize,
+//     });
+//   };
+
+//   const getStatusTag = (status) => {
+//     switch (status) {
+//       case "PROCESSING":
+//         return <Tag color="default">Đang xử lý</Tag>;
+//       case "CHECKED":
+//         return <Tag color="processing">Đã kiểm kho</Tag>;
+//       case "EXPORTED":
+//         return <Tag color="success">Đã xuất kho</Tag>;
+//       case "CANCELLED":
+//         return <Tag color="error">Đã hủy</Tag>;
+//       default:
+//         return <Tag color="default">{status}</Tag>;
+//     }
+//   };
+
+//   const getExportTypeText = (type) => {
+//     switch (type) {
+//       case "RETURN":
+//         return "Xuất trả nhà cung cấp";
+//       case "USE":
+//         return "Xuất sử dụng (nội bộ, sản xuất)";
+//       case "LOAN":
+//         return "Xuất mượn";
+//       default:
+//         return type;
+//     }
+//   };
+
+//   // Sửa phần lọc để tránh lỗi khi id undefined
+//   const filteredItems = exportRequests.filter((item) => {
+//     const idStr = item.id ? item.id.toString() : "";
+//     return idStr.toLowerCase().includes(searchTerm.toLowerCase());
+//   });
+
+//   const columns = [
+//     {
+//       title: "Mã phiếu xuất",
+//       dataIndex: "id",
+//       key: "id",
+//       render: (id) => `#${id}`,
+//       width: "15%",
+//     },
+//     {
+//       title: "Ngày xuất",
+//       dataIndex: "exportDate",
+//       key: "exportDate",
+//       render: (date) => new Date(date).toLocaleDateString("vi-VN"),
+//     },
+//     {
+//       title: "Người lập phiếu",
+//       dataIndex: "createdBy",
+//       key: "createdBy",
+//     },
+//     {
+//       title: "Người nhận hàng",
+//       dataIndex: "receiverName",
+//       key: "receiverName",
+//     },
+//     {
+//       title: "Loại xuất",
+//       dataIndex: "exportType",
+//       key: "exportType",
+//       render: (type) => getExportTypeText(type),
+//     },
+//     {
+//       title: "Trạng thái phiếu",
+//       dataIndex: "status",
+//       key: "status",
+//       render: (status) => getStatusTag(status),
+//     },
+//     {
+//       title: "Chi tiết",
+//       key: "detail",
+//       render: (text, record) => (
+//         <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.id)}>
+//           <Button id="btn-detail" className="!p-0" type="link">
+//             Chi tiết
+//           </Button>
+//         </Link>
+//       ),
+//     },
+//   ];
+
+//   return (
+//     <div className="mx-auto">
+//       <h1 className="text-xl font-bold mb-4">Danh sách phiếu xuất</h1>
+
+//       <div className="flex justify-between items-center mb-4">
+//         <Input
+//           placeholder="Tìm kiếm theo mã phiếu xuất"
+//           value={searchTerm}
+//           onChange={handleSearchChange}
+//           prefix={<SearchOutlined />}
+//           className="max-w-md"
+//         />
+//         <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.CREATE}>
+//           <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
+//             Tạo Phiếu Xuất
+//           </Button>
+//         </Link>
+//       </div>
+
+//       <Table
+//         columns={columns}
+//         dataSource={filteredItems}
+//         rowKey="id"
+//         className="custom-table mb-4"
+//         loading={loading}
+//         onChange={handleTableChange}
+//         pagination={{
+//           current: pagination.current,
+//           pageSize: pagination.pageSize,
+//           total: pagination.total,
+//           showSizeChanger: true,
+//           pageSizeOptions: ["10", "50"],
+//           showTotal: (total) => `Tổng cộng có ${total} phiếu xuất`,
+//         }}
+//       />
+//     </div>
+//   );
+// };
+
+// export default ExportRequestList;
