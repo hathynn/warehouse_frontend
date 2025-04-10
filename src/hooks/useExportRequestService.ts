@@ -110,12 +110,35 @@ const useExportRequestService = () => {
     }
   };
 
+  // Assign warehouse keeper to an export request
+  const assignWarehouseKeeper = async (
+    exportRequestId: number,
+    accountId: number
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/export-request/assign-warehouse-keeper",
+        { exportRequestId, accountId }
+      );
+      if (response && response.content) {
+        toast.success("Phân công nhân viên kho thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể phân công nhân viên kho");
+      console.error("Error assigning warehouse keeper:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
     getExportRequestById,
     getExportRequestsByPage,
     createExportRequest,
+    assignWarehouseKeeper,
   };
 };
 

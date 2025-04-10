@@ -21,7 +21,7 @@ export const DEPARTMENT_ROUTER = {
         `/import/order-list/${id}`, // Function for parameterized path
       DETAIL: (id = ":importOrderId") =>
         `/import/order-list/order-detail/${id}`, // Function for parameterized path
-    }
+    },
   },
   EXPORT: {
     REQUEST: {
@@ -35,5 +35,17 @@ export const DEPARTMENT_ROUTER = {
     CREATE: "/item/create",
     LIST: "/item/list",
     DETAIL: (id = ":itemId") => `/item/list/item-detail/${id}`,
+  },
+};
+
+//Path for WAREHOUSE_MANAGER
+export const WAREHOUSE_MANAGER_ROUTE = {
+  OVERVIEW: "/overview",
+  EXPORT: {
+    REQUEST: {
+      LIST: "/export/request-list-manager",
+      DETAIL: (id = ":exportRequestId") =>
+        `/export/request-list/request-detail-manager/${id}`,
+    },
   },
 };

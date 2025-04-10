@@ -19,6 +19,8 @@ const Login = () => {
       role = "DEPARTMENT";
     } else if (email === "user@gmail.com" && password === "user") {
       role = "USER";
+    } else if (email === "manager@gmail.com" && password === "manager") {
+      role = "WAREHOUSE_MANAGER";
     }
 
     if (role) {

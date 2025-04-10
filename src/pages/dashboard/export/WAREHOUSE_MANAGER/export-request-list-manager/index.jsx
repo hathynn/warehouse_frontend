@@ -2,10 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag } from "antd";
 import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
-import useExportRequestService from "../../../../hooks/useExportRequestService";
+import { WAREHOUSE_MANAGER_ROUTE } from "@/constants/routes";
+import useExportRequestService from "@/hooks/useExportRequestService";
 
-const ExportRequestList = () => {
+/**
+ * Manages the list of export requests for the warehouse manager.
+ * Provides functionality to fetch, display, and interact with export request data.
+ * Supports pagination, search, and displays export request details in a table format.
+ *
+ * @component
+ * @returns {React.ReactElement} A table view of export requests with search and pagination capabilities
+ */
+const ExportRequestListManager = () => {
   const [exportRequests, setExportRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({
@@ -139,7 +147,7 @@ const ExportRequestList = () => {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.id)}>
+        <Link to={WAREHOUSE_MANAGER_ROUTE.EXPORT.REQUEST.DETAIL(record.id)}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -159,11 +167,6 @@ const ExportRequestList = () => {
           prefix={<SearchOutlined />}
           className="max-w-md"
         />
-        <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.CREATE}>
-          <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
-            Tạo Phiếu Xuất
-          </Button>
-        </Link>
       </div>
 
       <Table
@@ -186,4 +189,4 @@ const ExportRequestList = () => {
   );
 };
 
-export default ExportRequestList;
+export default ExportRequestListManager;
