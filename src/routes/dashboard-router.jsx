@@ -1,4 +1,8 @@
-import { DEPARTMENT_ROUTER, USER_ROUTER } from "@/constants/routes";
+import {
+  DEPARTMENT_ROUTER,
+  USER_ROUTER,
+  WAREHOUSE_MANAGER_ROUTE,
+} from "@/constants/routes";
 import Overview from "@/components/overview";
 import { Navigate } from "react-router-dom";
 import ItemList from "@/pages/dashboard/item/item-list";
@@ -12,6 +16,8 @@ import ImportOrderDetail from "@/pages/dashboard/import/import-order-detail";
 import ExportRequestList from "@/pages/dashboard/export/export-request-list";
 import ExportRequestCreate from "@/pages/dashboard/export/export-request-create";
 import ExportRequestDetail from "@/pages/dashboard/export/export-request-detail";
+import ExportRequestDetailManager from "@/pages/dashboard/export/WAREHOUSE_MANAGER/export-request-detail-manager";
+import ExportRequestListManager from "@/pages/dashboard/export/WAREHOUSE_MANAGER/export-request-list-manager";
 // import ImportOrderDetail from "@/pages/dashboard/import/import-order-detail";
 
 const dashboardRouter = [
@@ -74,6 +80,14 @@ const dashboardRouter = [
   {
     path: DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(),
     element: <ExportRequestDetail />,
+  },
+  {
+    path: WAREHOUSE_MANAGER_ROUTE.EXPORT.REQUEST.DETAIL(),
+    element: <ExportRequestDetailManager />,
+  },
+  {
+    path: WAREHOUSE_MANAGER_ROUTE.EXPORT.REQUEST.LIST,
+    element: <ExportRequestListManager />,
   },
 ];
 
