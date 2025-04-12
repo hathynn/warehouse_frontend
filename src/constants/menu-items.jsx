@@ -7,7 +7,7 @@ import {
   ShopOutlined,
   ExportOutlined,
 } from "@ant-design/icons";
-import { DEPARTMENT_ROUTER, WAREHOUSE_MANAGER_ROUTE } from "./routes";
+import { ROUTES } from "./routes";
 
 export const menuItems = {
   DEPARTMENT: [
@@ -15,19 +15,19 @@ export const menuItems = {
       label: "Tổng quan",
       key: "overview",
       icon: <HomeOutlined />,
-      path: DEPARTMENT_ROUTER.OVERVIEW,
+      path: ROUTES.PROTECTED.OVERVIEW,
     },
     {
       label: "Quản lý phiếu nhập",
       key: "import-request",
       icon: <ImportOutlined />,
-      path: DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST,
+      path: ROUTES.PROTECTED.IMPORT.REQUEST.LIST,
     },
     {
       label: "Quản lý phiếu xuất",
       key: "export-request",
       icon: <ExportOutlined />,
-      path: DEPARTMENT_ROUTER.EXPORT.REQUEST.LIST,
+      path: ROUTES.PROTECTED.EXPORT.REQUEST.LIST,
     },
   ],
 
@@ -41,13 +41,13 @@ export const menuItems = {
       label: "Trang chủ",
       key: "home",
       icon: <HomeOutlined />,
-      path: WAREHOUSE_MANAGER_ROUTE.OVERVIEW,
+      path: ROUTES.PROTECTED.OVERVIEW,
     },
     {
       label: "Quản lý phiếu xuất",
       key: "export-request",
       icon: <ExportOutlined />,
-      path: WAREHOUSE_MANAGER_ROUTE.EXPORT.REQUEST.LIST,
+      path: ROUTES.PROTECTED.EXPORT.REQUEST.LIST,
     },
   ],
 };

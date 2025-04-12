@@ -8,7 +8,6 @@ import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/ho
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
 import { InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx"
 
@@ -213,7 +212,7 @@ const ImportOrderCreate = () => {
         }
 
         toast.success("Tạo đơn nhập kho thành công!");
-        navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(selectedImportRequest.toString()));
+        navigate((selectedImportRequest.toString()));
       }
     } catch (error) {
       console.error("Error submitting form:", error);

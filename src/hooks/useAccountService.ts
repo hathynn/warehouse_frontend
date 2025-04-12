@@ -50,11 +50,11 @@ export interface AuthenticationResponse {
 
 // Enum to match AccountRole.java
 export enum AccountRole {
-  DEPARTMENT = "DEPARTMENT",
-  WAREHOUSE_KEEPER = "WAREHOUSE_KEEPER",
-  ADMIN = "ADMIN",
-  WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
-  ACCOUNTING = "ACCOUNTING"
+  DEPARTMENT = "ROLE_DEPARTMENT",
+  STAFF = "ROLE_STAFF",
+  ADMIN = "ROLE_ADMIN",
+  WAREHOUSE_MANAGER = "ROLE_WAREHOUSE_MANAGER",
+  ACCOUNTING = "ROLE_ACCOUNTING"
 }
 
 const useAccountService = () => {

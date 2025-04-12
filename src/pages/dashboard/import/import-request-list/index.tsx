@@ -3,7 +3,7 @@ import { Table, Button, Input, Tag, TablePaginationConfig } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse, ResponseDTO } from "@/hooks/useImportRequestService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 
 const ImportRequestList: React.FC = () => {
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
@@ -138,7 +138,7 @@ const ImportRequestList: React.FC = () => {
       title: "Chi tiết",
       key: "detail",
       render: (_: unknown, record: ImportRequestResponse) => (
-        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
+        <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -179,7 +179,7 @@ const ImportRequestList: React.FC = () => {
       />
 
       <div className="mt-4">
-        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.CREATE}>
+        <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
           <Button
             type="primary"
             id="btn-create"

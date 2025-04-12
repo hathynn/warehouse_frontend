@@ -12,8 +12,8 @@ import {
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
 import { ColumnsType } from "antd/es/table";
+import { ROUTES } from "@/constants/routes";
 
 interface RouteParams extends Record<string, string> {
   importRequestId?: string;
@@ -147,18 +147,18 @@ const ImportRequestDetail: React.FC = () => {
   };
 
   const handleBack = (): void => {
-    navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST);
+    navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
   };
 
   const handleCreateImportOrder = (): void => {
     if (importRequestId) {
-      navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
     }
   };
 
   const handleViewImportOrders = (): void => {
     if (importRequestId) {
-      navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
     }
   };
 

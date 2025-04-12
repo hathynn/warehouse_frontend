@@ -8,7 +8,7 @@ import useItemService from "@/hooks/useItemService";
 import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -184,7 +184,7 @@ const ImportRequestCreate: React.FC = () => {
         await createImportRequestDetail(file, createdRequest.content.importRequestId);
         
         toast.success("Tạo phiếu nhập kho thành công!");
-        navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST);
+        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
         
         setFormData({
           importReason: "",

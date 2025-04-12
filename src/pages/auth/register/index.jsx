@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { USER_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -106,17 +106,10 @@ const Register = () => {
         Đăng ký
       </button>
 
-      <div className="text-center my-4 text-gray-500">hoặc</div>
-
-      <button className="w-full flex gap-2 items-center justify-center bg-white border py-2 rounded-lg shadow-sm hover:shadow-md">
-        <FcGoogle />
-        Đăng ký với Google
-      </button>
-
       <div className="text-center mt-4">
         <span className="text-gray-600">Đã có tài khoản? </span>
         <Link
-          to={USER_ROUTER.LOGIN}
+          to={ROUTES.PUBLIC.LOGIN}
           className="text-black hover:underline"
         >
           Đăng nhập

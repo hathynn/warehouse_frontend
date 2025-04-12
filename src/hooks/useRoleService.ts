@@ -23,11 +23,6 @@ export interface AccountResponse {
 const useRoleService = () => {
   const { callApi, loading } = useApiService();
 
-  /**
-   * Lấy danh sách tài khoản dựa theo role
-   * @param request - Đối tượng chứa thông tin yêu cầu, bao gồm trường role (ví dụ: "WAREHOUSE_KEEPER")
-   * @returns Promise trả về mảng AccountResponse
-   */
   const getAccountsByRole = async (
     request: AccountRequest
   ): Promise<AccountResponse[]> => {

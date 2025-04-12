@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag } from "antd";
 import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 import useExportRequestService from "../../../../hooks/useExportRequestService";
 
 const ExportRequestList = () => {
@@ -139,7 +139,7 @@ const ExportRequestList = () => {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.DETAIL(record.id)}>
+        <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(record.id)}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -159,7 +159,7 @@ const ExportRequestList = () => {
           prefix={<SearchOutlined />}
           className="max-w-md"
         />
-        <Link to={DEPARTMENT_ROUTER.EXPORT.REQUEST.CREATE}>
+        <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.CREATE}>
           <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
             Tạo Phiếu Xuất
           </Button>

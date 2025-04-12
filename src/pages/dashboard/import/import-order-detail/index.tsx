@@ -105,7 +105,7 @@ const ImportOrderDetail = () => {
   const fetchWarehouseKeepers = async () => {
     try {
       setLoadingStaff(true);
-      const staff = await getAccountsByRole(AccountRole.WAREHOUSE_KEEPER);
+      const staff = await getAccountsByRole(AccountRole.STAFF);
       setWarehouseKeepers(staff);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);

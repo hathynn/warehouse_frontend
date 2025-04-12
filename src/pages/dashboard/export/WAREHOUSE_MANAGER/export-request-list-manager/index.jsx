@@ -2,9 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag } from "antd";
 import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
-import { WAREHOUSE_MANAGER_ROUTE } from "@/constants/routes";
 import useExportRequestService from "@/hooks/useExportRequestService";
-
+import { ROUTES } from "@/constants/routes";
 /**
  * Manages the list of export requests for the warehouse manager.
  * Provides functionality to fetch, display, and interact with export request data.
@@ -147,7 +146,7 @@ const ExportRequestListManager = () => {
       title: "Chi tiết",
       key: "detail",
       render: (text, record) => (
-        <Link to={WAREHOUSE_MANAGER_ROUTE.EXPORT.REQUEST.DETAIL(record.id)}>
+        <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(record.id)}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>

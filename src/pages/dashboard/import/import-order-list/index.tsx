@@ -7,7 +7,7 @@ import useImportOrderService, {
   ResponseDTO 
 } from "@/hooks/useImportOrderService";
 import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 
 interface RouteParams extends Record<string, string> {
   importRequestId: string;
@@ -147,7 +147,7 @@ const ImportOrderList: React.FC = () => {
       title: "Chi tiết",
       key: "detail",
       render: (_: unknown, record: ImportOrderResponse) => (
-        <Link to={DEPARTMENT_ROUTER.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
+        <Link to={ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -158,7 +158,7 @@ const ImportOrderList: React.FC = () => {
 
   const handleBackToImportRequest = (): void => {
     if (importRequestId) {
-      navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequestId));
     }
   };
 

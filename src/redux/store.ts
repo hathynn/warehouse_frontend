@@ -1,19 +1,13 @@
-import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import { configureStore } from "@reduxjs/toolkit";
 import storage from "redux-persist/lib/storage";
-import persistReducer from "redux-persist/es/persistReducer";
-import persistStore from "redux-persist/es/persistStore";
-import userReducer from "./features/userSlice";
-
-
-// Kết hợp tất cả reducers
-const rootReducer = combineReducers({
-  user: userReducer,
-});
+import { persistReducer, persistStore } from "redux-persist";
+import rootReducer from "./rootReducer";
 
 // Cấu hình persist
 const persistConfig = {
   key: "root",
   storage,
+  whitelist: ["user"], // Chỉ lưu user state
 };
 
 // Tạo persisted reducer
@@ -30,3 +24,7 @@ export const store = configureStore({
 
 // Tạo persistor
 export const persistor = persistStore(store);
+
+// Add TypeScript support
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;

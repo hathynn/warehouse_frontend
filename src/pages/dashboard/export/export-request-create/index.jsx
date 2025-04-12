@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { DEPARTMENT_ROUTER } from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 import {
   UploadOutlined,
@@ -125,7 +125,7 @@ const ExportRequestCreate = () => {
   const { getAccountsByRole } = useRoleService();
   const fetchWarehouseKeepers = async () => {
     try {
-      const accounts = await getAccountsByRole({ role: "WAREHOUSE_KEEPER" });
+      const accounts = await getAccountsByRole({ role: "STAFF" });
       setWarehouseKeepers(accounts);
     } catch (error) {
       console.error("Error fetching warehouse keepers:", error);
@@ -241,7 +241,7 @@ const ExportRequestCreate = () => {
       await createExportRequestDetail(fd, createdExport.exportRequestId);
 
       toast.success("Tạo phiếu xuất thành công!");
-      navigate(DEPARTMENT_ROUTER.EXPORT.REQUEST.LIST);
+      navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
 
       // Reset state sau khi tạo thành công
       setFormData({
