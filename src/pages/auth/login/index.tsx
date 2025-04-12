@@ -1,25 +1,32 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, ChangeEvent, FormEvent } from "react";
 import { useDispatch } from "react-redux";
 import { setCredentials, setUserInfo } from "@/redux/features/userSlice";
-import { ROUTES } from "@/constants/routes";
-import useAccountService from "@/hooks/useAccountService";
+import useAccountService, { AuthenticationRequest } from "@/hooks/useAccountService";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { toast } from "react-toastify";
 import { jwtDecode } from "jwt-decode";
 
+// Interface for JWT decoded token
+interface DecodedToken {
+  sub: string;
+  email: string;
+  role: string;
+  full_name: string;
+  exp: number;
+  iat: number;
+}
+
 const Login = () => {
-  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { login, loading } = useAccountService();
   const { redirectToDefaultRoute } = useAuthRedirect();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AuthenticationRequest>({
     email: "",
     password: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -27,16 +34,13 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const response = await login({
-        email: formData.email,
-        password: formData.password,
-      });
+      const response = await login(formData);
 
       // Decode token to get user info
-      const decodedToken = jwtDecode(response.access_token);
+      const decodedToken = jwtDecode<DecodedToken>(response.access_token);
       
       // Dispatch actions to update state
       dispatch(setCredentials({
@@ -48,6 +52,7 @@ const Login = () => {
         id: decodedToken.sub,
         email: decodedToken.email,
         role: decodedToken.role,
+        fullName: decodedToken.full_name,
       }));
 
       // Redirect to default route based on role
