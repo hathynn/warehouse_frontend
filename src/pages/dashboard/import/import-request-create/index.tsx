@@ -1,32 +1,47 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
 import { Button, Input, Select, Table, Typography, Space, Card, Alert } from "antd";
 import { UploadOutlined, DownloadOutlined } from "@ant-design/icons";
-import useImportRequestService from "../../../../hooks/useImportRequestService";
-import useProviderService from "../../../../hooks/useProviderService";
-import useItemService from "../../../../hooks/useItemService";
+import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
+import useProviderService from "@/hooks/useProviderService";
+import useItemService from "@/hooks/useItemService";
+import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
-import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 
 const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-const ImportRequestCreate = () => {
-  const [data, setData] = useState([]);
-  const [fileName, setFileName] = useState("");
-  const [file, setFile] = useState(null);
-  const [formData, setFormData] = useState({
+// Interface matching ImportRequestDetailExcelRow.java
+interface ImportRequestDetailRow {
+  itemId: number;
+  quantity: number;
+  providerId: number;
+  itemName: string;  // Additional field for UI display
+  providerName: string;  // Additional field for UI display
+}
+
+interface FormData {
+  importReason: string;
+  importType: "ORDER" | "RETURN";
+  exportRequestId: number | null;
+}
+
+const ImportRequestCreate: React.FC = () => {
+  const [data, setData] = useState<ImportRequestDetailRow[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState<FormData>({
     importReason: "",
     importType: "ORDER",
     exportRequestId: null,
   });
-  const [providers, setProviders] = useState([]);
-  const [items, setItems] = useState([]);
-  const [validationError, setValidationError] = useState("");
-  const fileInputRef = useRef(null);
+  const [providers, setProviders] = useState<any[]>([]);  // TODO: Add proper Provider interface
+  const [items, setItems] = useState<any[]>([]);  // TODO: Add proper Item interface
+  const [validationError, setValidationError] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const {
@@ -36,7 +51,7 @@ const ImportRequestCreate = () => {
 
   const {
     loading: importRequestDetailLoading,
-    uploadImportRequestDetail
+    createImportRequestDetail
   } = useImportRequestDetailService();
 
   const {
@@ -56,8 +71,8 @@ const ImportRequestCreate = () => {
           getAllProviders(),
           getItems()
         ]);
-        setProviders(providersData || []);
-        setItems(itemsData || []);
+        setProviders(providersData?.content || []);
+        setItems(itemsData?.content || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Không thể lấy dữ liệu cần thiết");
@@ -67,53 +82,54 @@ const ImportRequestCreate = () => {
     fetchData();
   }, []);
 
-  const handleFileUpload = (e) => {
-    const uploadedFile = e.target.files[0];
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
       setFile(uploadedFile);
       setFileName(uploadedFile.name);
       
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const ab = event.target.result;
-        const wb = XLSX.read(ab, { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(ws);
-        
-        // Validate and transform the data
-        try {
-          const transformedData = jsonData.map((item, index) => {
-            const itemId = item["itemId"] || item["Mã hàng"];
-            const quantity = item["quantity"] || item["Số lượng"];
-            const providerId = item["providerId"] || item["Mã nhà cung cấp"];
-            
-            if (!itemId || !quantity) {
-              throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`);
-            }
-            
-            if (!providerId) {
-              throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã nhà cung cấp`);
-            }
-            
-            // Find item name for display
-            const itemName = items.find(i => i.id === Number(itemId))?.name || "Unknown";
-            // Find provider name for display
-            const providerName = providers.find(p => p.id === Number(providerId))?.name || "Unknown";
-            
-            return {
-              itemId: Number(itemId),
-              quantity: Number(quantity),
-              providerId: Number(providerId),
-              itemName,
-              providerName
-            };
-          });
+      reader.onload = (event: ProgressEvent<FileReader>) => {
+        const ab = event.target?.result;
+        if (ab instanceof ArrayBuffer) {
+          const wb = XLSX.read(ab, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(ws);
           
-          setData(transformedData);
-          setValidationError("");
-        } catch (error) {
-          setValidationError(error.message);
-          toast.error(error.message);
+          try {
+            const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
+              const itemId = item["itemId"] || item["Mã hàng"];
+              const quantity = item["quantity"] || item["Số lượng"];
+              const providerId = item["providerId"] || item["Mã nhà cung cấp"];
+              
+              if (!itemId || !quantity) {
+                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`);
+              }
+              
+              if (!providerId) {
+                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã nhà cung cấp`);
+              }
+              
+              const itemName = items.find(i => i.id === Number(itemId))?.name || "Unknown";
+              const providerName = providers.find(p => p.id === Number(providerId))?.name || "Unknown";
+              
+              return {
+                itemId: Number(itemId),
+                quantity: Number(quantity),
+                providerId: Number(providerId),
+                itemName,
+                providerName
+              };
+            });
+            
+            setData(transformedData);
+            setValidationError("");
+          } catch (error) {
+            if (error instanceof Error) {
+              setValidationError(error.message);
+              toast.error(error.message);
+            }
+          }
         }
       };
       reader.readAsArrayBuffer(uploadedFile);
@@ -121,7 +137,7 @@ const ImportRequestCreate = () => {
   };
 
   const triggerFileInput = () => {
-    fileInputRef.current.click();
+    fileInputRef.current?.click();
   };
 
   const downloadTemplate = () => {
@@ -150,26 +166,26 @@ const ImportRequestCreate = () => {
       return;
     }
     
-    // Check if all items have the same providerId
-    const uniqueProviderIds = [...new Set(data.map(item => item.providerId))];
+    const uniqueProviderIds = Array.from(new Set(data.map(item => item.providerId)));
     if (uniqueProviderIds.length > 1) {
       toast.error("Tất cả các mặt hàng phải từ cùng một nhà cung cấp");
       return;
     }
     
     try {
-      // Bước 1: Tạo import request với providerId từ file Excel
-      const createdRequest = await createImportRequest({
+      const createRequest: ImportRequestCreateRequest = {
         ...formData,
-        providerId: data[0].providerId // Lấy providerId từ dòng đầu tiên trong file Excel
-      });
-      if (createdRequest) {
-        // Bước 2: Upload file Excel cho import request detail
-        await uploadImportRequestDetail(file, createdRequest.importRequestId);
+        providerId: data[0].providerId
+      };
+
+      const createdRequest = await createImportRequest(createRequest);
+      
+      if (createdRequest?.content?.importRequestId) {
+        await createImportRequestDetail(file, createdRequest.content.importRequestId);
         
         toast.success("Tạo phiếu nhập kho thành công!");
         navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST);
-        // Reset form sau khi tạo thành công
+        
         setFormData({
           importReason: "",
           importType: "ORDER",
@@ -205,7 +221,7 @@ const ImportRequestCreate = () => {
       title: "Nhà cung cấp",
       dataIndex: "providerName",
       key: "providerName",
-      render: (text, record) => `${record.providerId} - ${text}`
+      render: (text: string, record: ImportRequestDetailRow) => `${record.providerId} - ${text}`
     }
   ];
 

@@ -17,14 +17,21 @@ export enum DetailStatus {
   REJECTED = "REJECTED"
 }
 
-// Interface to match ImportOrderRequest.java
-export interface ImportOrderRequest {
-  importOrderId?: number;
-  status?: ImportStatus;
+// Interface to match ImportOrderCreateRequest.java
+export interface ImportOrderCreateRequest {
   importRequestId: number;
   accountId: number;
-  dateReceived: string; // LocalDate in backend
-  timeReceived: string; // LocalTime in backend
+  dateReceived: string;
+  timeReceived: string;
+  note?: string;
+}
+
+// Interface to match ImportOrderUpdateRequest.java
+export interface ImportOrderUpdateRequest {
+  importOrderId: number;
+  status?: ImportStatus;
+  dateReceived?: string;
+  timeReceived?: string;
   note?: string;
 }
 
@@ -63,19 +70,73 @@ export interface ImportOrderDetailResponse {
   status: DetailStatus;
 }
 
+// Interface to match AssignStaffRequest.java
+export interface AssignStaffRequest {
+  importOrderId: number;
+  accountId: number;
+}
+
+// Interface to match MetaDataDTO.java
+export interface MetaDataDTO {
+  hasNext: boolean;
+  hasPrevious: boolean;
+  limit: number;
+  totalElements: number;
+  page: number;
+}
+
+// Interface to match ResponseDTO.java
+export interface ResponseDTO<T> {
+  content: T;
+  message: string;
+  status: number;
+  metadata?: MetaDataDTO;
+}
+
 const useImportOrderService = () => {
   const { callApi, loading } = useApiService();
   const [importOrderId, setImportOrderId] = useState<number | null>(null);
 
+  // Get all import orders for a specific import request with pagination
+  const getImportOrdersByRequestId = async (
+    importRequestId: number, 
+    page = 1, 
+    limit = 10
+  ): Promise<ResponseDTO<ImportOrderResponse[]>> => {
+    try {
+      const response = await callApi(
+        "get", 
+        `/import-order/page/${importRequestId}?page=${page}&limit=${limit}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách đơn nhập");
+      console.error("Error fetching import orders:", error);
+      throw error;
+    }
+  };
+
+  // Get import order by ID
+  const getImportOrderById = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("get", `/import-order/${importOrderId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin đơn nhập");
+      console.error("Error fetching import order:", error);
+      throw error;
+    }
+  };
+
   // Create a new import order
-  const createImportOrder = async (requestData: ImportOrderRequest): Promise<ImportOrderResponse | undefined> => {
+  const createImportOrder = async (requestData: ImportOrderCreateRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", "/import-order", requestData);
       if (response && response.content) {
         setImportOrderId(response.content.importOrderId);
         toast.success("Tạo đơn nhập thành công");
-        return response.content;
       }
+      return response;
     } catch (error) {
       toast.error("Không thể tạo đơn nhập");
       console.error("Error creating import order:", error);
@@ -84,13 +145,13 @@ const useImportOrderService = () => {
   };
 
   // Update an existing import order
-  const updateImportOrder = async (requestData: ImportOrderRequest): Promise<ImportOrderResponse | undefined> => {
+  const updateImportOrder = async (requestData: ImportOrderUpdateRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("put", "/import-order", requestData);
       if (response && response.content) {
         toast.success("Cập nhật đơn nhập thành công");
-        return response.content;
       }
+      return response;
     } catch (error) {
       toast.error("Không thể cập nhật đơn nhập");
       console.error("Error updating import order:", error);
@@ -99,10 +160,11 @@ const useImportOrderService = () => {
   };
 
   // Delete an import order
-  const deleteImportOrder = async (importOrderId: number): Promise<void> => {
+  const deleteImportOrder = async (importOrderId: number): Promise<ResponseDTO<null>> => {
     try {
-      await callApi("delete", `/import-order/${importOrderId}`);
+      const response = await callApi("delete", `/import-order/${importOrderId}`);
       toast.success("Xóa đơn nhập thành công");
+      return response;
     } catch (error) {
       toast.error("Không thể xóa đơn nhập");
       console.error("Error deleting import order:", error);
@@ -110,59 +172,17 @@ const useImportOrderService = () => {
     }
   };
 
-  // Get import order by ID
-  const getImportOrderById = async (importOrderId: number): Promise<ImportOrderResponse | undefined> => {
+  // Assign staff to an import order
+  const assignStaff = async (requestData: AssignStaffRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
-      const response = await callApi("get", `/import-order/${importOrderId}`);
-      if (response && response.content) {
-        return response.content;
-      }
-    } catch (error) {
-      toast.error("Không thể lấy thông tin đơn nhập");
-      console.error("Error fetching import order:", error);
-      throw error;
-    }
-  };
-
-  // Get import orders by import request ID with pagination
-  const getImportOrdersByRequestId = async (
-    importRequestId: number, 
-    page = 1, 
-    limit = 10
-  ): Promise<{ items: ImportOrderResponse[], metadata: any } | undefined> => {
-    try {
-      const response = await callApi(
-        "get", 
-        `/import-order/page/${importRequestId}?page=${page}&limit=${limit}`
-      );
-      if (response) {
-        return response
-      }
-    } catch (error) {
-      toast.error("Không thể lấy danh sách đơn nhập");
-      console.error("Error fetching import orders:", error);
-      throw error;
-    }
-  };
-
-  // Assign warehouse keeper to an import order
-  const assignWarehouseKeeper = async (
-    importOrderId: number,
-    accountId: number
-  ): Promise<ImportOrderResponse | undefined> => {
-    try {
-      const response = await callApi(
-        "post",
-        "/import-order/assign-warehouse-keeper",
-        { importOrderId, accountId }
-      );
+      const response = await callApi("post", "/import-order/assign-staff", requestData);
       if (response && response.content) {
         toast.success("Phân công nhân viên kho thành công");
-        return response.content;
       }
+      return response;
     } catch (error) {
       toast.error("Không thể phân công nhân viên kho");
-      console.error("Error assigning warehouse keeper:", error);
+      console.error("Error assigning staff:", error);
       throw error;
     }
   };
@@ -170,13 +190,12 @@ const useImportOrderService = () => {
   return {
     loading,
     importOrderId,
-    // Import Order methods
+    getImportOrdersByRequestId,
+    getImportOrderById,
     createImportOrder,
     updateImportOrder,
     deleteImportOrder,
-    getImportOrderById,
-    getImportOrdersByRequestId,
-    assignWarehouseKeeper,
+    assignStaff,
   };
 };
 

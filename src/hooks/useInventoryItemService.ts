@@ -6,31 +6,6 @@ export enum ItemStatus {
   // Add your item status enums here
 }
 
-// Interface to match InventoryItemRequest.java
-export interface InventoryItemRequest {
-  id?: number;
-  reasonForDisposal?: string;
-  quantity: number;
-  status: ItemStatus;
-  expiredDate: string;
-  importedDate: string;
-  updatedDate: string;
-  parentId?: number;
-  childrenIds?: number[];
-  itemId: number;
-  exportRequestDetailId?: number;
-  importOrderDetailId?: number;
-  storedLocationId?: number;
-  numberOfItems: number;
-}
-
-// Interface to match QrCodeRequest.java
-export interface QrCodeRequest {
-  itemId: number;
-  importOrderDetailId: number;
-  numberOfQrCodes: number;
-}
-
 // Interface to match InventoryItemResponse.java
 export interface InventoryItemResponse {
   id: number;
@@ -71,7 +46,7 @@ const useInventoryItemService = () => {
     try {
       const response = await callApi(
         "get",
-        `/inventory-items?page=${page}&limit=${limit}`
+        `/inventory-item?page=${page}&limit=${limit}`
       );
       if (response) {
         return response;
@@ -86,7 +61,7 @@ const useInventoryItemService = () => {
   // Get inventory item by ID
   const getInventoryItemById = async (inventoryItemId: number): Promise<InventoryItemResponse | undefined> => {
     try {
-      const response = await callApi("get", `/inventory-items/${inventoryItemId}`);
+      const response = await callApi("get", `/inventory-item/${inventoryItemId}`);
       if (response && response.content) {
         return response.content;
       }
@@ -106,7 +81,7 @@ const useInventoryItemService = () => {
     try {
       const response = await callApi(
         "get",
-        `/inventory-items/import-order-detail/${importOrderDetailId}?page=${page}&limit=${limit}`
+        `/inventory-item/import-order-detail/${importOrderDetailId}?page=${page}&limit=${limit}`
       );
       if (response) {
         return response.content;
@@ -127,7 +102,7 @@ const useInventoryItemService = () => {
     try {
       const response = await callApi(
         "get",
-        `/inventory-items/export-request-detail/${exportRequestDetailId}?page=${page}&limit=${limit}`
+        `/inventory-item/export-request-detail/${exportRequestDetailId}?page=${page}&limit=${limit}`
       );
       if (response) {
         return response;
@@ -148,7 +123,7 @@ const useInventoryItemService = () => {
     try {
       const response = await callApi(
         "get",
-        `/inventory-items/stored-location/${storedLocationId}?page=${page}&limit=${limit}`
+        `/inventory-item/stored-location/${storedLocationId}?page=${page}&limit=${limit}`
       );
       if (response) {
         return response;
@@ -163,7 +138,7 @@ const useInventoryItemService = () => {
   // Get QR codes by inventory item IDs
   const getListQrCodes = async (inventoryItemIds: number[]): Promise<QrCodeResponse[] | undefined> => {
     try {
-      const response = await callApi("post", "/inventory-items/qr-codes", inventoryItemIds);
+      const response = await callApi("post", "/inventory-item/qr-codes", inventoryItemIds);
       if (response && response.content) {
         return response.content;
       }
@@ -174,55 +149,10 @@ const useInventoryItemService = () => {
     }
   };
 
-  // Create new inventory item and generate QR codes
-  const createInventoryItem = async (request: InventoryItemRequest): Promise<QrCodeResponse[] | undefined> => {
-    try {
-      const response = await callApi("post", "/inventory-items", request);
-      if (response && response.content) {
-        toast.success("Tạo sản phẩm thành công");
-        return response.content;
-      }
-    } catch (error) {
-      toast.error("Không thể tạo sản phẩm");
-      console.error("Error creating inventory item:", error);
-      throw error;
-    }
-  };
-
-  // Create new inventory item with QR codes
-  const createInventoryItemWithQrCode = async (request: QrCodeRequest): Promise<QrCodeResponse[] | undefined> => {
-    try {
-      const response = await callApi("post", "/inventory-items/create-with-qr", request);
-      if (response && response.content) {
-        toast.success("Tạo sản phẩm và mã QR thành công");
-        return response.content;
-      }
-    } catch (error) {
-      toast.error("Không thể tạo sản phẩm và mã QR");
-      console.error("Error creating inventory item with QR codes:", error);
-      throw error;
-    }
-  };
-
-  // Update inventory item
-  const updateInventoryItem = async (request: InventoryItemRequest): Promise<InventoryItemResponse | undefined> => {
-    try {
-      const response = await callApi("put", "/inventory-items", request);
-      if (response && response.content) {
-        toast.success("Cập nhật sản phẩm thành công");
-        return response.content;
-      }
-    } catch (error) {
-      toast.error("Không thể cập nhật sản phẩm");
-      console.error("Error updating inventory item:", error);
-      throw error;
-    }
-  };
-
   // Delete inventory item
   const deleteInventoryItem = async (inventoryItemId: number): Promise<void> => {
     try {
-      await callApi("delete", `/inventory-items/${inventoryItemId}`);
+      await callApi("delete", `/inventory-item/${inventoryItemId}`);
       toast.success("Xóa sản phẩm thành công");
     } catch (error) {
       toast.error("Không thể xóa sản phẩm");
@@ -238,9 +168,6 @@ const useInventoryItemService = () => {
     getByImportOrderDetailId,
     getByExportRequestDetailId,
     getByStoredLocationId,
-    createInventoryItem,
-    createInventoryItemWithQrCode,
-    updateInventoryItem,
     deleteInventoryItem,
     getListQrCodes
   };

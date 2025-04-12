@@ -23,7 +23,7 @@ const useItemService = () => {
   // Tạo sản phẩm mới
   const createItem = async (requestData: ItemRequest) => {
     try {
-      const response = await callApi("post", "/items", requestData);
+      const response = await callApi("post", "/item", requestData);
       if (response && response.content) {
         setItemId(response.content.id);
         toast.success("Tạo sản phẩm thành công");
@@ -39,7 +39,7 @@ const useItemService = () => {
   // Cập nhật sản phẩm
   const updateItem = async (requestData: ItemRequest) => {
     try {
-      const response = await callApi("put", "/items", requestData);
+      const response = await callApi("put", "/item", requestData);
       toast.success("Cập nhật sản phẩm thành công");
       return response;
     } catch (error) {
@@ -54,7 +54,7 @@ const useItemService = () => {
     try {
       const response = await callApi(
         "get", 
-        `/items?page=${page}&limit=${limit}`
+        `/item?page=${page}&limit=${limit}`
       );
       return response.content;
     } catch (error) {
@@ -67,7 +67,7 @@ const useItemService = () => {
   // Lấy sản phẩm theo ID
   const getItemById = async (itemId: number) => {
     try {
-      const response = await callApi("get", `/items/${itemId}`);
+      const response = await callApi("get", `/item/${itemId}`);
       return response.content;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
@@ -79,7 +79,7 @@ const useItemService = () => {
   // Xóa sản phẩm
   const deleteItem = async (itemId: number) => {
     try {
-      const response = await callApi("delete", `/items/${itemId}`);
+      const response = await callApi("delete", `/item/${itemId}`);
       toast.success("Xóa sản phẩm thành công");
       return response;
     } catch (error) {
@@ -94,7 +94,7 @@ const useItemService = () => {
     try {
       const response = await callApi(
         "get", 
-        `/items/category/${categoryId}?page=${page}&limit=${limit}`
+        `/item/category/${categoryId}?page=${page}&limit=${limit}`
       );
       return response.content;
     } catch (error) {
@@ -109,7 +109,7 @@ const useItemService = () => {
     try {
       const response = await callApi(
         "get", 
-        `/items/provider/${providerId}?page=${page}&limit=${limit}`
+        `/item/provider/${providerId}?page=${page}&limit=${limit}`
       );
       return response.content;
     } catch (error) {

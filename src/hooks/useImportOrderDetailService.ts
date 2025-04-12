@@ -1,13 +1,85 @@
 import { useState } from "react";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
-import { ImportOrderDetailRequest } from "./useImportOrderService";
+
+// Interface to match ImportOrderDetailResponse.java
+export interface ImportOrderDetailResponse {
+  importOrderDetailId: number;
+  importOrderId: number;
+  itemId: number;
+  itemName: string;
+  expectQuantity: number;
+  actualQuantity: number;
+  status: string;
+}
+
+// Interface to match ImportOrderDetailUpdateRequest.java
+export interface ImportOrderDetailUpdateRequest {
+  importOrderDetailId: number;
+  actualQuantity: number;
+}
+
+// Interface to match MetaDataDTO.java
+export interface MetaDataDTO {
+  hasNext: boolean;
+  hasPrevious: boolean;
+  limit: number;
+  totalElements: number;
+  page: number;
+}
+
+// Interface to match ResponseDTO.java
+export interface ResponseDTO<T> {
+  content: T;
+  message: string;
+  status: number;
+  metadata?: MetaDataDTO;
+}
 
 const useImportOrderDetailService = () => {
   const { callApi, loading } = useApiService();
 
-  // Upload file Excel cho import order detail
-  const uploadImportOrderDetail = async (file: File, importOrderId: number) => {
+  // Get paginated import order details by import order ID
+  const getImportOrderDetailsPaginated = async (
+    importOrderId: number, 
+    page = 1, 
+    limit = 10
+  ): Promise<ResponseDTO<ImportOrderDetailResponse[]>> => {
+    try {
+      const response = await callApi(
+        "get", 
+        `/import-order-detail/page/${importOrderId}?page=${page}&limit=${limit}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách chi tiết đơn nhập");
+      console.error("Error fetching import order details:", error);
+      throw error;
+    }
+  };
+
+  // Get import order detail by ID
+  const getImportOrderDetailById = async (
+    importOrderDetailId: number
+  ): Promise<ResponseDTO<ImportOrderDetailResponse>> => {
+    try {
+      const response = await callApi(
+        "get", 
+        `/import-order-detail/${importOrderDetailId}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin chi tiết đơn nhập");
+      console.error("Error fetching import order detail:", error);
+      throw error;
+    }
+  };
+
+  // Create import order details from Excel file
+  const createImportOrderDetails = async (
+    file: File,
+    importOrderId: number
+  ): Promise<ResponseDTO<null>> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -27,38 +99,11 @@ const useImportOrderDetailService = () => {
     }
   };
 
-  // Lấy danh sách import order detail theo import order ID (phân trang)
-  const getImportOrderDetailsPaginated = async (importOrderId: number, page = 1, limit = 10) => {
-    try {
-      const response = await callApi(
-        "get", 
-        `/import-order-detail/page/${importOrderId}?page=${page}&limit=${limit}`
-      );
-      return response.content;
-    } catch (error) {
-      toast.error("Không thể lấy danh sách chi tiết đơn nhập");
-      console.error("Error fetching import order details:", error);
-      throw error;
-    }
-  };
-
-  // Lấy tất cả import order detail theo import order ID
-  const getAllImportOrderDetails = async (importOrderId: number) => {
-    try {
-      const response = await callApi(
-        "get", 
-        `/import-order-detail/${importOrderId}`
-      );
-      return response.content;
-    } catch (error) {
-      toast.error("Không thể lấy danh sách chi tiết đơn nhập");
-      console.error("Error fetching import order details:", error);
-      throw error;
-    }
-  };
-
-  // Cập nhật import order detail
-  const updateImportOrderDetails = async (importOrderId: number, detailsList: ImportOrderDetailRequest[]) => {
+  // Update actual quantities of import order details
+  const updateImportOrderDetails = async (
+    importOrderId: number,
+    detailsList: ImportOrderDetailUpdateRequest[]
+  ): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi(
         "put", 
@@ -75,30 +120,32 @@ const useImportOrderDetailService = () => {
     }
   };
 
-  // Xóa import order detail
-  const deleteImportOrderDetails = async (importOrderId: number) => {
+  // Delete import order detail by ID
+  const deleteImportOrderDetail = async (
+    importOrderDetailId: number
+  ): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi(
         "delete", 
-        `/import-order-detail/${importOrderId}`
+        `/import-order-detail/${importOrderDetailId}`
       );
       
       toast.success("Xóa chi tiết đơn nhập thành công");
       return response;
     } catch (error) {
       toast.error("Không thể xóa chi tiết đơn nhập");
-      console.error("Error deleting import order details:", error);
+      console.error("Error deleting import order detail:", error);
       throw error;
     }
   };
 
   return {
     loading,
-    uploadImportOrderDetail,
     getImportOrderDetailsPaginated,
-    getAllImportOrderDetails,
+    getImportOrderDetailById,
+    createImportOrderDetails,
     updateImportOrderDetails,
-    deleteImportOrderDetails
+    deleteImportOrderDetail
   };
 };
 

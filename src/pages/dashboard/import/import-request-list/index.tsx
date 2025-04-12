@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, Spin } from "antd";
+import { Table, Button, Input, Tag, TablePaginationConfig } from "antd";
 import { Link } from "react-router-dom";
-import useImportRequestService from "../../../../hooks/useImportRequestService";
+import useImportRequestService, { ImportRequestResponse, ResponseDTO } from "@/hooks/useImportRequestService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
-const ImportRequestList = () => {
-  const [importRequests, setImportRequests] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [pagination, setPagination] = useState({
+const ImportRequestList: React.FC = () => {
+  const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
     total: 0,
@@ -23,9 +23,12 @@ const ImportRequestList = () => {
     fetchImportRequests();
   }, [pagination.current, pagination.pageSize]);
 
-  const fetchImportRequests = async () => {
+  const fetchImportRequests = async (): Promise<void> => {
     try {
-      const response = await getImportRequestsByPage(pagination.current, pagination.pageSize);
+      const response: ResponseDTO<ImportRequestResponse[]> = await getImportRequestsByPage(
+        pagination.current || 1,
+        pagination.pageSize || 10
+      );
       
       // Update state with the content array from the response
       if (response && response.content) {
@@ -33,11 +36,11 @@ const ImportRequestList = () => {
       }
       
       // Update pagination with metadata
-      if (response && response.metaDataDTO) {
+      if (response && response.metadata) {
         setPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
+          current: response.metadata.page,
+          pageSize: response.metadata.limit,
+          total: response.metadata.totalElements,
         });
       }
     } catch (error) {
@@ -45,19 +48,19 @@ const ImportRequestList = () => {
     }
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(e.target.value);
   };
 
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
     setPagination({
-      ...pagination,
-      current: pagination.current,
-      pageSize: pagination.pageSize,
+      ...newPagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
     });
   };
 
-  const getStatusTag = (status) => {
+  const getStatusTag = (status: string): React.ReactNode => {
     switch (status) {
       case "NOT_STARTED":
         return <Tag color="default">Chưa bắt đầu</Tag>;
@@ -72,7 +75,7 @@ const ImportRequestList = () => {
     }
   };
 
-  const getImportTypeText = (type) => {
+  const getImportTypeText = (type: string): string => {
     switch (type) {
       case "ORDER":
         return "Đơn hàng";
@@ -92,14 +95,14 @@ const ImportRequestList = () => {
       title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
       key: "importRequestId",
-      render: (id) => `#${id}`,
+      render: (id: number) => `#${id}`,
       width: '10%',
     },
     {
       title: "Loại nhập",
       dataIndex: "importType",
       key: "importType",
-      render: (type) => getImportTypeText(type),
+      render: (type: string) => getImportTypeText(type),
     },
     {
       title: "Lý do nhập",
@@ -117,25 +120,25 @@ const ImportRequestList = () => {
       title: "Ngày tạo",
       dataIndex: "createdDate",
       key: "createdDate",
-      render: (date) => new Date(date).toLocaleDateString("vi-VN"),
+      render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
     },
     {
       title: "Ngày cập nhật",
       dataIndex: "updatedDate",
       key: "updatedDate",
-      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => getStatusTag(status),
+      render: (status: string) => getStatusTag(status),
     },
     {
       title: "Chi tiết",
       key: "detail",
-      render: (text, record) => (
-        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(record.importRequestId)}>
+      render: (_: unknown, record: ImportRequestResponse) => (
+        <Link to={DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -171,7 +174,7 @@ const ImportRequestList = () => {
           ...pagination,
           showSizeChanger: true,
           pageSizeOptions: ['10', '50'],
-          showTotal: (total) => `Tổng cộng có ${total} phiếu nhập`,
+          showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập`,
         }}
       />
 
@@ -190,4 +193,4 @@ const ImportRequestList = () => {
   );
 };
 
-export default ImportRequestList;
+export default ImportRequestList; 

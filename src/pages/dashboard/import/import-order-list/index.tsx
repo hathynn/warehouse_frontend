@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, Spin } from "antd";
+import { Table, Button, Input, Tag, Spin, TablePaginationConfig } from "antd";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import useImportOrderService from "../../../../hooks/useImportOrderService";
+import useImportOrderService, { 
+  ImportOrderResponse, 
+  ImportStatus,
+  ResponseDTO 
+} from "@/hooks/useImportOrderService";
 import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
 
-const ImportOrderList = () => {
-  const { importRequestId } = useParams();
+interface RouteParams extends Record<string, string> {
+  importRequestId: string;
+}
+
+const ImportOrderList: React.FC = () => {
+  const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
-  const [importOrders, setImportOrders] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [pagination, setPagination] = useState({
+  const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
     total: 0,
@@ -25,14 +33,14 @@ const ImportOrderList = () => {
     fetchImportOrders();
   }, [pagination.current, pagination.pageSize, importRequestId]);
 
-  const fetchImportOrders = async () => {
+  const fetchImportOrders = async (): Promise<void> => {
     try {
       if (!importRequestId) return;
 
-      const response = await getImportOrdersByRequestId(
+      const response: ResponseDTO<ImportOrderResponse[]> = await getImportOrdersByRequestId(
         parseInt(importRequestId),
-        pagination.current,
-        pagination.pageSize
+        pagination.current || 1,
+        pagination.pageSize || 10
       );
 
       // Update state with the content array from the response
@@ -41,11 +49,11 @@ const ImportOrderList = () => {
       }
 
       // Update pagination with metadata
-      if (response && response.metaDataDTO) {
+      if (response && response.metadata) {
         setPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
+          current: response.metadata.page,
+          pageSize: response.metadata.limit,
+          total: response.metadata.totalElements,
         });
       }
     } catch (error) {
@@ -53,27 +61,27 @@ const ImportOrderList = () => {
     }
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setSearchTerm(e.target.value);
   };
 
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
     setPagination({
-      ...pagination,
-      current: pagination.current,
-      pageSize: pagination.pageSize,
+      ...newPagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
     });
   };
 
-  const getStatusTag = (status) => {
+  const getStatusTag = (status: ImportStatus): React.ReactNode => {
     switch (status) {
-      case "NOT_STARTED":
+      case ImportStatus.NOT_STARTED:
         return <Tag color="default">Chưa bắt đầu</Tag>;
-      case "IN_PROGRESS":
+      case ImportStatus.IN_PROGRESS:
         return <Tag color="processing">Đang xử lý</Tag>;
-      case "COMPLETED":
+      case ImportStatus.COMPLETED:
         return <Tag color="success">Hoàn tất</Tag>;
-      case "CANCELLED":
+      case ImportStatus.CANCELLED:
         return <Tag color="error">Đã hủy</Tag>;
       default:
         return <Tag color="default">Chưa bắt đầu</Tag>;
@@ -90,21 +98,21 @@ const ImportOrderList = () => {
       title: "Mã đơn nhập",
       dataIndex: "importOrderId",
       key: "importOrderId",
-      render: (id) => `#${id}`,
+      render: (id: number) => `#${id}`,
       width: '10%',
     },
     {
       title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
       key: "importRequestId",
-      render: (id) => `#${id}`,
+      render: (id: number) => `#${id}`,
       width: '10%',
     },
     {
       title: "Ngày nhận hàng",
       dataIndex: "dateReceived",
       key: "dateReceived",
-      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Giờ nhận hàng",
@@ -115,31 +123,31 @@ const ImportOrderList = () => {
       title: "Người tạo",
       dataIndex: "createdBy",
       key: "createdBy",
-      render: (createdBy) => createdBy || "-",
+      render: (createdBy: string) => createdBy || "-",
     },
     {
       title: "Ngày tạo",
       dataIndex: "createdDate",
       key: "createdDate",
-      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Ngày cập nhật",
       dataIndex: "updatedDate",
       key: "updatedDate",
-      render: (date) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => getStatusTag(status),
+      render: (status: ImportStatus) => getStatusTag(status),
     },
     {
       title: "Chi tiết",
       key: "detail",
-      render: (text, record) => (
-        <Link to={DEPARTMENT_ROUTER.IMPORT.ORDER.DETAIL(record.importOrderId)}>
+      render: (_: unknown, record: ImportOrderResponse) => (
+        <Link to={DEPARTMENT_ROUTER.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
           <Button id="btn-detail" className="!p-0" type="link">
             Chi tiết
           </Button>
@@ -148,8 +156,10 @@ const ImportOrderList = () => {
     },
   ];
 
-  const handleBackToImportRequest = () => {
-    navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(importRequestId));
+  const handleBackToImportRequest = (): void => {
+    if (importRequestId) {
+      navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.DETAIL(importRequestId));
+    }
   };
 
   return (
@@ -190,7 +200,7 @@ const ImportOrderList = () => {
             ...pagination,
             showSizeChanger: true,
             pageSizeOptions: ['10', '50'],
-            showTotal: (total) => `Tổng cộng có ${total} đơn nhập`,
+            showTotal: (total: number) => `Tổng cộng có ${total} đơn nhập`,
           }}
         />
       )}
@@ -198,4 +208,4 @@ const ImportOrderList = () => {
   );
 };
 
-export default ImportOrderList;
+export default ImportOrderList; 

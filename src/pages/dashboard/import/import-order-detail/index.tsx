@@ -9,24 +9,27 @@ import {
   Spin,
   message,
   Modal,
-  InputNumber,
-  QRCode,
-  Space
+  Space,
+  QRCode
 } from "antd";
 import {
   ArrowLeftOutlined,
   UserAddOutlined
 } from "@ant-design/icons";
-import useImportOrderService from "../../../../hooks/useImportOrderService";
-import useImportOrderDetailService from "../../../../hooks/useImportOrderDetailService";
-import useInventoryItemService from "../../../../hooks/useInventoryItemService";
-import useAccountService, { AccountRole } from "../../../../hooks/useAccountService";
+import useImportOrderService from "@/hooks/useImportOrderService";
+import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
+import useInventoryItemService from "@/hooks/useInventoryItemService";
+import useAccountService, { AccountRole } from "@/hooks/useAccountService";
+import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
+import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
+import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
+import { AccountResponse } from "@/hooks/useAccountService";
 
 const ImportOrderDetail = () => {
-  const { importOrderId } = useParams();
+  const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
-  const [importOrder, setImportOrder] = useState(null);
-  const [importOrderDetails, setImportOrderDetails] = useState([]);
+  const [importOrder, setImportOrder] = useState<ImportOrderResponse | null>(null);
+  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pagination, setPagination] = useState({
@@ -34,28 +37,18 @@ const ImportOrderDetail = () => {
     pageSize: 10,
     total: 0,
   });
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState(null);
-  const [numberOfQrCodes, setNumberOfQrCodes] = useState(1);
-  const [qrGenerating, setQrGenerating] = useState(false);
   const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
-  const [qrCodes, setQrCodes] = useState([]);
+  const [qrCodes, setQrCodes] = useState<QrCodeResponse[]>([]);
   const [qrCodesLoading, setQrCodesLoading] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const [warehouseKeepers, setWarehouseKeepers] = useState([]);
+  const [warehouseKeepers, setWarehouseKeepers] = useState<AccountResponse[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
-  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
   const [assigningStaff, setAssigningStaff] = useState(false);
 
-  const { getImportOrderById, assignWarehouseKeeper } = useImportOrderService();
-  const {
-    getImportOrderDetailsPaginated
-  } = useImportOrderDetailService();
-  const { 
-    createInventoryItemWithQrCode,
-    getListQrCodes,
-    getByImportOrderDetailId
-  } = useInventoryItemService();
+  const { getImportOrderById, assignStaff } = useImportOrderService();
+  const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
+  const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
   const { getAccountsByRole } = useAccountService();
 
   // Fetch import order data
@@ -64,8 +57,10 @@ const ImportOrderDetail = () => {
 
     try {
       setLoading(true);
-      const data = await getImportOrderById(parseInt(importOrderId));
-      setImportOrder(data);
+      const response = await getImportOrderById(parseInt(importOrderId));
+      if (response?.content) {
+        setImportOrder(response.content);
+      }
     } catch (error) {
       console.error("Failed to fetch import order:", error);
       message.error("Không thể tải thông tin đơn nhập");
@@ -86,22 +81,17 @@ const ImportOrderDetail = () => {
         pageSize
       );
 
-      if (response) {
-        setImportOrderDetails(response);
+      if (response?.content) {
+        setImportOrderDetails(response.content);
 
-        // Only update pagination if metadata exists and if any values differ
-        if (response.metaDataDTO) {
-          const { page, limit, total } = response.metaDataDTO;
-          if (page !== pagination.current ||
-            limit !== pagination.pageSize ||
-            total !== pagination.total) {
-            setPagination(prev => ({
-              ...prev,
-              current: page,
-              pageSize: limit,
-              total: total,
-            }));
-          }
+        if (response.metadata) {
+          const { page, limit, totalElements } = response.metadata;
+          setPagination(prev => ({
+            ...prev,
+            current: page,
+            pageSize: limit,
+            total: totalElements,
+          }));
         }
       }
     } catch (error) {
@@ -136,26 +126,24 @@ const ImportOrderDetail = () => {
     setSelectedStaffId(null);
   };
 
-  const handleSelectStaff = (staffId) => {
+  const handleSelectStaff = (staffId: number) => {
     setSelectedStaffId(staffId);
   };
 
   const handleAssignStaff = async () => {
-    if (!selectedStaffId) {
+    if (!selectedStaffId || !importOrderId) {
       message.warning("Vui lòng chọn nhân viên để phân công");
       return;
     }
 
     try {
       setAssigningStaff(true);
-      await assignWarehouseKeeper(
-        parseInt(importOrderId),
-        selectedStaffId
-      );
+      await assignStaff({
+        importOrderId: parseInt(importOrderId),
+        accountId: selectedStaffId
+      });
       
-      // Refresh import order data to show the assigned staff
       await fetchImportOrderData();
-      
       handleCloseAssignModal();
     } catch (error) {
       console.error("Failed to assign warehouse keeper:", error);
@@ -166,38 +154,37 @@ const ImportOrderDetail = () => {
 
   useEffect(() => {
     fetchImportOrderData();
-  }, [importOrderId]);
+  }, [fetchImportOrderData]);
 
   useEffect(() => {
     fetchImportOrderDetails();
-  }, [importOrderId]); // Only depend on importOrderId for initial fetch
+  }, [fetchImportOrderDetails]);
 
   // Handle pagination changes
   useEffect(() => {
     if (pagination.current > 0) {
       fetchImportOrderDetails();
     }
-  }, [pagination.current, pagination.pageSize]); // Only re-fetch when these specific values change
+  }, [pagination.current, pagination.pageSize]);
 
   // Status tag renderers
-  const getStatusTag = (status) => {
+  const getStatusTag = (status: ImportStatus) => {
     const statusMap = {
-      "NOT_STARTED": { color: "default", text: "Chưa bắt đầu" },
-      "IN_PROGRESS": { color: "processing", text: "Đang xử lý" },
-      "COMPLETED": { color: "success", text: "Hoàn tất" },
-      "CANCELLED": { color: "error", text: "Đã hủy" }
+      [ImportStatus.NOT_STARTED]: { color: "default", text: "Chưa bắt đầu" },
+      [ImportStatus.IN_PROGRESS]: { color: "processing", text: "Đang xử lý" },
+      [ImportStatus.COMPLETED]: { color: "success", text: "Hoàn tất" },
+      [ImportStatus.CANCELLED]: { color: "error", text: "Đã hủy" }
     };
 
     const statusInfo = statusMap[status] || { color: "default", text: status };
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
-  const getDetailStatusTag = (status) => {
-    const statusMap = {
-      "NOT_STARTED": { color: "default", text: "Chưa bắt đầu" },
-      "IN_PROGRESS": { color: "processing", text: "Đang xử lý" },
-      "COMPLETED": { color: "success", text: "Hoàn tất" },
-      "CANCELLED": { color: "error", text: "Đã hủy" }
+  const getDetailStatusTag = (status: string) => {
+    const statusMap: Record<string, { color: string; text: string }> = {
+      "PENDING": { color: "default", text: "Chưa bắt đầu" },
+      "RECEIVED": { color: "processing", text: "Đang xử lý" },
+      "REJECTED": { color: "error", text: "Đã hủy" }
     };
 
     const statusInfo = statusMap[status] || { color: "default", text: status };
@@ -205,7 +192,7 @@ const ImportOrderDetail = () => {
   };
 
   // Table pagination handler
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (pagination: any) => {
     setPagination({
       ...pagination,
       current: pagination.current,
@@ -217,59 +204,17 @@ const ImportOrderDetail = () => {
     navigate(-1);
   };
 
-  const handleOpenQrModal = (record) => {
-    setSelectedRecord(record);
-    setQrModalVisible(true);
-  };
-
-  const handleCloseQrModal = () => {
-    setQrModalVisible(false);
-    setSelectedRecord(null);
-    setNumberOfQrCodes(1);
-  };
-
-  const handleGenerateQrCodes = async () => {
-    if (!selectedRecord || !numberOfQrCodes || numberOfQrCodes < 1) {
-      message.error("Vui lòng nhập số lượng QR code cần tạo");
-      return;
-    }
-
-    try {
-      setQrGenerating(true);
-      
-      const request = {
-        itemId: selectedRecord.itemId,
-        importOrderDetailId: selectedRecord.importOrderDetailId,
-        numberOfQrCodes: numberOfQrCodes
-      };
-      
-      const response = await createInventoryItemWithQrCode(request);
-      
-      if (response) {
-        message.success(`Đã tạo thành công ${numberOfQrCodes} mã QR cho sản phẩm ${selectedRecord.itemName}`);
-        handleCloseQrModal();
-        
-        // Refresh import order details to reflect the changes
-        fetchImportOrderDetails();
-      }
-    } catch (error) {
-      console.error("Failed to generate QR codes:", error);
-    } finally {
-      setQrGenerating(false);
-    }
-  };
-
   // Function to fetch and show QR codes
-  const handleViewQrCodes = async (record) => {
+  const handleViewQrCodes = async (record: ImportOrderDetailResponse) => {
     try {
       setQrCodesLoading(true);
       
       // First, get inventory items associated with this import order detail
       const inventoryItems = await getByImportOrderDetailId(record.importOrderDetailId);
       
-      if (inventoryItems && inventoryItems.length > 0) {
+      if (inventoryItems?.items && inventoryItems.items.length > 0) {
         // Extract IDs for QR code lookup
-        const inventoryItemIds = inventoryItems.map(item => item.id);
+        const inventoryItemIds = inventoryItems.items.map(item => item.id);
         
         // Fetch QR codes
         const qrCodeData = await getListQrCodes(inventoryItemIds);
@@ -334,18 +279,11 @@ const ImportOrderDetail = () => {
     {
       title: "Thao tác",
       key: "action",
-      render: (_, record) => (
+      render: (_: any, record: ImportOrderDetailResponse) => (
         <Space>
           <Button
-            type="primary"
-            onClick={() => handleOpenQrModal(record)}
-            disabled={record.status === "CANCELLED"}
-          >
-            Tạo QR-Code
-          </Button>
-          <Button
             onClick={() => handleViewQrCodes(record)}
-            disabled={record.status === "CANCELLED"}
+            disabled={record.status === "REJECTED"}
           >
             Xem QR-Code
           </Button>
@@ -389,7 +327,7 @@ const ImportOrderDetail = () => {
         <Descriptions title="Thông tin đơn nhập" bordered>
           <Descriptions.Item label="Mã đơn nhập">#{importOrder?.importOrderId}</Descriptions.Item>
           <Descriptions.Item label="Mã phiếu nhập">#{importOrder?.importRequestId}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{getStatusTag(importOrder?.status)}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">{importOrder?.status && getStatusTag(importOrder.status)}</Descriptions.Item>
           <Descriptions.Item label="Ngày nhận hàng">
             {importOrder?.dateReceived ? new Date(importOrder?.dateReceived).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
@@ -473,8 +411,8 @@ const ImportOrderDetail = () => {
                   title: "Trạng thái",
                   dataIndex: "status",
                   key: "status",
-                  render: (status) => {
-                    const statusMap = {
+                  render: (status: string) => {
+                    const statusMap: Record<string, { color: string; text: string }> = {
                       "ACTIVE": { color: "green", text: "Hoạt động" },
                       "INACTIVE": { color: "red", text: "Không hoạt động" },
                     };
@@ -485,7 +423,7 @@ const ImportOrderDetail = () => {
                 {
                   title: "Thao tác",
                   key: "action",
-                  render: (_, record) => (
+                  render: (_: any, record: AccountResponse) => (
                     <Button 
                       type={selectedStaffId === record.id ? "primary" : "default"}
                       size="small"
@@ -537,44 +475,8 @@ const ImportOrderDetail = () => {
           </div>
         )}
       </Modal>
-
-      <Modal
-        title={`Tạo mã QR cho sản phẩm: ${selectedRecord?.itemName}`}
-        open={qrModalVisible}
-        onCancel={handleCloseQrModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseQrModal}>
-            Hủy
-          </Button>,
-          <Button 
-            key="submit" 
-            type="primary" 
-            loading={qrGenerating}
-            onClick={handleGenerateQrCodes}
-          >
-            Tạo mã QR
-          </Button>,
-        ]}
-      >
-        <div className="my-4">
-          <p>Sản phẩm: {selectedRecord?.itemName}</p>
-          <p>Mã sản phẩm: {selectedRecord?.itemId}</p>
-          <p>Chi tiết đơn nhập ID: {selectedRecord?.importOrderDetailId}</p>
-          
-          <div className="mt-4">
-            <label className="block mb-2">Số lượng mã QR cần tạo:</label>
-            <InputNumber
-              min={1}
-              max={100}
-              value={numberOfQrCodes}
-              onChange={setNumberOfQrCodes}
-              className="w-full"
-            />
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };
 
-export default ImportOrderDetail;
+export default ImportOrderDetail; 

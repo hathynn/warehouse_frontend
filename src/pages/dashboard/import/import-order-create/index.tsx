@@ -1,46 +1,76 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button, Input, Table, Typography, Space, Card, DatePicker, TimePicker, message, Upload } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
-import useImportOrderService from "../../../../hooks/useImportOrderService";
-import useImportRequestService from "../../../../hooks/useImportRequestService";
-import useImportOrderDetailService from "../../../../hooks/useImportOrderDetailService";
+import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
+import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
+import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
+import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
-import moment from "moment";
+import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
-import { DEPARTMENT_ROUTER } from "../../../../constants/routes";
+import { DEPARTMENT_ROUTER } from "@/constants/routes";
 import { InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx"
-import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
-const ImportOrderCreate = () => {
-  const { importRequestId: paramImportRequestId } = useParams();
-  const navigate = useNavigate();
-  const user = useSelector((state) => state.user.user);
+interface RootState {
+  user: {
+    user: {
+      id: number;
+      // Add other user properties as needed
+    };
+  };
+}
 
-  const [importRequests, setImportRequests] = useState([]);
-  const [selectedImportRequest, setSelectedImportRequest] = useState(null);
-  const [importRequestDetails, setImportRequestDetails] = useState([]);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [excelFile, setExcelFile] = useState(null);
-  const [uploadedDetails, setUploadedDetails] = useState([]);
+interface FormData extends Omit<ImportOrderCreateRequest, 'dateReceived' | 'timeReceived'> {
+  dateReceived: string;
+  timeReceived: string;
+  status: ImportStatus;
+}
+
+interface UploadedDetail {
+  itemId: number;
+  plannedQuantity: number;
+}
+
+interface ImportRequestDetailWithPlanned extends ImportRequestDetailResponse {
+  plannedQuantity: number;
+}
+
+interface TablePagination {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+const ImportOrderCreate = () => {
+  const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
+  const navigate = useNavigate();
+  const user = useSelector((state: RootState) => state.user.user);
+
+  const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
+  const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
+  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailWithPlanned[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [uploadedDetails, setUploadedDetails] = useState<UploadedDetail[]>([]);
 
   // Add pagination state
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<TablePagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     importRequestId: null,
-    accountId: user?.id || 1, // Get user ID from Redux store
-    dateReceived: moment().format("YYYY-MM-DD"),
-    timeReceived: moment().format("HH:mm:ss"),
+    accountId: user?.id || 4, // Get user ID from Redux store
+    dateReceived: dayjs().format("YYYY-MM-DD"),
+    timeReceived: dayjs().format("HH:mm"),
     note: "",
-    status: "NOT_STARTED" // Using the enum from useImportOrderService
+    status: ImportStatus.NOT_STARTED // Using the enum from useImportOrderService
   });
 
 
@@ -62,29 +92,29 @@ const ImportOrderCreate = () => {
 
   const {
     loading: importOrderDetailLoading,
-    uploadImportOrderDetail
+    createImportOrderDetails: uploadImportOrderDetail
   } = useImportOrderDetailService();
 
   // Fetch import requests
   useEffect(() => {
     const fetchImportRequests = async () => {
       try {
-        const data = await getAllImportRequests();
-        setImportRequests(data || []);
+        const response = await getAllImportRequests();
+        if (response?.content) {
+          setImportRequests(response.content);
 
-        // If importRequestId is provided in URL params, select it
-        if (paramImportRequestId) {
-          setSelectedImportRequest(Number(paramImportRequestId));
-          setFormData(prev => ({
-            ...prev,
-            importRequestId: Number(paramImportRequestId)
-          }));
+          if (paramImportRequestId) {
+            const importRequestIdNum = Number(paramImportRequestId);
+            setSelectedImportRequest(importRequestIdNum);
+            setFormData(prev => ({
+              ...prev,
+              importRequestId: importRequestIdNum
+            }));
 
-          // Fetch the import request details for the selected request
-          const requestDetails = await getImportRequestById(Number(paramImportRequestId));
-          if (requestDetails) {
-            // You might want to display some info about the selected request
-            toast.info(`Đang tạo đơn nhập cho phiếu nhập #${paramImportRequestId}`);
+            const requestDetails = await getImportRequestById(importRequestIdNum);
+            if (requestDetails?.content) {
+              toast.info(`Đang tạo đơn nhập cho phiếu nhập #${paramImportRequestId}`);
+            }
           }
         }
       } catch (error) {
@@ -110,27 +140,27 @@ const ImportOrderCreate = () => {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
       const response = await getImportRequestDetails(
-        parseInt(selectedImportRequest),
+        selectedImportRequest,
         current,
         pageSize
       );
 
-      if (response && response.content) {
-        // Add a plannedQuantity field to each item, initially set to the expectQuantity
+      if (response?.content) {
         const detailsWithPlannedQuantity = response.content.map(detail => ({
           ...detail,
-          plannedQuantity: detail.expectQuantity // Default value
+          plannedQuantity: detail.expectQuantity
         }));
 
         setImportRequestDetails(detailsWithPlannedQuantity);
 
-        // Update pagination with metadata from response
-        setPagination(prev => ({
-          ...prev,
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
-        }));
+        if (response.metadata) {
+          setPagination(prev => ({
+            ...prev,
+            current: response.metadata.page,
+            pageSize: response.metadata.limit,
+            total: response.metadata.totalElements,
+          }));
+        }
       }
     } catch (error) {
       console.error("Failed to fetch import request details:", error);
@@ -141,17 +171,17 @@ const ImportOrderCreate = () => {
   }, [selectedImportRequest, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
 
-  const handleDateChange = (date) => {
+  const handleDateChange = (date: Dayjs | null) => {
     setFormData({
       ...formData,
-      dateReceived: date ? date.format("YYYY-MM-DD") : null
+      dateReceived: date ? date.format("YYYY-MM-DD") : dayjs().format("YYYY-MM-DD")
     });
   };
 
-  const handleTimeChange = (time) => {
+  const handleTimeChange = (time: Dayjs | null) => {
     setFormData({
       ...formData,
-      timeReceived: time ? time.format("HH:mm:ss") : null
+      timeReceived: time ? time.format("HH:mm") : dayjs().format("HH:mm")
     });
   };
 
@@ -167,19 +197,23 @@ const ImportOrderCreate = () => {
     }
 
     try {
-      // Create import order
-      const createdOrder = await createImportOrder(formData);
+      const createOrderRequest: ImportOrderCreateRequest = {
+        importRequestId: formData.importRequestId,
+        accountId: formData.accountId,
+        dateReceived: formData.dateReceived,
+        timeReceived: formData.timeReceived,
+        note: formData.note
+      };
 
-      if (createdOrder) {
-        // If we have an Excel file with planned quantities, upload it
+      const response = await createImportOrder(createOrderRequest);
+
+      if (response?.content) {
         if (excelFile) {
-          await uploadImportOrderDetail(excelFile, createdOrder.importOrderId);
+          await uploadImportOrderDetail(excelFile, response.content.importOrderId);
         }
 
         toast.success("Tạo đơn nhập kho thành công!");
-
-        // Navigate to the import order list or detail page
-        navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(selectedImportRequest));
+        navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(selectedImportRequest.toString()));
       }
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -187,15 +221,15 @@ const ImportOrderCreate = () => {
     }
   };
 
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (newPagination: TablePagination) => {
     setPagination({
-      current: pagination.current,
-      pageSize: pagination.pageSize,
-      total: pagination.total
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+      total: newPagination.total
     });
   };
 
-  const handleExcelUpload = async (info) => {
+  const handleExcelUpload = async (info: any) => {
     const { status, originFileObj } = info.file;
 
     if (status !== 'uploading') {
@@ -206,56 +240,42 @@ const ImportOrderCreate = () => {
       setExcelFile(originFileObj);
       message.success(`${info.file.name} tải lên thành công.`);
 
-      // Parse the Excel file to extract planned quantities
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = (event: ProgressEvent<FileReader>) => {
         try {
-          const ab = event.target.result;
-          const wb = XLSX.read(ab, { type: "array" });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(ws);
+          const ab = event.target?.result;
+          if (ab) {
+            const wb = XLSX.read(ab, { type: "array" });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(ws);
 
-          // Validate and transform the data
-          if (jsonData.length === 0) {
-            toast.error("File Excel không có dữ liệu");
-            return;
-          }
-
-          // Check if the Excel file has the required columns
-          const firstRow = jsonData[0];
-          const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
-          const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
-
-          if (!hasItemId || !hasQuantity) {
-            toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
-            return;
-          }
-
-          // Map Excel data to match our format
-          const excelDetails = jsonData.map(row => {
-            const itemId = row.itemId || row['Mã hàng'];
-            const quantity = row.quantity || row['Số lượng'];
-
-            return {
-              itemId: Number(itemId),
-              plannedQuantity: Number(quantity)
-            };
-          });
-
-          // Update the importRequestDetails with planned quantities from Excel
-          const updatedDetails = importRequestDetails.map(detail => {
-            const excelDetail = excelDetails.find(ed => ed.itemId === detail.itemId);
-            if (excelDetail) {
-              return {
-                ...detail,
-                plannedQuantity: excelDetail.plannedQuantity
-              };
+            if (jsonData.length === 0) {
+              toast.error("File Excel không có dữ liệu");
+              return;
             }
-            return detail;
-          });
 
-          setUploadedDetails(updatedDetails);
-          toast.info("Số lượng dự tính đã được cập nhật từ file Excel");
+            const firstRow = jsonData[0] as Record<string, any>;
+            const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
+            const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
+
+            if (!hasItemId || !hasQuantity) {
+              toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
+              return;
+            }
+
+            const excelDetails = jsonData.map((row: Record<string, any>) => ({
+              itemId: Number(row.itemId || row['Mã hàng']),
+              plannedQuantity: Number(row.quantity || row['Số lượng'])
+            }));
+
+            const updatedDetails = importRequestDetails.map(detail => {
+              const excelDetail = excelDetails.find(ed => ed.itemId === detail.itemId);
+              return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
+            });
+
+            setUploadedDetails(excelDetails);
+            toast.info("Số lượng dự tính đã được cập nhật từ file Excel");
+          }
         } catch (error) {
           console.error("Error parsing Excel file:", error);
           toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
@@ -289,9 +309,7 @@ const ImportOrderCreate = () => {
       title: "Số lượng sẽ nhập (dự tính)",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
-      render: (text, record) => {
-        // If we have uploaded details, show the planned quantity
-        // Otherwise, show the expected quantity as default
+      render: (_: any, record: ImportRequestDetailWithPlanned) => {
         const uploadedDetail = uploadedDetails.find(d => d.itemId === record.itemId);
         const plannedQuantity = uploadedDetail ? uploadedDetail.plannedQuantity : "Chưa có";
 
@@ -316,7 +334,7 @@ const ImportOrderCreate = () => {
     name: 'file',
     multiple: false,
     accept: '.xlsx, .xls',
-    customRequest: ({ onSuccess }) => {
+    customRequest: ({ onSuccess }: any) => {
       setTimeout(() => {
         onSuccess("ok");
       }, 0);
@@ -345,7 +363,7 @@ const ImportOrderCreate = () => {
               <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
               <DatePicker
                 className="w-full"
-                value={formData.dateReceived ? moment(formData.dateReceived) : null}
+                value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                 onChange={handleDateChange}
               />
             </div>
@@ -354,9 +372,9 @@ const ImportOrderCreate = () => {
               <label className="block mb-1">Giờ nhận <span className="text-red-500">*</span></label>
               <TimePicker
                 className="w-full"
-                value={formData.timeReceived ? moment(formData.timeReceived, "HH:mm:ss") : null}
+                value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
                 onChange={handleTimeChange}
-                format="HH:mm:ss"
+                format="HH:mm"
               />
             </div>
 

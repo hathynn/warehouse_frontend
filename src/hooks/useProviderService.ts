@@ -29,7 +29,7 @@ const useProviderService = () => {
     try {
       const response = await callApi(
         "get", 
-        `/providers?page=${page}&limit=${limit}`
+        `/provider?page=${page}&limit=${limit}`
       );
       if (response) {
         setProviders(response.content);
@@ -46,7 +46,7 @@ const useProviderService = () => {
   // Lấy nhà cung cấp theo ID
   const getProviderById = async (providerId: number) => {
     try {
-      const response = await callApi("get", `/providers/${providerId}`);
+      const response = await callApi("get", `/provider/${providerId}`);
       return response.content;
     } catch (error) {
       toast.error("Không thể lấy thông tin nhà cung cấp");
@@ -58,7 +58,7 @@ const useProviderService = () => {
   // Tạo nhà cung cấp mới
   const createProvider = async (requestData: ProviderRequest) => {
     try {
-      const response = await callApi("post", "/providers", requestData);
+      const response = await callApi("post", "/provider", requestData);
       toast.success("Tạo nhà cung cấp thành công");
       await getAllProviders(); // Refresh danh sách sau khi tạo
       return response.content;
@@ -72,7 +72,7 @@ const useProviderService = () => {
   // Cập nhật nhà cung cấp
   const updateProvider = async (requestData: ProviderRequest) => {
     try {
-      const response = await callApi("put", "/providers", requestData);
+      const response = await callApi("put", "/provider", requestData);
       toast.success("Cập nhật nhà cung cấp thành công");
       await getAllProviders(); // Refresh danh sách sau khi cập nhật
       return response;
@@ -86,7 +86,7 @@ const useProviderService = () => {
   // Xóa nhà cung cấp
   const deleteProvider = async (providerId: number) => {
     try {
-      const response = await callApi("delete", `/providers/${providerId}`);
+      const response = await callApi("delete", `/provider/${providerId}`);
       toast.success("Xóa nhà cung cấp thành công");
       await getAllProviders(); // Refresh danh sách sau khi xóa
       return response;

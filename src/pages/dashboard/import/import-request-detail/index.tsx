@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, JSX } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -10,17 +10,38 @@ import {
   message
 } from "antd";
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import useImportRequestService from "../../../../hooks/useImportRequestService";
+import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
+import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { DEPARTMENT_ROUTER } from "@/constants/routes";
-import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
-const ImportRequestDetail = () => {
-  const { importRequestId } = useParams();
+import { ColumnsType } from "antd/es/table";
+
+interface RouteParams extends Record<string, string> {
+  importRequestId?: string;
+}
+
+interface PaginationType {
+  current: number;
+  pageSize: number;
+  total: number;
+}
+
+interface StatusConfig {
+  color: string;
+  text: string;
+}
+
+type ImportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+type ImportType = "ORDER" | "RETURN";
+
+const ImportRequestDetail: React.FC = () => {
+  const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
-  const [importRequest, setImportRequest] = useState(null);
-  const [importRequestDetails, setImportRequestDetails] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [pagination, setPagination] = useState({
+  
+  const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
+  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+  const [pagination, setPagination] = useState<PaginationType>({
     current: 1,
     pageSize: 10,
     total: 0,
@@ -34,12 +55,15 @@ const ImportRequestDetail = () => {
     getImportRequestDetails
   } = useImportRequestDetailService();
 
-  // Fetch import request data
   const fetchImportRequestData = useCallback(async () => {
+    if (!importRequestId) return;
+    
     try {
       setLoading(true);
-      const data = await getImportRequestById(parseInt(importRequestId));
-      setImportRequest(data);
+      const response = await getImportRequestById(parseInt(importRequestId));
+      if (response?.content) {
+        setImportRequest(response.content);
+      }
     } catch (error) {
       console.error("Failed to fetch import request:", error);
       message.error("Không thể tải thông tin phiếu nhập");
@@ -48,8 +72,9 @@ const ImportRequestDetail = () => {
     }
   }, [importRequestId, getImportRequestById]);
 
-
   const fetchImportRequestDetails = useCallback(async () => {
+    if (!importRequestId) return;
+    
     try {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
@@ -59,22 +84,17 @@ const ImportRequestDetail = () => {
         pageSize
       );
 
-      if (response && response.content) {
+      if (response?.content) {
         setImportRequestDetails(response.content);
 
-        // Only update pagination if the values actually changed
-        if (response.metaDataDTO) {
-          const { page, limit, total } = response.metaDataDTO;
-          if (page !== pagination.current ||
-            limit !== pagination.pageSize ||
-            total !== pagination.total) {
-            setPagination(prev => ({
-              ...prev,
-              current: page,
-              pageSize: limit,
-              total: total,
-            }));
-          }
+        if (response.metadata) {
+          const { page, limit, totalElements } = response.metadata;
+          setPagination(prev => ({
+            ...prev,
+            current: page,
+            pageSize: limit,
+            total: totalElements,
+          }));
         }
       }
     } catch (error) {
@@ -85,23 +105,20 @@ const ImportRequestDetail = () => {
     }
   }, [importRequestId, pagination, getImportRequestDetails]);
 
-
   useEffect(() => {
     if (importRequestId) {
       fetchImportRequestData();
     }
-  }, [importRequestId]);
+  }, [importRequestId, fetchImportRequestData]);
 
-  // Load details when pagination changes
   useEffect(() => {
     if (importRequestId) {
       fetchImportRequestDetails();
     }
   }, [pagination.current, pagination.pageSize]);
 
-  // Status tag renderers
-  const getStatusTag = (status) => {
-    const statusMap = {
+  const getStatusTag = (status: ImportStatus): JSX.Element => {
+    const statusMap: Record<ImportStatus, StatusConfig> = {
       "NOT_STARTED": { color: "default", text: "Chưa bắt đầu" },
       "IN_PROGRESS": { color: "processing", text: "Đang xử lý" },
       "COMPLETED": { color: "success", text: "Hoàn tất" },
@@ -112,9 +129,8 @@ const ImportRequestDetail = () => {
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
-  // Import type text renderer
-  const getImportTypeText = (type) => {
-    const typeMap = {
+  const getImportTypeText = (type: ImportType): string => {
+    const typeMap: Record<ImportType, string> = {
       "ORDER": "Nhập theo kế hoạch",
       "RETURN": "Nhập trả"
     };
@@ -122,29 +138,31 @@ const ImportRequestDetail = () => {
     return typeMap[type] || type;
   };
 
-  // Table pagination handler
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (newPagination: PaginationType): void => {
     setPagination({
-      ...pagination,
-      current: pagination.current,
-      pageSize: pagination.pageSize,
+      ...newPagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
     });
   };
 
-  const handleBack = () => {
+  const handleBack = (): void => {
     navigate(DEPARTMENT_ROUTER.IMPORT.REQUEST.LIST);
   };
 
-  const handleCreateImportOrder = () => {
-    navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
+  const handleCreateImportOrder = (): void => {
+    if (importRequestId) {
+      navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
+    }
   };
 
-  const handleViewImportOrders = () => {
-    navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
+  const handleViewImportOrders = (): void => {
+    if (importRequestId) {
+      navigate(DEPARTMENT_ROUTER.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
+    }
   };
 
-  // Table columns definition
-  const columns = [
+  const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
@@ -164,18 +182,17 @@ const ImportRequestDetail = () => {
     },
     {
       title: "Số lượng đã lên đơn nhập",
-      dataIndex: "orderedQuantity",
-      key: "orderedQuantity",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: getStatusTag,
+      render: (status: ImportStatus) => getStatusTag(status),
     }
   ];
 
-  // Show loading spinner when initially loading the page
   if (loading && !importRequest) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -198,7 +215,7 @@ const ImportRequestDetail = () => {
           <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequest?.importRequestId}</h1>
         </div>
         <div className="space-x-3">
-          {importRequest?.importOrdersId && importRequest?.importOrdersId.length > 0 && (
+          {importRequest?.importOrdersId && importRequest.importOrdersId.length > 0 && (
             <Button
               type="primary"
               icon={<UnorderedListOutlined />}
@@ -222,25 +239,25 @@ const ImportRequestDetail = () => {
       <Card className="mb-6">
         <Descriptions title="Thông tin phiếu nhập" bordered>
           <Descriptions.Item label="Mã phiếu nhập">#{importRequest?.importRequestId}</Descriptions.Item>
-          <Descriptions.Item label="Loại nhập">{getImportTypeText(importRequest?.importType)}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{getStatusTag(importRequest?.status)}</Descriptions.Item>
+          <Descriptions.Item label="Loại nhập">{importRequest?.importType && getImportTypeText(importRequest.importType as ImportType)}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">{importRequest?.status && getStatusTag(importRequest.status as ImportStatus)}</Descriptions.Item>
           <Descriptions.Item label="Lý do nhập" span={2}>{importRequest?.importReason}</Descriptions.Item>
           <Descriptions.Item label="Mã nhà cung cấp">{importRequest?.providerId}</Descriptions.Item>
           <Descriptions.Item label="Người tạo">{importRequest?.createdBy}</Descriptions.Item>
           <Descriptions.Item label="Ngày tạo">
-            {importRequest?.createdDate ? new Date(importRequest?.createdDate).toLocaleDateString("vi-VN") : "-"}
+            {importRequest?.createdDate ? new Date(importRequest.createdDate).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Ngày cập nhật">
-            {importRequest?.updatedDate ? new Date(importRequest?.updatedDate).toLocaleDateString("vi-VN") : "-"}
+            {importRequest?.updatedDate ? new Date(importRequest.updatedDate).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
           {importRequest?.exportRequestId && (
             <Descriptions.Item label="Mã phiếu xuất liên quan">
-              #{importRequest?.exportRequestId}
+              #{importRequest.exportRequestId}
             </Descriptions.Item>
           )}
-          {importRequest?.importOrdersId && importRequest?.importOrdersId.length > 0 && (
+          {importRequest?.importOrdersId && importRequest.importOrdersId.length > 0 && (
             <Descriptions.Item label="Đơn nhập hàng liên quan" span={3}>
-              {importRequest?.importOrdersId.map(orderId => (
+              {importRequest.importOrdersId.map(orderId => (
                 <Tag key={orderId} color="blue" className="mr-2 mb-1">#{orderId}</Tag>
               ))}
             </Descriptions.Item>
@@ -252,12 +269,12 @@ const ImportRequestDetail = () => {
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
       </div>
 
-      <Table
+      <Table<ImportRequestDetailResponse>
         columns={columns}
         dataSource={importRequestDetails}
         rowKey="importRequestDetailId"
         loading={detailsLoading}
-        onChange={handleTableChange}
+        onChange={(pagination) => handleTableChange(pagination as PaginationType)}
         pagination={{
           ...pagination,
           showSizeChanger: true,

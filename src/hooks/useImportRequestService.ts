@@ -1,15 +1,17 @@
 import { useState } from "react";
 import useApiService from "./useApi";
-import { toast } from "react-toastify"
+import { toast } from "react-toastify";
 
-interface ImportRequestRequest {
+// Interface to match ImportRequestCreateRequest.java
+export interface ImportRequestCreateRequest {
   importReason: string;
   importType: string;
   providerId: number;
   exportRequestId?: number | null;
 }
 
-interface ImportRequestResponse {
+// Interface to match ImportRequestResponse.java
+export interface ImportRequestResponse {
   importRequestId: number;
   importReason: string;
   importType: string;
@@ -24,17 +26,31 @@ interface ImportRequestResponse {
   updatedDate: string;
 }
 
+// Interface to match MetaDataDTO.java
+export interface MetaDataDTO {
+  hasNext: boolean;
+  hasPrevious: boolean;
+  limit: number;
+  totalElements: number;
+  page: number;
+}
+
+// Interface to match ResponseDTO.java
+export interface ResponseDTO<T> {
+  content: T;
+  message: string;
+  status: number;
+  metadata?: MetaDataDTO;
+}
+
 const useImportRequestService = () => {
   const { callApi, loading } = useApiService();
 
-  // Lấy tất cả phiếu nhập
-  const getAllImportRequests = async () => {
+  // Get all import requests
+  const getAllImportRequests = async (): Promise<ResponseDTO<ImportRequestResponse[]>> => {
     try {
       const response = await callApi("get", "/import-request");
-      if (response && response.content) {
-        return response.content;
-      }
-      return [];
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách phiếu nhập");
       console.error("Error fetching import requests:", error);
@@ -42,13 +58,11 @@ const useImportRequestService = () => {
     }
   };
 
-  const getImportRequestById = async (importRequestId: number) => {
+  // Get import request by ID
+  const getImportRequestById = async (importRequestId: number): Promise<ResponseDTO<ImportRequestResponse>> => {
     try {
       const response = await callApi("get", `/import-request/${importRequestId}`);
-      if (response) {
-        return response.content;
-      }
-      return null;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin phiếu nhập");
       console.error("Error fetching import request:", error);
@@ -56,17 +70,17 @@ const useImportRequestService = () => {
     }
   };
 
-  // Lấy phiếu nhập phân trang
-  const getImportRequestsByPage = async (page = 1, limit = 10) => {
+  // Get paginated import requests
+  const getImportRequestsByPage = async (
+    page = 1, 
+    limit = 10
+  ): Promise<ResponseDTO<ImportRequestResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
         `/import-request/page?page=${page}&limit=${limit}`
       );
-      if (response && response.content) {
-        return response;
-      }
-      return [];
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách phiếu nhập");
       console.error("Error fetching import requests:", error);
@@ -74,14 +88,16 @@ const useImportRequestService = () => {
     }
   };
 
-  // Tạo import request mới
-  const createImportRequest = async (requestData: ImportRequestRequest) => {
+  // Create a new import request
+  const createImportRequest = async (
+    requestData: ImportRequestCreateRequest
+  ): Promise<ResponseDTO<ImportRequestResponse>> => {
     try {
       const response = await callApi("post", "/import-request", requestData);
-      if (response) {
+      if (response && response.content) {
         toast.success("Tạo phiếu nhập thành công");
-        return response.content;
       }
+      return response;
     } catch (error) {
       toast.error("Không thể tạo phiếu nhập");
       console.error("Error creating import request:", error);

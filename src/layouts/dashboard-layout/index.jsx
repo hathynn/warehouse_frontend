@@ -111,11 +111,11 @@ const DashboardLayout = () => {
       </div>
 
       {/* Main content */}
-      <Layout className="flex-1 bg-gray-50">
+      <Layout className="flex-1 bg-gray-50 overflow-y-scroll">
         <div className="mx-8">
           <HeaderDashboard title={pageTitle} />
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm min-h-[calc(100vh-180px)] mx-8">
+        <div className="bg-white p-6 rounded-lg shadow-sm mx-8">
           <Outlet />
         </div>
       </Layout>
