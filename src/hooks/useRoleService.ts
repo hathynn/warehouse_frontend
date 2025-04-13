@@ -27,7 +27,7 @@ const useRoleService = () => {
     request: AccountRequest
   ): Promise<AccountResponse[]> => {
     try {
-      const response = await callApi("get", `/accounts/role/${request.role}`);
+      const response = await callApi("get", `/account/role/${request.role}`);
       if (response && response.content) {
         return response.content;
       }

@@ -1,42 +1,31 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Table, Button, Card, Descriptions, Tag, Spin, message } from "antd";
+import {
+  Table,
+  Button,
+  Card,
+  Descriptions,
+  Spin,
+  message,
+  Input,
+  Modal,
+  Tag,
+} from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import useExportRequestService from "../../../../hooks/useExportRequestService";
-
-// Giữ nguyên fake API cho chi tiết phiếu xuất
-const simulateFetchExportRequestDetails = (id, page, pageSize) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const allItems = [
-        {
-          itemId: 1,
-          itemName: "Laptop",
-          requiredQuantity: 10,
-          stockQuantity: 10,
-          unit: "cái",
-        },
-      ];
-      const total = allItems.length;
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const content = allItems.slice(startIndex, endIndex);
-      resolve({
-        content,
-        metaDataDTO: {
-          page,
-          limit: pageSize,
-          total,
-        },
-      });
-    }, 500);
-  });
-};
+import useExportRequestDetailService from "../../../../hooks/useExportRequestDetailService";
+import useItemService from "../../../../hooks/useItemService";
+import useRoleService from "../../../../hooks/useRoleService"; // Import thêm cho warehouse keeper
+import { useSelector } from "react-redux";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
   const navigate = useNavigate();
-  const { getExportRequestById } = useExportRequestService();
+  const { getExportRequestById, assignWarehouseKeeper } =
+    useExportRequestService();
+  const { getExportRequestDetails } = useExportRequestDetailService();
+  const { getItemById } = useItemService();
+  const { getAccountsByRole } = useRoleService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -47,7 +36,14 @@ const ExportRequestDetail = () => {
     total: 0,
   });
 
-  // Fetch thông tin phiếu xuất thật sử dụng service
+  // --- Warehouse Keeper assignment state ---
+  const [warehouseKeeperModalVisible, setWarehouseKeeperModalVisible] =
+    useState(false);
+  const [warehouseKeeperSearch, setWarehouseKeeperSearch] = useState("");
+  const [warehouseKeepers, setWarehouseKeepers] = useState([]);
+  const [selectedWarehouseKeeper, setSelectedWarehouseKeeper] = useState(null);
+
+  // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
     try {
@@ -62,34 +58,44 @@ const ExportRequestDetail = () => {
     }
   }, [exportRequestId, getExportRequestById]);
 
-  // Fetch danh sách chi tiết phiếu xuất (vẫn dùng fake API)
-  const fetchExportRequestDetails = async (
+  // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
+  const enrichDetails = async (details) => {
+    const enriched = await Promise.all(
+      details.map(async (detail) => {
+        try {
+          const res = await getItemById(detail.itemId);
+          const itemName =
+            res && res.content ? res.content.name : "Không xác định";
+          return { ...detail, itemName };
+        } catch (error) {
+          console.error(`Error fetching item with id ${detail.itemId}:`, error);
+          return { ...detail, itemName: "Không xác định" };
+        }
+      })
+    );
+    return enriched;
+  };
+
+  const fetchDetails = async (
     page = pagination.current,
     pageSize = pagination.pageSize
   ) => {
     if (!exportRequestId) return;
     try {
       setDetailsLoading(true);
-      const response = await simulateFetchExportRequestDetails(
+      const response = await getExportRequestDetails(
         parseInt(exportRequestId),
         page,
         pageSize
       );
       if (response && response.content) {
-        setExportRequestDetails(response.content);
-        setPagination((prev) => {
-          if (
-            prev.total !== response.metaDataDTO.total ||
-            prev.current !== response.metaDataDTO.page ||
-            prev.pageSize !== response.metaDataDTO.limit
-          ) {
-            return {
-              current: response.metaDataDTO.page,
-              pageSize: response.metaDataDTO.limit,
-              total: response.metaDataDTO.total,
-            };
-          }
-          return prev;
+        const enriched = await enrichDetails(response.content);
+        setExportRequestDetails(enriched);
+        const meta = response.metaDataDTO;
+        setPagination({
+          current: meta ? meta.page : page,
+          pageSize: meta ? meta.limit : pageSize,
+          total: meta ? meta.total : 0,
         });
       }
     } catch (error) {
@@ -104,29 +110,20 @@ const ExportRequestDetail = () => {
     fetchExportRequestData();
   }, []);
 
-  // Chỉ gọi lại fetchExportRequestDetails khi exportRequestId thay đổi
   useEffect(() => {
-    fetchExportRequestDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchDetails();
   }, []);
 
-  // Hàm chuyển đổi exportType sang mô tả (chỉ xử lý USE)
   const getExportTypeText = (type) => {
-    const typeMap = {
-      USE: "Xuất sử dụng (nội bộ)",
-    };
-    return typeMap[type] || type;
+    if (type === "PRODUCTION") return "Xuất sản xuất";
+    return "";
   };
 
-  // Render thông tin phiếu xuất cho loại USE
   const renderDescriptionItems = () => {
     if (!exportRequest) return null;
     const items = [
       <Descriptions.Item label="Mã phiếu xuất" key="exportId">
         #{exportRequest.exportRequestId}
-      </Descriptions.Item>,
-      <Descriptions.Item label="Loại phiếu xuất" key="exportType">
-        {getExportTypeText(exportRequest.type)}
       </Descriptions.Item>,
       <Descriptions.Item label="Ngày xuất" key="exportDate">
         {exportRequest.exportDate
@@ -138,14 +135,16 @@ const ExportRequestDetail = () => {
       </Descriptions.Item>,
     ];
 
-    // Vì hiện tại chỉ làm cho xuất USE
-    if (exportRequest.type === "USE") {
+    if (exportRequest.type === "PRODUCTION") {
       items.push(
+        <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+          {getExportTypeText(exportRequest.type)}
+        </Descriptions.Item>,
+        <Descriptions.Item label="Phòng ban" key="receivingDepartment">
+          {exportRequest.departmentId || "-"}
+        </Descriptions.Item>,
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
           {exportRequest.receiverName || "-"}
-        </Descriptions.Item>,
-        <Descriptions.Item label="Địa chỉ nhận hàng" key="receiverAddress">
-          {exportRequest.receiverAddress || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Số điện thoại nhận hàng" key="receiverPhone">
           {exportRequest.receiverPhone || "-"}
@@ -154,18 +153,70 @@ const ExportRequestDetail = () => {
           {exportRequest.exportReason || "-"}
         </Descriptions.Item>
       );
+    } else if (exportRequest.type === "BORROWING") {
+      if (exportRequest.receiverAddress) {
+        items.push(
+          <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+            Xuất mượn (bên ngoài)
+          </Descriptions.Item>,
+          <Descriptions.Item label="Tên công ty/Người mượn" key="receiverName">
+            {exportRequest.receiverName || "-"}
+          </Descriptions.Item>,
+          <Descriptions.Item label="Số điện thoại" key="receiverPhone">
+            {exportRequest.receiverPhone || "-"}
+          </Descriptions.Item>,
+          <Descriptions.Item label="Địa chỉ" key="receiverAddress">
+            {exportRequest.receiverAddress || "-"}
+          </Descriptions.Item>,
+          <Descriptions.Item label="Lý do mượn" key="exportReason">
+            {exportRequest.exportReason || "-"}
+          </Descriptions.Item>
+        );
+      } else {
+        items.push(
+          <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+            Xuất mượn (nội bộ)
+          </Descriptions.Item>,
+          <Descriptions.Item label="Người nhận hàng" key="receiverName">
+            {exportRequest.receiverName || "-"}
+          </Descriptions.Item>,
+          <Descriptions.Item
+            label="Số điện thoại nhận hàng"
+            key="receiverPhone"
+          >
+            {exportRequest.receiverPhone || "-"}
+          </Descriptions.Item>,
+          <Descriptions.Item label="Lý do mượn" key="exportReason">
+            {exportRequest.exportReason || "-"}
+          </Descriptions.Item>
+        );
+      }
+      if (exportRequest.expectedReturnDate) {
+        items.push(
+          <Descriptions.Item label="Ngày trả dự kiến" key="expectedReturnDate">
+            {new Date(exportRequest.expectedReturnDate).toLocaleDateString(
+              "vi-VN"
+            )}
+          </Descriptions.Item>
+        );
+      }
     }
+
+    // Hiển thị thông tin nhân viên kho (nếu có)
+    items.push(
+      <Descriptions.Item label="Người kiểm kho" key="warehouseKeeper">
+        {exportRequest.assignedWareHouseKeeperId || "-"}
+      </Descriptions.Item>
+    );
 
     items.push(
       <Descriptions.Item label="Ghi chú" key="note" span={3}>
         {exportRequest.note || "-"}
       </Descriptions.Item>
     );
-
     return items;
   };
 
-  // Định nghĩa cột cho bảng chi tiết sản phẩm xuất
   const columns = [
     {
       title: "Mã sản phẩm",
@@ -181,23 +232,24 @@ const ExportRequestDetail = () => {
     },
     {
       title: "Số lượng cần",
-      dataIndex: "requiredQuantity",
-      key: "requiredQuantity",
+      dataIndex: "quantity",
+      key: "quantity",
     },
     {
-      title: "Số lượng tồn kho",
-      dataIndex: "stockQuantity",
-      key: "stockQuantity",
+      title: "Số lượng đã kiểm đếm",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
     },
     {
-      title: "Số lượng dự tồn",
-      key: "projectedQuantity",
-      render: (_, record) => record.stockQuantity - record.requiredQuantity,
+      title: "Quy cách",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
     },
     {
-      title: "Đơn vị tính",
-      dataIndex: "unit",
-      key: "unit",
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => status || "-",
     },
   ];
 
@@ -207,12 +259,62 @@ const ExportRequestDetail = () => {
       current: pag.current,
       pageSize: pag.pageSize,
     });
-    fetchExportRequestDetails(pag.current, pag.pageSize);
+    fetchDetails(pag.current, pag.pageSize);
   };
 
   const handleBack = () => {
     navigate(-1);
   };
+
+  // --- Các hàm liên quan đến Warehouse Keeper ---
+  const fetchWarehouseKeepers = async () => {
+    try {
+      const accounts = await getAccountsByRole({ role: "STAFF" });
+      setWarehouseKeepers(accounts);
+    } catch (error) {
+      console.error("Error fetching warehouse keepers:", error);
+      message.error("Không thể lấy danh sách nhân viên kho");
+    }
+  };
+
+  const openWarehouseKeeperModal = () => {
+    fetchWarehouseKeepers();
+    setWarehouseKeeperSearch("");
+    setWarehouseKeeperModalVisible(true);
+  };
+
+  const handleWarehouseKeeperSelect = (wk) => {
+    setSelectedWarehouseKeeper(wk);
+    setWarehouseKeeperModalVisible(false);
+  };
+
+  const handleConfirmAssign = async () => {
+    if (!selectedWarehouseKeeper || !exportRequest?.exportRequestId) {
+      message.error("Vui lòng chọn nhân viên kho trước khi xác nhận");
+      return;
+    }
+    try {
+      const updatedRequest = await assignWarehouseKeeper(
+        exportRequest.exportRequestId,
+        selectedWarehouseKeeper.id
+      );
+      if (updatedRequest) {
+        setExportRequest(updatedRequest);
+        message.success("Phân công nhân viên kho thành công");
+      }
+    } catch (error) {
+      console.error("Error assigning warehouse keeper:", error);
+      message.error("Phân công nhân viên kho thất bại");
+    }
+  };
+
+  const filteredWarehouseKeepers = warehouseKeepers.filter(
+    (wk) =>
+      wk.fullName.toLowerCase().includes(warehouseKeeperSearch.toLowerCase()) ||
+      wk.email.toLowerCase().includes(warehouseKeeperSearch.toLowerCase())
+  );
+
+  const user = useSelector((state) => state.user);
 
   if (loading && !exportRequest) {
     return (
@@ -243,22 +345,76 @@ const ExportRequestDetail = () => {
         </Descriptions>
       </Card>
 
+      {/* Phần phân công Warehouse Keeper */}
+      {user?.role === "ROLE_WAREHOUSE_MANAGER" && (
+        <div className="mb-6">
+          <div className="flex items-center space-x-4">
+            <h2 className="text-lg font-semibold">Phân công người kiểm kho:</h2>
+            <Button type="default" onClick={openWarehouseKeeperModal}>
+              Chọn nhân viên kho
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleConfirmAssign}
+              disabled={!selectedWarehouseKeeper}
+            >
+              Xác nhận
+            </Button>
+          </div>
+          {selectedWarehouseKeeper && (
+            <div className="mt-2">
+              <Tag color="blue">
+                {selectedWarehouseKeeper.id} -{" "}
+                {selectedWarehouseKeeper.fullName}
+              </Tag>
+            </div>
+          )}
+        </div>
+      )}
+
       <h2 className="text-lg font-semibold mb-4">
         Danh sách chi tiết sản phẩm xuất
       </h2>
       <Table
         columns={columns}
         dataSource={exportRequestDetails}
-        rowKey="itemId"
+        rowKey="id"
         loading={detailsLoading}
         onChange={handleTableChange}
         pagination={{
-          ...pagination,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
           showSizeChanger: true,
           pageSizeOptions: ["10", "50"],
           showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
         }}
       />
+
+      {/* Modal chọn Warehouse Keeper */}
+      <Modal
+        title="Chọn Warehouse Keeper"
+        visible={warehouseKeeperModalVisible}
+        onCancel={() => setWarehouseKeeperModalVisible(false)}
+        footer={null}
+      >
+        <Input
+          placeholder="Tìm kiếm theo tên hoặc email"
+          value={warehouseKeeperSearch}
+          onChange={(e) => setWarehouseKeeperSearch(e.target.value)}
+          style={{ marginBottom: 12 }}
+        />
+        {filteredWarehouseKeepers.map((wk) => (
+          <div
+            key={wk.id}
+            className="cursor-pointer p-2 hover:bg-gray-100 border-b"
+            onClick={() => handleWarehouseKeeperSelect(wk)}
+          >
+            <div className="font-semibold">{wk.fullName}</div>
+            <div className="text-sm text-gray-500">{wk.email}</div>
+          </div>
+        ))}
+      </Modal>
     </div>
   );
 };
@@ -267,83 +423,19 @@ export default ExportRequestDetail;
 
 // import React, { useState, useEffect, useCallback } from "react";
 // import { useParams, useNavigate } from "react-router-dom";
-// import { Table, Button, Card, Descriptions, Tag, Spin, message } from "antd";
+// import { Table, Button, Card, Descriptions, Spin, message } from "antd";
 // import { ArrowLeftOutlined } from "@ant-design/icons";
-
-// // Hàm mô phỏng API lấy thông tin phiếu xuất theo id
-// const simulateFetchExportRequestById = (id) => {
-//   return new Promise((resolve) => {
-//     setTimeout(() => {
-//       // Ví dụ: mô phỏng một phiếu xuất có exportType là "RETURN"
-//       resolve({
-//         exportRequestId: id,
-//         exportType: "RETURN", // có thể là "RETURN", "USE", "LOAN"
-//         exportDate: "2025-03-20T00:00:00Z",
-//         supplierReceiver: { id: 1, name: "Nhà cung cấp A" },
-//         returnManager: { id: 2, name: "Người phụ trách B" },
-//         importReference: { id: 1, name: "Phiếu nhập #1001" },
-//         returnReason: "Hỏng hóc, sai mẫu",
-//         receivingDepartment: null,
-//         receivingManager: null,
-//         productionOrder: null,
-//         usagePurpose: null,
-//         borrower: null,
-//         loanManager: null,
-//         loanExpiry: null,
-//         loanReason: null,
-//         note: "Ghi chú phiếu xuất trả nhà sản xuất",
-//       });
-//     }, 500);
-//   });
-// };
-
-// // Hàm mô phỏng API lấy danh sách chi tiết phiếu xuất (các sản phẩm)
-// const simulateFetchExportRequestDetails = (id, page, pageSize) => {
-//   return new Promise((resolve) => {
-//     setTimeout(() => {
-//       // Dữ liệu giả cho các sản phẩm (vật liệu may mặc)
-//       const allItems = [
-//         {
-//           itemId: 1,
-//           itemName: "Vải cotton",
-//           requiredQuantity: 100,
-//           stockQuantity: 200,
-//           unit: "m",
-//         },
-//         {
-//           itemId: 2,
-//           itemName: "Chỉ may",
-//           requiredQuantity: 50,
-//           stockQuantity: 100,
-//           unit: "cuộn",
-//         },
-//         {
-//           itemId: 3,
-//           itemName: "Nút áo",
-//           requiredQuantity: 200,
-//           stockQuantity: 300,
-//           unit: "cái",
-//         },
-//       ];
-//       const total = allItems.length;
-//       const startIndex = (page - 1) * pageSize;
-//       const endIndex = startIndex + pageSize;
-//       const content = allItems.slice(startIndex, endIndex);
-//       resolve({
-//         content,
-//         metaDataDTO: {
-//           page,
-//           limit: pageSize,
-//           total,
-//         },
-//       });
-//     }, 500);
-//   });
-// };
+// import useExportRequestService from "../../../../hooks/useExportRequestService";
+// import useExportRequestDetailService from "../../../../hooks/useExportRequestDetailService";
+// import useItemService from "../../../../hooks/useItemService";
 
 // const ExportRequestDetail = () => {
 //   const { exportRequestId } = useParams();
 //   const navigate = useNavigate();
+//   const { getExportRequestById } = useExportRequestService();
+//   const { getExportRequestDetails } = useExportRequestDetailService();
+//   const { getItemById } = useItemService();
+
 //   const [exportRequest, setExportRequest] = useState(null);
 //   const [exportRequestDetails, setExportRequestDetails] = useState([]);
 //   const [loading, setLoading] = useState(false);
@@ -354,14 +446,12 @@ export default ExportRequestDetail;
 //     total: 0,
 //   });
 
-//   // Lấy thông tin phiếu xuất
+//   // Hàm lấy dữ liệu phiếu xuất từ API
 //   const fetchExportRequestData = useCallback(async () => {
 //     if (!exportRequestId) return;
 //     try {
 //       setLoading(true);
-//       const data = await simulateFetchExportRequestById(
-//         parseInt(exportRequestId)
-//       );
+//       const data = await getExportRequestById(parseInt(exportRequestId));
 //       setExportRequest(data);
 //     } catch (error) {
 //       console.error("Failed to fetch export request:", error);
@@ -369,37 +459,46 @@ export default ExportRequestDetail;
 //     } finally {
 //       setLoading(false);
 //     }
-//   }, [exportRequestId]);
+//   }, [exportRequestId, getExportRequestById]);
 
-//   // Hàm fetch danh sách chi tiết phiếu xuất không dùng pagination trong dependency
-//   const fetchExportRequestDetails = async (
+//   // Hàm "enrich" danh sách chi tiết bằng cách lấy itemName từ API getItemById
+//   const enrichDetails = async (details) => {
+//     const enriched = await Promise.all(
+//       details.map(async (detail) => {
+//         try {
+//           const res = await getItemById(detail.itemId);
+//           const itemName =
+//             res && res.content ? res.content.name : "Không xác định";
+//           return { ...detail, itemName };
+//         } catch (error) {
+//           console.error(`Error fetching item with id ${detail.itemId}:`, error);
+//           return { ...detail, itemName: "Không xác định" };
+//         }
+//       })
+//     );
+//     return enriched;
+//   };
+
+//   const fetchDetails = async (
 //     page = pagination.current,
 //     pageSize = pagination.pageSize
 //   ) => {
 //     if (!exportRequestId) return;
 //     try {
 //       setDetailsLoading(true);
-//       const response = await simulateFetchExportRequestDetails(
+//       const response = await getExportRequestDetails(
 //         parseInt(exportRequestId),
 //         page,
 //         pageSize
 //       );
 //       if (response && response.content) {
-//         setExportRequestDetails(response.content);
-//         // Cập nhật pagination nếu cần
-//         setPagination((prev) => {
-//           if (
-//             prev.total !== response.metaDataDTO.total ||
-//             prev.current !== response.metaDataDTO.page ||
-//             prev.pageSize !== response.metaDataDTO.limit
-//           ) {
-//             return {
-//               current: response.metaDataDTO.page,
-//               pageSize: response.metaDataDTO.limit,
-//               total: response.metaDataDTO.total,
-//             };
-//           }
-//           return prev;
+//         const enriched = await enrichDetails(response.content);
+//         setExportRequestDetails(enriched);
+//         const meta = response.metaDataDTO;
+//         setPagination({
+//           current: meta ? meta.page : page,
+//           pageSize: meta ? meta.limit : pageSize,
+//           total: meta ? meta.total : 0,
 //         });
 //       }
 //     } catch (error) {
@@ -412,97 +511,105 @@ export default ExportRequestDetail;
 
 //   useEffect(() => {
 //     fetchExportRequestData();
-//   }, [fetchExportRequestData]);
+//   }, []);
 
-//   // Chỉ gọi fetchExportRequestDetails khi exportRequestId thay đổi (và gọi lại khi pagination thay đổi qua handleTableChange)
 //   useEffect(() => {
-//     fetchExportRequestDetails();
+//     fetchDetails();
 //     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, [exportRequestId]);
+//   }, []);
 
-//   // Hàm chuyển đổi exportType sang mô tả
+//   // Hàm chuyển đổi loại phiếu xuất sang mô tả hiển thị
 //   const getExportTypeText = (type) => {
-//     const typeMap = {
-//       RETURN: "Xuất trả nhà sản xuất",
-//       USE: "Xuất nội bộ",
-//       LOAN: "Xuất mượn",
-//     };
-//     return typeMap[type] || type;
+//     if (type === "PRODUCTION") return "Xuất sản xuất";
+//     // Với BORROWING không hiển thị loại phiếu xuất
+//     return "";
 //   };
 
-//   // Render thông tin phiếu xuất dựa vào exportType
+//   // Render thông tin phiếu xuất
 //   const renderDescriptionItems = () => {
 //     if (!exportRequest) return null;
 //     const items = [
 //       <Descriptions.Item label="Mã phiếu xuất" key="exportId">
 //         #{exportRequest.exportRequestId}
 //       </Descriptions.Item>,
-//       <Descriptions.Item label="Loại phiếu xuất" key="exportType">
-//         {getExportTypeText(exportRequest.exportType)}
-//       </Descriptions.Item>,
 //       <Descriptions.Item label="Ngày xuất" key="exportDate">
 //         {exportRequest.exportDate
 //           ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
 //           : "-"}
 //       </Descriptions.Item>,
+//       <Descriptions.Item label="Người lập phiếu" key="createdBy">
+//         {exportRequest.createdBy || "-"}
+//       </Descriptions.Item>,
 //     ];
 
-//     if (exportRequest.exportType === "RETURN") {
+//     if (exportRequest.type === "PRODUCTION") {
 //       items.push(
-//         <Descriptions.Item
-//           label="Nhà cung cấp nhận hàng trả về"
-//           key="supplierReceiver"
-//         >
-//           {exportRequest.supplierReceiver?.name || "-"}
+//         <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+//           {getExportTypeText(exportRequest.type)}
 //         </Descriptions.Item>,
-//         <Descriptions.Item label="Người phụ trách trả hàng" key="returnManager">
-//           {exportRequest.returnManager?.name || "-"}
+//         <Descriptions.Item label="Phòng ban" key="receivingDepartment">
+//           {exportRequest.departmentId || "-"}
 //         </Descriptions.Item>,
-//         <Descriptions.Item label="Phiếu nhập tham chiếu" key="importReference">
-//           {exportRequest.importReference?.name || "-"}
+//         <Descriptions.Item label="Người nhận hàng" key="receiverName">
+//           {exportRequest.receiverName || "-"}
 //         </Descriptions.Item>,
-//         <Descriptions.Item label="Lý do trả hàng" key="returnReason" span={2}>
-//           {exportRequest.returnReason || "-"}
+//         <Descriptions.Item label="Số điện thoại nhận hàng" key="receiverPhone">
+//           {exportRequest.receiverPhone || "-"}
+//         </Descriptions.Item>,
+//         <Descriptions.Item label="Lý do xuất" key="exportReason">
+//           {exportRequest.exportReason || "-"}
 //         </Descriptions.Item>
 //       );
-//     } else if (exportRequest.exportType === "USE") {
-//       items.push(
-//         <Descriptions.Item
-//           label="Bộ phận/phân xưởng nhận hàng"
-//           key="receivingDepartment"
-//         >
-//           {exportRequest.receivingDepartment?.name || "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item
-//           label="Người phụ trách nhận hàng"
-//           key="receivingManager"
-//         >
-//           {exportRequest.receivingManager || "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item label="Lệnh sản xuất" key="productionOrder">
-//           {exportRequest.productionOrder || "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item label="Mục đích sử dụng" key="usagePurpose" span={2}>
-//           {exportRequest.usagePurpose || "-"}
-//         </Descriptions.Item>
-//       );
-//     } else if (exportRequest.exportType === "LOAN") {
-//       items.push(
-//         <Descriptions.Item label="Người/Bộ phận mượn hàng" key="borrower">
-//           {exportRequest.borrower || "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item label="Người phụ trách" key="loanManager">
-//           {exportRequest.loanManager?.name || "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item label="Thời hạn mượn" key="loanExpiry">
-//           {exportRequest.loanExpiry
-//             ? new Date(exportRequest.loanExpiry).toLocaleDateString("vi-VN")
-//             : "-"}
-//         </Descriptions.Item>,
-//         <Descriptions.Item label="Lý do mượn" key="loanReason" span={2}>
-//           {exportRequest.loanReason || "-"}
-//         </Descriptions.Item>
-//       );
+//     } else if (exportRequest.type === "BORROWING") {
+//       // Với phiếu xuất mượn, không hiển thị loại phiếu xuất
+//       if (exportRequest.receiverAddress) {
+//         // Mượn bên ngoài
+//         items.push(
+//           <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+//             Xuất muợn (bên ngoài)
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Tên công ty/Người mượn" key="receiverName">
+//             {exportRequest.receiverName || "-"}
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Số điện thoại" key="receiverPhone">
+//             {exportRequest.receiverPhone || "-"}
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Địa chỉ" key="receiverAddress">
+//             {exportRequest.receiverAddress || "-"}
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Lý do mượn" key="exportReason">
+//             {exportRequest.exportReason || "-"}
+//           </Descriptions.Item>
+//         );
+//       } else {
+//         // Mượn nội bộ
+//         items.push(
+//           <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+//             Xuất muợn (nội bộ)
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Người nhận hàng" key="receiverName">
+//             {exportRequest.receiverName || "-"}
+//           </Descriptions.Item>,
+//           <Descriptions.Item
+//             label="Số điện thoại nhận hàng"
+//             key="receiverPhone"
+//           >
+//             {exportRequest.receiverPhone || "-"}
+//           </Descriptions.Item>,
+//           <Descriptions.Item label="Lý do mượn" key="exportReason">
+//             {exportRequest.exportReason || "-"}
+//           </Descriptions.Item>
+//         );
+//       }
+//       if (exportRequest.expectedReturnDate) {
+//         items.push(
+//           <Descriptions.Item label="Ngày trả dự kiến" key="expectedReturnDate">
+//             {new Date(exportRequest.expectedReturnDate).toLocaleDateString(
+//               "vi-VN"
+//             )}
+//           </Descriptions.Item>
+//         );
+//       }
 //     }
 
 //     items.push(
@@ -510,11 +617,10 @@ export default ExportRequestDetail;
 //         {exportRequest.note || "-"}
 //       </Descriptions.Item>
 //     );
-
 //     return items;
 //   };
 
-//   // Định nghĩa các cột cho bảng chi tiết sản phẩm xuất
+//   // Định nghĩa cột cho bảng chi tiết sản phẩm xuất (sử dụng itemName đã được enrich)
 //   const columns = [
 //     {
 //       title: "Mã sản phẩm",
@@ -530,23 +636,24 @@ export default ExportRequestDetail;
 //     },
 //     {
 //       title: "Số lượng cần",
-//       dataIndex: "requiredQuantity",
-//       key: "requiredQuantity",
+//       dataIndex: "quantity",
+//       key: "quantity",
 //     },
 //     {
-//       title: "Số lượng tồn kho",
-//       dataIndex: "stockQuantity",
-//       key: "stockQuantity",
+//       title: "Số lượng đã kiểm đếm",
+//       dataIndex: "actualQuantity",
+//       key: "actualQuantity",
 //     },
 //     {
-//       title: "Số lượng dự tồn",
-//       key: "projectedQuantity",
-//       render: (_, record) => record.stockQuantity - record.requiredQuantity,
+//       title: "Quy cách",
+//       dataIndex: "measurementValue",
+//       key: "measurementValue",
 //     },
 //     {
-//       title: "Đơn vị tính",
-//       dataIndex: "unit",
-//       key: "unit",
+//       title: "Trạng thái",
+//       dataIndex: "status",
+//       key: "status",
+//       render: (status) => status || "-",
 //     },
 //   ];
 
@@ -556,7 +663,7 @@ export default ExportRequestDetail;
 //       current: pag.current,
 //       pageSize: pag.pageSize,
 //     });
-//     fetchExportRequestDetails(pag.current, pag.pageSize);
+//     fetchDetails(pag.current, pag.pageSize);
 //   };
 
 //   const handleBack = () => {
@@ -598,11 +705,13 @@ export default ExportRequestDetail;
 //       <Table
 //         columns={columns}
 //         dataSource={exportRequestDetails}
-//         rowKey="itemId"
+//         rowKey="id"
 //         loading={detailsLoading}
 //         onChange={handleTableChange}
 //         pagination={{
-//           ...pagination,
+//           current: pagination.current,
+//           pageSize: pagination.pageSize,
+//           total: pagination.total,
 //           showSizeChanger: true,
 //           pageSizeOptions: ["10", "50"],
 //           showTotal: (total) => `Tổng cộng ${total} sản phẩm`,

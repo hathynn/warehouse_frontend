@@ -18,6 +18,11 @@ const ExcelDataTable = ({ data }) => {
       dataIndex: "quantity",
       key: "quantity",
     },
+    {
+      title: "Quy cách", // cột measurementValue
+      dataIndex: "measurementValue",
+      key: "measurementValue",
+    },
   ];
 
   return (

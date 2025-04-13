@@ -86,9 +86,9 @@ const ExportRequestList = () => {
     switch (type) {
       case "RETURN":
         return "Xuất trả nhà cung cấp";
-      case "USE":
-        return "Xuất sử dụng (nội bộ, sản xuất)";
-      case "LOAN":
+      case "PRODUCTION":
+        return "Xuất sử dụng";
+      case "BORROWING":
         return "Xuất mượn";
       default:
         return type;
