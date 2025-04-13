@@ -42,12 +42,7 @@ const importMenuItems: MenuItem[] = [
         key: "import-request",
         label: "Phiếu nhập kho",
         path: ROUTES.PROTECTED.IMPORT.REQUEST.LIST,
-      },
-      {
-        key: "import-order",
-        label: "Đơn nhập kho",
-        path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
-      },
+      }
     ],
   },
 ];
@@ -81,6 +76,7 @@ const itemMenuItems: MenuItem[] = [
 
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
+  
   [AccountRole.DEPARTMENT]: [
     ...baseMenuItems,
     ...importMenuItems,
@@ -88,26 +84,11 @@ export const menuItems: RoleMenuConfig = {
   ],
   
   [AccountRole.STAFF]: [
-    ...baseMenuItems,
-    {
-      key: "import",
-      icon: AiOutlineImport,
-      label: "Quản lý nhập kho",
-      path: "",
-      children: [
-        {
-          key: "import-order",
-          label: "Đơn nhập kho",
-          path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
-        },
-      ],
-    },
-    ...itemMenuItems,
+
   ],
-  
+
   [AccountRole.WAREHOUSE_MANAGER]: [
-    ...baseMenuItems,
-    ...exportMenuItems,
+
   ],
   
   [AccountRole.ACCOUNTING]: [

@@ -109,7 +109,7 @@ const ImportRequestDetail: React.FC = () => {
     if (importRequestId) {
       fetchImportRequestData();
     }
-  }, [importRequestId, fetchImportRequestData]);
+  }, [importRequestId]);
 
   useEffect(() => {
     if (importRequestId) {
@@ -152,13 +152,13 @@ const ImportRequestDetail: React.FC = () => {
 
   const handleCreateImportOrder = (): void => {
     if (importRequestId) {
-      navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE__FROM_IMPORT_REQUEST_ID(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId));
     }
   };
 
   const handleViewImportOrders = (): void => {
     if (importRequestId) {
-      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_IMPORT_REQUEST_ID(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importRequestId));
     }
   };
 

@@ -10,6 +10,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
 import { InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx"
+import { ROUTES } from "@/constants/routes";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -212,7 +213,7 @@ const ImportOrderCreate = () => {
         }
 
         toast.success("Tạo đơn nhập kho thành công!");
-        navigate((selectedImportRequest.toString()));
+        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
       }
     } catch (error) {
       console.error("Error submitting form:", error);

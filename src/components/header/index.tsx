@@ -13,11 +13,11 @@ interface HeaderDashboardProps {
 
 const getRoleDisplayName = (role: AccountRole): string => {
   const roleMap: Record<AccountRole, string> = {
-    [AccountRole.DEPARTMENT]: "Phòng Ban",
-    [AccountRole.STAFF]: "Nhân Viên",
-    [AccountRole.ADMIN]: "Quản Trị Viên",
+    [AccountRole.DEPARTMENT]: "Phòng Kế Hoạch",
     [AccountRole.WAREHOUSE_MANAGER]: "Quản Lý Kho",
-    [AccountRole.ACCOUNTING]: "Kế Toán"
+    [AccountRole.STAFF]: "Nhân Viên",
+    [AccountRole.ACCOUNTING]: "Kế Toán",
+    [AccountRole.ADMIN]: "Quản Trị Viên"
   };
   return roleMap[role] || role;
 };

@@ -3,8 +3,8 @@ import * as XLSX from "xlsx";
 import { Button, Input, Select, Table, Typography, Space, Card, Alert } from "antd";
 import { UploadOutlined, DownloadOutlined } from "@ant-design/icons";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
-import useProviderService from "@/hooks/useProviderService";
-import useItemService from "@/hooks/useItemService";
+import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
+import useItemService, { ItemResponse } from "@/hooks/useItemService";
 import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -14,13 +14,12 @@ const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-// Interface matching ImportRequestDetailExcelRow.java
 interface ImportRequestDetailRow {
   itemId: number;
   quantity: number;
   providerId: number;
-  itemName: string;  // Additional field for UI display
-  providerName: string;  // Additional field for UI display
+  itemName: string;
+  providerName: string;
 }
 
 interface FormData {
@@ -38,8 +37,8 @@ const ImportRequestCreate: React.FC = () => {
     importType: "ORDER",
     exportRequestId: null,
   });
-  const [providers, setProviders] = useState<any[]>([]);  // TODO: Add proper Provider interface
-  const [items, setItems] = useState<any[]>([]);  // TODO: Add proper Item interface
+  const [providers, setProviders] = useState<ProviderResponse[]>([]);
+  const [items, setItems] = useState<ItemResponse[]>([]);
   const [validationError, setValidationError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -67,12 +66,15 @@ const ImportRequestCreate: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [providersData, itemsData] = await Promise.all([
+        const [providersResponse, itemsResponse] = await Promise.all([
           getAllProviders(),
           getItems()
         ]);
-        setProviders(providersData?.content || []);
-        setItems(itemsData?.content || []);
+
+        if (providersResponse?.content && itemsResponse?.content) {
+          setProviders(providersResponse.content);
+          setItems(itemsResponse.content);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Không thể lấy dữ liệu cần thiết");
@@ -110,15 +112,15 @@ const ImportRequestCreate: React.FC = () => {
                 throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã nhà cung cấp`);
               }
               
-              const itemName = items.find(i => i.id === Number(itemId))?.name || "Unknown";
-              const providerName = providers.find(p => p.id === Number(providerId))?.name || "Unknown";
+              const foundItem = items.find(i => i.id === Number(itemId));
+              const foundProvider = providers.find(p => p.id === Number(providerId));
               
               return {
                 itemId: Number(itemId),
                 quantity: Number(quantity),
                 providerId: Number(providerId),
-                itemName,
-                providerName
+                itemName: foundItem?.name || "Unknown",
+                providerName: foundProvider?.name || "Unknown"
               };
             });
             
@@ -186,6 +188,7 @@ const ImportRequestCreate: React.FC = () => {
         toast.success("Tạo phiếu nhập kho thành công!");
         navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
         
+        // Reset form
         setFormData({
           importReason: "",
           importType: "ORDER",

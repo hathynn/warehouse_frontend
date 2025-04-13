@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from "react";
-import api from "../config/api";
+import api from "@/config/api";
 
 const useApiService = () => {
   const [loading, setIsLoading] = useState<boolean>(false);

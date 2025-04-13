@@ -153,12 +153,16 @@ const ImportOrderDetail = () => {
   };
 
   useEffect(() => {
-    fetchImportOrderData();
-  }, [fetchImportOrderData]);
+    if (importOrderId) {
+      fetchImportOrderData();
+    }
+  }, [importOrderId]);
 
   useEffect(() => {
-    fetchImportOrderDetails();
-  }, [fetchImportOrderDetails]);
+    if (importOrderId) {
+      fetchImportOrderDetails();
+    }
+  }, [importOrderId]);
 
   // Handle pagination changes
   useEffect(() => {

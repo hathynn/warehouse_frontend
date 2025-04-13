@@ -20,29 +20,30 @@ export const ROLE_DEFAULT_ROUTES = {
 // Route permissions mapping
 export const ROUTE_PERMISSIONS = {
   [AccountRole.DEPARTMENT]: [
+    // Import routes
     '/import/request-list',
     '/import/request-detail/:id',
     '/import/create-request',
-    '/import/order-list',
+    '/import/order-list/:id',
     '/import/order-detail/:id',
-    '/import/create-order',
+    '/import/create-order/:id',
+
+    // Export routes
     '/export/request-list',
     '/export/request-detail/:id',
     '/export/create-request',
+
+    // Item routes
     '/item/list',
     '/item/detail/:id',
     '/item/create',
   ],
   [AccountRole.STAFF]: [
-    '/import/order-list',
-    '/import/order-detail/:id',
-    '/item/list',
-    '/item/detail/:id',
+
   ],
   [AccountRole.WAREHOUSE_MANAGER]: [
-    '/export/request-list',
-    '/export/request-detail/:id',
-    '/export/create-request',
+    '/import/order-list',
+    '/import/order-detail/:id'
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -84,14 +85,13 @@ export const ROUTES = {
     IMPORT: {
       REQUEST: {
         LIST: '/import/request-list',
-        DETAIL: (id = ':id') => `/import/request-detail/${id}`,
+        DETAIL: (id = ':importRequestId') => `/import/request-detail/${id}`,
         CREATE: '/import/create-request',
       },
       ORDER: {
-        LIST: '/import/order-list',
-        DETAIL: (id = ':id') => `/import/order-detail/${id}`,
-        CREATE: '/import/create-order',
-        CREATE_FROM_REQUEST: (requestId = ':requestId') => `/import/create-order/${requestId}`,
+        LIST_FROM_REQUEST: (id = ':importRequestId') => `/import/order-list/${id}`,
+        DETAIL: (id = ':importOrderId') => `/import/order-detail/${id}`,
+        CREATE_FROM_REQUEST: (id = ':importRequestId') => `/import/create-order/${id}`,
       },
     },
     
@@ -99,7 +99,7 @@ export const ROUTES = {
     EXPORT: {
       REQUEST: {
         LIST: '/export/request-list',
-        DETAIL: (id = ':id') => `/export/request-detail/${id}`,
+        DETAIL: (id = ':exportRequestId') => `/export/request-detail/${id}`,
         CREATE: '/export/create-request',
       },
     },

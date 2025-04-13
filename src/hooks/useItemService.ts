@@ -2,7 +2,8 @@ import { useState } from "react";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 
-interface ItemRequest {
+// Interface to match ItemRequest.java
+export interface ItemRequest {
   id?: number;
   name: string;
   description: string;
@@ -16,19 +17,55 @@ interface ItemRequest {
   providerId: number;
 }
 
+// Interface to match ItemResponse.java
+export interface ItemResponse {
+  id: number;
+  name: string;
+  description: string;
+  measurementUnit: string;
+  totalMeasurementValue: number;
+  unitType: string;
+  daysUntilDue: number;
+  minimumStockQuantity: number;
+  maximumStockQuantity: number;
+  categoryId: number;
+  providerId: number;
+  importOrderDetailIds: number[];
+  importRequestDetailIds: number[];
+  exportRequestDetailIds: number[];
+  inventoryItemIds: number[];
+}
+
+// Interface to match MetaDataDTO.java
+export interface MetaDataDTO {
+  hasNext: boolean;
+  hasPrevious: boolean;
+  limit: number;
+  totalElements: number;
+  page: number;
+}
+
+// Interface to match ResponseDTO.java
+export interface ResponseDTO<T> {
+  content: T;
+  message: string;
+  status: number;
+  metadata?: MetaDataDTO;
+}
+
 const useItemService = () => {
   const { callApi, loading } = useApiService();
   const [itemId, setItemId] = useState<number | null>(null);
 
   // Tạo sản phẩm mới
-  const createItem = async (requestData: ItemRequest) => {
+  const createItem = async (requestData: ItemRequest): Promise<ResponseDTO<ItemResponse>> => {
     try {
       const response = await callApi("post", "/item", requestData);
       if (response && response.content) {
         setItemId(response.content.id);
         toast.success("Tạo sản phẩm thành công");
-        return response.content;
       }
+      return response;
     } catch (error) {
       toast.error("Không thể tạo sản phẩm");
       console.error("Error creating item:", error);
@@ -37,7 +74,7 @@ const useItemService = () => {
   };
 
   // Cập nhật sản phẩm
-  const updateItem = async (requestData: ItemRequest) => {
+  const updateItem = async (requestData: ItemRequest): Promise<ResponseDTO<ItemResponse>> => {
     try {
       const response = await callApi("put", "/item", requestData);
       toast.success("Cập nhật sản phẩm thành công");
@@ -50,13 +87,13 @@ const useItemService = () => {
   };
 
   // Lấy danh sách sản phẩm
-  const getItems = async (page = 1, limit = 10) => {
+  const getItems = async (page = 1, limit = 10): Promise<ResponseDTO<ItemResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
         `/item?page=${page}&limit=${limit}`
       );
-      return response.content;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm");
       console.error("Error fetching items:", error);
@@ -65,10 +102,10 @@ const useItemService = () => {
   };
 
   // Lấy sản phẩm theo ID
-  const getItemById = async (itemId: number) => {
+  const getItemById = async (itemId: number): Promise<ResponseDTO<ItemResponse>> => {
     try {
       const response = await callApi("get", `/item/${itemId}`);
-      return response.content;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
       console.error("Error fetching item:", error);
@@ -77,7 +114,7 @@ const useItemService = () => {
   };
 
   // Xóa sản phẩm
-  const deleteItem = async (itemId: number) => {
+  const deleteItem = async (itemId: number): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi("delete", `/item/${itemId}`);
       toast.success("Xóa sản phẩm thành công");
@@ -90,13 +127,13 @@ const useItemService = () => {
   };
 
   // Lấy sản phẩm theo danh mục
-  const getItemsByCategory = async (categoryId: number, page = 1, limit = 10) => {
+  const getItemsByCategory = async (categoryId: number, page = 1, limit = 10): Promise<ResponseDTO<ItemResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
         `/item/category/${categoryId}?page=${page}&limit=${limit}`
       );
-      return response.content;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo danh mục");
       console.error("Error fetching items by category:", error);
@@ -105,13 +142,13 @@ const useItemService = () => {
   };
 
   // Lấy sản phẩm theo nhà cung cấp
-  const getItemsByProvider = async (providerId: number, page = 1, limit = 10) => {
+  const getItemsByProvider = async (providerId: number, page = 1, limit = 10): Promise<ResponseDTO<ItemResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
         `/item/provider/${providerId}?page=${page}&limit=${limit}`
       );
-      return response.content;
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo nhà cung cấp");
       console.error("Error fetching items by provider:", error);
