@@ -40,8 +40,13 @@ const importMenuItems: MenuItem[] = [
     children: [
       {
         key: "import-request",
-        label: "Phiếu nhập kho",
+        label: "Danh sách phiếu nhập",
         path: ROUTES.PROTECTED.IMPORT.REQUEST.LIST,
+      },
+      {
+        key: "import-order",
+        label: "Danh sách đơn nhập",
+        path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
       }
     ],
   },
@@ -57,7 +62,7 @@ const exportMenuItems: MenuItem[] = [
     children: [
       {
         key: "export-request",
-        label: "Phiếu xuất kho",
+        label: "Danh sách phiếu xuất",
         path: ROUTES.PROTECTED.EXPORT.REQUEST.LIST,
       },
     ],

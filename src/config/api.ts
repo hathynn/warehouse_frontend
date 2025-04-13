@@ -1,11 +1,32 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from "axios";
 import { store } from "@/redux/store";
+import { setCredentials, logout } from "@/redux/features/userSlice";
 
 // Create axios instance with base configuration
 const api: AxiosInstance = axios.create({
   // baseURL: "http://localhost:8080",
   baseURL: "https://warehouse-backend-jlcj5.ondigitalocean.app",
 });
+
+// Flag to track if token refresh is in progress
+let isRefreshing = false;
+// Store for failed requests that will be retried after token refresh
+let failedQueue: Array<{
+  resolve: (value?: unknown) => void;
+  reject: (error?: unknown) => void;
+}> = [];
+
+// Process failed queue
+const processQueue = (error: Error | null) => {
+  failedQueue.forEach(promise => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve();
+    }
+  });
+  failedQueue = [];
+};
 
 // Add request interceptor
 api.interceptors.request.use(
@@ -22,6 +43,65 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
+  }
+);
+
+// Add response interceptor
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config;
+    
+    // If there's no config, or error is not 401, or it's already a retry, reject
+    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // If token refresh is in progress, queue the request
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then(() => api(originalRequest))
+        .catch((err) => Promise.reject(err));
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    const state = store.getState();
+    const refreshToken = state.user.refreshToken;
+
+    try {
+      const response = await api.post("/account/refresh-token", {}, {
+        headers: {
+          Authorization: `Bearer ${refreshToken}`
+        }
+      });
+
+      const { access_token, refresh_token } = response.data.content;
+      
+      // Update tokens in Redux store
+      store.dispatch(setCredentials({
+        accessToken: access_token,
+        refreshToken: refresh_token
+      }));
+
+      // Update authorization header for the original request
+      originalRequest.headers.Authorization = `Bearer ${access_token}`;
+      
+      // Process queued requests
+      processQueue(null);
+      
+      return api(originalRequest);
+    } catch (refreshError) {
+      // If refresh token fails, logout user and reject all queued requests
+      store.dispatch(logout());
+      processQueue(new Error('Refresh token failed'));
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 

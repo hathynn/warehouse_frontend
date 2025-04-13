@@ -19,7 +19,7 @@ import {
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useInventoryItemService from "@/hooks/useInventoryItemService";
-import useAccountService, { AccountRole } from "@/hooks/useAccountService";
+import useAccountService, { AccountRole, AccountRoleForRequest } from "@/hooks/useAccountService";
 import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
@@ -41,7 +41,7 @@ const ImportOrderDetail = () => {
   const [qrCodes, setQrCodes] = useState<QrCodeResponse[]>([]);
   const [qrCodesLoading, setQrCodesLoading] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const [warehouseKeepers, setWarehouseKeepers] = useState<AccountResponse[]>([]);
+  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
   const [assigningStaff, setAssigningStaff] = useState(false);
@@ -102,11 +102,11 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
 
-  const fetchWarehouseKeepers = async () => {
+  const fetchStaffs = async () => {
     try {
       setLoadingStaff(true);
-      const staff = await getAccountsByRole(AccountRole.STAFF);
-      setWarehouseKeepers(staff);
+      const staff = await getAccountsByRole(AccountRoleForRequest.STAFF);
+      setStaffs(staff);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);
       message.error("Không thể tải danh sách nhân viên kho");
@@ -117,7 +117,7 @@ const ImportOrderDetail = () => {
 
   const handleOpenAssignModal = () => {
     setSelectedStaffId(null);
-    fetchWarehouseKeepers();
+    fetchStaffs();
     setAssignModalVisible(true);
   };
 
@@ -397,7 +397,7 @@ const ImportOrderDetail = () => {
           <div>
             <p className="mb-4">Chọn nhân viên kho để phân công cho đơn nhập #{importOrder?.importOrderId}</p>
             <Table 
-              dataSource={warehouseKeepers}
+              dataSource={staffs}
               rowKey="id"
               pagination={false}
               columns={[

@@ -57,6 +57,14 @@ export enum AccountRole {
   ACCOUNTING = "ROLE_ACCOUNTING"
 }
 
+export enum AccountRoleForRequest {
+  DEPARTMENT = "DEPARTMENT",
+  STAFF = "STAFF",
+  ADMIN = "ADMIN",
+  WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
+  ACCOUNTING = "ACCOUNTING"
+}
+
 const useAccountService = () => {
   const { callApi, loading } = useApiService();
 
@@ -123,7 +131,7 @@ const useAccountService = () => {
    * @param role - The role to filter accounts by
    * @returns Promise resolving to an array of AccountResponse objects
    */
-  const getAccountsByRole = async (role: AccountRole): Promise<AccountResponse[]> => {
+  const getAccountsByRole = async (role: AccountRoleForRequest): Promise<AccountResponse[]> => {
     try {
       const response = await callApi("get", `/account/role/${role}`);
       if (response && response.content) {
@@ -145,7 +153,7 @@ const useAccountService = () => {
    * @returns Promise resolving to paginated AccountResponse objects
    */
   const getAccountsByRoleWithPagination = async (
-    role: AccountRole,
+    role: AccountRoleForRequest,
     page: number = 1,
     limit: number = 10
   ) => {

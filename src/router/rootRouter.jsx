@@ -94,6 +94,10 @@ export const rootRouter = createBrowserRouter([
             element: <ImportRequestDetail />,
           },
           {
+            path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
+            element: <ImportOrderList />,
+          },
+          {
             path: ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(),
             element: <ImportOrderList />,
           },

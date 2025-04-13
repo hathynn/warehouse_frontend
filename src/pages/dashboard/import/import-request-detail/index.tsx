@@ -221,7 +221,7 @@ const ImportRequestDetail: React.FC = () => {
               icon={<UnorderedListOutlined />}
               onClick={handleViewImportOrders}
             >
-              Xem danh sách đơn nhập
+              Xem đơn nhập của phiếu #{importRequest?.importRequestId}
             </Button>
           )}
           {importRequest?.status !== "COMPLETED" && importRequest?.status !== "CANCELLED" && (
@@ -230,7 +230,7 @@ const ImportRequestDetail: React.FC = () => {
               icon={<FileAddOutlined />}
               onClick={handleCreateImportOrder}
             >
-              Tạo đơn nhập hàng
+              Tạo đơn nhập cho phiếu #{importRequest?.importRequestId}
             </Button>
           )}
         </div>

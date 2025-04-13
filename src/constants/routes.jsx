@@ -12,7 +12,7 @@ export const BASE_ROUTES = {
 export const ROLE_DEFAULT_ROUTES = {
   [AccountRole.DEPARTMENT]: '/import/request-list',
   [AccountRole.STAFF]: '/import/order-list',
-  [AccountRole.WAREHOUSE_MANAGER]: '/export/request-list',
+  [AccountRole.WAREHOUSE_MANAGER]: '/import/request-list',
   [AccountRole.ACCOUNTING]: '/overview', // Thay đổi theo requirement
   [AccountRole.ADMIN]: '/overview', // Thay đổi theo requirement
 };
@@ -27,6 +27,7 @@ export const ROUTE_PERMISSIONS = {
     '/import/order-list/:id',
     '/import/order-detail/:id',
     '/import/create-order/:id',
+    '/import/orders',
 
     // Export routes
     '/export/request-list',
@@ -42,8 +43,11 @@ export const ROUTE_PERMISSIONS = {
 
   ],
   [AccountRole.WAREHOUSE_MANAGER]: [
+    '/import/request-list',
+    '/import/request-detail/:id',
     '/import/order-list',
-    '/import/order-detail/:id'
+    '/import/order-detail/:id',
+    '/import/orders',
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -89,6 +93,7 @@ export const ROUTES = {
         CREATE: '/import/create-request',
       },
       ORDER: {
+        LIST: '/import/orders',
         LIST_FROM_REQUEST: (id = ':importRequestId') => `/import/order-list/${id}`,
         DETAIL: (id = ':importOrderId') => `/import/order-detail/${id}`,
         CREATE_FROM_REQUEST: (id = ':importRequestId') => `/import/create-order/${id}`,

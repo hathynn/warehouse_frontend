@@ -97,6 +97,24 @@ const useImportOrderService = () => {
   const { callApi, loading } = useApiService();
   const [importOrderId, setImportOrderId] = useState<number | null>(null);
 
+  // Add new function to get all import orders
+  const getAllImportOrders = async (
+    page = 1,
+    limit = 10
+  ): Promise<ResponseDTO<ImportOrderResponse[]>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/import-order/page?page=${page}&limit=${limit}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách đơn nhập");
+      console.error("Error fetching all import orders:", error);
+      throw error;
+    }
+  };
+
   // Get all import orders for a specific import request with pagination
   const getImportOrdersByRequestId = async (
     importRequestId: number, 
@@ -190,6 +208,7 @@ const useImportOrderService = () => {
   return {
     loading,
     importOrderId,
+    getAllImportOrders,
     getImportOrdersByRequestId,
     getImportOrderById,
     createImportOrder,

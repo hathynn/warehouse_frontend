@@ -10,7 +10,7 @@ import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 
 interface RouteParams extends Record<string, string> {
-  importRequestId: string;
+  importRequestId?: string;
 }
 
 const ImportOrderList: React.FC = () => {
@@ -26,6 +26,7 @@ const ImportOrderList: React.FC = () => {
 
   const {
     getImportOrdersByRequestId,
+    getAllImportOrders,
     loading
   } = useImportOrderService();
 
@@ -35,20 +36,25 @@ const ImportOrderList: React.FC = () => {
 
   const fetchImportOrders = async (): Promise<void> => {
     try {
-      if (!importRequestId) return;
+      let response: ResponseDTO<ImportOrderResponse[]>;
+      
+      if (importRequestId) {
+        response = await getImportOrdersByRequestId(
+          parseInt(importRequestId),
+          pagination.current || 1,
+          pagination.pageSize || 10
+        );
+      } else {
+        response = await getAllImportOrders(
+          pagination.current || 1,
+          pagination.pageSize || 10
+        );
+      }
 
-      const response: ResponseDTO<ImportOrderResponse[]> = await getImportOrdersByRequestId(
-        parseInt(importRequestId),
-        pagination.current || 1,
-        pagination.pageSize || 10
-      );
-
-      // Update state with the content array from the response
       if (response && response.content) {
         setImportOrders(response.content);
       }
 
-      // Update pagination with metadata
       if (response && response.metadata) {
         setPagination({
           current: response.metadata.page,
@@ -156,24 +162,32 @@ const ImportOrderList: React.FC = () => {
     },
   ];
 
-  const handleBackToImportRequest = (): void => {
+  const handleBackButton = (): void => {
     if (importRequestId) {
       navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequestId));
+    } else {
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
     }
   };
 
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-3">
-          <Button
-            type="primary"
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBackToImportRequest}
-          >
-            Quay lại - Phiếu nhập #{importRequestId}
-          </Button>
+        <Button
+          type="primary"
+          icon={<ArrowLeftOutlined />}
+          onClick={handleBackButton}
+        >
+          {importRequestId 
+            ? `Quay lại - Phiếu nhập #${importRequestId}`
+            : 'Quay lại danh sách phiếu nhập'}
+        </Button>
       </div>
-      <h1 className="text-xl font-bold mr-4 mb-3">Danh sách đơn nhập</h1>
+      <h1 className="text-xl font-bold mr-4 mb-3">
+        {importRequestId 
+          ? `Danh sách đơn nhập - Phiếu nhập #${importRequestId}`
+          : 'Danh sách tất cả đơn nhập'}
+      </h1>
 
       <div className="mb-4">
         <Input
