@@ -69,13 +69,13 @@ const ExportRequestList = () => {
 
   const getStatusTag = (status) => {
     switch (status) {
-      case "PROCESSING":
-        return <Tag color="default">Đang xử lý</Tag>;
-      case "CHECKED":
+      case 0:
+        return <Tag color="default">Chưa bắt đầu</Tag>;
+      case 1:
         return <Tag color="processing">Đã kiểm kho</Tag>;
-      case "EXPORTED":
-        return <Tag color="success">Đã xuất kho</Tag>;
-      case "CANCELLED":
+      case 2:
+        return <Tag color="success">Hoàn tất</Tag>;
+      case 4:
         return <Tag color="error">Đã hủy</Tag>;
       default:
         return <Tag color="default">{status}</Tag>;
