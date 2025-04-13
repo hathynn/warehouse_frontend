@@ -9,7 +9,6 @@ import {
   Select,
   Input,
   Modal,
-  Table,
 } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -21,30 +20,27 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import FileUploadSection from "@/components/export-flow/FileUploadSection";
-import ReturnExportForm from "@/components/export-flow/ReturnExportForm";
 import UseExportForm from "@/components/export-flow/UseExportForm";
 import LoanExportForm from "@/components/export-flow/LoanExportForm";
 import ExcelDataTable from "@/components/export-flow/ExcelDataTable";
 import SelectModal from "@/components/export-flow/SelectModal";
-import useRoleService from "../../../../hooks/useRoleService";
-import useItemService from "../../../../hooks/useItemService";
-import useExportRequestService from "../../../../hooks/useExportRequestService";
-import useExportRequestDetailService from "../../../../hooks/useExportRequestDetailService";
+import useItemService from "@/hooks/useItemService";
+import useExportRequestService from "@/hooks/useExportRequestService";
+import useExportRequestDetailService from "@/hooks/useExportRequestDetailService";
+import { useSelector } from "react-redux";
 
 const { Title } = Typography;
 const { Option } = Select;
-const { TextArea } = Input;
 
 const ExportRequestCreate = () => {
-  // --- State file và form ---
+  // --- State cho file upload và kiểm tra dữ liệu ---
   const [data, setData] = useState([]);
   const [fileName, setFileName] = useState("");
   const [file, setFile] = useState(null);
   const [validationError, setValidationError] = useState("");
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
-
-  // --- State cho danh sách sản phẩm (để mapping itemName) ---
+  // --- Lấy danh sách sản phẩm ---
   const [items, setItems] = useState([]);
   const { loading: itemLoading, getItems } = useItemService();
   useEffect(() => {
@@ -60,93 +56,50 @@ const ExportRequestCreate = () => {
     fetchItems();
   }, []);
 
-  // --- Form data cho export request ---
+  // --- State cho dữ liệu form ---
+  // Dữ liệu form được thiết kế theo giao diện của UseExportForm và LoanExportForm
   const [formData, setFormData] = useState({
-    exportType: "USE", // Mặc định là USE
+    exportType: "PRODUCTION", // hoặc "LOAN"
     exportDate: moment().format("YYYY-MM-DD"),
     exportTime: moment().format("HH:mm:ss"),
     exportReason: "",
-    receiverName: "",
-    receiverPhone: "",
-    receiverAddress: "",
-    assignedWareHouseKeeper: null, // Lưu đối tượng Warehouse Keeper
     note: "",
-    supplierReceiver: null,
-    returnManager: null,
-    importReference: null,
-    returnReason: "",
-    receivingDepartment: null,
-    receivingManager: "",
-    productionOrder: "",
-    usagePurpose: "",
-    borrower: "",
-    loanManager: null,
-    loanExpiry: null,
+    // Dành cho Production:
+    receivingDepartment: null, // đối ứng với departmentId
+    departmentRepresentative: "", // đối ứng với receiverName (nội bộ)
+    departmentRepresentativePhone: "", // đối ứng với receiverPhone (nội bộ)
+    // Dành cho LOAN:
+    loanType: "INTERNAL", // "INTERNAL" hoặc "EXTERNAL"
+    borrowerName: "",
+    borrowerPhone: "",
+    borrowerAddress: "",
+    returnDate: "", // expectedReturnDate
     loanReason: "",
   });
 
-  // --- Dữ liệu cứng cho các modal ---
-  const suppliers = [
-    { id: 1, name: "Nhà cung cấp A" },
-    { id: 2, name: "Nhà cung cấp B" },
-    { id: 3, name: "Nhà cung cấp C" },
-  ];
-  const managers = [
-    { id: 1, name: "Người phụ trách A" },
-    { id: 2, name: "Người phụ trách B" },
-    { id: 3, name: "Người phụ trách C" },
-  ];
-  const importReferences = [
-    { id: 1, name: "Phiếu nhập #1001" },
-    { id: 2, name: "Phiếu nhập #1002" },
-    { id: 3, name: "Phiếu nhập #1003" },
-  ];
+  // --- Dữ liệu mẫu và state hiển thị modal cho danh sách phòng ban ---
   const departments = [
     { id: 1, name: "Bộ phận A" },
     { id: 2, name: "Phân xưởng B" },
     { id: 3, name: "Bộ phận C" },
   ];
-
-  // --- State cho các modal lựa chọn khác ---
-  const [supplierModalVisible, setSupplierModalVisible] = useState(false);
-  const [returnManagerModalVisible, setReturnManagerModalVisible] =
-    useState(false);
-  const [importReferenceModalVisible, setImportReferenceModalVisible] =
-    useState(false);
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
-  const [loanManagerModalVisible, setLoanManagerModalVisible] = useState(false);
 
-  // --- State cho modal Warehouse Keeper ---
-  const [warehouseKeepers, setWarehouseKeepers] = useState([]);
-  const [warehouseKeeperModalVisible, setWarehouseKeeperModalVisible] =
-    useState(false);
-  const [warehouseKeeperSearch, setWarehouseKeeperSearch] = useState("");
+  // --- Fake API: Lấy chi tiết phòng ban (dành cho Production) ---
+  const fakeFetchDepartmentDetails = (department) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const details = {
+          1: { receiverName: "Người đại diện A", receiverPhone: "0123456789" },
+          2: { receiverName: "Người đại diện B", receiverPhone: "0987654321" },
+          3: { receiverName: "Người đại diện C", receiverPhone: "0912345678" },
+        };
+        resolve(details[department.id]);
+      }, 500);
+    });
+  };
 
-  const { getAccountsByRole } = useRoleService();
-  const fetchWarehouseKeepers = async () => {
-    try {
-      const accounts = await getAccountsByRole({ role: "STAFF" });
-      setWarehouseKeepers(accounts);
-    } catch (error) {
-      console.error("Error fetching warehouse keepers:", error);
-    }
-  };
-  const openWarehouseKeeperModal = () => {
-    fetchWarehouseKeepers();
-    setWarehouseKeeperSearch("");
-    setWarehouseKeeperModalVisible(true);
-  };
-  const handleWarehouseKeeperSelect = (wk) => {
-    setFormData({ ...formData, assignedWareHouseKeeper: wk });
-    setWarehouseKeeperModalVisible(false);
-  };
-  const filteredWarehouseKeepers = warehouseKeepers.filter(
-    (wk) =>
-      wk.fullName.toLowerCase().includes(warehouseKeeperSearch.toLowerCase()) ||
-      wk.email.toLowerCase().includes(warehouseKeeperSearch.toLowerCase())
-  );
-
-  // --- File upload handlers ---
+  // --- Các hàm xử lý file Excel ---
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files[0];
     if (uploadedFile) {
@@ -182,9 +135,7 @@ const ExportRequestCreate = () => {
       reader.readAsArrayBuffer(uploadedFile);
     }
   };
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
-  };
+  const triggerFileInput = () => fileInputRef.current.click();
   const downloadTemplate = () => {
     const template = [{ itemId: "Mã hàng (số)", quantity: "Số lượng (số)" }];
     const ws = XLSX.utils.json_to_sheet(template);
@@ -193,109 +144,149 @@ const ExportRequestCreate = () => {
     XLSX.writeFile(wb, "export_request_template.xlsx");
   };
 
-  // --- API hooks cho Export Request & Detail ---
-  const { createExportRequest } = useExportRequestService();
+  // --- API hooks cho phiếu xuất ---
+  const { createExportRequestProduction, createExportRequestLoan } =
+    useExportRequestService();
   const { createExportRequestDetail } = useExportRequestDetailService();
 
-  // ----- Submit handler: Gọi API tạo export request và export request detail -----
+  // --- Hàm xử lý submit ---
   const handleSubmit = async () => {
-    // Validate các trường bắt buộc cho loại USE
-    if (
-      !formData.exportReason ||
-      !formData.receiverName ||
-      !formData.receiverPhone ||
-      !formData.receiverAddress ||
-      !formData.exportDate ||
-      !formData.exportTime
-    ) {
-      toast.error("Vui lòng điền đầy đủ thông tin cho phiếu xuất sử dụng");
+    // Kiểm tra thông tin chung
+    if (!formData.exportDate || !formData.exportTime) {
+      toast.error("Vui lòng điền đầy đủ thông tin chung cho phiếu xuất");
       return;
     }
+    // Kiểm tra file và dữ liệu Excel
     if (!file || data.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
       return;
     }
-    try {
-      // Bước 1: Tạo export request
-      const payload = {
+
+    let payload = {};
+    let createdExport;
+
+    if (formData.exportType === "PRODUCTION") {
+      // Validate các trường bắt buộc cho Production
+      if (
+        !formData.exportReason ||
+        !formData.receivingDepartment ||
+        !formData.departmentRepresentative ||
+        !formData.departmentRepresentativePhone
+      ) {
+        toast.error("Vui lòng điền đầy đủ thông tin cho phiếu xuất Production");
+        return;
+      }
+      payload = {
         exportReason: formData.exportReason,
-        receiverName: formData.receiverName,
-        receiverPhone: formData.receiverPhone,
-        receiverAddress: formData.receiverAddress,
-        type: formData.exportType, // "USE"
+        departmentId: formData.receivingDepartment.id,
+        receiverName: formData.departmentRepresentative,
+        receiverPhone: formData.departmentRepresentativePhone,
+        type: "PRODUCTION",
         exportDate: formData.exportDate,
         exportTime: formData.exportTime,
-        assignedWarehouseKeeperId: formData.assignedWareHouseKeeper
-          ? formData.assignedWareHouseKeeper.id
-          : null,
       };
-      const createdExport = await createExportRequest(payload);
-      if (!createdExport) {
-        throw new Error("Không tạo được phiếu xuất");
+      createdExport = await createExportRequestProduction(payload);
+    } else if (formData.exportType === "LOAN") {
+      // Cập nhật payload với type là "BORROWING"
+      if (!formData.returnDate || !formData.loanReason) {
+        toast.error("Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn");
+        return;
+      }
+      // Kiểm tra ngày trả phải lớn hơn ngày hiện tại
+      if (
+        moment(formData.returnDate, "YYYY-MM-DD").isSameOrBefore(
+          moment(),
+          "day"
+        )
+      ) {
+        toast.error("Ngày trả phải lớn hơn ngày hôm nay");
+        return;
       }
 
-      // Bước 2: Tạo export request detail (upload file Excel)
-      const fd = new FormData();
-      fd.append("file", file);
-      // Gọi API tạo export request detail với exportRequestId và FormData chứa file
-      await createExportRequestDetail(fd, createdExport.exportRequestId);
-
-      toast.success("Tạo phiếu xuất thành công!");
-      navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
-
-      // Reset state sau khi tạo thành công
-      setFormData({
-        exportType: "USE",
-        exportDate: moment().format("YYYY-MM-DD"),
-        exportTime: moment().format("HH:mm:ss"),
-        exportReason: "",
-        receiverName: "",
-        receiverPhone: "",
-        receiverAddress: "",
-        assignedWareHouseKeeper: null,
-        note: "",
-        supplierReceiver: null,
-        returnManager: null,
-        importReference: null,
-        returnReason: "",
-        receivingDepartment: null,
-        receivingManager: "",
-        productionOrder: "",
-        usagePurpose: "",
-        borrower: "",
-        loanManager: null,
-        loanExpiry: null,
-        loanReason: "",
-      });
-      setFile(null);
-      setFileName("");
-      setData([]);
-    } catch (error) {
-      console.error("Error creating export request:", error);
-      toast.error("Có lỗi xảy ra khi tạo phiếu xuất");
+      if (formData.loanType === "INTERNAL") {
+        if (
+          !formData.receivingDepartment ||
+          !formData.departmentRepresentative ||
+          !formData.departmentRepresentativePhone
+        ) {
+          toast.error(
+            "Vui lòng chọn phòng ban và thông tin đại diện cho phiếu xuất mượn nội bộ"
+          );
+          return;
+        }
+        payload = {
+          exportDate: formData.exportDate,
+          exportTime: formData.exportTime,
+          receiverName: formData.departmentRepresentative,
+          receiverPhone: formData.departmentRepresentativePhone,
+          departmentId: formData.receivingDepartment.id,
+          expectedReturnDate: formData.returnDate,
+          exportReason: formData.loanReason,
+          type: "BORROWING",
+        };
+      } else if (formData.loanType === "EXTERNAL") {
+        if (
+          !formData.borrowerName ||
+          !formData.borrowerPhone ||
+          !formData.borrowerAddress
+        ) {
+          toast.error(
+            "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn bên ngoài"
+          );
+          return;
+        }
+        payload = {
+          exportDate: formData.exportDate,
+          exportTime: formData.exportTime,
+          receiverName: formData.borrowerName,
+          receiverPhone: formData.borrowerPhone,
+          receiverAddress: formData.borrowerAddress,
+          expectedReturnDate: formData.returnDate,
+          exportReason: formData.loanReason,
+          type: "BORROWING",
+        };
+      }
+      createdExport = await createExportRequestLoan(payload);
+    } else {
+      toast.error("Loại phiếu xuất không hợp lệ");
+      return;
     }
+
+    if (!createdExport) {
+      toast.error("Không tạo được phiếu xuất");
+      return;
+    }
+
+    // Upload file Excel làm chi tiết phiếu xuất
+    const fd = new FormData();
+    fd.append("file", file);
+    await createExportRequestDetail(fd, createdExport.exportRequestId);
+
+    navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+
+    // Reset lại trạng thái sau khi submit
+    setFormData({
+      exportType: "PRODUCTION",
+      exportDate: moment().format("YYYY-MM-DD"),
+      exportTime: moment().format("HH:mm:ss"),
+      exportReason: "",
+      note: "",
+      receivingDepartment: null,
+      departmentRepresentative: "",
+      departmentRepresentativePhone: "",
+      loanType: "INTERNAL",
+      borrowerName: "",
+      borrowerPhone: "",
+      borrowerAddress: "",
+      returnDate: "",
+      loanReason: "",
+    });
+    setFile(null);
+    setFileName("");
+    setData([]);
   };
 
-  // --- Các cột hiển thị trong bảng Excel (3 cột: itemId, itemName, quantity) ---
-  const columns = [
-    {
-      title: "Mã hàng",
-      dataIndex: "itemId",
-      key: "itemId",
-    },
-    {
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-    },
-    {
-      title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-    },
-  ];
-
-  // Dữ liệu được mapping: thêm itemName từ danh sách sản phẩm (items) dựa vào itemId
+  // --- Mapping dữ liệu Excel để hiển thị ---
   const mappedData = data.map((row) => {
     const foundItem = items.find((i) => i.id === row.itemId);
     return {
@@ -345,8 +336,7 @@ const ExportRequestCreate = () => {
             }
             style={{ width: 300 }}
           >
-            <Option value="RETURN">Xuất trả nhà cung cấp</Option>
-            <Option value="USE">Xuất sử dụng (nội bộ, sản xuất)</Option>
+            <Option value="PRODUCTION">Xuất sản xuất</Option>
             <Option value="LOAN">Xuất mượn</Option>
           </Select>
         </Space>
@@ -355,31 +345,18 @@ const ExportRequestCreate = () => {
       <div className="flex gap-6">
         <Card title="Thông tin phiếu xuất" className="w-1/3">
           <Space direction="vertical" className="w-full">
-            {formData.exportType === "RETURN" && (
-              <ReturnExportForm
-                formData={formData}
-                setFormData={setFormData}
-                openSupplierModal={() => setSupplierModalVisible(true)}
-                openReturnManagerModal={() =>
-                  setReturnManagerModalVisible(true)
-                }
-                openImportReferenceModal={() =>
-                  setImportReferenceModalVisible(true)
-                }
-              />
-            )}
-            {formData.exportType === "USE" && (
+            {formData.exportType === "PRODUCTION" && (
               <UseExportForm
                 formData={formData}
                 setFormData={setFormData}
-                openWarehouseKeeperModal={openWarehouseKeeperModal}
+                openDepartmentModal={() => setDepartmentModalVisible(true)}
               />
             )}
             {formData.exportType === "LOAN" && (
               <LoanExportForm
                 formData={formData}
                 setFormData={setFormData}
-                openLoanManagerModal={() => setLoanManagerModalVisible(true)}
+                openDepartmentModal={() => setDepartmentModalVisible(true)}
               />
             )}
             <Button
@@ -406,81 +383,22 @@ const ExportRequestCreate = () => {
         </div>
       </div>
 
-      {/* Modal Warehouse Keeper */}
-      <Modal
-        title="Chọn Warehouse Keeper"
-        visible={warehouseKeeperModalVisible}
-        onCancel={() => setWarehouseKeeperModalVisible(false)}
-        footer={null}
-      >
-        <Input
-          placeholder="Tìm kiếm theo tên hoặc email"
-          value={warehouseKeeperSearch}
-          onChange={(e) => setWarehouseKeeperSearch(e.target.value)}
-          style={{ marginBottom: 12 }}
-        />
-        {filteredWarehouseKeepers.map((wk) => (
-          <div
-            key={wk.id}
-            className="cursor-pointer p-2 hover:bg-gray-100 border-b"
-            onClick={() => handleWarehouseKeeperSelect(wk)}
-          >
-            <div className="font-semibold">{wk.fullName}</div>
-            <div className="text-sm text-gray-500">{wk.email}</div>
-          </div>
-        ))}
-      </Modal>
-
-      {/* Các modal lựa chọn khác (nếu cần) */}
-      <SelectModal
-        visible={supplierModalVisible}
-        title="Chọn nhà cung cấp"
-        data={suppliers}
-        onSelect={(item) => {
-          setFormData({ ...formData, supplierReceiver: item });
-          setSupplierModalVisible(false);
-        }}
-        onCancel={() => setSupplierModalVisible(false)}
-      />
-      <SelectModal
-        visible={returnManagerModalVisible}
-        title="Chọn người phụ trách trả hàng"
-        data={managers}
-        onSelect={(item) => {
-          setFormData({ ...formData, returnManager: item });
-          setReturnManagerModalVisible(false);
-        }}
-        onCancel={() => setReturnManagerModalVisible(false)}
-      />
-      <SelectModal
-        visible={importReferenceModalVisible}
-        title="Chọn phiếu nhập tham chiếu"
-        data={importReferences}
-        onSelect={(item) => {
-          setFormData({ ...formData, importReference: item });
-          setImportReferenceModalVisible(false);
-        }}
-        onCancel={() => setImportReferenceModalVisible(false)}
-      />
+      {/* Modal chọn phòng ban */}
       <SelectModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
         data={departments}
-        onSelect={(item) => {
-          setFormData({ ...formData, receivingDepartment: item });
+        onSelect={async (selectedDepartment) => {
+          const details = await fakeFetchDepartmentDetails(selectedDepartment);
+          setFormData({
+            ...formData,
+            receivingDepartment: selectedDepartment,
+            departmentRepresentative: details?.receiverName || "",
+            departmentRepresentativePhone: details?.receiverPhone || "",
+          });
           setDepartmentModalVisible(false);
         }}
         onCancel={() => setDepartmentModalVisible(false)}
-      />
-      <SelectModal
-        visible={loanManagerModalVisible}
-        title="Chọn người phụ trách"
-        data={managers}
-        onSelect={(item) => {
-          setFormData({ ...formData, loanManager: item });
-          setLoanManagerModalVisible(false);
-        }}
-        onCancel={() => setLoanManagerModalVisible(false)}
       />
     </div>
   );

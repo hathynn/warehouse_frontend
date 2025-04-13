@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService from "../../../../hooks/useExportRequestService";
+import { useSelector } from "react-redux";
 
 const ExportRequestList = () => {
   const [exportRequests, setExportRequests] = useState([]);
@@ -15,6 +16,7 @@ const ExportRequestList = () => {
   });
 
   const { getExportRequestsByPage, loading } = useExportRequestService();
+  const user = useSelector((state) => state.user);
 
   useEffect(() => {
     fetchExportRequests();
@@ -159,11 +161,13 @@ const ExportRequestList = () => {
           prefix={<SearchOutlined />}
           className="max-w-md"
         />
-        <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.CREATE}>
-          <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
-            Tạo Phiếu Xuất
-          </Button>
-        </Link>
+        {user?.role === "ROLE_DEPARTMENT" && (
+          <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.CREATE}>
+            <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
+              Tạo Phiếu Xuất
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Table

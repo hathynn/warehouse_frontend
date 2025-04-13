@@ -3,30 +3,25 @@ import { Input, DatePicker } from "antd";
 import moment from "moment";
 import PropTypes from "prop-types";
 
-const UseExportForm = ({ formData, setFormData, openWarehouseKeeperModal }) => {
+const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
   UseExportForm.propTypes = {
     formData: PropTypes.shape({
       exportReason: PropTypes.string,
-      receiverName: PropTypes.string,
-      receiverPhone: PropTypes.string,
-      receiverAddress: PropTypes.string,
       exportDate: PropTypes.string,
       exportTime: PropTypes.string,
-      assignedWareHouseKeeper: PropTypes.shape({
-        id: PropTypes.number,
-        fullName: PropTypes.string,
-        email: PropTypes.string,
-      }),
+      receivingDepartment: PropTypes.object, // expected to have { id, name }
+      departmentRepresentative: PropTypes.string,
+      departmentRepresentativePhone: PropTypes.string,
       note: PropTypes.string,
-      type: PropTypes.string, // Luôn là "USE"
+      type: PropTypes.string, // luôn là "USE"
     }).isRequired,
     setFormData: PropTypes.func.isRequired,
-    openWarehouseKeeperModal: PropTypes.func.isRequired,
+    openDepartmentModal: PropTypes.func.isRequired,
   };
 
   return (
     <>
-      {/* Ngày nhận và Thời gian nhận trên cùng một hàng */}
+      {/* Ngày nhận và Thời gian nhận */}
       <div className="flex gap-4 mb-4">
         <div className="flex-1">
           <label className="block mb-1">
@@ -75,64 +70,43 @@ const UseExportForm = ({ formData, setFormData, openWarehouseKeeperModal }) => {
         />
       </div>
 
-      {/* Tên người nhận */}
+      {/* Phòng ban: onClick mở modal */}
       <div className="mb-4">
         <label className="block mb-1">
-          Tên người nhận <span className="text-red-500">*</span>
+          Phòng ban <span className="text-red-500">*</span>
         </label>
         <Input
-          value={formData.receiverName || ""}
-          placeholder="Nhập tên người nhận"
-          onChange={(e) =>
-            setFormData({ ...formData, receiverName: e.target.value })
-          }
-          className="w-full"
-        />
-      </div>
-
-      {/* Số điện thoại người nhận */}
-      <div className="mb-4">
-        <label className="block mb-1">
-          Số điện thoại người nhận <span className="text-red-500">*</span>
-        </label>
-        <Input
-          value={formData.receiverPhone || ""}
-          placeholder="Nhập số điện thoại người nhận"
-          onChange={(e) =>
-            setFormData({ ...formData, receiverPhone: e.target.value })
-          }
-          className="w-full"
-        />
-      </div>
-
-      {/* Địa chỉ người nhận */}
-      <div className="mb-4">
-        <label className="block mb-1">
-          Địa chỉ người nhận <span className="text-red-500">*</span>
-        </label>
-        <Input
-          value={formData.receiverAddress || ""}
-          placeholder="Nhập địa chỉ người nhận"
-          onChange={(e) =>
-            setFormData({ ...formData, receiverAddress: e.target.value })
-          }
-          className="w-full"
-        />
-      </div>
-
-      {/* Warehouse Keeper: hiện fullName - email nếu đã chọn, click để mở modal */}
-      <div className="mb-4">
-        <label className="block mb-1">Mã quản lý kho (nếu có)</label>
-        <Input
-          readOnly
           value={
-            formData.assignedWareHouseKeeper
-              ? `${formData.assignedWareHouseKeeper.fullName} - ${formData.assignedWareHouseKeeper.email}`
+            formData.receivingDepartment
+              ? formData.receivingDepartment.name
               : ""
           }
-          placeholder="Chọn Warehouse Keeper"
-          onClick={openWarehouseKeeperModal}
+          placeholder="Chọn phòng ban"
+          readOnly
+          onClick={openDepartmentModal}
           className="w-full cursor-pointer"
+        />
+      </div>
+
+      {/* Người đại diện phòng ban */}
+      <div className="mb-4">
+        <label className="block mb-1">Người đại diện phòng ban</label>
+        <Input
+          value={formData.departmentRepresentative || ""}
+          placeholder="Tự động điền sau khi chọn phòng ban"
+          readOnly
+          className="w-full"
+        />
+      </div>
+
+      {/* Số điện thoại người đại diện */}
+      <div className="mb-4">
+        <label className="block mb-1">Số điện thoại người đại diện</label>
+        <Input
+          value={formData.departmentRepresentativePhone || ""}
+          placeholder="Tự động điền sau khi chọn phòng ban"
+          readOnly
+          className="w-full"
         />
       </div>
 
@@ -141,7 +115,7 @@ const UseExportForm = ({ formData, setFormData, openWarehouseKeeperModal }) => {
         <Input value={formData.type || "USE"} readOnly />
       </div>
 
-      {/* Ghi chú */}
+      {/* Ghi chú
       <div className="mb-4">
         <label className="block mb-1">Ghi chú</label>
         <Input.TextArea
@@ -151,7 +125,7 @@ const UseExportForm = ({ formData, setFormData, openWarehouseKeeperModal }) => {
           onChange={(e) => setFormData({ ...formData, note: e.target.value })}
           className="w-full"
         />
-      </div>
+      </div> */}
     </>
   );
 };
