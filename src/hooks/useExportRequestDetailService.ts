@@ -69,7 +69,7 @@ const useExportRequestDetailService = () => {
     try {
       const response = await callApi(
         "get",
-        `/export-request-detail/page?exportRequestId=${exportRequestId}&page=${page}&limit=${limit}`
+        `/export-request-detail/${exportRequestId}?page=${page}&limit=${limit}`
       );
       if (response && response.content) {
         return response;
