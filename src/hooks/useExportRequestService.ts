@@ -1,9 +1,7 @@
-import { useState } from "react";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 
 // Các trường trong DB export_request:
-// id: number;
 export interface ExportRequestResponse {
   id: number;
   exportDate: string; // export_date
@@ -34,7 +32,6 @@ export interface ExportRequestRequest {
   status: string;
   type: string;
   // createdBy và updatedBy có thể do backend tự set hoặc bạn tự set
-  //
   createdBy?: string;
   updatedBy?: string;
 }
@@ -43,7 +40,6 @@ const useExportRequestService = () => {
   const { callApi, loading } = useApiService();
 
   // Lấy tất cả phiếu xuất
-  // Các trường trong DB export_request:
   const getAllExportRequests = async (): Promise<ExportRequestResponse[]> => {
     try {
       const response = await callApi("get", "/export-request");
@@ -93,8 +89,8 @@ const useExportRequestService = () => {
     }
   };
 
-  // Tạo mới phiếu xuất
-  const createExportRequest = async (
+  // Tạo mới phiếu xuất cho Production
+  const createExportRequestProduction = async (
     requestData: ExportRequestRequest
   ): Promise<ExportRequestResponse | undefined> => {
     try {
@@ -106,6 +102,27 @@ const useExportRequestService = () => {
     } catch (error) {
       toast.error("Không thể tạo phiếu xuất");
       console.error("Error creating export request:", error);
+      throw error;
+    }
+  };
+
+  // Tạo mới phiếu xuất cho Loan (borrow)
+  const createExportRequestLoan = async (
+    requestData: ExportRequestRequest
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/export-request/borrow",
+        requestData
+      );
+      if (response && response.content) {
+        toast.success("Tạo phiếu xuất mượn thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể tạo phiếu xuất mượn");
+      console.error("Error creating export request loan:", error);
       throw error;
     }
   };
@@ -137,7 +154,8 @@ const useExportRequestService = () => {
     getAllExportRequests,
     getExportRequestById,
     getExportRequestsByPage,
-    createExportRequest,
+    createExportRequestProduction,
+    createExportRequestLoan,
     assignWarehouseKeeper,
   };
 };
