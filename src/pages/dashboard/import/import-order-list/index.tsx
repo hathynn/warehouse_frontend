@@ -138,12 +138,6 @@ const ImportOrderList: React.FC = () => {
       render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
     },
     {
-      title: "Ngày cập nhật",
-      dataIndex: "updatedDate",
-      key: "updatedDate",
-      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
-    },
-    {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
@@ -154,8 +148,8 @@ const ImportOrderList: React.FC = () => {
       key: "detail",
       render: (_: unknown, record: ImportOrderResponse) => (
         <Link to={ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
-          <Button id="btn-detail" className="!p-0" type="link">
-            Chi tiết
+          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
+            Xem chi tiết
           </Button>
         </Link>
       ),
@@ -179,7 +173,7 @@ const ImportOrderList: React.FC = () => {
           onClick={handleBackButton}
         >
           {importRequestId 
-            ? `Quay lại - Phiếu nhập #${importRequestId}`
+            ? `Quay lại  phiếu nhập #${importRequestId}`
             : 'Quay lại danh sách phiếu nhập'}
         </Button>
       </div>

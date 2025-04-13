@@ -11,7 +11,7 @@ import {
 } from "antd";
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
-import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
+import useImportRequestDetailService, { DetailStatus, ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
 
@@ -36,7 +36,7 @@ type ImportType = "ORDER" | "RETURN";
 const ImportRequestDetail: React.FC = () => {
   const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
-  
+
   const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -57,7 +57,7 @@ const ImportRequestDetail: React.FC = () => {
 
   const fetchImportRequestData = useCallback(async () => {
     if (!importRequestId) return;
-    
+
     try {
       setLoading(true);
       const response = await getImportRequestById(parseInt(importRequestId));
@@ -74,7 +74,7 @@ const ImportRequestDetail: React.FC = () => {
 
   const fetchImportRequestDetails = useCallback(async () => {
     if (!importRequestId) return;
-    
+
     try {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
@@ -129,6 +129,17 @@ const ImportRequestDetail: React.FC = () => {
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
+  const getDetailStatusTag = (status: string) => {
+    const statusMap: Record<string, { color: string; text: string }> = {
+      "LACK": { color: "error", text: "THIẾU" },
+      "EXCESS": { color: "error", text: "THỪA" },
+      "MATCH": { color: "success", text: "ĐỦ" }
+    };
+  
+    const statusInfo = statusMap[status] || { color: "default", text: status };
+    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+  };
+
   const getImportTypeText = (type: ImportType): string => {
     const typeMap: Record<ImportType, string> = {
       "ORDER": "Nhập theo kế hoạch",
@@ -167,7 +178,7 @@ const ImportRequestDetail: React.FC = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: '15%',
+      width: '10%',
     },
     {
       title: "Tên sản phẩm",
@@ -182,6 +193,11 @@ const ImportRequestDetail: React.FC = () => {
     },
     {
       title: "Số lượng đã lên đơn nhập",
+      dataIndex: "orderedQuantity",
+      key: "orderedQuantity",
+    },
+    {
+      title: "Số lượng thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
     },
@@ -189,7 +205,8 @@ const ImportRequestDetail: React.FC = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status: ImportStatus) => getStatusTag(status),
+      render: getDetailStatusTag,
+      width: '10%',
     }
   ];
 
@@ -240,31 +257,43 @@ const ImportRequestDetail: React.FC = () => {
         <Descriptions title="Thông tin phiếu nhập" bordered>
           <Descriptions.Item label="Mã phiếu nhập">#{importRequest?.importRequestId}</Descriptions.Item>
           <Descriptions.Item label="Loại nhập">{importRequest?.importType && getImportTypeText(importRequest.importType as ImportType)}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{importRequest?.status && getStatusTag(importRequest.status as ImportStatus)}</Descriptions.Item>
-          <Descriptions.Item label="Lý do nhập" span={2}>{importRequest?.importReason}</Descriptions.Item>
+          <Descriptions.Item label="Trạng thái">
+            <Tag
+              color={getStatusTag(importRequest?.status as ImportStatus).props.color}
+              style={{
+                fontSize: '14px',
+                height: 'auto'
+              }}
+            >
+              {getStatusTag(importRequest?.status as ImportStatus).props.children}
+            </Tag>
+            </Descriptions.Item>
           <Descriptions.Item label="Mã nhà cung cấp">{importRequest?.providerId}</Descriptions.Item>
           <Descriptions.Item label="Người tạo">{importRequest?.createdBy}</Descriptions.Item>
           <Descriptions.Item label="Ngày tạo">
             {importRequest?.createdDate ? new Date(importRequest.createdDate).toLocaleDateString("vi-VN") : "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Ngày cập nhật">
-            {importRequest?.updatedDate ? new Date(importRequest.updatedDate).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
           {importRequest?.exportRequestId && (
             <Descriptions.Item label="Mã phiếu xuất liên quan">
               #{importRequest.exportRequestId}
             </Descriptions.Item>
           )}
-          {importRequest?.importOrdersId && importRequest.importOrdersId.length > 0 && (
-            <Descriptions.Item label="Đơn nhập hàng liên quan" span={3}>
+          <Descriptions.Item label="Lý do nhập" span={2}>{importRequest?.importReason}</Descriptions.Item>
+          {/* {importRequest?.importOrdersId && importRequest.importOrdersId.length > 0 && (
+            <Descriptions.Item label="Đơn nhập hàng đã tạo">
               {importRequest.importOrdersId.map(orderId => (
-                <Tag key={orderId} color="blue" className="mr-2 mb-1">#{orderId}</Tag>
+                <Tag style={{
+                  fontSize: '14px',
+                  height: 'auto'
+                }} key={orderId} color="blue" className="mr-2 mb-1">
+                  #{orderId}
+                </Tag>
               ))}
             </Descriptions.Item>
-          )}
+          )} */}
         </Descriptions>
       </Card>
-          
+
       <div className="flex justify-between items-center mt-12 mb-4">
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
       </div>

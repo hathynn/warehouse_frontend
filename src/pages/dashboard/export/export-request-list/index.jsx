@@ -142,8 +142,8 @@ const ExportRequestList = () => {
       key: "detail",
       render: (text, record) => (
         <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(record.id)}>
-          <Button id="btn-detail" className="!p-0" type="link">
-            Chi tiết
+          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
+            Xem chi tiết
           </Button>
         </Link>
       ),

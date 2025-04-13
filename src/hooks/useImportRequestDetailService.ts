@@ -9,8 +9,15 @@ export interface ImportRequestDetailResponse {
   itemId: number;
   itemName: string;
   actualQuantity: number;
+  orderedQuantity: number;
   expectQuantity: number;
-  status: string;
+  status: DetailStatus;
+}
+
+export enum DetailStatus {
+  LACK = "LACK",
+  EXCESS = "EXCESS",
+  MATCH = "MATCH"
 }
 
 // Interface to match MetaDataDTO.java
