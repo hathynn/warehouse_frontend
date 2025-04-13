@@ -119,7 +119,6 @@ const ImportOrderCreate = () => {
         }
       } catch (error) {
         console.error("Error fetching import requests:", error);
-        toast.error("Không thể lấy danh sách phiếu nhập");
       }
     };
 
@@ -211,13 +210,10 @@ const ImportOrderCreate = () => {
         if (excelFile) {
           await uploadImportOrderDetail(excelFile, response.content.importOrderId);
         }
-
-        toast.success("Tạo đơn nhập kho thành công!");
         navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error("Có lỗi xảy ra khi tạo đơn nhập kho");
     }
   };
 

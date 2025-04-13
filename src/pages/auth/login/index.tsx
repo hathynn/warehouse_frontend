@@ -58,10 +58,8 @@ const Login = () => {
       // Redirect to default route based on role
       
       redirectToDefaultRoute();
-      
-      toast.success("Đăng nhập thành công!");
     } catch (error) {
-      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      console.error("Error logging in:", error);
     }
   };
 

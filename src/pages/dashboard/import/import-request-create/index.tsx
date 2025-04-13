@@ -77,7 +77,6 @@ const ImportRequestCreate: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Không thể lấy dữ liệu cần thiết");
       }
     };
 
@@ -187,7 +186,6 @@ const ImportRequestCreate: React.FC = () => {
       if (createdRequest?.content?.importRequestId) {
         await createImportRequestDetail(file, createdRequest.content.importRequestId);
         
-        toast.success("Tạo phiếu nhập kho thành công!");
         navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
         
         // Reset form
@@ -202,7 +200,6 @@ const ImportRequestCreate: React.FC = () => {
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error("Có lỗi xảy ra khi tạo phiếu nhập kho");
     }
   };
 

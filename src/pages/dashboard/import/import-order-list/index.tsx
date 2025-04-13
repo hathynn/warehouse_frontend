@@ -8,12 +8,17 @@ import useImportOrderService, {
 } from "@/hooks/useImportOrderService";
 import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
+import { AccountRole } from "@/hooks/useAccountService";
+import { UserState } from "@/redux/features/userSlice";
+import { useSelector } from "react-redux";
 
 interface RouteParams extends Record<string, string> {
   importRequestId?: string;
 }
 
 const ImportOrderList: React.FC = () => {
+  const userRole = useSelector((state: { user: UserState }) => state.user.role);
+  
   const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
   const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
@@ -167,6 +172,7 @@ const ImportOrderList: React.FC = () => {
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-3">
+      {userRole === AccountRole.DEPARTMENT && (
         <Button
           type="primary"
           icon={<ArrowLeftOutlined />}
@@ -176,6 +182,7 @@ const ImportOrderList: React.FC = () => {
             ? `Quay lại  phiếu nhập #${importRequestId}`
             : 'Quay lại danh sách phiếu nhập'}
         </Button>
+        )}
       </div>
       <h1 className="text-xl font-bold mr-4 mb-3">
         {importRequestId 

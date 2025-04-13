@@ -41,7 +41,6 @@ const InventoryItemList: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
-      toast.error("Không thể lấy dữ liệu");
     }
   };
 

@@ -15,15 +15,23 @@ function App() {
       <PersistGate persistor={persistor}>
         <RouterProvider router={rootRouter} />
         <ToastContainer
-          position="top-right"
+          position="top-center"
           autoClose={3000}
-          hideProgressBar={false}
+          hideProgressBar={true}
           newestOnTop
           closeOnClick
           rtl={false}
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          style={{
+            width: "fit-content",
+            fontSize: "16px",
+            "--toastify-toast-width": "280px",
+            "--toastify-toast-min-height": "48px",
+            "--toastify-toast-padding": "12px",
+            "--toastify-toast-bd-radius": "6px",
+          }}
         />
       </PersistGate>
     </Provider>
