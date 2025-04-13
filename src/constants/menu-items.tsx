@@ -1,7 +1,7 @@
 import { AccountRole } from "@/hooks/useAccountService";
 import { ROUTES } from "./routes";
 import { IconType } from "react-icons";
-import { 
+import {
   AiOutlineHome,
   AiOutlineImport,
   AiOutlineExport,
@@ -81,13 +81,14 @@ const itemMenuItems: MenuItem[] = [
 
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
-  
+
   [AccountRole.DEPARTMENT]: [
     ...baseMenuItems,
     ...importMenuItems,
+    ...exportMenuItems,
     ...itemMenuItems,
   ],
-  
+
   [AccountRole.STAFF]: [
 
   ],
@@ -95,11 +96,11 @@ export const menuItems: RoleMenuConfig = {
   [AccountRole.WAREHOUSE_MANAGER]: [
 
   ],
-  
+
   [AccountRole.ACCOUNTING]: [
     ...baseMenuItems,
   ],
-  
+
   [AccountRole.ADMIN]: [
     ...baseMenuItems,
     ...importMenuItems,
@@ -119,7 +120,7 @@ export const isMenuItemVisibleForRole = (
   role: AccountRole
 ): boolean => {
   const roleMenuItems = getMenuItemsByRole(role);
-  
+
   const isPathInMenuItems = (items: MenuItem[]): boolean => {
     for (const item of items) {
       if (item.path === path) return true;
@@ -129,6 +130,6 @@ export const isMenuItemVisibleForRole = (
     }
     return false;
   };
-  
+
   return isPathInMenuItems(roleMenuItems);
 }; 

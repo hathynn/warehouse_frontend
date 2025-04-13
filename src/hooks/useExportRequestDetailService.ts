@@ -1,3 +1,4 @@
+import { message } from "antd";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 
@@ -45,7 +46,9 @@ const useExportRequestDetailService = () => {
         return response.content;
       }
     } catch (error) {
-      toast.error("Không thể tạo chi tiết phiếu xuất");
+      if (error.message.inludes("Inventory items not found for item ID")) {
+        toast.error("Không tìm thấy hàng hóa trong kho");
+      }
       console.error("Error creating export request detail:", error);
       throw error;
     }
