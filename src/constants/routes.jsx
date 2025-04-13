@@ -1,53 +1,55 @@
 import { AccountRole } from "@/hooks/useAccountService";
 
-
 // Base routes
 export const BASE_ROUTES = {
-  LOGIN: '/login',
-  REGISTER: '/register',
-  OVERVIEW: '/overview',
+  LOGIN: "/login",
+  REGISTER: "/register",
+  OVERVIEW: "/overview",
 };
 
 // Định nghĩa default landing route cho mỗi role
 export const ROLE_DEFAULT_ROUTES = {
-  [AccountRole.DEPARTMENT]: '/import/request-list',
-  [AccountRole.STAFF]: '/import/order-list',
-  [AccountRole.WAREHOUSE_MANAGER]: '/import/request-list',
-  [AccountRole.ACCOUNTING]: '/overview', // Thay đổi theo requirement
-  [AccountRole.ADMIN]: '/overview', // Thay đổi theo requirement
+  [AccountRole.DEPARTMENT]: "/import/request-list",
+  [AccountRole.STAFF]: "/import/order-list",
+  [AccountRole.WAREHOUSE_MANAGER]: "/import/request-list",
+  [AccountRole.ACCOUNTING]: "/overview", // Thay đổi theo requirement
+  [AccountRole.ADMIN]: "/overview", // Thay đổi theo requirement
 };
 
 // Route permissions mapping
 export const ROUTE_PERMISSIONS = {
   [AccountRole.DEPARTMENT]: [
     // Import routes
-    '/import/request-list',
-    '/import/request-detail/:id',
-    '/import/create-request',
-    '/import/order-list/:id',
-    '/import/order-detail/:id',
-    '/import/create-order/:id',
-    '/import/orders',
+    "/import/request-list",
+    "/import/request-detail/:id",
+    "/import/create-request",
+    "/import/order-list/:id",
+    "/import/order-detail/:id",
+    "/import/create-order/:id",
+    "/import/orders",
 
     // Export routes
-    '/export/request-list',
-    '/export/request-detail/:id',
-    '/export/create-request',
+    "/export/request-list",
+    "/export/request-detail/:id",
+    "/export/create-request",
 
     // Item routes
-    '/item/list',
-    '/item/detail/:id',
-    '/item/create',
+    "/item/list",
+    "/item/detail/:id",
+    "/item/create",
   ],
-  [AccountRole.STAFF]: [
-
-  ],
+  [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
-    '/import/request-list',
-    '/import/request-detail/:id',
-    '/import/order-list',
-    '/import/order-detail/:id',
-    '/import/orders',
+    //Import routes
+    "/import/request-list",
+    "/import/request-detail/:id",
+    "/import/order-list",
+    "/import/order-detail/:id",
+    "/import/orders",
+
+    // Export routes
+    "/export/request-list",
+    "/export/request-detail/:id",
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -60,8 +62,8 @@ export const ROUTE_PERMISSIONS = {
 // Helper function để kiểm tra permission
 export const checkRoutePermission = (role, pathname) => {
   const permissions = ROUTE_PERMISSIONS[role] || [];
-  return permissions.some(permission => {
-    const permissionPattern = permission.replace(/:id/g, '[^/]+');
+  return permissions.some((permission) => {
+    const permissionPattern = permission.replace(/:id/g, "[^/]+");
     const regex = new RegExp(`^${permissionPattern}$`);
     return regex.test(pathname);
   });
@@ -70,7 +72,7 @@ export const checkRoutePermission = (role, pathname) => {
 // Helper function để lấy default route cho role
 export const getDefaultRouteForRole = (role) => {
   console.log(ROLE_DEFAULT_ROUTES[role]);
-  return ROLE_DEFAULT_ROUTES[role] || '/overview';
+  return ROLE_DEFAULT_ROUTES[role] || "/overview";
 };
 
 // Route definitions
@@ -80,40 +82,42 @@ export const ROUTES = {
     LOGIN: BASE_ROUTES.LOGIN,
     REGISTER: BASE_ROUTES.REGISTER,
   },
-  
+
   // Protected routes
   PROTECTED: {
     OVERVIEW: BASE_ROUTES.OVERVIEW,
-    
+
     // Import routes
     IMPORT: {
       REQUEST: {
-        LIST: '/import/request-list',
-        DETAIL: (id = ':importRequestId') => `/import/request-detail/${id}`,
-        CREATE: '/import/create-request',
+        LIST: "/import/request-list",
+        DETAIL: (id = ":importRequestId") => `/import/request-detail/${id}`,
+        CREATE: "/import/create-request",
       },
       ORDER: {
-        LIST: '/import/orders',
-        LIST_FROM_REQUEST: (id = ':importRequestId') => `/import/order-list/${id}`,
-        DETAIL: (id = ':importOrderId') => `/import/order-detail/${id}`,
-        CREATE_FROM_REQUEST: (id = ':importRequestId') => `/import/create-order/${id}`,
+        LIST: "/import/orders",
+        LIST_FROM_REQUEST: (id = ":importRequestId") =>
+          `/import/order-list/${id}`,
+        DETAIL: (id = ":importOrderId") => `/import/order-detail/${id}`,
+        CREATE_FROM_REQUEST: (id = ":importRequestId") =>
+          `/import/create-order/${id}`,
       },
     },
-    
+
     // Export routes
     EXPORT: {
       REQUEST: {
-        LIST: '/export/request-list',
-        DETAIL: (id = ':exportRequestId') => `/export/request-detail/${id}`,
-        CREATE: '/export/create-request',
+        LIST: "/export/request-list",
+        DETAIL: (id = ":exportRequestId") => `/export/request-detail/${id}`,
+        CREATE: "/export/create-request",
       },
     },
-    
+
     // Item routes
     ITEM: {
-      LIST: '/item/list',
-      DETAIL: (id = ':id') => `/item/detail/${id}`,
-      CREATE: '/item/create',
+      LIST: "/item/list",
+      DETAIL: (id = ":id") => `/item/detail/${id}`,
+      CREATE: "/item/create",
     },
   },
 };
