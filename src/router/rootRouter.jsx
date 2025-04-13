@@ -23,6 +23,7 @@ import ImportOrderCreate from '@/pages/dashboard/import/import-order-create';
 import ExportRequestList from '@/pages/dashboard/export/export-request-list';
 import ExportRequestDetail from '@/pages/dashboard/export/export-request-detail';
 import ExportRequestCreate from '@/pages/dashboard/export/export-request-create';
+import InventoryItemList from '@/pages/dashboard/inventory-item';
 
 export const rootRouter = createBrowserRouter([
   {
@@ -79,6 +80,10 @@ export const rootRouter = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.ITEM.CREATE,
             element: <ItemCreate />,
+          },
+          {
+            path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+            element: <InventoryItemList />,
           },
           // Import routes
           {

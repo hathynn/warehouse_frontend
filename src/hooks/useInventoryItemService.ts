@@ -3,7 +3,11 @@ import { toast } from "react-toastify";
 
 // Enum to match ItemStatus.java
 export enum ItemStatus {
-  // Add your item status enums here
+  AVAILABLE = "AVAILABLE",
+  UNAVAILABLE = "UNAVAILABLE",
+  DISPOSED = "DISPOSED",
+  SAFE = "SAFE",
+  ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE"
 }
 
 // Interface to match InventoryItemResponse.java
@@ -35,6 +39,23 @@ export interface QrCodeResponse {
   quantity: number;
 }
 
+// Interface to match MetaDataDTO.java
+export interface MetaDataDTO {
+  hasNext: boolean;
+  hasPrevious: boolean;
+  limit: number;
+  total: number;
+  page: number;
+}
+
+// Interface to match ResponseDTO.java
+export interface ResponseDTO<T> {
+  content: T;
+  message: string;
+  status: number;
+  metaDataDTO?: MetaDataDTO;
+}
+
 const useInventoryItemService = () => {
   const { callApi, loading } = useApiService();
 
@@ -42,14 +63,24 @@ const useInventoryItemService = () => {
   const getAllInventoryItems = async (
     page = 1,
     limit = 10
-  ): Promise<{ items: InventoryItemResponse[], metadata: any } | undefined> => {
+  ): Promise<{ items: InventoryItemResponse[], metadata: MetaDataDTO } | undefined> => {
     try {
       const response = await callApi(
         "get",
         `/inventory-item?page=${page}&limit=${limit}`
-      );
+      ) as ResponseDTO<InventoryItemResponse[]>;
+      
       if (response) {
-        return response;
+        return {
+          items: response.content,
+          metadata: response.metaDataDTO || {
+            hasNext: false,
+            hasPrevious: false,
+            limit,
+            total: 0,
+            page
+          }
+        };
       }
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm trong kho");

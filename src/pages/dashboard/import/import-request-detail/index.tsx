@@ -88,12 +88,12 @@ const ImportRequestDetail: React.FC = () => {
         setImportRequestDetails(response.content);
 
         if (response.metadata) {
-          const { page, limit, totalElements } = response.metadata;
+          const { page, limit, total } = response.metadata;
           setPagination(prev => ({
             ...prev,
             current: page,
             pageSize: limit,
-            total: totalElements,
+            total: total,
           }));
         }
       }

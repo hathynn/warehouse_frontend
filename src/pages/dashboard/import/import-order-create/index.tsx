@@ -66,7 +66,7 @@ const ImportOrderCreate = () => {
 
   const [formData, setFormData] = useState<FormData>({
     importRequestId: null,
-    accountId: user?.id || 4, // Get user ID from Redux store
+    accountId: user?.id,
     dateReceived: dayjs().format("YYYY-MM-DD"),
     timeReceived: dayjs().format("HH:mm"),
     note: "",
@@ -158,7 +158,7 @@ const ImportOrderCreate = () => {
             ...prev,
             current: response.metadata.page,
             pageSize: response.metadata.limit,
-            total: response.metadata.totalElements,
+            total: response.metadata.total,
           }));
         }
       }

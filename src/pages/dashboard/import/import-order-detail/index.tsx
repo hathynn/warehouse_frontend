@@ -26,6 +26,8 @@ import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
 import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
+import { useSelector } from "react-redux";
+import { UserState } from "@/redux/features/userSlice";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();
@@ -65,9 +67,11 @@ const ImportOrderDetail = () => {
   const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
   const { getActiveStaff, findAccountById } = useAccountService();
 
+  const userRole = useSelector((state: { user: UserState }) => state.user.role);
+
   // Fetch import order data
   const fetchImportOrderData = useCallback(async () => {
-    if (!importOrderId) return;
+    if (!importOrderId) return null;
 
     try {
       setLoading(true);
@@ -75,9 +79,11 @@ const ImportOrderDetail = () => {
       if (response?.content) {
         setImportOrder(response.content);
       }
+      return response;
     } catch (error) {
       console.error("Failed to fetch import order:", error);
       message.error("Không thể tải thông tin đơn nhập");
+      return null;
     } finally {
       setLoading(false);
     }
@@ -98,12 +104,12 @@ const ImportOrderDetail = () => {
         setImportOrderDetails(response.content);
 
         if (response.metadata) {
-          const { page, limit, totalElements } = response.metadata;
+          const { page, limit, total } = response.metadata;
           setPagination(prev => ({
             ...prev,
             current: page,
             pageSize: limit,
-            total: totalElements,
+            total: total,
           }));
         }
       }
@@ -188,11 +194,17 @@ const ImportOrderDetail = () => {
         accountId: selectedStaffId
       });
 
-      await fetchImportOrderData();
-      await fetchAssignedStaff();
+      const importOrderResponse = await fetchImportOrderData();
+      if (importOrderResponse?.content?.assignedStaffId) {
+        await findAccountById(importOrderResponse.content.assignedStaffId);
+      }
       await fetchActiveStaffs();
+      
+      message.success("Phân công nhân viên thành công");
+      handleCloseAssignModal();
     } catch (error) {
       console.error("Failed to assign warehouse keeper:", error);
+      message.error("Không thể phân công nhân viên. Vui lòng thử lại");
     } finally {
       setAssigningStaff(false);
     }
@@ -377,22 +389,26 @@ const ImportOrderDetail = () => {
         <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
         {importOrder?.status !== ImportStatus.CANCELLED && importOrder?.status !== ImportStatus.COMPLETED && (
           <>
-            <Button
-              type="primary"
-              icon={<UserAddOutlined />}
-              onClick={handleOpenAssignModal}
-            >
-              Phân công nhân viên
-            </Button>
-            <div className="ml-auto flex gap-2">
+            {userRole === AccountRole.DEPARTMENT && (
               <Button
-                danger
                 type="primary"
-                onClick={handleShowCancelModal}
-                loading={cancelling}
+                icon={<UserAddOutlined />}
+                onClick={handleOpenAssignModal}
               >
-                Hủy đơn nhập
+                Phân công nhân viên
               </Button>
+            )}
+            <div className="ml-auto flex gap-2">
+              {userRole !== AccountRole.WAREHOUSE_MANAGER && (
+                <Button
+                  danger
+                  type="primary"
+                  onClick={handleShowCancelModal}
+                  loading={cancelling}
+                >
+                  Hủy đơn nhập
+                </Button>
+              )}
             </div>
           </>
         )}

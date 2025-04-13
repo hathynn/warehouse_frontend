@@ -77,6 +77,12 @@ const itemMenuItems: MenuItem[] = [
     label: "Quản lý vật phẩm",
     path: ROUTES.PROTECTED.ITEM.LIST,
   },
+  {
+    key: "inventory-items",
+    icon: AiOutlineInbox,
+    label: "Quản lý hàng tồn kho",
+    path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+  },
 ];
 
 // Role-based menu configuration
@@ -86,6 +92,12 @@ export const menuItems: RoleMenuConfig = {
     ...baseMenuItems,
     ...importMenuItems,
     ...exportMenuItems,
+    {
+      key: "inventory-items",
+      icon: AiOutlineInbox,
+      label: "Quản lý hàng tồn kho",
+      path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+    }
   ],
 
   [AccountRole.STAFF]: [
@@ -94,8 +106,26 @@ export const menuItems: RoleMenuConfig = {
 
   [AccountRole.WAREHOUSE_MANAGER]: [
     ...baseMenuItems,
-    ...importMenuItems,
+    {
+      key: "import",
+      icon: AiOutlineImport,
+      label: "Quản lý nhập kho",
+      path: "",
+      children: [
+        {
+          key: "import-order",
+          label: "Danh sách đơn nhập",
+          path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
+        }
+      ],
+    },
     ...exportMenuItems,
+    {
+      key: "inventory-items",
+      icon: AiOutlineInbox,
+      label: "Quản lý hàng tồn kho",
+      path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+    }
   ],
 
   [AccountRole.ACCOUNTING]: [

@@ -10,8 +10,8 @@ export const BASE_ROUTES = {
 // Định nghĩa default landing route cho mỗi role
 export const ROLE_DEFAULT_ROUTES = {
   [AccountRole.DEPARTMENT]: "/import/request-list",
-  [AccountRole.STAFF]: "/import/order-list",
-  [AccountRole.WAREHOUSE_MANAGER]: "/import/request-list",
+  [AccountRole.STAFF]: "/overview",
+  [AccountRole.WAREHOUSE_MANAGER]: "/import/orders",
   [AccountRole.ACCOUNTING]: "/overview", // Thay đổi theo requirement
   [AccountRole.ADMIN]: "/overview", // Thay đổi theo requirement
 };
@@ -33,6 +33,9 @@ export const ROUTE_PERMISSIONS = {
     "/export/request-detail/:id",
     "/export/create-request",
 
+    // Inventory item routes
+    "/inventory-item/list",
+
     // Item routes
     "/item/list",
     "/item/detail/:id",
@@ -41,15 +44,15 @@ export const ROUTE_PERMISSIONS = {
   [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
     //Import routes
-    "/import/request-list",
-    "/import/request-detail/:id",
-    "/import/order-list",
     "/import/order-detail/:id",
     "/import/orders",
 
     // Export routes
     "/export/request-list",
     "/export/request-detail/:id",
+
+    // Inventory item routes
+    "/inventory-item/list",
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -118,6 +121,10 @@ export const ROUTES = {
       LIST: "/item/list",
       DETAIL: (id = ":id") => `/item/detail/${id}`,
       CREATE: "/item/create",
+    },
+
+    INVENTORY_ITEM: {
+      LIST: "/inventory-item/list",
     },
   },
 };

@@ -59,7 +59,7 @@ const ImportOrderList: React.FC = () => {
         setPagination({
           current: response.metadata.page,
           pageSize: response.metadata.limit,
-          total: response.metadata.totalElements,
+          total: response.metadata.total,
         });
       }
     } catch (error) {

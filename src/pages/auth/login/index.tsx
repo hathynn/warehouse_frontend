@@ -56,6 +56,7 @@ const Login = () => {
       }));
 
       // Redirect to default route based on role
+      
       redirectToDefaultRoute();
       
       toast.success("Đăng nhập thành công!");

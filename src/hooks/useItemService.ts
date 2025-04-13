@@ -41,7 +41,7 @@ export interface MetaDataDTO {
   hasNext: boolean;
   hasPrevious: boolean;
   limit: number;
-  totalElements: number;
+  total: number;
   page: number;
 }
 
