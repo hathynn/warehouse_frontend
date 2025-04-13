@@ -10,9 +10,9 @@ const AuthLayout = () => {
   return (
     <div
       style={{ backgroundImage: `url(${bg})` }}
-      className="auth-layout bg-cover bg-center flex items-center justify-center h-screen bg-gradient-to-br from-pink-200 to-purple-300"
+      className="auth-layout min-h-screen bg-cover bg-center flex items-center justify-center bg-gradient-to-br from-pink-200 to-purple-300"
     >
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96">
+      <div className="bg-white p-8 rounded-xl shadow-2xl w-[450px] mx-4">
         <Outlet />
       </div>
     </div>

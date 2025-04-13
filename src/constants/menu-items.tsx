@@ -86,7 +86,6 @@ export const menuItems: RoleMenuConfig = {
     ...baseMenuItems,
     ...importMenuItems,
     ...exportMenuItems,
-    ...itemMenuItems,
   ],
 
   [AccountRole.STAFF]: [
@@ -107,7 +106,6 @@ export const menuItems: RoleMenuConfig = {
     ...baseMenuItems,
     ...importMenuItems,
     ...exportMenuItems,
-    ...itemMenuItems,
   ],
 };
 

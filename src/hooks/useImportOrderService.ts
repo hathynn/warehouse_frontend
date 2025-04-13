@@ -10,11 +10,10 @@ export enum ImportStatus {
   CANCELLED = "CANCELLED"
 }
 
-// Enum to match DetailStatus.java
 export enum DetailStatus {
-  PENDING = "PENDING",
-  RECEIVED = "RECEIVED",
-  REJECTED = "REJECTED"
+  LACK = "LACK",
+  EXCESS = "EXCESS",
+  MATCH = "MATCH"
 }
 
 // Interface to match ImportOrderCreateRequest.java
@@ -49,7 +48,7 @@ export interface ImportOrderResponse {
   createdDate: string;
   updatedDate: string;
   paperIds?: number;
-  assignedWareHouseKeeperId?: number;
+  assignedStaffId?: number;
 }
 
 // Interface to match ImportOrderDetailRequest.java
@@ -205,6 +204,21 @@ const useImportOrderService = () => {
     }
   };
 
+  // Cancel an import order
+  const cancelImportOrder = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", `/import-order/cancel/${importOrderId}`);
+      if (response && response.content) {
+        toast.success("Hủy đơn nhập thành công");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể hủy đơn nhập");
+      console.error("Error cancelling import order:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     importOrderId,
@@ -215,6 +229,7 @@ const useImportOrderService = () => {
     updateImportOrder,
     deleteImportOrder,
     assignStaff,
+    cancelImportOrder,
   };
 };
 

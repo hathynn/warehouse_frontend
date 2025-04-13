@@ -105,8 +105,8 @@ const ItemList = () => {
       key: "detail",
       render: (text, record) => (
         <Link to={`/dashboard/items/${record.id}`}>
-          <Button id="btn-detail" type="link">
-            Chi tiết
+          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
+            Xem chi tiết
           </Button>
         </Link>
       ),

@@ -14,7 +14,8 @@ import {
 } from "antd";
 import {
   ArrowLeftOutlined,
-  UserAddOutlined
+  UserAddOutlined,
+  ExclamationCircleOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
@@ -24,32 +25,45 @@ import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
 import { AccountResponse } from "@/hooks/useAccountService";
+import { ROUTES } from "@/constants/routes";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
-  const [importOrder, setImportOrder] = useState<ImportOrderResponse | null>(null);
-  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
+
+  // Modal states
+  const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelModalText, setCancelModalText] = useState('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
+
+  // Loading states
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [qrCodesLoading, setQrCodesLoading] = useState(false);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [assigningStaff, setAssigningStaff] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  // Data states
+  const [importOrder, setImportOrder] = useState<ImportOrderResponse | null>(null);
+  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
+  const [qrCodes, setQrCodes] = useState<QrCodeResponse[]>([]);
+  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
+
+  // Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
-  const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
-  const [qrCodes, setQrCodes] = useState<QrCodeResponse[]>([]);
-  const [qrCodesLoading, setQrCodesLoading] = useState(false);
-  const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
-  const [loadingStaff, setLoadingStaff] = useState(false);
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
-  const [assigningStaff, setAssigningStaff] = useState(false);
 
-  const { getImportOrderById, assignStaff } = useImportOrderService();
+  const { getImportOrderById, assignStaff, cancelImportOrder } = useImportOrderService();
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
   const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
-  const { getAccountsByRole } = useAccountService();
+  const { getActiveStaff, findAccountById } = useAccountService();
 
   // Fetch import order data
   const fetchImportOrderData = useCallback(async () => {
@@ -71,7 +85,6 @@ const ImportOrderDetail = () => {
 
   const fetchImportOrderDetails = useCallback(async () => {
     if (!importOrderId) return;
-
     try {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
@@ -102,11 +115,22 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
 
-  const fetchStaffs = async () => {
+  const fetchAssignedStaff = useCallback(async () => {
+    if (!importOrderId) return;
+    try {
+      const response = await findAccountById(importOrder?.assignedStaffId);
+      setAssignedStaff(response);
+    } catch (error) {
+      console.error("Failed to fetch assigned staff:", error);
+      message.error("Không thể tải thông tin nhân viên đã phân công");
+    }
+  }, [importOrder, findAccountById]);
+
+  const fetchActiveStaffs = async () => {
     try {
       setLoadingStaff(true);
-      const staff = await getAccountsByRole(AccountRoleForRequest.STAFF);
-      setStaffs(staff);
+      const activeStaffs = await getActiveStaff();
+      setStaffs(activeStaffs);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);
       message.error("Không thể tải danh sách nhân viên kho");
@@ -115,9 +139,30 @@ const ImportOrderDetail = () => {
     }
   };
 
+  useEffect(() => {
+    if (importOrderId) {
+      fetchImportOrderData();
+      fetchImportOrderDetails();
+    }
+  }, [importOrderId]);
+
+  useEffect(() => {
+    if (importOrder?.assignedStaffId) {
+      fetchAssignedStaff();
+    }
+  }, [importOrder]);
+
+  // Handle pagination changes
+  useEffect(() => {
+    if (pagination.current > 0) {
+      fetchImportOrderDetails();
+    }
+  }, [pagination.current, pagination.pageSize]);
+
+
   const handleOpenAssignModal = () => {
     setSelectedStaffId(null);
-    fetchStaffs();
+    fetchActiveStaffs();
     setAssignModalVisible(true);
   };
 
@@ -142,34 +187,16 @@ const ImportOrderDetail = () => {
         importOrderId: parseInt(importOrderId),
         accountId: selectedStaffId
       });
-      
+
       await fetchImportOrderData();
-      handleCloseAssignModal();
+      await fetchAssignedStaff();
+      await fetchActiveStaffs();
     } catch (error) {
       console.error("Failed to assign warehouse keeper:", error);
     } finally {
       setAssigningStaff(false);
     }
   };
-
-  useEffect(() => {
-    if (importOrderId) {
-      fetchImportOrderData();
-    }
-  }, [importOrderId]);
-
-  useEffect(() => {
-    if (importOrderId) {
-      fetchImportOrderDetails();
-    }
-  }, [importOrderId]);
-
-  // Handle pagination changes
-  useEffect(() => {
-    if (pagination.current > 0) {
-      fetchImportOrderDetails();
-    }
-  }, [pagination.current, pagination.pageSize]);
 
   // Status tag renderers
   const getStatusTag = (status: ImportStatus) => {
@@ -186,9 +213,9 @@ const ImportOrderDetail = () => {
 
   const getDetailStatusTag = (status: string) => {
     const statusMap: Record<string, { color: string; text: string }> = {
-      "PENDING": { color: "default", text: "Chưa bắt đầu" },
-      "RECEIVED": { color: "processing", text: "Đang xử lý" },
-      "REJECTED": { color: "error", text: "Đã hủy" }
+      "LACK": { color: "error", text: "THIẾU" },
+      "EXCESS": { color: "error", text: "THỪA" },
+      "MATCH": { color: "success", text: "ĐỦ" }
     };
 
     const statusInfo = statusMap[status] || { color: "default", text: status };
@@ -205,24 +232,24 @@ const ImportOrderDetail = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrder?.importRequestId.toString()));
   };
 
   // Function to fetch and show QR codes
   const handleViewQrCodes = async (record: ImportOrderDetailResponse) => {
     try {
       setQrCodesLoading(true);
-      
+
       // First, get inventory items associated with this import order detail
       const inventoryItems = await getByImportOrderDetailId(record.importOrderDetailId);
-      
+
       if (inventoryItems?.items && inventoryItems.items.length > 0) {
         // Extract IDs for QR code lookup
         const inventoryItemIds = inventoryItems.items.map(item => item.id);
-        
+
         // Fetch QR codes
         const qrCodeData = await getListQrCodes(inventoryItemIds);
-        
+
         if (qrCodeData && qrCodeData.length > 0) {
           setQrCodes(qrCodeData);
           setQrViewModalVisible(true);
@@ -239,11 +266,41 @@ const ImportOrderDetail = () => {
       setQrCodesLoading(false);
     }
   };
-  
+
   // Function to close QR view modal
   const handleCloseQrViewModal = () => {
     setQrViewModalVisible(false);
     setQrCodes([]);
+  };
+
+  // Replace the existing handleCancelOrder with this new version
+  const handleShowCancelModal = () => {
+    setCancelModalVisible(true);
+  };
+
+  const handleCancelModalOk = async () => {
+    if (!importOrderId) return;
+
+    try {
+      setCancelling(true);
+      setCancelModalText('Đang xử lý huỷ đơn nhập...');
+
+      await cancelImportOrder(parseInt(importOrderId));
+      await fetchImportOrderData();
+
+      message.success('Đã hủy đơn nhập thành công');
+      setCancelModalVisible(false);
+    } catch (error) {
+      console.error("Failed to cancel import order:", error);
+      message.error('Không thể hủy đơn nhập. Vui lòng thử lại');
+    } finally {
+      setCancelling(false);
+      setCancelModalText('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
+    }
+  };
+
+  const handleCancelModalCancel = () => {
+    setCancelModalVisible(false);
   };
 
   // Table columns definition
@@ -262,23 +319,23 @@ const ImportOrderDetail = () => {
       width: '20%',
     },
     {
-      title: "Số lượng nhập dự tính của đơn này",
+      title: "Số lượng nhập dự tính của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
-      width: '15%',
+      width: '20%',
     },
     {
-      title: "Số lượng nhập thực tế của đơn ngày",
+      title: "Số lượng nhập thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: '15%',
+      width: '20%',
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: getDetailStatusTag,
-      width: '15%',
+      width: '12%',
     },
     {
       title: "Thao tác",
@@ -287,13 +344,12 @@ const ImportOrderDetail = () => {
         <Space>
           <Button
             onClick={() => handleViewQrCodes(record)}
-            disabled={record.status === "REJECTED"}
           >
             Xem QR-Code
           </Button>
         </Space>
       ),
-      width: '20%',
+      width: '12%',
     },
   ];
 
@@ -307,7 +363,7 @@ const ImportOrderDetail = () => {
   }
 
   return (
-    <div className="mx-auto p-4">
+    <div className="mx-auto p-3 pt-0">
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -316,22 +372,41 @@ const ImportOrderDetail = () => {
         >
           Quay lại
         </Button>
-        <h1 className="text-xl font-bold m-0">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
-        <Button 
-          type="primary" 
-          icon={<UserAddOutlined />} 
-          onClick={handleOpenAssignModal}
-          className="ml-auto"
-        >
-          Phân công nhân viên
-        </Button>
+      </div>
+      <div className="flex items-center mb-4">
+        <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
+        {importOrder?.status !== ImportStatus.CANCELLED && importOrder?.status !== ImportStatus.COMPLETED && (
+          <>
+            <Button
+              type="primary"
+              icon={<UserAddOutlined />}
+              onClick={handleOpenAssignModal}
+            >
+              Phân công nhân viên
+            </Button>
+            <div className="ml-auto flex gap-2">
+              <Button
+                danger
+                type="primary"
+                onClick={handleShowCancelModal}
+                loading={cancelling}
+              >
+                Hủy đơn nhập
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       <Card className="mb-6">
         <Descriptions title="Thông tin đơn nhập" bordered>
           <Descriptions.Item label="Mã đơn nhập">#{importOrder?.importOrderId}</Descriptions.Item>
-          <Descriptions.Item label="Mã phiếu nhập">#{importOrder?.importRequestId}</Descriptions.Item>
-          <Descriptions.Item label="Trạng thái">{importOrder?.status && getStatusTag(importOrder.status)}</Descriptions.Item>
+          <Descriptions.Item label="Ghi chú" span={3}>
+            {importOrder?.note || "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Nhân viên được phân công">
+            {assignedStaff?.fullName || "-"}
+          </Descriptions.Item>
           <Descriptions.Item label="Ngày nhận hàng">
             {importOrder?.dateReceived ? new Date(importOrder?.dateReceived).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
@@ -342,11 +417,18 @@ const ImportOrderDetail = () => {
           <Descriptions.Item label="Ngày tạo">
             {importOrder?.createdDate ? new Date(importOrder?.createdDate).toLocaleDateString("vi-VN") : "-"}
           </Descriptions.Item>
-          <Descriptions.Item label="Ngày cập nhật">
-            {importOrder?.updatedDate ? new Date(importOrder?.updatedDate).toLocaleDateString("vi-VN") : "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Ghi chú" span={3}>
-            {importOrder?.note || "-"}
+          <Descriptions.Item label="Trạng thái" span={2}>
+            {importOrder?.status && (
+              <Tag
+                color={getStatusTag(importOrder.status).props.color}
+                style={{
+                  fontSize: '14px',
+                  height: 'auto'
+                }}
+              >
+                {getStatusTag(importOrder.status).props.children}
+              </Tag>
+            )}
           </Descriptions.Item>
         </Descriptions>
       </Card>
@@ -374,12 +456,16 @@ const ImportOrderDetail = () => {
         open={assignModalVisible}
         onCancel={handleCloseAssignModal}
         footer={[
+          <Descriptions title="Nhân viên đang được phân công" bordered>
+            <Descriptions.Item label="Họ tên">{assignedStaff?.fullName || "-"}</Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">{assignedStaff?.phone || "-"}</Descriptions.Item>
+          </Descriptions>,
           <Button key="cancel" onClick={handleCloseAssignModal}>
             Đóng
           </Button>,
-          <Button 
-            key="submit" 
-            type="primary" 
+          <Button
+            key="submit"
+            type="primary"
             onClick={handleAssignStaff}
             loading={assigningStaff}
             disabled={!selectedStaffId}
@@ -396,7 +482,7 @@ const ImportOrderDetail = () => {
         ) : (
           <div>
             <p className="mb-4">Chọn nhân viên kho để phân công cho đơn nhập #{importOrder?.importOrderId}</p>
-            <Table 
+            <Table
               dataSource={staffs}
               rowKey="id"
               pagination={false}
@@ -428,7 +514,7 @@ const ImportOrderDetail = () => {
                   title: "Thao tác",
                   key: "action",
                   render: (_: any, record: AccountResponse) => (
-                    <Button 
+                    <Button
                       type={selectedStaffId === record.id ? "primary" : "default"}
                       size="small"
                       onClick={() => handleSelectStaff(record.id)}
@@ -478,6 +564,19 @@ const ImportOrderDetail = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title="Xác nhận hủy đơn nhập"
+        open={cancelModalVisible}
+        onOk={handleCancelModalOk}
+        confirmLoading={cancelling}
+        onCancel={handleCancelModalCancel}
+        okText="Xác nhận"
+        cancelText="Quay lại"
+        okButtonProps={{ danger: true }}
+      >
+        <p>{cancelModalText}</p>
       </Modal>
     </div>
   );

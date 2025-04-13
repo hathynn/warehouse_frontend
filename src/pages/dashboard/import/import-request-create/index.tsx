@@ -120,6 +120,8 @@ const ImportRequestCreate: React.FC = () => {
                 quantity: Number(quantity),
                 providerId: Number(providerId),
                 itemName: foundItem?.name || "Unknown",
+                measurementUnit: foundItem?.measurementUnit || "Unknown",
+                totalMeasurementValue: foundItem?.totalMeasurementValue || 0,
                 providerName: foundProvider?.name || "Unknown"
               };
             });
@@ -206,14 +208,10 @@ const ImportRequestCreate: React.FC = () => {
 
   const columns = [
     {
-      title: "Mã hàng",
-      dataIndex: "itemId",
-      key: "itemId",
-    },
-    {
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
+      width: "20%",
     },
     {
       title: "Số lượng",
@@ -221,10 +219,22 @@ const ImportRequestCreate: React.FC = () => {
       key: "quantity",
     },
     {
+      title: "Giá trị đo lường",
+      dataIndex: "totalMeasurementValue",
+      key: "totalMeasurementValue",
+    },
+    {
+      title: "Đơn vị tính",
+      dataIndex: "measurementUnit",
+      key: "measurementUnit",
+    },
+
+    {
       title: "Nhà cung cấp",
       dataIndex: "providerName",
       key: "providerName",
-      render: (text: string, record: ImportRequestDetailRow) => `${record.providerId} - ${text}`
+      width: "40%",
+      render: (text: string, record: ImportRequestDetailRow) => `${text}`
     }
   ];
 

@@ -146,29 +146,19 @@ const useAccountService = () => {
   };
 
   /**
-   * Get paginated accounts by role
-   * @param role - The role to filter accounts by
-   * @param page - Page number (default: 1)
-   * @param limit - Number of items per page (default: 10)
-   * @returns Promise resolving to paginated AccountResponse objects
+   * Get all active staff accounts
+   * @returns Promise resolving to an array of AccountResponse objects
    */
-  const getAccountsByRoleWithPagination = async (
-    role: AccountRoleForRequest,
-    page: number = 1,
-    limit: number = 10
-  ) => {
+  const getActiveStaff = async (): Promise<AccountResponse[]> => {
     try {
-      const response = await callApi(
-        "get",
-        `/account/role/${role}/paged?page=${page}&limit=${limit}`
-      );
+      const response = await callApi("get", `/account/active-staff`);
       if (response && response.content) {
         return response.content;
       }
-      return null;
+      return [];
     } catch (error) {
-      toast.error("Không thể lấy danh sách tài khoản theo vai trò");
-      console.error("Error fetching paginated accounts:", error);
+      toast.error("Không thể lấy danh sách nhân viên đang hoạt động");
+      console.error("Error fetching active staff:", error);
       throw error;
     }
   };
@@ -192,14 +182,34 @@ const useAccountService = () => {
     }
   };
 
+  /**
+   * Find account by id
+   * @param id - The id to search for
+   * @returns Promise resolving to AccountResponse
+   */
+  const findAccountById = async (id: number): Promise<AccountResponse> => {
+    try {
+      const response = await callApi("get", `/account/by-id?id=${id}`);
+      if (response && response.content) {
+        return response.content;
+      }
+      throw new Error("Account not found");
+    } catch (error) {
+      toast.error("Không thể tìm thấy tài khoản");
+      console.error("Error finding account by id:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     register,
     login,
     refreshToken,
     getAccountsByRole,
-    getAccountsByRoleWithPagination,
+    getActiveStaff,
     findAccountByEmail,
+    findAccountById
   };
 };
 

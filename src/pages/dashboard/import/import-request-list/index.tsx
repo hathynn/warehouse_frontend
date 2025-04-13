@@ -123,12 +123,6 @@ const ImportRequestList: React.FC = () => {
       render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
     },
     {
-      title: "Ngày cập nhật",
-      dataIndex: "updatedDate",
-      key: "updatedDate",
-      render: (date: string) => date ? new Date(date).toLocaleDateString("vi-VN") : "-",
-    },
-    {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
@@ -139,8 +133,8 @@ const ImportRequestList: React.FC = () => {
       key: "detail",
       render: (_: unknown, record: ImportRequestResponse) => (
         <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
-          <Button id="btn-detail" className="!p-0" type="link">
-            Chi tiết
+          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
+            Xem chi tiết
           </Button>
         </Link>
       ),
