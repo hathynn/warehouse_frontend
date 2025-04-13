@@ -94,7 +94,9 @@ export const menuItems: RoleMenuConfig = {
   ],
 
   [AccountRole.WAREHOUSE_MANAGER]: [
-
+    ...baseMenuItems,
+    ...importMenuItems,
+    ...exportMenuItems,
   ],
 
   [AccountRole.ACCOUNTING]: [
