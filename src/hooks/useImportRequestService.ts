@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 export interface ImportRequestCreateRequest {
   importReason: string;
   importType: string;
-  providerId: number;
   exportRequestId?: number | null;
 }
 

@@ -8,21 +8,14 @@ import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/ho
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
-import { InfoCircleOutlined, UploadOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx"
 import { ROUTES } from "@/constants/routes";
+import { RootState } from "@/redux/store";
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
-interface RootState {
-  user: {
-    user: {
-      id: number;
-      // Add other user properties as needed
-    };
-  };
-}
 
 interface FormData extends Omit<ImportOrderCreateRequest, 'dateReceived' | 'timeReceived'> {
   dateReceived: string;
@@ -48,7 +41,7 @@ interface TablePagination {
 const ImportOrderCreate = () => {
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
   const navigate = useNavigate();
-  const user = useSelector((state: RootState) => state.user.user);
+  const user = useSelector((state: RootState) => state.user);
 
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
   const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
@@ -66,7 +59,7 @@ const ImportOrderCreate = () => {
 
   const [formData, setFormData] = useState<FormData>({
     importRequestId: null,
-    accountId: user?.id,
+    accountId: null,
     dateReceived: dayjs().format("YYYY-MM-DD"),
     timeReceived: dayjs().format("HH:mm"),
     note: "",
@@ -109,12 +102,7 @@ const ImportOrderCreate = () => {
             setFormData(prev => ({
               ...prev,
               importRequestId: importRequestIdNum
-            }));
-
-            const requestDetails = await getImportRequestById(importRequestIdNum);
-            if (requestDetails?.content) {
-              toast.info(`Đang tạo đơn nhập cho phiếu nhập #${paramImportRequestId}`);
-            }
+            }))
           }
         }
       } catch (error) {
@@ -225,6 +213,20 @@ const ImportOrderCreate = () => {
     });
   };
 
+  const downloadTemplate = () => {
+    const template = [
+      {
+        "itemId": "Mã hàng (số)",
+        "quantity": "Số lượng (số)"
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "import_order_template.xlsx");
+  };
+
   const handleExcelUpload = async (info: any) => {
     const { status, originFileObj } = info.file;
 
@@ -264,6 +266,17 @@ const ImportOrderCreate = () => {
               plannedQuantity: Number(row.quantity || row['Số lượng'])
             }));
 
+            // Validate if itemId exists in importRequestDetails
+            const invalidItems = excelDetails.filter(ed =>
+              !importRequestDetails.some(ird => ird.itemId === ed.itemId)
+            );
+
+            if (invalidItems.length > 0) {
+              toast.error(`Các mã hàng sau không tồn tại trong phiếu nhập: ${invalidItems.map(i => i.itemId).join(', ')}`);
+              setExcelFile(null);
+              return;
+            }
+
             const updatedDetails = importRequestDetails.map(detail => {
               const excelDetail = excelDetails.find(ed => ed.itemId === detail.itemId);
               return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
@@ -275,11 +288,13 @@ const ImportOrderCreate = () => {
         } catch (error) {
           console.error("Error parsing Excel file:", error);
           toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
+          setExcelFile(null);
         }
       };
       reader.readAsArrayBuffer(originFileObj);
     } else if (status === 'error') {
       message.error(`${info.file.name} tải lên thất bại.`);
+      setExcelFile(null);
     }
   };
 
@@ -389,12 +404,28 @@ const ImportOrderCreate = () => {
               <>
                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <label className="block mb-2 font-medium text-blue-700">Tải lên file Excel số lượng dự tính</label>
-                  <Upload {...uploadProps}>
-                    <Button icon={<UploadOutlined />} className="bg-blue-100 hover:bg-blue-200 border-blue-300">Chọn file Excel</Button>
-                  </Upload>
+                  <div className="flex justify-between">
+                    {selectedImportRequest && (
+                      <Space>
+                        <Button
+                          icon={<DownloadOutlined />}
+                          onClick={downloadTemplate}
+                        >
+                          Tải mẫu Excel
+                        </Button>
+                      </Space>
+                    )}
+                    <Space>
+                      <Upload {...uploadProps}>
+                        <Button icon={<UploadOutlined />} type="primary" className="bg-blue-100 hover:bg-blue-200 border-blue-300">
+                          Chọn file Excel
+                        </Button>
+                      </Upload>
+                    </Space>
+                  </div>
                   <div className="text-sm text-blue-600 mt-2 flex items-center">
                     <InfoCircleOutlined className="mr-1" />
-                    File Excel phải có cột itemId và quantity
+                    File Excel phải có cột itemId và quantity, và chỉ chứa các mã hàng có trong phiếu nhập
                   </div>
                 </div>
               </>

@@ -4,8 +4,8 @@ import { setCredentials, logout } from "@/redux/features/userSlice";
 
 // Create axios instance with base configuration
 const api: AxiosInstance = axios.create({
-  // baseURL: "http://localhost:8080",
-  baseURL: "https://warehouse-backend-jlcj5.ondigitalocean.app",
+  baseURL: "http://localhost:8080",
+  // baseURL: "https://warehouse-backend-jlcj5.ondigitalocean.app",
 });
 
 // Flag to track if token refresh is in progress
@@ -71,9 +71,9 @@ api.interceptors.response.use(
 
     const state = store.getState();
     const refreshToken = state.user.refreshToken;
-
+    console.log(refreshToken);
     try {
-      const response = await api.post("/account/refresh-token", {}, {
+      const response = await axios.post(`${api.defaults.baseURL}/account/refresh-token`, {}, {
         headers: {
           Authorization: `Bearer ${refreshToken}`
         }

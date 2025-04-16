@@ -389,7 +389,7 @@ const ImportOrderDetail = () => {
         <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
         {importOrder?.status !== ImportStatus.CANCELLED && importOrder?.status !== ImportStatus.COMPLETED && (
           <>
-            {userRole === AccountRole.DEPARTMENT && (
+            {userRole === AccountRole.WAREHOUSE_MANAGER && (
               <Button
                 type="primary"
                 icon={<UserAddOutlined />}
@@ -399,7 +399,7 @@ const ImportOrderDetail = () => {
               </Button>
             )}
             <div className="ml-auto flex gap-2">
-              {userRole !== AccountRole.WAREHOUSE_MANAGER && (
+              {userRole === AccountRole.DEPARTMENT && (
                 <Button
                   danger
                   type="primary"

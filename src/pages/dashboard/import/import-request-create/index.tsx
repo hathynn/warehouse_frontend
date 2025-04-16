@@ -101,29 +101,43 @@ const ImportRequestCreate: React.FC = () => {
             const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
               const itemId = item["itemId"] || item["Mã hàng"];
               const quantity = item["quantity"] || item["Số lượng"];
-              const providerId = item["providerId"] || item["Mã nhà cung cấp"];
               
               if (!itemId || !quantity) {
                 throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`);
               }
               
-              if (!providerId) {
-                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã nhà cung cấp`);
-              }
-              
+              // Tìm item từ danh sách items
               const foundItem = items.find(i => i.id === Number(itemId));
-              const foundProvider = providers.find(p => p.id === Number(providerId));
+              if (!foundItem) {
+                throw new Error(`Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`);
+              }
+
+              // Tìm provider từ danh sách providers dựa vào providerId của item
+              const foundProvider = providers.find(p => p.id === foundItem.providerId);
+              if (!foundProvider) {
+                throw new Error(`Dòng ${index + 1}: Không tìm thấy nhà cung cấp cho mặt hàng ${foundItem.name}`);
+              }
               
               return {
                 itemId: Number(itemId),
                 quantity: Number(quantity),
-                providerId: Number(providerId),
-                itemName: foundItem?.name || "Unknown",
-                measurementUnit: foundItem?.measurementUnit || "Unknown",
-                totalMeasurementValue: foundItem?.totalMeasurementValue || 0,
-                providerName: foundProvider?.name || "Unknown"
+                providerId: foundProvider.id,
+                itemName: foundItem.name,
+                measurementUnit: foundItem.measurementUnit || "Unknown",
+                totalMeasurementValue: foundItem.totalMeasurementValue || 0,
+                providerName: foundProvider.name
               };
             });
+
+            // Nhóm các items theo provider để hiển thị thông tin
+            const providerGroups = transformedData.reduce((groups, item) => {
+              const providerId = item.providerId;
+              if (!groups[providerId]) {
+                groups[providerId] = [];
+              }
+              groups[providerId].push(item);
+              return groups;
+            }, {} as Record<number, ImportRequestDetailRow[]>);
             
             setData(transformedData);
             setValidationError("");
@@ -147,8 +161,7 @@ const ImportRequestCreate: React.FC = () => {
     const template = [
       {
         "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)",
-        "providerId": "Mã nhà cung cấp (số)"
+        "quantity": "Số lượng (số)"
       }
     ];
     
@@ -169,16 +182,9 @@ const ImportRequestCreate: React.FC = () => {
       return;
     }
     
-    const uniqueProviderIds = Array.from(new Set(data.map(item => item.providerId)));
-    if (uniqueProviderIds.length > 1) {
-      toast.error("Tất cả các mặt hàng phải từ cùng một nhà cung cấp");
-      return;
-    }
-    
     try {
       const createRequest: ImportRequestCreateRequest = {
-        ...formData,
-        providerId: data[0].providerId
+        ...formData
       };
 
       const createdRequest = await createImportRequest(createRequest);
@@ -186,8 +192,7 @@ const ImportRequestCreate: React.FC = () => {
       if (createdRequest?.content?.importRequestId) {
         await createImportRequestDetail(file, createdRequest.content.importRequestId);
         
-        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
-        
+        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);        
         // Reset form
         setFormData({
           importReason: "",
@@ -199,7 +204,7 @@ const ImportRequestCreate: React.FC = () => {
         setData([]);
       }
     } catch (error) {
-      console.error("Error submitting form:", error);
+
     }
   };
 
@@ -308,7 +313,7 @@ const ImportRequestCreate: React.FC = () => {
             <div className="mt-2">
               <Alert
                 message="Lưu ý"
-                description="Thông tin nhà cung cấp sẽ được lấy từ file Excel. Tất cả các mặt hàng phải từ cùng một nhà cung cấp."
+                description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
                 type="info"
                 showIcon
               />
@@ -330,13 +335,28 @@ const ImportRequestCreate: React.FC = () => {
         <div className="w-2/3">
           <Card title="Chi tiết hàng hóa từ file Excel">
             {data.length > 0 ? (
-              <Table 
-                columns={columns} 
-                dataSource={data} 
-                rowKey={(record, index) => index}
-                pagination={{ pageSize: 10 }}
-                className="custom-table"
-              />
+              <>
+                <Alert
+                  message="Thông tin nhập kho"
+                  description={
+                    <>
+                      <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
+                      <p>Tổng số mặt hàng: {data.length}</p>
+                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
+                    </>
+                  }
+                  type="info"
+                  showIcon
+                  className="mb-4"
+                />
+                <Table 
+                  columns={columns} 
+                  dataSource={data} 
+                  rowKey={(record, index) => index}
+                  pagination={{ pageSize: 10 }}
+                  className="custom-table"
+                />
+              </>
             ) : (
               <div className="text-center py-10 text-gray-500">
                 Vui lòng tải lên file Excel để xem chi tiết hàng hóa
