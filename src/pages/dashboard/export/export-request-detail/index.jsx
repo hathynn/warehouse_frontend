@@ -304,7 +304,7 @@ const ExportRequestDetail = () => {
       key: "quantity",
     },
     {
-      title: "Số lượng đã kiểm đếm",
+      title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
     },
