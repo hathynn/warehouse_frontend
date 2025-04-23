@@ -144,7 +144,16 @@ const ImportRequestList: React.FC = () => {
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold">Danh sách phiếu nhập</h1>
+        <h1 className="text-2xl font-bold">Danh sách phiếu nhập</h1>
+        <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
+          <Button
+            type="primary"
+            id="btn-create"
+            icon={<PlusOutlined />}
+          >
+            Tạo Phiếu Nhập
+          </Button>
+        </Link>
       </div>
 
       <div className="mb-4">
@@ -161,7 +170,7 @@ const ImportRequestList: React.FC = () => {
         columns={columns}
         dataSource={filteredItems}
         rowKey="importRequestId"
-        className="custom-table mb-4"
+        className="custom-table"
         loading={loading}
         onChange={handleTableChange}
         pagination={{
@@ -171,18 +180,6 @@ const ImportRequestList: React.FC = () => {
           showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập`,
         }}
       />
-
-      <div className="mt-4">
-        <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
-          <Button
-            type="primary"
-            id="btn-create"
-            icon={<PlusOutlined />}
-          >
-            Tạo Phiếu Nhập
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 };

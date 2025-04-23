@@ -9,39 +9,40 @@ import {
   Spin,
   message,
   Modal,
-  Space,
-  QRCode
+  Input
 } from "antd";
 import {
   ArrowLeftOutlined,
   UserAddOutlined,
-  ExclamationCircleOutlined
+  PrinterOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useInventoryItemService from "@/hooks/useInventoryItemService";
-import useAccountService, { AccountRole, AccountRoleForRequest } from "@/hooks/useAccountService";
+import useAccountService, { AccountRole } from "@/hooks/useAccountService";
 import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
-import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
 import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
 import { UserState } from "@/redux/features/userSlice";
+import useConfigService from "@/hooks/useConfigService";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
 
   // Modal states
-  const [qrViewModalVisible, setQrViewModalVisible] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelModalText, setCancelModalText] = useState('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
+  const [confirmAssignModalVisible, setConfirmAssignModalVisible] = useState(false);
 
   // Loading states
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [qrCodesLoading, setQrCodesLoading] = useState(false);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [assigningStaff, setAssigningStaff] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -50,7 +51,6 @@ const ImportOrderDetail = () => {
   // Data states
   const [importOrder, setImportOrder] = useState<ImportOrderResponse | null>(null);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
-  const [qrCodes, setQrCodes] = useState<QrCodeResponse[]>([]);
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
@@ -62,10 +62,12 @@ const ImportOrderDetail = () => {
     total: 0,
   });
 
+  const [searchText, setSearchText] = useState('');
+
   const { getImportOrderById, assignStaff, cancelImportOrder } = useImportOrderService();
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
   const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
-  const { getActiveStaff, findAccountById } = useAccountService();
+  const { getActiveStaffsInDay, findAccountById } = useAccountService();
 
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
 
@@ -133,15 +135,48 @@ const ImportOrderDetail = () => {
   }, [importOrder, findAccountById]);
 
   const fetchActiveStaffs = async () => {
+    if (!importOrder?.dateReceived) {
+      message.error("Ngày nhận hàng không hợp lệ");
+      return;
+    }
+
     try {
       setLoadingStaff(true);
-      const activeStaffs = await getActiveStaff();
+      const activeStaffs = await getActiveStaffsInDay(importOrder.dateReceived);
       setStaffs(activeStaffs);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);
       message.error("Không thể tải danh sách nhân viên kho");
     } finally {
       setLoadingStaff(false);
+    }
+  };
+
+  // Helper function to calculate remaining time
+  const calculateRemainingTime = (totalExpectedTime: string): string => {
+    // Default working hours per day (8 hours = 480 minutes)
+    const DEFAULT_WORKING_MINUTES = 480;
+    
+    try {
+      // Parse the expected time (format: "HH:mm:ss")
+      const [hours, minutes] = totalExpectedTime.split(':').map(Number);
+      const expectedMinutes = (hours * 60) + minutes;
+      
+      // Calculate remaining minutes
+      const remainingMinutes = DEFAULT_WORKING_MINUTES - expectedMinutes;
+      
+      if (remainingMinutes <= 0) {
+        return "0 tiếng 0 phút";
+      }
+      
+      // Convert to hours and minutes format
+      const remainingHours = Math.floor(remainingMinutes / 60);
+      const remainingMins = Math.floor(remainingMinutes % 60);
+      
+      return `${remainingHours} tiếng ${remainingMins} phút`;
+    } catch (error) {
+      // If there's any error in calculation, return default working hours
+      return "8 tiếng 0 phút";
     }
   };
 
@@ -181,17 +216,20 @@ const ImportOrderDetail = () => {
     setSelectedStaffId(staffId);
   };
 
-  const handleAssignStaff = async () => {
+  const handleAssignStaff = () => {
     if (!selectedStaffId || !importOrderId) {
       message.warning("Vui lòng chọn nhân viên để phân công");
       return;
     }
+    setConfirmAssignModalVisible(true);
+  };
 
+  const handleConfirmAssign = async () => {
     try {
       setAssigningStaff(true);
       await assignStaff({
         importOrderId: parseInt(importOrderId),
-        accountId: selectedStaffId
+        accountId: selectedStaffId!
       });
 
       const importOrderResponse = await fetchImportOrderData();
@@ -201,13 +239,17 @@ const ImportOrderDetail = () => {
       await fetchActiveStaffs();
       
       message.success("Phân công nhân viên thành công");
-      handleCloseAssignModal();
+      setConfirmAssignModalVisible(false);
     } catch (error) {
       console.error("Failed to assign warehouse keeper:", error);
       message.error("Không thể phân công nhân viên. Vui lòng thử lại");
     } finally {
       setAssigningStaff(false);
     }
+  };
+
+  const handleCancelAssign = () => {
+    setConfirmAssignModalVisible(false);
   };
 
   // Status tag renderers
@@ -247,44 +289,6 @@ const ImportOrderDetail = () => {
     navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrder?.importRequestId.toString()));
   };
 
-  // Function to fetch and show QR codes
-  const handleViewQrCodes = async (record: ImportOrderDetailResponse) => {
-    try {
-      setQrCodesLoading(true);
-
-      // First, get inventory items associated with this import order detail
-      const inventoryItems = await getByImportOrderDetailId(record.importOrderDetailId);
-
-      if (inventoryItems?.items && inventoryItems.items.length > 0) {
-        // Extract IDs for QR code lookup
-        const inventoryItemIds = inventoryItems.items.map(item => item.id);
-
-        // Fetch QR codes
-        const qrCodeData = await getListQrCodes(inventoryItemIds);
-
-        if (qrCodeData && qrCodeData.length > 0) {
-          setQrCodes(qrCodeData);
-          setQrViewModalVisible(true);
-        } else {
-          message.info("Không tìm thấy mã QR cho sản phẩm này");
-        }
-      } else {
-        message.info("Không tìm thấy sản phẩm trong kho cho chi tiết đơn nhập này");
-      }
-    } catch (error) {
-      console.error("Failed to fetch QR codes:", error);
-      message.error("Không thể tải mã QR");
-    } finally {
-      setQrCodesLoading(false);
-    }
-  };
-
-  // Function to close QR view modal
-  const handleCloseQrViewModal = () => {
-    setQrViewModalVisible(false);
-    setQrCodes([]);
-  };
-
   // Replace the existing handleCancelOrder with this new version
   const handleShowCancelModal = () => {
     setCancelModalVisible(true);
@@ -315,13 +319,43 @@ const ImportOrderDetail = () => {
     setCancelModalVisible(false);
   };
 
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+
+  const getFilteredAndSortedStaffs = () => {
+    return staffs
+      .map(staff => ({
+        ...staff,
+        remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00")
+      }))
+      .filter(staff => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          staff.fullName.toLowerCase().includes(searchLower) ||
+          staff.id.toString().includes(searchLower)
+        );
+      })
+      .sort((a, b) => {
+        // Convert remaining time to minutes for comparison
+        const getMinutes = (timeStr: string) => {
+          const [hours, minutes] = timeStr.split(' tiếng ').map(part => 
+            parseInt(part.replace(' phút', ''))
+          );
+          return (hours * 60) + minutes;
+        };
+        
+        return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
+      });
+  };
+
   // Table columns definition
   const columns = [
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: '10%',
+      width: '15%',
     },
     {
       title: "Tên sản phẩm",
@@ -334,35 +368,21 @@ const ImportOrderDetail = () => {
       title: "Số lượng nhập dự tính của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
-      width: '20%',
+      width: '25%',
     },
     {
       title: "Số lượng nhập thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: '20%',
+      width: '25%',
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: getDetailStatusTag,
-      width: '12%',
-    },
-    {
-      title: "Thao tác",
-      key: "action",
-      render: (_: any, record: ImportOrderDetailResponse) => (
-        <Space>
-          <Button
-            onClick={() => handleViewQrCodes(record)}
-          >
-            Xem QR-Code
-          </Button>
-        </Space>
-      ),
-      width: '12%',
-    },
+      width: '15%',
+    }
   ];
 
   // Show loading spinner when initially loading the page
@@ -394,8 +414,10 @@ const ImportOrderDetail = () => {
                 type="primary"
                 icon={<UserAddOutlined />}
                 onClick={handleOpenAssignModal}
+                disabled={!!importOrder?.assignedStaffId}
+                title={importOrder?.assignedStaffId ? "Đơn nhập này đã được phân công" : ""}
               >
-                Phân công nhân viên
+                {importOrder?.assignedStaffId ? "Đã phân công" : "Phân công nhân viên"}
               </Button>
             )}
             <div className="ml-auto flex gap-2">
@@ -450,6 +472,13 @@ const ImportOrderDetail = () => {
       </Card>
 
       <div className="flex justify-between items-center mt-16 mb-4">
+        <Button
+          type="primary"
+          icon={<PrinterOutlined />}
+          onClick={() => {/* Logic sẽ được thêm sau */}}
+        >
+          In QRCode
+        </Button>
       </div>
 
       <Table
@@ -468,14 +497,15 @@ const ImportOrderDetail = () => {
 
       {/* Staff Assignment Modal */}
       <Modal
-        title="Phân công nhân viên kho"
+        title={
+          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
+            <p className="text-sm text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+          </div>
+        }
         open={assignModalVisible}
         onCancel={handleCloseAssignModal}
         footer={[
-          <Descriptions title="Nhân viên đang được phân công" bordered>
-            <Descriptions.Item label="Họ tên">{assignedStaff?.fullName || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">{assignedStaff?.phone || "-"}</Descriptions.Item>
-          </Descriptions>,
           <Button key="cancel" onClick={handleCloseAssignModal}>
             Đóng
           </Button>,
@@ -483,100 +513,83 @@ const ImportOrderDetail = () => {
             key="submit"
             type="primary"
             onClick={handleAssignStaff}
-            loading={assigningStaff}
             disabled={!selectedStaffId}
           >
-            Xác nhận phân công
+            Phân công
           </Button>,
         ]}
         width={700}
+        className="!top-[50px]"
       >
         {loadingStaff ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
         ) : (
-          <div>
-            <p className="mb-4">Chọn nhân viên kho để phân công cho đơn nhập #{importOrder?.importOrderId}</p>
-            <Table
-              dataSource={staffs}
-              rowKey="id"
-              pagination={false}
-              columns={[
-                {
-                  title: "Họ tên",
-                  dataIndex: "fullName",
-                  key: "fullName",
-                },
-                {
-                  title: "Số điện thoại",
-                  dataIndex: "phone",
-                  key: "phone",
-                },
-                {
-                  title: "Trạng thái",
-                  dataIndex: "status",
-                  key: "status",
-                  render: (status: string) => {
-                    const statusMap: Record<string, { color: string; text: string }> = {
-                      "ACTIVE": { color: "green", text: "Hoạt động" },
-                      "INACTIVE": { color: "red", text: "Không hoạt động" },
-                    };
-                    const statusInfo = statusMap[status] || { color: "default", text: status };
-                    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
-                  }
-                },
-                {
-                  title: "Thao tác",
-                  key: "action",
-                  render: (_: any, record: AccountResponse) => (
-                    <Button
-                      type={selectedStaffId === record.id ? "primary" : "default"}
-                      size="small"
-                      onClick={() => handleSelectStaff(record.id)}
-                    >
-                      {selectedStaffId === record.id ? "Đã chọn" : "Chọn"}
-                    </Button>
-                  )
-                }
-              ]}
-            />
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        title="Xem mã QR"
-        open={qrViewModalVisible}
-        onCancel={handleCloseQrViewModal}
-        footer={[
-          <Button key="close" onClick={handleCloseQrViewModal}>
-            Đóng
-          </Button>
-        ]}
-        width={800}
-      >
-        {qrCodesLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <div>
-            <p className="mb-4">Tổng cộng: {qrCodes.length} mã QR</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {qrCodes.map((qrCode, index) => (
-                <div key={index} className="border p-4 rounded-md flex flex-col items-center">
-                  <QRCode
-                    value={JSON.stringify(qrCode)}
-                    size={150}
-                    bordered={false}
-                  />
-                  <div className="mt-2 text-xs text-center">
-                    <p>Mã sản phẩm trong kho: #{qrCode.id}</p>
-                    <p>Số lượng trong kho: {qrCode.quantity || 0}</p>
-                  </div>
+          <div className="space-y-6">
+            {/* Current Assignment Info */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h4 className="text-base font-medium text-gray-700 mb-3">Nhân viên đang được phân công</h4>
+              <div className="grid grid-cols-2 gap-4">
+              <div>
+                  <p className="text-sm text-gray-500">Mã nhân viên</p>
+                  <p className="text-base">#{assignedStaff?.id || "-"}</p>
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm text-gray-500">Họ tên</p>
+                  <p className="text-base">{assignedStaff?.fullName || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff List */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-base font-medium text-gray-700">Danh sách nhân viên có thể phân công</h4>
+                <Input.Search
+                  placeholder="Tìm theo tên hoặc mã nhân viên"
+                  allowClear
+                  onSearch={handleSearch}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  style={{ width: 300 }}
+                />
+              </div>
+              <Table
+                dataSource={getFilteredAndSortedStaffs()}
+                rowKey="id"
+                pagination={false}
+                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
+                onRow={(record) => ({
+                  onClick: () => handleSelectStaff(record.id),
+                  className: selectedStaffId === record.id ? '!bg-blue-100' : ''
+                })}
+                columns={[
+                  {
+                    title: "Mã nhân viên",
+                    dataIndex: "id",
+                    key: "id",
+                    render: (id) => `#${id}`,
+                    width: '25%',
+                  },
+                  {
+                    title: "Họ tên",
+                    dataIndex: "fullName",
+                    key: "fullName",
+                    width: '45%',
+                  },
+                  {
+                    title: "Thời gian rảnh còn lại",
+                    dataIndex: "remainingTime",
+                    key: "remainingTime",
+                    width: '30%',
+                    render: (time) => (
+                      <span className="font-medium text-blue-600">
+                        {time || "8 tiếng 0 phút"}
+                      </span>
+                    )
+                  }
+                ]}
+              />
             </div>
           </div>
         )}
@@ -593,6 +606,19 @@ const ImportOrderDetail = () => {
         okButtonProps={{ danger: true }}
       >
         <p>{cancelModalText}</p>
+      </Modal>
+
+      {/* Confirmation Modal for Staff Assignment */}
+      <Modal
+        title="Xác nhận phân công nhân viên"
+        open={confirmAssignModalVisible}
+        onOk={handleConfirmAssign}
+        onCancel={handleCancelAssign}
+        confirmLoading={assigningStaff}
+        okText="Xác nhận"
+        cancelText="Hủy"
+      >
+        <p>Bạn có chắc chắn muốn phân công nhân viên này không? Sau khi phân công sẽ không thể thay đổi.</p>
       </Modal>
     </div>
   );

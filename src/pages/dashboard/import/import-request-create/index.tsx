@@ -244,45 +244,7 @@ const ImportRequestCreate: React.FC = () => {
 
   return (
     <div className="container mx-auto p-5">
-      <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Tạo phiếu nhập kho</Title>
-        <Space>
-          <Button 
-            icon={<DownloadOutlined />} 
-            onClick={downloadTemplate}
-          >
-            Tải mẫu Excel
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
-          <Button 
-            type="primary" 
-            icon={<UploadOutlined />} 
-            className="btn" 
-            id="btn-detail"
-            onClick={triggerFileInput}
-          >
-            Tải lên file Excel
-          </Button>
-          {fileName && <span className="ml-2 text-gray-500">{fileName}</span>}
-        </Space>
-      </div>
-
-      {validationError && (
-        <Alert
-          message="Lỗi dữ liệu"
-          description={validationError}
-          type="error"
-          showIcon
-          className="mb-4"
-          closable
-        />
-      )}
+      <Title level={2}>Tạo phiếu nhập kho</Title>
 
       <div className="flex gap-6">
         <Card title="Thông tin phiếu nhập" className="w-1/3">
@@ -319,6 +281,45 @@ const ImportRequestCreate: React.FC = () => {
               />
             </div>
             
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">              
+              {/* Button group container */}
+              <div className="flex flex-col gap-3">
+                {/* Buttons row - added justify-center */}
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={downloadTemplate}
+                  >
+                    Tải mẫu Excel
+                  </Button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    style={{ display: "none" }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<UploadOutlined />}
+                    onClick={triggerFileInput}
+                    className="bg-blue-100 hover:bg-blue-200 border-blue-300"
+                  >
+                    Tải lên file Excel
+                  </Button>
+                </div>
+
+                {/* File name display */}
+                {fileName && (
+                  <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
+                    <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
+                      File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <Button 
               type="primary" 
               onClick={handleSubmit} 
