@@ -43,6 +43,18 @@ const ImportOrderCreate = () => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.user);
 
+  // Add function to get default date/time (12 hours from now)
+  const getDefaultDateTime = () => {
+    const now = dayjs();
+    const defaultTime = now.add(12, 'hour');
+    return {
+      date: defaultTime.format("YYYY-MM-DD"),
+      time: defaultTime.format("HH:mm")
+    };
+  };
+
+  const defaultDateTime = getDefaultDateTime();
+
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
   const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailWithPlanned[]>([]);
@@ -62,10 +74,10 @@ const ImportOrderCreate = () => {
   const [formData, setFormData] = useState<FormData>({
     importRequestId: null,
     accountId: null,
-    dateReceived: dayjs().format("YYYY-MM-DD"),
-    timeReceived: dayjs().format("HH:mm"),
+    dateReceived: defaultDateTime.date,
+    timeReceived: defaultDateTime.time,
     note: "",
-    status: ImportStatus.NOT_STARTED // Using the enum from useImportOrderService
+    status: ImportStatus.NOT_STARTED
   });
 
 
@@ -160,18 +172,32 @@ const ImportOrderCreate = () => {
   }, [selectedImportRequest, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
 
+  const validateDateTime = (date: string, time: string) => {
+    const selectedDateTime = dayjs(`${date} ${time}`);
+    const now = dayjs();
+    const minDateTime = now.add(12, 'hour');
+
+    return selectedDateTime.isAfter(minDateTime);
+  };
+
   const handleDateChange = (date: Dayjs | null) => {
-    setFormData({
-      ...formData,
-      dateReceived: date ? date.format("YYYY-MM-DD") : dayjs().format("YYYY-MM-DD")
-    });
+    if (!date) return;
+    
+    const newDate = date.format("YYYY-MM-DD");
+    setFormData(prev => ({
+      ...prev,
+      dateReceived: newDate
+    }));
   };
 
   const handleTimeChange = (time: Dayjs | null) => {
-    setFormData({
-      ...formData,
-      timeReceived: time ? time.format("HH:mm") : dayjs().format("HH:mm")
-    });
+    if (!time) return;
+    
+    const newTime = time.format("HH:mm");
+    setFormData(prev => ({
+      ...prev,
+      timeReceived: newTime
+    }));
   };
 
   const handleSubmit = async () => {
@@ -180,8 +206,8 @@ const ImportOrderCreate = () => {
       return;
     }
 
-    if (!formData.dateReceived || !formData.timeReceived) {
-      toast.error("Vui lòng chọn ngày và giờ nhận hàng");
+    if (!validateDateTime(formData.dateReceived, formData.timeReceived)) {
+      toast.error("Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất 12 giờ");
       return;
     }
 
@@ -198,7 +224,21 @@ const ImportOrderCreate = () => {
 
       if (response?.content) {
         if (excelFile) {
-          await uploadImportOrderDetail(excelFile, response.content.importOrderId);
+          // Create a new file with only valid items
+          const validData = uploadedDetails.map(detail => ({
+            itemId: detail.itemId,
+            quantity: detail.plannedQuantity
+          }));
+
+          const ws = XLSX.utils.json_to_sheet(validData);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Valid Items");
+          const validFile = new File([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], 
+            'valid_items.xlsx', 
+            { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
+          );
+
+          await uploadImportOrderDetail(validFile, response.content.importOrderId);
         }
         navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
       }
@@ -264,31 +304,32 @@ const ImportOrderCreate = () => {
               plannedQuantity: Number(row.quantity || row['Số lượng'])
             }));
 
-            // Validate if itemId exists in importRequestDetails
-            const invalidItems = excelDetails.filter(ed =>
-              !importRequestDetails.some(ird => ird.itemId === ed.itemId)
+            // Filter out invalid items and only keep those that exist in importRequestDetails
+            const validExcelDetails = excelDetails.filter(ed =>
+              importRequestDetails.some(ird => ird.itemId === ed.itemId)
             );
 
-            if (invalidItems.length > 0) {
-              toast.error(`Các mã hàng sau không tồn tại trong phiếu nhập: ${invalidItems.map(i => i.itemId).join(', ')}`);
+            if (validExcelDetails.length === 0) {
+              toast.warning("Không có mã hàng nào trong file Excel khớp với phiếu nhập");
               setExcelFile(null);
-            setFileName("");
+              setFileName("");
               return;
             }
 
+            // Update only the valid items
             const updatedDetails = importRequestDetails.map(detail => {
-              const excelDetail = excelDetails.find(ed => ed.itemId === detail.itemId);
+              const excelDetail = validExcelDetails.find(ed => ed.itemId === detail.itemId);
               return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
             });
 
-            setUploadedDetails(excelDetails);
-            toast.info("Số lượng dự tính đã được cập nhật từ file Excel");
+            setUploadedDetails(validExcelDetails);
+            toast.success(`Đã cập nhật số lượng dự tính cho ${validExcelDetails.length} mã hàng từ file Excel`);
           }
         } catch (error) {
           console.error("Error parsing Excel file:", error);
           toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
           setExcelFile(null);
-        setFileName("");
+          setFileName("");
         }
       };
     reader.readAsArrayBuffer(uploadedFile);
@@ -342,7 +383,6 @@ const ImportOrderCreate = () => {
 
   const renderExcelUploadSection = () => (
     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-      <label className="block mb-2 font-medium text-blue-700">Tải lên file Excel số lượng dự tính</label>
       
       {/* Button group container */}
       <div className="flex flex-col gap-3">
@@ -374,7 +414,7 @@ const ImportOrderCreate = () => {
         {/* File name display */}
         {fileName && (
           <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
-            <span className="text-gray-600">
+            <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
               File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
             </span>
           </div>
@@ -384,7 +424,7 @@ const ImportOrderCreate = () => {
       {/* Info message */}
       <div className="text-sm text-blue-600 mt-3 flex items-center">
         <InfoCircleOutlined className="mr-1" />
-        File Excel phải có cột itemId và quantity, và chỉ chứa các mã hàng có trong phiếu nhập
+        Hệ thống sẽ bỏ qua các itemId (Mã hàng) không tồn tại trong phiếu nhập
       </div>
     </div>
   );
@@ -412,6 +452,10 @@ const ImportOrderCreate = () => {
                 className="w-full"
                 value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                 onChange={handleDateChange}
+                disabledDate={(current) => {
+                  return current && current.isBefore(dayjs().add(12, 'hour').startOf('day'));
+                }}
+                showNow={false}
               />
             </div>
 
@@ -422,6 +466,25 @@ const ImportOrderCreate = () => {
                 value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
                 onChange={handleTimeChange}
                 format="HH:mm"
+                showNow={false}
+                disabledTime={() => {
+                  const now = dayjs();
+                  const selectedDate = dayjs(formData.dateReceived);
+                  const minDateTime = now.add(12, 'hour');
+                  
+                  if (selectedDate.isSame(minDateTime, 'day')) {
+                    return {
+                      disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
+                      disabledMinutes: () => {
+                        if (minDateTime.hour() === now.hour()) {
+                          return Array.from({ length: minDateTime.minute() }, (_, i) => i);
+                        }
+                        return [];
+                      }
+                    };
+                  }
+                  return {};
+                }}
               />
             </div>
 

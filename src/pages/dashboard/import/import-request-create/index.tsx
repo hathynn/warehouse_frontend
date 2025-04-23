@@ -309,10 +309,10 @@ const ImportRequestCreate: React.FC = () => {
                   </Button>
                 </div>
 
-                {/* File name display - added justify-center */}
+                {/* File name display */}
                 {fileName && (
-                  <div className="flex items-center justify-center bg-white px-3 py-2 rounded-md border border-gray-200">
-                    <span className="text-gray-600">
+                  <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
+                    <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
                       File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
                     </span>
                   </div>
