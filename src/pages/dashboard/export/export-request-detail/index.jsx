@@ -62,6 +62,21 @@ const ExportRequestDetail = () => {
     }
   }, [exportRequestId, getExportRequestById]);
 
+  const getStatusTag = (status) => {
+    switch (status) {
+      case "NOT_STARTED":
+        return <Tag color="default">Chưa bắt đầu</Tag>;
+      case "IN_PROGRESS":
+        return <Tag color="processing">Đã kiểm kho</Tag>;
+      case "COMPLETED":
+        return <Tag color="success">Hoàn tất</Tag>;
+      case "CANCELLED":
+        return <Tag color="error">Đã hủy</Tag>;
+      default:
+        return <Tag color="default">{status}</Tag>;
+    }
+  };
+
   // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
   const enrichDetails = async (details) => {
     const enriched = await Promise.all(
@@ -193,6 +208,9 @@ const ExportRequestDetail = () => {
       <Descriptions.Item label="Mã phiếu xuất" key="exportId">
         #{exportRequest.exportRequestId}
       </Descriptions.Item>,
+      <Descriptions.Item label="Trạng thái phiếu" key="status">
+        {getStatusTag(exportRequest.status)}
+      </Descriptions.Item>,
       <Descriptions.Item label="Ngày xuất" key="exportDate">
         {exportRequest.exportDate
           ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
@@ -208,17 +226,17 @@ const ExportRequestDetail = () => {
         <Descriptions.Item label="Loại phiếu xuất" key="exportType">
           {getExportTypeText(exportRequest.type)}
         </Descriptions.Item>,
-        <Descriptions.Item label="Phòng ban" key="receivingDepartment">
-          {exportRequest.departmentId || "-"}
+        // <Descriptions.Item label="Phòng ban" key="receivingDepartment">
+        //   {exportRequest.departmentId || "-"}
+        // </Descriptions.Item>,
+        <Descriptions.Item label="Lý do xuất" key="exportReason">
+          {exportRequest.exportReason || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
           {exportRequest.receiverName || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Số điện thoại nhận hàng" key="receiverPhone">
           {exportRequest.receiverPhone || "-"}
-        </Descriptions.Item>,
-        <Descriptions.Item label="Lý do xuất" key="exportReason">
-          {exportRequest.exportReason || "-"}
         </Descriptions.Item>
       );
     } else if (exportRequest.type === "BORROWING") {
@@ -277,11 +295,11 @@ const ExportRequestDetail = () => {
       </Descriptions.Item>
     );
 
-    items.push(
-      <Descriptions.Item label="Ghi chú" key="note" span={3}>
-        {exportRequest.note || "-"}
-      </Descriptions.Item>
-    );
+    // items.push(
+    //   <Descriptions.Item label="Ghi chú" key="note" span={3}>
+    //     {exportRequest.note || "-"}
+    //   </Descriptions.Item>
+    // );
     return items;
   };
 

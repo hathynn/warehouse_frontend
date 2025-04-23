@@ -69,13 +69,13 @@ const ExportRequestList = () => {
 
   const getStatusTag = (status) => {
     switch (status) {
-      case 0:
+      case "NOT_STARTED":
         return <Tag color="default">Chưa bắt đầu</Tag>;
-      case 1:
+      case "IN_PROGRESS":
         return <Tag color="processing">Đã kiểm kho</Tag>;
-      case 2:
+      case "COMPLETED":
         return <Tag color="success">Hoàn tất</Tag>;
-      case 4:
+      case "CANCELLED":
         return <Tag color="error">Đã hủy</Tag>;
       default:
         return <Tag color="default">{status}</Tag>;
@@ -142,7 +142,11 @@ const ExportRequestList = () => {
       key: "detail",
       render: (text, record) => (
         <Link to={ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(record.id)}>
-          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
+          <Button
+            id="btn-detail"
+            className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500"
+            type="link"
+          >
             Xem chi tiết
           </Button>
         </Link>
