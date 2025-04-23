@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button, Input, Table, Typography, Space, Card, DatePicker, TimePicker, message, Upload } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
@@ -49,6 +49,8 @@ const ImportOrderCreate = () => {
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [uploadedDetails, setUploadedDetails] = useState<UploadedDetail[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Add pagination state
   const [pagination, setPagination] = useState<TablePagination>({
@@ -227,23 +229,19 @@ const ImportOrderCreate = () => {
     XLSX.writeFile(wb, "import_order_template.xlsx");
   };
 
-  const handleExcelUpload = async (info: any) => {
-    const { status, originFileObj } = info.file;
+  const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = event.target.files?.[0];
+    if (!uploadedFile) return;
 
-    if (status !== 'uploading') {
-      console.log('Uploading:', info.file, info.fileList);
-    }
-
-    if (status === 'done') {
-      setExcelFile(originFileObj);
-      message.success(`${info.file.name} tải lên thành công.`);
+    setExcelFile(uploadedFile);
+    setFileName(uploadedFile.name);
 
       const reader = new FileReader();
       reader.onload = (event: ProgressEvent<FileReader>) => {
         try {
           const ab = event.target?.result;
-          if (ab) {
-            const wb = XLSX.read(ab, { type: "array" });
+        if (ab instanceof ArrayBuffer) {
+          const wb = XLSX.read(ab, { type: 'array' });
             const ws = wb.Sheets[wb.SheetNames[0]];
             const jsonData = XLSX.utils.sheet_to_json(ws);
 
@@ -274,6 +272,7 @@ const ImportOrderCreate = () => {
             if (invalidItems.length > 0) {
               toast.error(`Các mã hàng sau không tồn tại trong phiếu nhập: ${invalidItems.map(i => i.itemId).join(', ')}`);
               setExcelFile(null);
+            setFileName("");
               return;
             }
 
@@ -289,13 +288,14 @@ const ImportOrderCreate = () => {
           console.error("Error parsing Excel file:", error);
           toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
           setExcelFile(null);
+        setFileName("");
         }
       };
-      reader.readAsArrayBuffer(originFileObj);
-    } else if (status === 'error') {
-      message.error(`${info.file.name} tải lên thất bại.`);
-      setExcelFile(null);
-    }
+    reader.readAsArrayBuffer(uploadedFile);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const columns = [
@@ -340,18 +340,54 @@ const ImportOrderCreate = () => {
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
 
-  // Excel upload props
-  const uploadProps = {
-    name: 'file',
-    multiple: false,
-    accept: '.xlsx, .xls',
-    customRequest: ({ onSuccess }: any) => {
-      setTimeout(() => {
-        onSuccess("ok");
-      }, 0);
-    },
-    onChange: handleExcelUpload,
-  };
+  const renderExcelUploadSection = () => (
+    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <label className="block mb-2 font-medium text-blue-700">Tải lên file Excel số lượng dự tính</label>
+      
+      {/* Button group container */}
+      <div className="flex flex-col gap-3">
+        {/* Buttons row */}
+        <div className="flex gap-3">
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={downloadTemplate}
+          >
+            Tải mẫu Excel
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls"
+            onChange={handleExcelUpload}
+            style={{ display: "none" }}
+          />
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            onClick={triggerFileInput}
+            className="bg-blue-100 hover:bg-blue-200 border-blue-300"
+          >
+            Tải lên file Excel
+          </Button>
+        </div>
+
+        {/* File name display */}
+        {fileName && (
+          <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
+            <span className="text-gray-600">
+              File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Info message */}
+      <div className="text-sm text-blue-600 mt-3 flex items-center">
+        <InfoCircleOutlined className="mr-1" />
+        File Excel phải có cột itemId và quantity, và chỉ chứa các mã hàng có trong phiếu nhập
+      </div>
+    </div>
+  );
 
   return (
     <div className="container mx-auto p-5">
@@ -400,36 +436,7 @@ const ImportOrderCreate = () => {
               />
             </div>
 
-            {selectedImportRequest && (
-              <>
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <label className="block mb-2 font-medium text-blue-700">Tải lên file Excel số lượng dự tính</label>
-                  <div className="flex justify-between">
-                    {selectedImportRequest && (
-                      <Space>
-                        <Button
-                          icon={<DownloadOutlined />}
-                          onClick={downloadTemplate}
-                        >
-                          Tải mẫu Excel
-                        </Button>
-                      </Space>
-                    )}
-                    <Space>
-                      <Upload {...uploadProps}>
-                        <Button icon={<UploadOutlined />} type="primary" className="bg-blue-100 hover:bg-blue-200 border-blue-300">
-                          Chọn file Excel
-                        </Button>
-                      </Upload>
-                    </Space>
-                  </div>
-                  <div className="text-sm text-blue-600 mt-2 flex items-center">
-                    <InfoCircleOutlined className="mr-1" />
-                    File Excel phải có cột itemId và quantity, và chỉ chứa các mã hàng có trong phiếu nhập
-                  </div>
-                </div>
-              </>
-            )}
+            {selectedImportRequest && renderExcelUploadSection()}
 
             <Button
               type="primary"

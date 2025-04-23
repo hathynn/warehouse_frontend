@@ -20,14 +20,18 @@ import {
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useInventoryItemService from "@/hooks/useInventoryItemService";
-import useAccountService, { AccountRole, AccountRoleForRequest } from "@/hooks/useAccountService";
+import useAccountService, { AccountRole } from "@/hooks/useAccountService";
 import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
-import { InventoryItemResponse, QrCodeResponse } from "@/hooks/useInventoryItemService";
+import { QrCodeResponse } from "@/hooks/useInventoryItemService";
 import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
 import { UserState } from "@/redux/features/userSlice";
+import useConfigService from "@/hooks/useConfigService";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();
@@ -65,7 +69,8 @@ const ImportOrderDetail = () => {
   const { getImportOrderById, assignStaff, cancelImportOrder } = useImportOrderService();
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
   const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
-  const { getActiveStaff, findAccountById } = useAccountService();
+  const { getActiveStaffsInDay, findAccountById } = useAccountService();
+  const { getStaffWorkingHoursPerDay } = useConfigService();
 
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
 
@@ -133,9 +138,14 @@ const ImportOrderDetail = () => {
   }, [importOrder, findAccountById]);
 
   const fetchActiveStaffs = async () => {
+    if (!importOrder?.dateReceived) {
+      message.error("Ngày nhận hàng không hợp lệ");
+      return;
+    }
+
     try {
       setLoadingStaff(true);
-      const activeStaffs = await getActiveStaff();
+      const activeStaffs = await getActiveStaffsInDay(importOrder.dateReceived);
       setStaffs(activeStaffs);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);
@@ -143,6 +153,27 @@ const ImportOrderDetail = () => {
     } finally {
       setLoadingStaff(false);
     }
+  };
+
+  // Helper function to calculate remaining time
+  const calculateRemainingTime = (totalExpectedTime: string): string => {
+    const workingHours = getStaffWorkingHoursPerDay();
+    
+    // Convert HH:mm:ss strings to minutes
+    const workingMinutes = dayjs.duration(workingHours).asMinutes();
+    const expectedMinutes = dayjs.duration(totalExpectedTime).asMinutes();
+    
+    // Calculate remaining minutes
+    const remainingMinutes = workingMinutes - expectedMinutes;
+    
+    if (remainingMinutes <= 0) {
+      return "00:00:00";
+    }
+    
+    // Convert back to HH:mm:ss format
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = Math.floor(remainingMinutes % 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
   };
 
   useEffect(() => {
@@ -468,14 +499,15 @@ const ImportOrderDetail = () => {
 
       {/* Staff Assignment Modal */}
       <Modal
-        title="Phân công nhân viên kho"
+        title={
+          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
+            <p className="text-sm text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+          </div>
+        }
         open={assignModalVisible}
         onCancel={handleCloseAssignModal}
         footer={[
-          <Descriptions title="Nhân viên đang được phân công" bordered>
-            <Descriptions.Item label="Họ tên">{assignedStaff?.fullName || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">{assignedStaff?.phone || "-"}</Descriptions.Item>
-          </Descriptions>,
           <Button key="cancel" onClick={handleCloseAssignModal}>
             Đóng
           </Button>,
@@ -490,57 +522,68 @@ const ImportOrderDetail = () => {
           </Button>,
         ]}
         width={700}
+        className="!top-[50px]"
       >
         {loadingStaff ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
         ) : (
-          <div>
-            <p className="mb-4">Chọn nhân viên kho để phân công cho đơn nhập #{importOrder?.importOrderId}</p>
-            <Table
-              dataSource={staffs}
-              rowKey="id"
-              pagination={false}
-              columns={[
-                {
-                  title: "Họ tên",
-                  dataIndex: "fullName",
-                  key: "fullName",
-                },
-                {
-                  title: "Số điện thoại",
-                  dataIndex: "phone",
-                  key: "phone",
-                },
-                {
-                  title: "Trạng thái",
-                  dataIndex: "status",
-                  key: "status",
-                  render: (status: string) => {
-                    const statusMap: Record<string, { color: string; text: string }> = {
-                      "ACTIVE": { color: "green", text: "Hoạt động" },
-                      "INACTIVE": { color: "red", text: "Không hoạt động" },
-                    };
-                    const statusInfo = statusMap[status] || { color: "default", text: status };
-                    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+          <div className="space-y-6">
+            {/* Current Assignment Info */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h4 className="text-base font-medium text-gray-700 mb-3">Nhân viên đang được phân công</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Họ tên</p>
+                  <p className="text-base">{assignedStaff?.fullName || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Mã nhân viên</p>
+                  <p className="text-base">#{assignedStaff?.id || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff List */}
+            <div>
+              <h4 className="text-base font-medium text-gray-700 mb-3">Danh sách nhân viên có thể phân công</h4>
+              <Table
+                dataSource={staffs.map(staff => ({
+                  ...staff,
+                  remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00")
+                }))}
+                rowKey="id"
+                pagination={false}
+                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
+                onRow={(record) => ({
+                  onClick: () => handleSelectStaff(record.id),
+                  className: selectedStaffId === record.id ? '!bg-blue-100' : ''
+                })}
+                columns={[
+                  {
+                    title: "Mã nhân viên",
+                    dataIndex: "id",
+                    key: "id",
+                    render: (id) => `#${id}`,
+                    width: '25%',
+                  },
+                  {
+                    title: "Họ tên",
+                    dataIndex: "fullName",
+                    key: "fullName",
+                    width: '45%',
+                  },
+                  {
+                    title: "Thời gian rảnh",
+                    dataIndex: "remainingTime",
+                    key: "remainingTime",
+                    width: '30%',
+                    render: (time) => time || "08:00:00"
                   }
-                },
-                {
-                  title: "Thao tác",
-                  key: "action",
-                  render: (_: any, record: AccountResponse) => (
-                    <Button
-                      type={selectedStaffId === record.id ? "primary" : "default"}
-                      size="small"
-                      onClick={() => handleSelectStaff(record.id)}
-                    >
-                      {selectedStaffId === record.id ? "Đã chọn" : "Chọn"}
-                    </Button>
-                  )
-                }
-              ]}
-            />
+                ]}
+              />
+            </div>
           </div>
         )}
       </Modal>

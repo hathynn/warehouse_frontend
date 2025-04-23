@@ -13,6 +13,8 @@ export interface AccountResponse {
   role: AccountRole;
   importOrderIds: number[];
   exportRequestIds: number[];
+  totalActualWorkingTimeOfRequestInDay: string;
+  totalExpectedWorkingTimeOfRequestInDay: string;
 }
 
 // Interface to match RegisterRequest.java
@@ -164,6 +166,25 @@ const useAccountService = () => {
   };
 
   /**
+   * Get all active staff accounts for a specific date
+   * @param date - The date to get active staff for (in YYYY-MM-DD format)
+   * @returns Promise resolving to an array of AccountResponse objects
+   */
+  const getActiveStaffsInDay = async (date: string): Promise<AccountResponse[]> => {
+    try {
+      const response = await callApi("get", `/account/active-staff/${date}`);
+      if (response && response.content) {
+        return response.content;
+      }
+      return [];
+    } catch (error) {
+      toast.error("Không thể lấy danh sách nhân viên đang hoạt động trong ngày");
+      console.error("Error fetching active staff for date:", error);
+      throw error;
+    }
+  };
+
+  /**
    * Find account by email
    * @param email - The email to search for
    * @returns Promise resolving to AccountResponse
@@ -208,6 +229,7 @@ const useAccountService = () => {
     refreshToken,
     getAccountsByRole,
     getActiveStaff,
+    getActiveStaffsInDay,
     findAccountByEmail,
     findAccountById
   };
