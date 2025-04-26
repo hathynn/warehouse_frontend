@@ -3,14 +3,14 @@ import { Table, Button, Input, Tag, Spin, TablePaginationConfig } from "antd";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, { 
   ImportOrderResponse, 
-  ImportStatus,
-  ResponseDTO 
+  ImportStatus
 } from "@/hooks/useImportOrderService";
 import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import { AccountRole } from "@/hooks/useAccountService";
 import { UserState } from "@/redux/features/userSlice";
 import { useSelector } from "react-redux";
+import { ResponseDTO } from "@/hooks/useApi";
 
 interface RouteParams extends Record<string, string> {
   importRequestId?: string;
@@ -60,11 +60,11 @@ const ImportOrderList: React.FC = () => {
         setImportOrders(response.content);
       }
 
-      if (response && response.metadata) {
+      if (response && response.metaDataDTO) {
         setPagination({
-          current: response.metadata.page,
-          pageSize: response.metadata.limit,
-          total: response.metadata.total,
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
         });
       }
     } catch (error) {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, TablePaginationConfig } from "antd";
 import { Link } from "react-router-dom";
-import useImportRequestService, { ImportRequestResponse, ResponseDTO } from "@/hooks/useImportRequestService";
+import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
+import { ResponseDTO } from "@/hooks/useApi";
 
 const ImportRequestList: React.FC = () => {
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
@@ -36,11 +37,11 @@ const ImportRequestList: React.FC = () => {
       }
       
       // Update pagination with metadata
-      if (response && response.metadata) {
+      if (response && response.metaDataDTO) {
         setPagination({
-          current: response.metadata.page,
-          pageSize: response.metadata.limit,
-          total: response.metadata.total,
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
         });
       }
     } catch (error) {

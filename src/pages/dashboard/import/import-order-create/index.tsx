@@ -154,12 +154,12 @@ const ImportOrderCreate = () => {
 
         setImportRequestDetails(detailsWithPlannedQuantity);
 
-        if (response.metadata) {
+        if (response.metaDataDTO) {
           setPagination(prev => ({
             ...prev,
-            current: response.metadata.page,
-            pageSize: response.metadata.limit,
-            total: response.metadata.total,
+            current: response.metaDataDTO.page,
+            pageSize: response.metaDataDTO.limit,
+            total: response.metaDataDTO.total,
           }));
         }
       }

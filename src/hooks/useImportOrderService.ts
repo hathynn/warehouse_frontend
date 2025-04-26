@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useApiService from "./useApi";
+import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
 
 // Enum to match ImportStatus.java
@@ -73,23 +73,6 @@ export interface ImportOrderDetailResponse {
 export interface AssignStaffRequest {
   importOrderId: number;
   accountId: number;
-}
-
-// Interface to match MetaDataDTO.java
-export interface MetaDataDTO {
-  hasNext: boolean;
-  hasPrevious: boolean;
-  limit: number;
-  total: number;
-  page: number;
-}
-
-// Interface to match ResponseDTO.java
-export interface ResponseDTO<T> {
-  content: T;
-  message: string;
-  status: number;
-  metadata?: MetaDataDTO;
 }
 
 const useImportOrderService = () => {

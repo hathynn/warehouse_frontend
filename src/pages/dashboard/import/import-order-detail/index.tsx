@@ -105,8 +105,8 @@ const ImportOrderDetail = () => {
       if (response?.content) {
         setImportOrderDetails(response.content);
 
-        if (response.metadata) {
-          const { page, limit, total } = response.metadata;
+        if (response.metaDataDTO) {
+          const { page, limit, total } = response.metaDataDTO;
           setPagination(prev => ({
             ...prev,
             current: page,

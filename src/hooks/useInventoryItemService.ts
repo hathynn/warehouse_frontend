@@ -1,4 +1,4 @@
-import useApiService from "./useApi";
+import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
 
 // Enum to match ItemStatus.java
@@ -39,23 +39,6 @@ export interface QrCodeResponse {
   quantity: number;
 }
 
-// Interface to match MetaDataDTO.java
-export interface MetaDataDTO {
-  hasNext: boolean;
-  hasPrevious: boolean;
-  limit: number;
-  total: number;
-  page: number;
-}
-
-// Interface to match ResponseDTO.java
-export interface ResponseDTO<T> {
-  content: T;
-  message: string;
-  status: number;
-  metaDataDTO?: MetaDataDTO;
-}
-
 const useInventoryItemService = () => {
   const { callApi, loading } = useApiService();
 
@@ -63,25 +46,13 @@ const useInventoryItemService = () => {
   const getAllInventoryItems = async (
     page = 1,
     limit = 10
-  ): Promise<{ items: InventoryItemResponse[], metadata: MetaDataDTO } | undefined> => {
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
       const response = await callApi(
         "get",
         `/inventory-item?page=${page}&limit=${limit}`
-      ) as ResponseDTO<InventoryItemResponse[]>;
-      
-      if (response) {
-        return {
-          items: response.content,
-          metadata: response.metaDataDTO || {
-            hasNext: false,
-            hasPrevious: false,
-            limit,
-            total: 0,
-            page
-          }
-        };
-      }
+      );
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm trong kho");
       console.error("Error fetching inventory items:", error);
@@ -90,12 +61,10 @@ const useInventoryItemService = () => {
   };
 
   // Get inventory item by ID
-  const getInventoryItemById = async (inventoryItemId: number): Promise<InventoryItemResponse | undefined> => {
+  const getInventoryItemById = async (inventoryItemId: number): Promise<ResponseDTO<InventoryItemResponse>> => {
     try {
       const response = await callApi("get", `/inventory-item/${inventoryItemId}`);
-      if (response && response.content) {
-        return response.content;
-      }
+      return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
       console.error("Error fetching inventory item:", error);
@@ -108,15 +77,13 @@ const useInventoryItemService = () => {
     importOrderDetailId: number,
     page = 1,
     limit = 10
-  ): Promise<{ items: InventoryItemResponse[], metadata: any } | undefined> => {
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
       const response = await callApi(
         "get",
         `/inventory-item/import-order-detail/${importOrderDetailId}?page=${page}&limit=${limit}`
       );
-      if (response) {
-        return response.content;
-      }
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
       console.error("Error fetching inventory items by import order detail:", error);
@@ -129,15 +96,13 @@ const useInventoryItemService = () => {
     exportRequestDetailId: number,
     page = 1,
     limit = 10
-  ): Promise<{ items: InventoryItemResponse[], metadata: any } | undefined> => {
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
       const response = await callApi(
         "get",
         `/inventory-item/export-request-detail/${exportRequestDetailId}?page=${page}&limit=${limit}`
       );
-      if (response) {
-        return response;
-      }
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo yêu cầu xuất");
       console.error("Error fetching inventory items by export request detail:", error);
@@ -150,15 +115,13 @@ const useInventoryItemService = () => {
     storedLocationId: number,
     page = 1,
     limit = 10
-  ): Promise<{ items: InventoryItemResponse[], metadata: any } | undefined> => {
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
       const response = await callApi(
         "get",
         `/inventory-item/stored-location/${storedLocationId}?page=${page}&limit=${limit}`
       );
-      if (response) {
-        return response;
-      }
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo vị trí");
       console.error("Error fetching inventory items by stored location:", error);
@@ -167,12 +130,10 @@ const useInventoryItemService = () => {
   };
 
   // Get QR codes by inventory item IDs
-  const getListQrCodes = async (inventoryItemIds: number[]): Promise<QrCodeResponse[] | undefined> => {
+  const getListQrCodes = async (inventoryItemIds: number[]): Promise<ResponseDTO<QrCodeResponse[]>> => {
     try {
       const response = await callApi("post", "/inventory-item/qr-codes", inventoryItemIds);
-      if (response && response.content) {
-        return response.content;
-      }
+      return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin mã QR");
       console.error("Error fetching QR codes:", error);
@@ -181,10 +142,11 @@ const useInventoryItemService = () => {
   };
 
   // Delete inventory item
-  const deleteInventoryItem = async (inventoryItemId: number): Promise<void> => {
+  const deleteInventoryItem = async (inventoryItemId: number): Promise<ResponseDTO<null>> => {
     try {
-      await callApi("delete", `/inventory-item/${inventoryItemId}`);
+      const response = await callApi("delete", `/inventory-item/${inventoryItemId}`);
       toast.success("Xóa sản phẩm thành công");
+      return response;
     } catch (error) {
       toast.error("Không thể xóa sản phẩm");
       console.error("Error deleting inventory item:", error);
