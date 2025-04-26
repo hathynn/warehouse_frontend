@@ -1,23 +1,34 @@
 import { AccountRole } from "@/hooks/useAccountService";
 
+// If AccountRole is not an enum, define its type here for clarity
+// export enum AccountRole {
+//   DEPARTMENT = "DEPARTMENT",
+//   STAFF = "STAFF",
+//   WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
+//   ACCOUNTING = "ACCOUNTING",
+//   ADMIN = "ADMIN",
+// }
+
 // Base routes
 export const BASE_ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   OVERVIEW: "/overview",
-};
+} as const;
 
-// Định nghĩa default landing route cho mỗi role
-export const ROLE_DEFAULT_ROUTES = {
+type BaseRouteKey = keyof typeof BASE_ROUTES;
+
+// Default landing route for each role
+export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
   [AccountRole.DEPARTMENT]: "/import/request-list",
   [AccountRole.STAFF]: "/overview",
   [AccountRole.WAREHOUSE_MANAGER]: "/import/orders",
-  [AccountRole.ACCOUNTING]: "/overview", // Thay đổi theo requirement
-  [AccountRole.ADMIN]: "/overview", // Thay đổi theo requirement
+  [AccountRole.ACCOUNTING]: "/overview", // Change as per requirement
+  [AccountRole.ADMIN]: "/configuration/list", // Change as per requirement
 };
 
 // Route permissions mapping
-export const ROUTE_PERMISSIONS = {
+export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   [AccountRole.DEPARTMENT]: [
     // Import routes
     "/import/request-list",
@@ -43,7 +54,7 @@ export const ROUTE_PERMISSIONS = {
   ],
   [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
-    //Import routes
+    // Import routes
     "/import/order-detail/:id",
     "/import/orders",
 
@@ -59,11 +70,12 @@ export const ROUTE_PERMISSIONS = {
   ],
   [AccountRole.ADMIN]: [
     // Add admin specific routes here
+    "/configuration/list",
   ],
 };
 
-// Helper function để kiểm tra permission
-export const checkRoutePermission = (role, pathname) => {
+// Helper function to check permission
+export const checkRoutePermission = (role: AccountRole, pathname: string): boolean => {
   const permissions = ROUTE_PERMISSIONS[role] || [];
   return permissions.some((permission) => {
     const permissionPattern = permission.replace(/:id/g, "[^/]+");
@@ -72,9 +84,8 @@ export const checkRoutePermission = (role, pathname) => {
   });
 };
 
-// Helper function để lấy default route cho role
-export const getDefaultRouteForRole = (role) => {
-  console.log(ROLE_DEFAULT_ROUTES[role]);
+// Helper function to get default route for role
+export const getDefaultRouteForRole = (role: AccountRole): string => {
   return ROLE_DEFAULT_ROUTES[role] || "/overview";
 };
 
@@ -94,15 +105,15 @@ export const ROUTES = {
     IMPORT: {
       REQUEST: {
         LIST: "/import/request-list",
-        DETAIL: (id = ":importRequestId") => `/import/request-detail/${id}`,
+        DETAIL: (id: string = ":importRequestId") => `/import/request-detail/${id}`,
         CREATE: "/import/create-request",
       },
       ORDER: {
         LIST: "/import/orders",
-        LIST_FROM_REQUEST: (id = ":importRequestId") =>
+        LIST_FROM_REQUEST: (id: string = ":importRequestId") =>
           `/import/order-list/${id}`,
-        DETAIL: (id = ":importOrderId") => `/import/order-detail/${id}`,
-        CREATE_FROM_REQUEST: (id = ":importRequestId") =>
+        DETAIL: (id: string = ":importOrderId") => `/import/order-detail/${id}`,
+        CREATE_FROM_REQUEST: (id: string = ":importRequestId") =>
           `/import/create-order/${id}`,
       },
     },
@@ -111,7 +122,7 @@ export const ROUTES = {
     EXPORT: {
       REQUEST: {
         LIST: "/export/request-list",
-        DETAIL: (id = ":exportRequestId") => `/export/request-detail/${id}`,
+        DETAIL: (id: string = ":exportRequestId") => `/export/request-detail/${id}`,
         CREATE: "/export/create-request",
       },
     },
@@ -119,12 +130,16 @@ export const ROUTES = {
     // Item routes
     ITEM: {
       LIST: "/item/list",
-      DETAIL: (id = ":id") => `/item/detail/${id}`,
+      DETAIL: (id: string = ":id") => `/item/detail/${id}`,
       CREATE: "/item/create",
     },
 
     INVENTORY_ITEM: {
       LIST: "/inventory-item/list",
     },
+
+    CONFIGURATION: {
+      LIST: "/configuration/list",
+    },
   },
-};
+} as const; 

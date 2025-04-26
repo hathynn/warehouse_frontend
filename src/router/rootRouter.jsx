@@ -24,6 +24,7 @@ import ExportRequestList from '@/pages/dashboard/export/export-request-list';
 import ExportRequestDetail from '@/pages/dashboard/export/export-request-detail';
 import ExportRequestCreate from '@/pages/dashboard/export/export-request-create';
 import InventoryItemList from '@/pages/dashboard/inventory-item';
+import ConfigurationPage from '@/pages/dashboard/configuration';
 
 export const rootRouter = createBrowserRouter([
   {
@@ -127,6 +128,10 @@ export const rootRouter = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(),
             element: <ExportRequestDetail />,
+          },
+          {
+            path: ROUTES.PROTECTED.CONFIGURATION.LIST,
+            element: <ConfigurationPage />,
           },
         ],
       },

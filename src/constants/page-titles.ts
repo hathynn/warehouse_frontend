@@ -12,7 +12,7 @@ export const pageTitles: PageTitlesType = {
   
   // Import order pages
   [ROUTES.PROTECTED.IMPORT.ORDER.LIST]: "Danh sách đơn nhập",
-  [ROUTES.PROTECTED.IMPORT.ORDER.CREATE]: "Tạo đơn nhập",
+  [ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(':id')]: "Tạo đơn nhập",
   [ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(':id')]: "Chi tiết đơn nhập",
   
   // Export request pages

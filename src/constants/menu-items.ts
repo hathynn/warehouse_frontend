@@ -5,7 +5,8 @@ import {
   AiOutlineHome,
   AiOutlineImport,
   AiOutlineExport,
-  AiOutlineInbox
+  AiOutlineInbox,
+  AiOutlineSetting
 } from "react-icons/ai";
 
 export interface MenuItem {
@@ -85,6 +86,17 @@ const itemMenuItems: MenuItem[] = [
   },
 ];
 
+// Configuration menu items
+const configurationMenuItems: MenuItem[] = [
+  {
+    key: "configuration",
+    icon: AiOutlineSetting,
+    label: "Cấu hình",
+    path: ROUTES.PROTECTED.CONFIGURATION.LIST,
+  },
+];
+
+
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
 
@@ -134,8 +146,7 @@ export const menuItems: RoleMenuConfig = {
 
   [AccountRole.ADMIN]: [
     ...baseMenuItems,
-    ...importMenuItems,
-    ...exportMenuItems,
+    ...configurationMenuItems,
   ],
 };
 
