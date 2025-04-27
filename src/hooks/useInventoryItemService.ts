@@ -36,7 +36,7 @@ export interface QrCodeResponse {
   itemId: number;
   importOrderDetailId?: number;
   exportRequestDetailId?: number;
-  quantity: number;
+  measurementValue: number;
 }
 
 const useInventoryItemService = () => {

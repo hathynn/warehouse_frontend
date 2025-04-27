@@ -29,6 +29,8 @@ import { UserState } from "@/redux/features/userSlice";
 import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+import QRCode from 'react-qr-code';
+import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/hooks/useInventoryItemService";
 dayjs.extend(duration);
 import DetailInfoCard from "@/components/commons/DetailInfoCard";
 import StatusTag from "@/components/commons/StatusTag";
@@ -73,6 +75,14 @@ const ImportOrderDetail = () => {
 
   const { getConfiguration } = useConfigurationService();
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
+
+  const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
+
+  // QR Print Modal state
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
+  const [qrMap, setQrMap] = useState<Record<number, { itemName: string; itemId: number }> >({});
 
   // Fetch configuration
   const fetchConfiguration = useCallback(async () => {
@@ -414,6 +424,49 @@ const ImportOrderDetail = () => {
     { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" />, span: 2 },
   ];
 
+  // Lấy danh sách QRCode khi mở modal
+  const handleOpenQrModal = async () => {
+    setQrModalVisible(true);
+    setQrLoading(true);
+    try {
+      // Lấy tất cả inventoryItemId từ các importOrderDetail
+      const allInventoryItemIds: number[] = [];
+      const itemInfoMap: Record<number, { itemName: string; itemId: number }> = {};
+      for (const detail of importOrderDetails) {
+        const res = await getByImportOrderDetailId(detail.importOrderDetailId, 1, 999);
+        if (res?.content) {
+          for (const item of res.content) {
+            allInventoryItemIds.push(item.id);
+            itemInfoMap[item.id] = { itemName: item.itemName, itemId: item.itemId };
+          }
+        }
+      }
+      if (allInventoryItemIds.length === 0) {
+        message.warning("Không có sản phẩm nào để in QRCode");
+        setQrList([]);
+        setQrMap({});
+        setQrLoading(false);
+        return;
+      }
+      // Lấy danh sách QRCode
+      const qrRes = await getListQrCodes(allInventoryItemIds);
+      setQrList(qrRes?.content || []);
+      setQrMap(itemInfoMap);
+    } catch (e) {
+      message.error("Không thể lấy danh sách QRCode");
+      setQrList([]);
+      setQrMap({});
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handleCloseQrModal = () => {
+    setQrModalVisible(false);
+    setQrList([]);
+    setQrMap({});
+  };
+
   // Show loading spinner when initially loading the page
   if (loading && !importOrder) {
     return (
@@ -471,7 +524,7 @@ const ImportOrderDetail = () => {
         <Button
           type="primary"
           icon={<PrinterOutlined />}
-          onClick={() => {/* Logic sẽ được thêm sau */}}
+          onClick={handleOpenQrModal}
         >
           In QRCode
         </Button>
@@ -612,6 +665,37 @@ const ImportOrderDetail = () => {
         okButtonProps={{ danger: true }}
       >
         <p>{cancelModalText}</p>
+      </Modal>
+
+      <Modal
+        title={<span className="text-lg font-bold">Danh sách QRCode sản phẩm</span>}
+        open={qrModalVisible}
+        onCancel={handleCloseQrModal}
+        footer={[
+          <Button key="close" onClick={handleCloseQrModal}>Đóng</Button>,
+          <Button key="print" type="primary" onClick={() => window.print()} disabled={qrLoading || qrList.length === 0}>In</Button>,
+        ]}
+        width={900}
+        className="!top-[50px] print:!block"
+      >
+        <div id="qr-print-area" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4 print:grid-cols-3 print:gap-4">
+          {qrLoading ? (
+            <div className="col-span-3 flex justify-center items-center py-8">
+              <Spin size="large" />
+            </div>
+          ) : qrList.length === 0 ? (
+            <div className="col-span-3 text-center text-gray-500 py-8">Không có QRCode nào để in</div>
+          ) : (
+            qrList.map((qr) => (
+              <div key={qr.id} className="border rounded-lg p-4 flex flex-col items-center bg-white print:shadow-none print:border print:p-2">
+                <QRCode value={qr.id.toString()} size={128} />
+                <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{qrMap[qr.id]?.itemId || '-'}</span></div>
+                <div className="text-sm text-gray-700">Tên sản phẩm: {qrMap[qr.id]?.itemName || '-'}</div>
+                <div className="text-xs text-gray-500 mt-1">ID QR: {qr.id}</div>
+              </div>
+            ))
+          )}
+        </div>
       </Modal>
     </div>
   );
