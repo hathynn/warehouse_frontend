@@ -1,6 +1,19 @@
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 
+export enum ExportStatus {
+  NOT_STARTED = "NOT_STARTED",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum DetailStatus {
+  LACK = "LACK",
+  EXCESS = "EXCESS",
+  MATCH = "MATCH",
+}
+
 // Các trường trong DB export_request:
 export interface ExportRequestResponse {
   id: number;
@@ -128,7 +141,7 @@ const useExportRequestService = () => {
   };
 
   // Assign warehouse keeper to an export request
-  const assignWarehouseKeeper = async (
+  const assignStaff = async (
     exportRequestId: number,
     accountId: number
   ): Promise<ExportRequestResponse | undefined> => {
@@ -156,7 +169,7 @@ const useExportRequestService = () => {
     getExportRequestsByPage,
     createExportRequestProduction,
     createExportRequestLoan,
-    assignWarehouseKeeper,
+    assignStaff,
   };
 };
 
