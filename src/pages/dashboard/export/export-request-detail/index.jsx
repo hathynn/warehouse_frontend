@@ -7,26 +7,31 @@ import {
   Descriptions,
   Spin,
   message,
-  Input,
-  Modal,
   Tag,
+  Modal,
+  Input,
 } from "antd";
-import { ArrowLeftOutlined, UserAddOutlined } from "@ant-design/icons";
-import useExportRequestService from "../../../../hooks/useExportRequestService";
+import {
+  ArrowLeftOutlined,
+  InfoCircleOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
+import useExportRequestService, {
+  ExportStatus,
+} from "../../../../hooks/useExportRequestService";
 import useExportRequestDetailService from "../../../../hooks/useExportRequestDetailService";
 import useItemService from "../../../../hooks/useItemService";
-import useRoleService from "../../../../hooks/useRoleService"; // Import thêm cho warehouse keeper
 import { useSelector } from "react-redux";
-import useAccountService from "@/hooks/useAccountService";
+import useConfigurationService from "@/hooks/useConfigurationService";
+import useAccountService, { AccountRole } from "@/hooks/useAccountService";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
+  const [configuration, setConfiguration] = useState(null);
   const navigate = useNavigate();
-  const { getExportRequestById, assignWarehouseKeeper } =
-    useExportRequestService();
+  const { getExportRequestById, assignStaff } = useExportRequestService();
   const { getExportRequestDetails } = useExportRequestDetailService();
   const { getItemById } = useItemService();
-  const { getAccountsByRole } = useRoleService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,16 +41,16 @@ const ExportRequestDetail = () => {
     pageSize: 10,
     total: 0,
   });
-
-  // --- State và hooks cho phân công nhân viên kho ---
-  const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const [loadingStaff, setLoadingStaff] = useState(false);
-  const [assigningStaff, setAssigningStaff] = useState(false);
-  const [staffs, setStaffs] = useState([]);
   const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const { getConfiguration } = useConfigurationService();
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const { getActiveStaffsInDay, findAccountById } = useAccountService();
+  const [staffs, setStaffs] = useState([]);
+  const [assigningStaff, setAssigningStaff] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState(null);
-
-  const { findAccountById } = useAccountService(); // Lấy chi tiết nhân viên đã phân công
+  const [searchText, setSearchText] = useState("");
+  const userRole = useSelector((state) => state.user.role);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -125,63 +130,36 @@ const ExportRequestDetail = () => {
     }
   };
 
-  // --- Các hàm xử lý phân công ---
   const fetchActiveStaffs = async () => {
+    if (!exportRequest?.exportDate) {
+      message.error("Ngày nhận hàng không hợp lệ");
+      return;
+    }
+
     try {
       setLoadingStaff(true);
-      const accounts = await getAccountsByRole({ role: "STAFF" });
-      setStaffs(accounts.filter((a) => a.status === "ACTIVE"));
+      const activeStaffs = await getActiveStaffsInDay(exportRequest.exportDate);
+      setStaffs(activeStaffs);
     } catch (error) {
-      message.error("Không thể lấy danh sách nhân viên kho");
-      console.error("Error fetching active staffs:", error);
+      console.error("Failed to fetch warehouse keepers:", error);
+      message.error("Không thể tải danh sách nhân viên kho");
     } finally {
       setLoadingStaff(false);
     }
   };
 
-  const openAssignModal = () => {
-    setSelectedStaffId(null);
-    fetchActiveStaffs();
-    setAssignModalVisible(true);
-  };
-
-  const closeAssignModal = () => {
-    setAssignModalVisible(false);
-    setSelectedStaffId(null);
-  };
-
-  const handleSelectStaff = (id) => {
-    setSelectedStaffId(id);
-  };
-
-  const handleConfirmAssign = async () => {
-    if (!selectedStaffId || !exportRequest?.exportRequestId) {
-      return message.warning("Vui lòng chọn nhân viên kho trước khi xác nhận");
-    }
-    try {
-      setAssigningStaff(true);
-      await assignWarehouseKeeper(
-        exportRequest.exportRequestId,
-        selectedStaffId
-      );
-      await fetchExportRequestData();
-      message.success("Phân công nhân viên kho thành công");
-      closeAssignModal();
-    } catch {
-      message.error("Phân công nhân viên kho thất bại");
-    } finally {
-      setAssigningStaff(false);
-    }
-  };
-
-  // Lấy chi tiết nhân viên đã phân công (để hiển thị)
   const fetchAssignedStaff = useCallback(async () => {
-    if (!exportRequest?.assignedWareHouseKeeperId) return;
-    const account = await findAccountById(
-      exportRequest.assignedWareHouseKeeperId
-    );
-    setAssignedStaff(account);
-  }, [exportRequest?.assignedWareHouseKeeperId, findAccountById]);
+    if (!exportRequestId) return;
+    try {
+      const response = await findAccountById(
+        exportRequest?.assignedWareHouseKeeperId
+      );
+      setAssignedStaff(response);
+    } catch (error) {
+      console.error("Failed to fetch assigned staff:", error);
+      message.error("Không thể tải thông tin nhân viên đã phân công");
+    }
+  }, [exportRequestId, findAccountById]);
 
   useEffect(() => {
     fetchExportRequestData();
@@ -195,11 +173,174 @@ const ExportRequestDetail = () => {
     if (exportRequest?.assignedWareHouseKeeperId) {
       fetchAssignedStaff();
     }
-  }, [exportRequest?.assignedWareHouseKeeperId]);
+  }, [exportRequest]);
+
+  const handleOpenAssignModal = async () => {
+    setSelectedStaffId(null);
+    // Lấy configuration
+    try {
+      const config = await getConfiguration();
+      setConfiguration(config);
+    } catch (e) {
+      // Có thể toast lỗi ở đây nếu muốn
+    }
+    fetchActiveStaffs();
+    setAssignModalVisible(true);
+  };
+
+  const handleCloseAssignModal = () => {
+    setAssignModalVisible(false);
+    setSelectedStaffId(null);
+  };
+
+  const handleSelectStaff = (staffId) => {
+    setSelectedStaffId(staffId);
+  };
+
+  const handleAssignStaff = async () => {
+    if (!selectedStaffId || !exportRequestId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+
+    try {
+      setAssigningStaff(true);
+      await assignStaff(exportRequestId, selectedStaffId);
+
+      const exportRequestResponse = await fetchExportRequestData();
+      if (exportRequestResponse?.content?.assignedWareHouseKeeperId) {
+        await findAccountById(
+          exportRequestResponse.content.assignedWareHouseKeeperId
+        );
+      }
+      await fetchActiveStaffs();
+
+      message.success("Phân công nhân viên thành công");
+      setSelectedStaffId(null);
+    } catch (error) {
+      console.error("Failed to assign warehouse keeper:", error);
+      message.error("Không thể phân công nhân viên. Vui lòng thử lại");
+    } finally {
+      setAssigningStaff(false);
+    }
+  };
 
   const getExportTypeText = (type) => {
     if (type === "PRODUCTION") return "Xuất sản xuất";
     return "";
+  };
+
+  // Add new function to check if reassignment is allowed
+  const canReassignStaff = () => {
+    if (
+      !exportRequest?.exportDate ||
+      !exportRequest?.exportTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return true;
+    }
+
+    // Combine dateReceived and timeReceived into a Date object
+    const receivedDateTime = new Date(
+      `${exportRequest.exportDate}T${exportRequest.exportTime}`
+    );
+    const now = new Date();
+    // Convert timeToAllowAssign to milliseconds
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign
+      .split(":")
+      .map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+
+    // If current time - received time < timeToAllowAssign, don't allow reassignment
+    return Date.now() - receivedDateTime.getTime() <= allowAssignMs;
+  };
+
+  const getRemainingAssignTime = () => {
+    if (
+      !exportRequest?.exportDate ||
+      !exportRequest?.exportTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return null;
+    }
+
+    // 1. Thời điểm nhận hàng
+    const receivedDateTime = new Date(
+      `${exportRequest.exportDate}T${exportRequest.exportTime}`
+    );
+
+    // 2. Hạn chót = nhận hàng + timeToAllowAssign
+    const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
+    const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
+    const deadline = new Date(receivedDateTime.getTime() + allowAssignMs); //  **+**  ở đây
+
+    // 3. Còn lại bao lâu
+    const diffMs = deadline.getTime() - Date.now();
+    if (diffMs <= 0) return "0 tiếng 0 phút"; // đã quá hạn
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+    return `${diffHours} tiếng ${diffMins} phút`;
+  };
+
+  const calculateRemainingTime = (totalExpectedTime, defaultWorkingMinutes) => {
+    try {
+      const [hours, minutes] = totalExpectedTime.split(":").map(Number);
+      const expectedMinutes = hours * 60 + minutes;
+      const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
+      if (remainingMinutes <= 0) return "0 tiếng 0 phút";
+      const remainingHours = Math.floor(remainingMinutes / 60);
+      const remainingMins = Math.floor(remainingMinutes % 60);
+      return `${remainingHours} tiếng ${remainingMins} phút`;
+    } catch (error) {
+      return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${
+        defaultWorkingMinutes % 60
+      } phút`;
+    }
+  };
+
+  const getDefaultWorkingMinutes = () => {
+    if (!configuration) return 480; // fallback
+    const [startH, startM] = configuration.workingTimeStart
+      .split(":")
+      .map(Number);
+    const [endH, endM] = configuration.workingTimeEnd.split(":").map(Number);
+    return endH * 60 + endM - (startH * 60 + startM);
+  };
+
+  const handleSearch = (value) => {
+    setSearchText(value);
+  };
+
+  const getFilteredAndSortedStaffs = () => {
+    const defaultWorkingMinutes = getDefaultWorkingMinutes();
+    return staffs
+      .map((staff) => ({
+        ...staff,
+        remainingTime: calculateRemainingTime(
+          staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
+          defaultWorkingMinutes
+        ),
+      }))
+      .filter((staff) => {
+        const searchLower = searchText.toLowerCase();
+        return (
+          staff.fullName.toLowerCase().includes(searchLower) ||
+          staff.id.toString().includes(searchLower)
+        );
+      })
+      .sort((a, b) => {
+        // Convert remaining time to minutes for comparison
+        const getMinutes = (timeStr) => {
+          const [hours, minutes] = timeStr
+            .split(" tiếng ")
+            .map((part) => parseInt(part.replace(" phút", "")));
+          return hours * 60 + minutes;
+        };
+
+        return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
+      });
   };
 
   const renderDescriptionItems = () => {
@@ -289,11 +430,11 @@ const ExportRequestDetail = () => {
     }
 
     // Hiển thị thông tin nhân viên kho (nếu có)
-    items.push(
-      <Descriptions.Item label="Người kiểm kho" key="warehouseKeeper">
-        {assignedStaff?.fullName || "-"}
-      </Descriptions.Item>
-    );
+    // items.push(
+    //   <Descriptions.Item label="Người kiểm kho" key="warehouseKeeper">
+    //     {assignedStaff?.fullName || "-"}
+    //   </Descriptions.Item>
+    // );
 
     // items.push(
     //   <Descriptions.Item label="Ghi chú" key="note" span={3}>
@@ -352,8 +493,6 @@ const ExportRequestDetail = () => {
     navigate(-1);
   };
 
-  const user = useSelector((state) => state.user);
-
   if (loading && !exportRequest) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -372,18 +511,29 @@ const ExportRequestDetail = () => {
         >
           Quay lại
         </Button>
-        <h1 className="text-xl font-bold m-0">
+        <h1 className="text-xl font-bold m-0 mr-10">
           Chi tiết phiếu xuất #{exportRequest?.exportRequestId}
         </h1>
-        {user?.role === "ROLE_WAREHOUSE_MANAGER" && (
-          <Button
-            type="primary"
-            icon={<UserAddOutlined />}
-            onClick={openAssignModal}
-          >
-            Phân công nhân viên
-          </Button>
-        )}
+        {exportRequest?.status !== ExportStatus.CANCELLED &&
+          exportRequest?.status !== ExportStatus.COMPLETED && (
+            <>
+              {userRole === AccountRole.WAREHOUSE_MANAGER && (
+                <Button
+                  type="primary"
+                  icon={<UserAddOutlined />}
+                  onClick={handleOpenAssignModal}
+                  disabled={!canReassignStaff()}
+                  title={
+                    !canReassignStaff()
+                      ? "Đã quá thời gian cho phép phân công lại"
+                      : ""
+                  }
+                >
+                  Phân công nhân viên
+                </Button>
+              )}
+            </>
+          )}
       </div>
 
       <Card className="mb-6">
@@ -392,7 +542,7 @@ const ExportRequestDetail = () => {
         </Descriptions>
       </Card>
 
-      <h2 className="text-lg font-semibold mb-4">
+      <h2 className="text-lg font-semibold mb-4 mt-[20px]">
         Danh sách chi tiết sản phẩm xuất
       </h2>
       <Table
@@ -413,68 +563,128 @@ const ExportRequestDetail = () => {
 
       {/* Modal chọn Warehouse Keeper */}
       <Modal
-        title="Phân công nhân viên kho"
-        visible={assignModalVisible}
-        onCancel={closeAssignModal}
+        title={
+          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-blue-900">
+              Phân công nhân viên kho
+            </h3>
+            <p className="text-lg text-blue-700 mt-1">
+              Phiếu xuất #{exportRequest?.exportRequestId}
+            </p>
+            <p className="text-sm text-gray-700 mt-2 flex items-center">
+              <InfoCircleOutlined className="mr-2 text-blue-500" />
+              Sau {getRemainingAssignTime() || "..."}, bạn sẽ không thể phân
+              công lại nhân viên
+            </p>
+          </div>
+        }
+        open={assignModalVisible}
+        onCancel={handleCloseAssignModal}
         footer={[
-          <Button key="cancel" onClick={closeAssignModal}>
+          <Button key="cancel" onClick={handleCloseAssignModal}>
             Đóng
           </Button>,
           <Button
             key="submit"
             type="primary"
-            onClick={handleConfirmAssign}
-            loading={assigningStaff}
+            onClick={handleAssignStaff}
             disabled={!selectedStaffId}
+            loading={assigningStaff}
           >
-            Xác nhận
+            Phân công
           </Button>,
         ]}
         width={700}
+        className="!top-[50px]"
       >
         {loadingStaff ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
         ) : (
-          <Table
-            dataSource={staffs}
-            rowKey="id"
-            pagination={false}
-            columns={[
-              { title: "Họ tên", dataIndex: "fullName", key: "fullName" },
-              { title: "Số điện thoại", dataIndex: "phone", key: "phone" },
-              {
-                title: "Trạng thái",
-                dataIndex: "status",
-                key: "status",
-                render: (status) => {
-                  const map = {
-                    ACTIVE: { color: "green", text: "Hoạt động" },
-                    INACTIVE: { color: "red", text: "Không hoạt động" },
-                  };
-                  const info = map[status] || {
-                    color: "default",
-                    text: status,
-                  };
-                  return <Tag color={info.color}>{info.text}</Tag>;
-                },
-              },
-              {
-                title: "Thao tác",
-                key: "action",
-                render: (_, record) => (
-                  <Button
-                    type={selectedStaffId === record.id ? "primary" : "default"}
-                    size="small"
-                    onClick={() => handleSelectStaff(record.id)}
-                  >
-                    {selectedStaffId === record.id ? "Đã chọn" : "Chọn"}
-                  </Button>
-                ),
-              },
-            ]}
-          />
+          <div className="space-y-6">
+            {/* Current Assignment Info */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h4 className="text-base font-medium text-gray-700 mb-3">
+                Nhân viên đang được phân công
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Mã nhân viên</p>
+                  <p className="text-base">#{assignedStaff?.id || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Họ tên</p>
+                  <p className="text-base">{assignedStaff?.fullName || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff List */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-base font-medium text-gray-700">
+                  Danh sách nhân viên có thể phân công
+                </h4>
+                <Input.Search
+                  placeholder="Tìm theo tên hoặc mã nhân viên"
+                  allowClear
+                  onSearch={handleSearch}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  style={{ width: 300 }}
+                />
+              </div>
+              <Table
+                dataSource={getFilteredAndSortedStaffs()}
+                rowKey="id"
+                pagination={false}
+                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
+                onRow={(record) => ({
+                  onClick: () =>
+                    record.id !== exportRequest?.assignedWareHouseKeeperId &&
+                    handleSelectStaff(record.id),
+                  className:
+                    selectedStaffId === record.id
+                      ? "!bg-blue-100"
+                      : record.id === exportRequest?.assignedWareHouseKeeperId
+                      ? "!opacity-50 !cursor-not-allowed"
+                      : "",
+                })}
+                columns={[
+                  {
+                    title: "Mã nhân viên",
+                    dataIndex: "id",
+                    key: "id",
+                    render: (id) => `#${id}`,
+                    width: "25%",
+                  },
+                  {
+                    title: "Họ tên",
+                    dataIndex: "fullName",
+                    key: "fullName",
+                    width: "45%",
+                  },
+                  {
+                    title: "Thời gian rảnh còn lại",
+                    dataIndex: "remainingTime",
+                    key: "remainingTime",
+                    width: "30%",
+                    render: (time, record) => (
+                      <span
+                        className={`font-medium ${
+                          record.id === exportRequest?.assignedWareHouseKeeperId
+                            ? "text-gray-400"
+                            : "text-blue-600"
+                        }`}
+                      >
+                        {time || "8 tiếng 0 phút"}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
         )}
       </Modal>
     </div>
