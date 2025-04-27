@@ -5,6 +5,7 @@ import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
+import useConfigurationService from "@/hooks/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
@@ -42,18 +43,56 @@ const ImportOrderCreate = () => {
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.user);
+  const { getConfiguration } = useConfigurationService();
+  const [configuration, setConfiguration] = useState<{ createRequestTimeAtLeast: string } | null>(null);
+  const [defaultDateTime, setDefaultDateTime] = useState<{ date: string; time: string }>({
+    date: "",
+    time: ""
+  });
 
-  // Add function to get default date/time (12 hours from now)
-  const getDefaultDateTime = () => {
+  // Add function to get default date/time based on configuration
+  const getDefaultDateTime = useCallback(() => {
     const now = dayjs();
-    const defaultTime = now.add(12, 'hour');
+    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+    const defaultTime = now.add(hours, 'hour').add(30, 'minute');
     return {
       date: defaultTime.format("YYYY-MM-DD"),
       time: defaultTime.format("HH:mm")
     };
-  };
+  }, [configuration]);
 
-  const defaultDateTime = getDefaultDateTime();
+  // Fetch configuration on component mount
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      try {
+        const config = await getConfiguration();
+        if (config) {
+          setConfiguration(config);
+        }
+      } catch (error) {
+        console.error("Error fetching configuration:", error);
+      }
+    };
+    fetchConfiguration();
+  }, []);
+
+  // Update defaultDateTime when configuration changes
+  useEffect(() => {
+    if (configuration) {
+      setDefaultDateTime(getDefaultDateTime());
+    }
+  }, [configuration, getDefaultDateTime]);
+
+  // Update formData when defaultDateTime changes
+  useEffect(() => {
+    if (defaultDateTime.date && defaultDateTime.time) {
+      setFormData(prev => ({
+        ...prev,
+        dateReceived: defaultDateTime.date,
+        timeReceived: defaultDateTime.time
+      }));
+    }
+  }, [defaultDateTime]);
 
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
   const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
@@ -175,7 +214,8 @@ const ImportOrderCreate = () => {
   const validateDateTime = (date: string, time: string) => {
     const selectedDateTime = dayjs(`${date} ${time}`);
     const now = dayjs();
-    const minDateTime = now.add(12, 'hour');
+    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+    const minDateTime = now.add(hours, 'hour');
 
     return selectedDateTime.isAfter(minDateTime);
   };
@@ -206,8 +246,9 @@ const ImportOrderCreate = () => {
       return;
     }
 
+    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
     if (!validateDateTime(formData.dateReceived, formData.timeReceived)) {
-      toast.error("Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất 12 giờ");
+      toast.error(`Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất ${hours} giờ`);
       return;
     }
 
@@ -453,7 +494,8 @@ const ImportOrderCreate = () => {
                 value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                 onChange={handleDateChange}
                 disabledDate={(current) => {
-                  return current && current.isBefore(dayjs().add(12, 'hour').startOf('day'));
+                  const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+                  return current && current.isBefore(dayjs().add(hours, 'hour').startOf('day'));
                 }}
                 showNow={false}
               />
@@ -470,7 +512,8 @@ const ImportOrderCreate = () => {
                 disabledTime={() => {
                   const now = dayjs();
                   const selectedDate = dayjs(formData.dateReceived);
-                  const minDateTime = now.add(12, 'hour');
+                  const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+                  const minDateTime = now.add(hours, 'hour');
                   
                   if (selectedDate.isSame(minDateTime, 'day')) {
                     return {
@@ -486,6 +529,10 @@ const ImportOrderCreate = () => {
                   return {};
                 }}
               />
+              <div className="text-sm text-red-500 mt-1">
+                <InfoCircleOutlined className="mr-1" />
+                Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
+              </div>
             </div>
 
             <div>

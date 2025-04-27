@@ -14,7 +14,8 @@ import {
 import {
   ArrowLeftOutlined,
   UserAddOutlined,
-  PrinterOutlined
+  PrinterOutlined,
+  InfoCircleOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
@@ -370,6 +371,23 @@ const ImportOrderDetail = () => {
     return (receivedDateTime.getTime() - now.getTime()) >= allowAssignMs;
   };
 
+  const getRemainingAssignTime = () => {
+    if (!importOrder?.dateReceived || !importOrder?.timeReceived || !configuration?.timeToAllowAssign) {
+      return null;
+    }
+    const receivedDateTime = new Date(`${importOrder.dateReceived}T${importOrder.timeReceived}`);
+    const now = new Date();
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs);
+    const diffMs = deadline.getTime() - now.getTime();
+    if (diffMs <= 0) return "0 tiếng 0 phút";
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+    return `${diffHours} tiếng ${diffMins} phút`;
+  };
+
   // Table columns definition
   const columns = [
     {
@@ -521,7 +539,12 @@ const ImportOrderDetail = () => {
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
             <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
-            <p className="text-sm text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+            <p className="text-sm text-gray-700 mt-2 flex items-center">
+              <InfoCircleOutlined className="mr-2 text-blue-500" />
+              Sau {getRemainingAssignTime() || "..."},
+              bạn sẽ không thể phân công lại nhân viên
+            </p>
           </div>
         }
         open={assignModalVisible}
