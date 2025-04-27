@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Table, Typography, Space, Card, Alert } from "antd";
-import { UploadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { Button, Input, Select, Typography, Space, Card, Alert } from "antd";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
@@ -9,6 +8,8 @@ import useImportRequestDetailService from "@/hooks/useImportRequestDetailService
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
+import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
+import TableSection from "@/components/commons/TableSection";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -20,6 +21,8 @@ interface ImportRequestDetailRow {
   providerId: number;
   itemName: string;
   providerName: string;
+  measurementUnit?: string;
+  totalMeasurementValue?: number;
 }
 
 interface FormData {
@@ -88,7 +91,6 @@ const ImportRequestCreate: React.FC = () => {
     if (uploadedFile) {
       setFile(uploadedFile);
       setFileName(uploadedFile.name);
-      
       const reader = new FileReader();
       reader.onload = (event: ProgressEvent<FileReader>) => {
         const ab = event.target?.result;
@@ -96,28 +98,21 @@ const ImportRequestCreate: React.FC = () => {
           const wb = XLSX.read(ab, { type: "array" });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(ws);
-          
           try {
             const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
               const itemId = item["itemId"] || item["Mã hàng"];
               const quantity = item["quantity"] || item["Số lượng"];
-              
               if (!itemId || !quantity) {
                 throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`);
               }
-              
-              // Tìm item từ danh sách items
               const foundItem = items.find(i => i.id === Number(itemId));
               if (!foundItem) {
                 throw new Error(`Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`);
               }
-
-              // Tìm provider từ danh sách providers dựa vào providerId của item
               const foundProvider = providers.find(p => p.id === foundItem.providerId);
               if (!foundProvider) {
                 throw new Error(`Dòng ${index + 1}: Không tìm thấy nhà cung cấp cho mặt hàng ${foundItem.name}`);
               }
-              
               return {
                 itemId: Number(itemId),
                 quantity: Number(quantity),
@@ -128,17 +123,6 @@ const ImportRequestCreate: React.FC = () => {
                 providerName: foundProvider.name
               };
             });
-
-            // Nhóm các items theo provider để hiển thị thông tin
-            const providerGroups = transformedData.reduce((groups, item) => {
-              const providerId = item.providerId;
-              if (!groups[providerId]) {
-                groups[providerId] = [];
-              }
-              groups[providerId].push(item);
-              return groups;
-            }, {} as Record<number, ImportRequestDetailRow[]>);
-            
             setData(transformedData);
             setValidationError("");
           } catch (error) {
@@ -153,10 +137,6 @@ const ImportRequestCreate: React.FC = () => {
     }
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-
   const downloadTemplate = () => {
     const template = [
       {
@@ -164,7 +144,6 @@ const ImportRequestCreate: React.FC = () => {
         "quantity": "Số lượng (số)"
       }
     ];
-    
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -176,24 +155,18 @@ const ImportRequestCreate: React.FC = () => {
       toast.error("Vui lòng nhập lý do nhập kho");
       return;
     }
-    
     if (!file || data.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
       return;
     }
-    
     try {
       const createRequest: ImportRequestCreateRequest = {
         ...formData
       };
-
       const createdRequest = await createImportRequest(createRequest);
-      
       if (createdRequest?.content?.importRequestId) {
         await createImportRequestDetail(file, createdRequest.content.importRequestId);
-        
-        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);        
-        // Reset form
+        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
         setFormData({
           importReason: "",
           importType: "ORDER",
@@ -203,9 +176,7 @@ const ImportRequestCreate: React.FC = () => {
         setFileName("");
         setData([]);
       }
-    } catch (error) {
-
-    }
+    } catch (error) {}
   };
 
   const columns = [
@@ -230,7 +201,6 @@ const ImportRequestCreate: React.FC = () => {
       dataIndex: "measurementUnit",
       key: "measurementUnit",
     },
-
     {
       title: "Nhà cung cấp",
       dataIndex: "providerName",
@@ -245,7 +215,6 @@ const ImportRequestCreate: React.FC = () => {
   return (
     <div className="container mx-auto p-5">
       <Title level={2}>Tạo phiếu nhập kho</Title>
-
       <div className="flex gap-6">
         <Card title="Thông tin phiếu nhập" className="w-1/3">
           <Space direction="vertical" className="w-full">
@@ -259,7 +228,6 @@ const ImportRequestCreate: React.FC = () => {
                 className="w-full"
               />
             </div>
-            
             <div>
               <label className="block mb-1">Loại nhập kho <span className="text-red-500">*</span></label>
               <Select
@@ -271,55 +239,20 @@ const ImportRequestCreate: React.FC = () => {
                 <Option value="RETURN">Nhập trả</Option>
               </Select>
             </div>
-            
-            <div className="mt-2">
-              <Alert
-                message="Lưu ý"
-                description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
-                type="info"
-                showIcon
-              />
-            </div>
-            
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">              
-              {/* Button group container */}
-              <div className="flex flex-col gap-3">
-                {/* Buttons row - added justify-center */}
-                <div className="flex gap-3 justify-center">
-                  <Button
-                    icon={<DownloadOutlined />}
-                    onClick={downloadTemplate}
-                  >
-                    Tải mẫu Excel
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    style={{ display: "none" }}
-                  />
-                  <Button
-                    type="primary"
-                    icon={<UploadOutlined />}
-                    onClick={triggerFileInput}
-                    className="bg-blue-100 hover:bg-blue-200 border-blue-300"
-                  >
-                    Tải lên file Excel
-                  </Button>
-                </div>
-
-                {/* File name display */}
-                {fileName && (
-                  <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
-                    <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
-                      File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
+            <ExcelUploadSection
+              fileName={fileName}
+              onFileChange={handleFileUpload}
+              onDownloadTemplate={downloadTemplate}
+              fileInputRef={fileInputRef}
+              buttonLabel="Tải lên file Excel"
+            />
+            <Alert
+              message="Lưu ý"
+              description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
+              type="info"
+              showIcon
+              className="!p-4"
+            />
             <Button 
               type="primary" 
               onClick={handleSubmit} 
@@ -332,38 +265,30 @@ const ImportRequestCreate: React.FC = () => {
             </Button>
           </Space>
         </Card>
-        
         <div className="w-2/3">
-          <Card title="Chi tiết hàng hóa từ file Excel">
-            {data.length > 0 ? (
-              <>
-                <Alert
-                  message="Thông tin nhập kho"
-                  description={
-                    <>
-                      <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
-                      <p>Tổng số mặt hàng: {data.length}</p>
-                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
-                    </>
-                  }
-                  type="info"
-                  showIcon
-                  className="mb-4"
-                />
-                <Table 
-                  columns={columns} 
-                  dataSource={data} 
-                  rowKey={(record, index) => index}
-                  pagination={{ pageSize: 10 }}
-                  className="custom-table"
-                />
-              </>
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                Vui lòng tải lên file Excel để xem chi tiết hàng hóa
-              </div>
-            )}
-          </Card>
+          <TableSection
+            title="Chi tiết hàng hóa từ file Excel"
+            columns={columns}
+            data={data}
+            rowKey={(record, index) => index}
+            loading={false}
+            alertNode={data.length > 0 ? (
+              <Alert
+                message="Thông tin nhập kho"
+                description={
+                  <>
+                    <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
+                    <p>Tổng số mặt hàng: {data.length}</p>
+                    <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
+                  </>
+                }
+                type="info"
+                showIcon
+                className="mb-4"
+              />
+            ) : null}
+            emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Button, Input, Table, Typography, Space, Card, DatePicker, TimePicker, message, Upload } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
@@ -9,14 +9,15 @@ import useConfigurationService from "@/hooks/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { useSelector } from "react-redux";
-import { InfoCircleOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
-import * as XLSX from "xlsx"
+import { InfoCircleOutlined } from "@ant-design/icons";
+import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import { RootState } from "@/redux/store";
+import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
+import TableSection from "@/components/commons/TableSection";
 
 const { Title } = Typography;
 const { TextArea } = Input;
-
 
 interface FormData extends Omit<ImportOrderCreateRequest, 'dateReceived' | 'timeReceived'> {
   dateReceived: string;
@@ -50,7 +51,6 @@ const ImportOrderCreate = () => {
     time: ""
   });
 
-  // Add function to get default date/time based on configuration
   const getDefaultDateTime = useCallback(() => {
     const now = dayjs();
     const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
@@ -61,7 +61,6 @@ const ImportOrderCreate = () => {
     };
   }, [configuration]);
 
-  // Fetch configuration on component mount
   useEffect(() => {
     const fetchConfiguration = async () => {
       try {
@@ -76,14 +75,12 @@ const ImportOrderCreate = () => {
     fetchConfiguration();
   }, []);
 
-  // Update defaultDateTime when configuration changes
   useEffect(() => {
     if (configuration) {
       setDefaultDateTime(getDefaultDateTime());
     }
   }, [configuration, getDefaultDateTime]);
 
-  // Update formData when defaultDateTime changes
   useEffect(() => {
     if (defaultDateTime.date && defaultDateTime.time) {
       setFormData(prev => ({
@@ -103,7 +100,6 @@ const ImportOrderCreate = () => {
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Add pagination state
   const [pagination, setPagination] = useState<TablePagination>({
     current: 1,
     pageSize: 10,
@@ -118,7 +114,6 @@ const ImportOrderCreate = () => {
     note: "",
     status: ImportStatus.NOT_STARTED
   });
-
 
   const {
     loading: importRequestLoading,
@@ -141,7 +136,6 @@ const ImportOrderCreate = () => {
     createImportOrderDetails: uploadImportOrderDetail
   } = useImportOrderDetailService();
 
-  // Fetch import requests
   useEffect(() => {
     const fetchImportRequests = async () => {
       try {
@@ -166,7 +160,6 @@ const ImportOrderCreate = () => {
     fetchImportRequests();
   }, [paramImportRequestId]);
 
-  // Fetch import request details when a request is selected
   useEffect(() => {
     if (selectedImportRequest) {
       fetchImportRequestDetails();
@@ -210,19 +203,16 @@ const ImportOrderCreate = () => {
     }
   }, [selectedImportRequest, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
-
   const validateDateTime = (date: string, time: string) => {
     const selectedDateTime = dayjs(`${date} ${time}`);
     const now = dayjs();
     const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
     const minDateTime = now.add(hours, 'hour');
-
     return selectedDateTime.isAfter(minDateTime);
   };
 
   const handleDateChange = (date: Dayjs | null) => {
     if (!date) return;
-    
     const newDate = date.format("YYYY-MM-DD");
     setFormData(prev => ({
       ...prev,
@@ -232,7 +222,6 @@ const ImportOrderCreate = () => {
 
   const handleTimeChange = (time: Dayjs | null) => {
     if (!time) return;
-    
     const newTime = time.format("HH:mm");
     setFormData(prev => ({
       ...prev,
@@ -245,13 +234,11 @@ const ImportOrderCreate = () => {
       toast.error("Vui lòng chọn phiếu nhập");
       return;
     }
-
     const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
     if (!validateDateTime(formData.dateReceived, formData.timeReceived)) {
       toast.error(`Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất ${hours} giờ`);
       return;
     }
-
     try {
       const createOrderRequest: ImportOrderCreateRequest = {
         importRequestId: formData.importRequestId,
@@ -260,25 +247,20 @@ const ImportOrderCreate = () => {
         timeReceived: formData.timeReceived,
         note: formData.note
       };
-
       const response = await createImportOrder(createOrderRequest);
-
       if (response?.content) {
         if (excelFile) {
-          // Create a new file with only valid items
           const validData = uploadedDetails.map(detail => ({
             itemId: detail.itemId,
             quantity: detail.plannedQuantity
           }));
-
           const ws = XLSX.utils.json_to_sheet(validData);
           const wb = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(wb, ws, "Valid Items");
-          const validFile = new File([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], 
-            'valid_items.xlsx', 
+          const validFile = new File([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+            'valid_items.xlsx',
             { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
           );
-
           await uploadImportOrderDetail(validFile, response.content.importOrderId);
         }
         navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
@@ -303,7 +285,6 @@ const ImportOrderCreate = () => {
         "quantity": "Số lượng (số)"
       }
     ];
-
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -313,71 +294,55 @@ const ImportOrderCreate = () => {
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) return;
-
     setExcelFile(uploadedFile);
     setFileName(uploadedFile.name);
-
-      const reader = new FileReader();
-      reader.onload = (event: ProgressEvent<FileReader>) => {
-        try {
-          const ab = event.target?.result;
+    const reader = new FileReader();
+    reader.onload = (event: ProgressEvent<FileReader>) => {
+      try {
+        const ab = event.target?.result;
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: 'array' });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(ws);
-
-            if (jsonData.length === 0) {
-              toast.error("File Excel không có dữ liệu");
-              return;
-            }
-
-            const firstRow = jsonData[0] as Record<string, any>;
-            const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
-            const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
-
-            if (!hasItemId || !hasQuantity) {
-              toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
-              return;
-            }
-
-            const excelDetails = jsonData.map((row: Record<string, any>) => ({
-              itemId: Number(row.itemId || row['Mã hàng']),
-              plannedQuantity: Number(row.quantity || row['Số lượng'])
-            }));
-
-            // Filter out invalid items and only keep those that exist in importRequestDetails
-            const validExcelDetails = excelDetails.filter(ed =>
-              importRequestDetails.some(ird => ird.itemId === ed.itemId)
-            );
-
-            if (validExcelDetails.length === 0) {
-              toast.warning("Không có mã hàng nào trong file Excel khớp với phiếu nhập");
-              setExcelFile(null);
-              setFileName("");
-              return;
-            }
-
-            // Update only the valid items
-            const updatedDetails = importRequestDetails.map(detail => {
-              const excelDetail = validExcelDetails.find(ed => ed.itemId === detail.itemId);
-              return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
-            });
-
-            setUploadedDetails(validExcelDetails);
-            toast.success(`Đã cập nhật số lượng dự tính cho ${validExcelDetails.length} mã hàng từ file Excel`);
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(ws);
+          if (jsonData.length === 0) {
+            toast.error("File Excel không có dữ liệu");
+            return;
           }
-        } catch (error) {
-          console.error("Error parsing Excel file:", error);
-          toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
-          setExcelFile(null);
-          setFileName("");
+          const firstRow = jsonData[0] as Record<string, any>;
+          const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
+          const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
+          if (!hasItemId || !hasQuantity) {
+            toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
+            return;
+          }
+          const excelDetails = jsonData.map((row: Record<string, any>) => ({
+            itemId: Number(row.itemId || row['Mã hàng']),
+            plannedQuantity: Number(row.quantity || row['Số lượng'])
+          }));
+          const validExcelDetails = excelDetails.filter(ed =>
+            importRequestDetails.some(ird => ird.itemId === ed.itemId)
+          );
+          if (validExcelDetails.length === 0) {
+            toast.warning("Không có mã hàng nào trong file Excel khớp với phiếu nhập");
+            setExcelFile(null);
+            setFileName("");
+            return;
+          }
+          const updatedDetails = importRequestDetails.map(detail => {
+            const excelDetail = validExcelDetails.find(ed => ed.itemId === detail.itemId);
+            return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
+          });
+          setUploadedDetails(validExcelDetails);
+          toast.success(`Đã cập nhật số lượng dự tính cho ${validExcelDetails.length} mã hàng từ file Excel`);
         }
-      };
+      } catch (error) {
+        console.error("Error parsing Excel file:", error);
+        toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
+        setExcelFile(null);
+        setFileName("");
+      }
+    };
     reader.readAsArrayBuffer(uploadedFile);
-  };
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
   };
 
   const columns = [
@@ -397,7 +362,6 @@ const ImportOrderCreate = () => {
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
     },
-    // Update the column definition for "Số lượng sẽ nhập (dự tính)"
     {
       title: "Số lượng sẽ nhập (dự tính)",
       dataIndex: "plannedQuantity",
@@ -405,8 +369,6 @@ const ImportOrderCreate = () => {
       render: (_: any, record: ImportRequestDetailWithPlanned) => {
         const uploadedDetail = uploadedDetails.find(d => d.itemId === record.itemId);
         const plannedQuantity = uploadedDetail ? uploadedDetail.plannedQuantity : "Chưa có";
-
-        // Apply styling to make it stand out
         return (
           <span
             className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md"
@@ -417,65 +379,15 @@ const ImportOrderCreate = () => {
         );
       }
     }
-
   ];
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
-
-  const renderExcelUploadSection = () => (
-    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-      
-      {/* Button group container */}
-      <div className="flex flex-col gap-3">
-        {/* Buttons row */}
-        <div className="flex gap-3">
-          <Button
-            icon={<DownloadOutlined />}
-            onClick={downloadTemplate}
-          >
-            Tải mẫu Excel
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls"
-            onChange={handleExcelUpload}
-            style={{ display: "none" }}
-          />
-          <Button
-            type="primary"
-            icon={<UploadOutlined />}
-            onClick={triggerFileInput}
-            className="bg-blue-100 hover:bg-blue-200 border-blue-300"
-          >
-            Tải lên file Excel
-          </Button>
-        </div>
-
-        {/* File name display */}
-        {fileName && (
-          <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
-            <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
-              File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Info message */}
-      <div className="text-sm text-blue-600 mt-3 flex items-center">
-        <InfoCircleOutlined className="mr-1" />
-        Hệ thống sẽ bỏ qua các itemId (Mã hàng) không tồn tại trong phiếu nhập
-      </div>
-    </div>
-  );
 
   return (
     <div className="container mx-auto p-5">
       <div className="flex justify-between items-center mb-4">
         <Title level={2}>Tạo đơn nhập kho</Title>
       </div>
-
       <div className="flex gap-6">
         <Card title="Thông tin đơn nhập" className="w-3/10">
           <Space direction="vertical" className="w-full">
@@ -486,7 +398,6 @@ const ImportOrderCreate = () => {
                   : 'Chưa chọn phiếu nhập'}
               </div>
             </div>
-
             <div>
               <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
               <DatePicker
@@ -500,7 +411,6 @@ const ImportOrderCreate = () => {
                 showNow={false}
               />
             </div>
-
             <div>
               <label className="block mb-1">Giờ nhận <span className="text-red-500">*</span></label>
               <TimePicker
@@ -514,7 +424,6 @@ const ImportOrderCreate = () => {
                   const selectedDate = dayjs(formData.dateReceived);
                   const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
                   const minDateTime = now.add(hours, 'hour');
-                  
                   if (selectedDate.isSame(minDateTime, 'day')) {
                     return {
                       disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
@@ -534,7 +443,6 @@ const ImportOrderCreate = () => {
                 Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
               </div>
             </div>
-
             <div>
               <label className="block mb-1">Ghi chú</label>
               <TextArea
@@ -545,9 +453,24 @@ const ImportOrderCreate = () => {
                 className="w-full"
               />
             </div>
-
-            {selectedImportRequest && renderExcelUploadSection()}
-
+            {selectedImportRequest && (
+              <>
+                <ExcelUploadSection
+                  fileName={fileName}
+                  onFileChange={handleExcelUpload}
+                  onDownloadTemplate={downloadTemplate}
+                  fileInputRef={fileInputRef}
+                  buttonLabel="Tải lên file Excel"
+                />
+                <Alert
+                  message="Lưu ý"
+                  description="Hệ thống sẽ bỏ qua các itemId (Mã hàng) không tồn tại trong phiếu nhập"
+                  type="info"
+                  showIcon
+                  className="!p-4"
+                />
+              </>
+            )}
             <Button
               type="primary"
               onClick={handleSubmit}
@@ -560,33 +483,26 @@ const ImportOrderCreate = () => {
             </Button>
           </Space>
         </Card>
-
         <div className="w-7/10">
-          <Card title={`Chi tiết hàng hóa cần nhập từ phiếu nhập  #${selectedImportRequest}`}>
-            {importRequestDetails.length > 0 ? (
-              <Table
-                columns={columns}
-                dataSource={importRequestDetails}
-                rowKey="importRequestDetailId"
-                loading={detailsLoading}
-                onChange={handleTableChange}
-                pagination={{
-                  current: pagination.current,
-                  pageSize: pagination.pageSize,
-                  total: pagination.total,
-                  showSizeChanger: true,
-                  pageSizeOptions: ['10', '20', '50'],
-                  showTotal: (total) => `Tổng cộng ${total} sản phẩm trong phiếu nhập`,
-                }}
-              />
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                {selectedImportRequest
-                  ? "Không có dữ liệu chi tiết cho phiếu nhập này"
-                  : "Vui lòng chọn phiếu nhập để xem chi tiết"}
-              </div>
-            )}
-          </Card>
+          <TableSection
+            title={`Chi tiết hàng hóa cần nhập từ phiếu nhập  #${selectedImportRequest}`}
+            columns={columns}
+            data={importRequestDetails}
+            rowKey="importRequestDetailId"
+            loading={detailsLoading}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50'],
+              showTotal: (total: number) => `Tổng cộng ${total} sản phẩm trong phiếu nhập`,
+              onChange: (page: number, pageSize: number) => setPagination(prev => ({ ...prev, current: page, pageSize })),
+            }}
+            emptyText={selectedImportRequest
+              ? "Không có dữ liệu chi tiết cho phiếu nhập này"
+              : "Vui lòng chọn phiếu nhập để xem chi tiết"}
+          />
         </div>
       </div>
     </div>

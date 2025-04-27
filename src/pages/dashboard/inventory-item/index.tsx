@@ -95,11 +95,6 @@ const InventoryItemList: React.FC = () => {
       key: "itemName",
     },
     {
-      title: "Số lượng",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-    },
-    {
       title: "Giá trị đo lường",
       key: "measurementValue",
       render: (_, record: InventoryItemResponse) => {
