@@ -30,13 +30,13 @@ const InventoryItemList: React.FC = () => {
       ]);
       
       if (inventoryResponse && itemsResponse?.content) {
-        setInventoryItems(inventoryResponse.items);
+        setInventoryItems(inventoryResponse.content);
         setItems(itemsResponse.content);
         setPagination(prev => ({
           ...prev,
-          total: inventoryResponse.metadata.total,
-          current: inventoryResponse.metadata.page,
-          pageSize: inventoryResponse.metadata.limit,
+          total: inventoryResponse.metaDataDTO?.total || 0,
+          current: inventoryResponse.metaDataDTO?.page || 1,
+          pageSize: inventoryResponse.metaDataDTO?.limit || 10,
         }));
       }
     } catch (error) {

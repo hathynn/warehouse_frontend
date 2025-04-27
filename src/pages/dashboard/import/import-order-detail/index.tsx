@@ -18,7 +18,6 @@ import {
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import useInventoryItemService from "@/hooks/useInventoryItemService";
 import useAccountService, { AccountRole } from "@/hooks/useAccountService";
 import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
@@ -26,7 +25,7 @@ import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
 import { UserState } from "@/redux/features/userSlice";
-import useConfigService from "@/hooks/useConfigService";
+import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
@@ -38,7 +37,6 @@ const ImportOrderDetail = () => {
   // Modal states
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelModalText, setCancelModalText] = useState('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
-  const [confirmAssignModalVisible, setConfirmAssignModalVisible] = useState(false);
 
   // Loading states
   const [loading, setLoading] = useState(false);
@@ -66,10 +64,18 @@ const ImportOrderDetail = () => {
 
   const { getImportOrderById, assignStaff, cancelImportOrder } = useImportOrderService();
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
-  const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
   const { getActiveStaffsInDay, findAccountById } = useAccountService();
 
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
+
+  const { getConfiguration } = useConfigurationService();
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
+
+  // Fetch configuration
+  const fetchConfiguration = useCallback(async () => {
+    const config = await getConfiguration();
+    setConfiguration(config);
+  }, []);
 
   // Fetch import order data
   const fetchImportOrderData = useCallback(async () => {
@@ -105,8 +111,8 @@ const ImportOrderDetail = () => {
       if (response?.content) {
         setImportOrderDetails(response.content);
 
-        if (response.metadata) {
-          const { page, limit, total } = response.metadata;
+        if (response.metaDataDTO) {
+          const { page, limit, total } = response.metaDataDTO;
           setPagination(prev => ({
             ...prev,
             current: page,
@@ -152,33 +158,9 @@ const ImportOrderDetail = () => {
     }
   };
 
-  // Helper function to calculate remaining time
-  const calculateRemainingTime = (totalExpectedTime: string): string => {
-    // Default working hours per day (8 hours = 480 minutes)
-    const DEFAULT_WORKING_MINUTES = 480;
-    
-    try {
-      // Parse the expected time (format: "HH:mm:ss")
-      const [hours, minutes] = totalExpectedTime.split(':').map(Number);
-      const expectedMinutes = (hours * 60) + minutes;
-      
-      // Calculate remaining minutes
-      const remainingMinutes = DEFAULT_WORKING_MINUTES - expectedMinutes;
-      
-      if (remainingMinutes <= 0) {
-        return "0 tiếng 0 phút";
-      }
-      
-      // Convert to hours and minutes format
-      const remainingHours = Math.floor(remainingMinutes / 60);
-      const remainingMins = Math.floor(remainingMinutes % 60);
-      
-      return `${remainingHours} tiếng ${remainingMins} phút`;
-    } catch (error) {
-      // If there's any error in calculation, return default working hours
-      return "8 tiếng 0 phút";
-    }
-  };
+  useEffect(() => {
+    fetchConfiguration();
+  }, []);
 
   useEffect(() => {
     if (importOrderId) {
@@ -200,9 +182,37 @@ const ImportOrderDetail = () => {
     }
   }, [pagination.current, pagination.pageSize]);
 
+  // Helper function to calculate remaining time
+  const calculateRemainingTime = (totalExpectedTime: string, defaultWorkingMinutes: number): string => {
+    try {
+      const [hours, minutes] = totalExpectedTime.split(':').map(Number);
+      const expectedMinutes = (hours * 60) + minutes;
+      const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
+      if (remainingMinutes <= 0) return "0 tiếng 0 phút";
+      const remainingHours = Math.floor(remainingMinutes / 60);
+      const remainingMins = Math.floor(remainingMinutes % 60);
+      return `${remainingHours} tiếng ${remainingMins} phút`;
+    } catch (error) {
+      return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${defaultWorkingMinutes % 60} phút`;
+    }
+  };
 
-  const handleOpenAssignModal = () => {
+  const getDefaultWorkingMinutes = () => {
+    if (!configuration) return 480; // fallback
+    const [startH, startM] = configuration.workingTimeStart.split(':').map(Number);
+    const [endH, endM] = configuration.workingTimeEnd.split(':').map(Number);
+    return (endH * 60 + endM) - (startH * 60 + startM);
+  };
+
+  const handleOpenAssignModal = async () => {
     setSelectedStaffId(null);
+    // Lấy configuration
+    try {
+      const config = await getConfiguration();
+      setConfiguration(config);
+    } catch (e) {
+      // Có thể toast lỗi ở đây nếu muốn
+    }
     fetchActiveStaffs();
     setAssignModalVisible(true);
   };
@@ -216,15 +226,12 @@ const ImportOrderDetail = () => {
     setSelectedStaffId(staffId);
   };
 
-  const handleAssignStaff = () => {
+  const handleAssignStaff = async () => {
     if (!selectedStaffId || !importOrderId) {
       message.warning("Vui lòng chọn nhân viên để phân công");
       return;
     }
-    setConfirmAssignModalVisible(true);
-  };
 
-  const handleConfirmAssign = async () => {
     try {
       setAssigningStaff(true);
       await assignStaff({
@@ -239,17 +246,13 @@ const ImportOrderDetail = () => {
       await fetchActiveStaffs();
       
       message.success("Phân công nhân viên thành công");
-      setConfirmAssignModalVisible(false);
+      setSelectedStaffId(null);
     } catch (error) {
       console.error("Failed to assign warehouse keeper:", error);
       message.error("Không thể phân công nhân viên. Vui lòng thử lại");
     } finally {
       setAssigningStaff(false);
     }
-  };
-
-  const handleCancelAssign = () => {
-    setConfirmAssignModalVisible(false);
   };
 
   // Status tag renderers
@@ -324,10 +327,11 @@ const ImportOrderDetail = () => {
   };
 
   const getFilteredAndSortedStaffs = () => {
+    const defaultWorkingMinutes = getDefaultWorkingMinutes();
     return staffs
       .map(staff => ({
         ...staff,
-        remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00")
+        remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00", defaultWorkingMinutes)
       }))
       .filter(staff => {
         const searchLower = searchText.toLowerCase();
@@ -347,6 +351,23 @@ const ImportOrderDetail = () => {
         
         return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
       });
+  };
+
+  // Add new function to check if reassignment is allowed
+  const canReassignStaff = () => {
+    if (!importOrder?.dateReceived || !importOrder?.timeReceived || !configuration?.timeToAllowAssign) {
+      return true;
+    }
+
+    // Combine dateReceived and timeReceived into a Date object
+    const receivedDateTime = new Date(`${importOrder.dateReceived}T${importOrder.timeReceived}`);
+    const now = new Date();
+    // Convert timeToAllowAssign to milliseconds
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+
+    // If current time - received time < timeToAllowAssign, don't allow reassignment
+    return (receivedDateTime.getTime() - now.getTime()) >= allowAssignMs;
   };
 
   // Table columns definition
@@ -414,10 +435,10 @@ const ImportOrderDetail = () => {
                 type="primary"
                 icon={<UserAddOutlined />}
                 onClick={handleOpenAssignModal}
-                disabled={!!importOrder?.assignedStaffId}
-                title={importOrder?.assignedStaffId ? "Đơn nhập này đã được phân công" : ""}
+                disabled={!canReassignStaff()}
+                title={!canReassignStaff() ? "Đã quá thời gian cho phép phân công lại" : ""}
               >
-                {importOrder?.assignedStaffId ? "Đã phân công" : "Phân công nhân viên"}
+                Phân công nhân viên
               </Button>
             )}
             <div className="ml-auto flex gap-2">
@@ -514,6 +535,7 @@ const ImportOrderDetail = () => {
             type="primary"
             onClick={handleAssignStaff}
             disabled={!selectedStaffId}
+            loading={assigningStaff}
           >
             Phân công
           </Button>,
@@ -560,8 +582,12 @@ const ImportOrderDetail = () => {
                 pagination={false}
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
                 onRow={(record) => ({
-                  onClick: () => handleSelectStaff(record.id),
-                  className: selectedStaffId === record.id ? '!bg-blue-100' : ''
+                  onClick: () => record.id !== importOrder?.assignedStaffId && handleSelectStaff(record.id),
+                  className: selectedStaffId === record.id 
+                    ? '!bg-blue-100' 
+                    : record.id === importOrder?.assignedStaffId 
+                      ? '!opacity-50 !cursor-not-allowed' 
+                      : ''
                 })}
                 columns={[
                   {
@@ -582,8 +608,8 @@ const ImportOrderDetail = () => {
                     dataIndex: "remainingTime",
                     key: "remainingTime",
                     width: '30%',
-                    render: (time) => (
-                      <span className="font-medium text-blue-600">
+                    render: (time, record) => (
+                      <span className={`font-medium ${record.id === importOrder?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
                         {time || "8 tiếng 0 phút"}
                       </span>
                     )
@@ -606,19 +632,6 @@ const ImportOrderDetail = () => {
         okButtonProps={{ danger: true }}
       >
         <p>{cancelModalText}</p>
-      </Modal>
-
-      {/* Confirmation Modal for Staff Assignment */}
-      <Modal
-        title="Xác nhận phân công nhân viên"
-        open={confirmAssignModalVisible}
-        onOk={handleConfirmAssign}
-        onCancel={handleCancelAssign}
-        confirmLoading={assigningStaff}
-        okText="Xác nhận"
-        cancelText="Hủy"
-      >
-        <p>Bạn có chắc chắn muốn phân công nhân viên này không? Sau khi phân công sẽ không thể thay đổi.</p>
       </Modal>
     </div>
   );

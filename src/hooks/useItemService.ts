@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useApiService from "./useApi";
+import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
 
 // Interface to match ItemRequest.java
@@ -34,23 +34,6 @@ export interface ItemResponse {
   importRequestDetailIds: number[];
   exportRequestDetailIds: number[];
   inventoryItemIds: number[];
-}
-
-// Interface to match MetaDataDTO.java
-export interface MetaDataDTO {
-  hasNext: boolean;
-  hasPrevious: boolean;
-  limit: number;
-  total: number;
-  page: number;
-}
-
-// Interface to match ResponseDTO.java
-export interface ResponseDTO<T> {
-  content: T;
-  message: string;
-  status: number;
-  metadata?: MetaDataDTO;
 }
 
 const useItemService = () => {
