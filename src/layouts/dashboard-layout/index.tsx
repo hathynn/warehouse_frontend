@@ -3,7 +3,7 @@ import { Layout, Menu } from "antd";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import HeaderDashboard from "@/components/header";
+import Header from "@/components/header/Header";
 import { getPageTitle } from "@/constants/page-titles";
 import { RootState } from "@/redux/store";
 import { UserState } from "@/redux/features/userSlice";
@@ -185,7 +185,7 @@ const DashboardLayout: React.FC = () => {
         }}>
           <div className="p-6">
             {/* Header */}
-            <HeaderDashboard title={getPageTitle(location.pathname)} />
+            <Header title={getPageTitle(location.pathname)} />
 
             {/* Content */}
             <div className="bg-white rounded-lg shadow-sm p-6">

@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/hooks/useAccountService';
 
-interface HeaderDashboardProps {
+interface HeaderProps {
   title?: string;
 }
 
@@ -22,7 +22,7 @@ const getRoleDisplayName = (role: AccountRole): string => {
   return roleMap[role] || role;
 };
 
-function HeaderDashboard({ title = "Dashboard" }: HeaderDashboardProps) {
+function Header({ title = "Dashboard" }: HeaderProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { fullName, role } = useSelector((state: RootState) => state.user);
@@ -86,4 +86,4 @@ function HeaderDashboard({ title = "Dashboard" }: HeaderDashboardProps) {
   );
 }
 
-export default HeaderDashboard;
+export default Header;
