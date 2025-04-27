@@ -3,7 +3,7 @@ import DashboardLayout from '@/layouts/dashboard-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import { ROUTES } from '@/constants/routes';
 import ProtectedRoute from '@/router/ProtectedRoute';
-import SomethingWrong from '@/components/something-wrong';
+import SomethingWrong from '@/components/something-wrong/SomethingWrong';
 import PublicRoute from '@/router/PublicRoute';
 
 // Auth pages
@@ -11,7 +11,7 @@ import Login from '@/pages/auth/login';
 import Register from '@/pages/auth/register';
 
 // Dashboard pages
-import Overview from '@/components/overview';
+import Overview from '@/pages/dashboard/overview';
 import ItemList from '@/pages/dashboard/item/item-list';
 import ItemCreate from '@/pages/dashboard/item/item-create';
 import ImportRequestList from '@/pages/dashboard/import/import-request-list';
