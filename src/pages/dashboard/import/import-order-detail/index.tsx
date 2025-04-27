@@ -30,6 +30,8 @@ import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurat
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 dayjs.extend(duration);
+import DetailInfoCard from "@/components/commons/DetailInfoCard";
+import StatusTag from "@/components/commons/StatusTag";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();
@@ -256,30 +258,6 @@ const ImportOrderDetail = () => {
     }
   };
 
-  // Status tag renderers
-  const getStatusTag = (status: ImportStatus) => {
-    const statusMap = {
-      [ImportStatus.NOT_STARTED]: { color: "default", text: "Chưa bắt đầu" },
-      [ImportStatus.IN_PROGRESS]: { color: "processing", text: "Đang xử lý" },
-      [ImportStatus.COMPLETED]: { color: "success", text: "Hoàn tất" },
-      [ImportStatus.CANCELLED]: { color: "error", text: "Đã hủy" }
-    };
-
-    const statusInfo = statusMap[status] || { color: "default", text: status };
-    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
-  };
-
-  const getDetailStatusTag = (status: string) => {
-    const statusMap: Record<string, { color: string; text: string }> = {
-      "LACK": { color: "error", text: "THIẾU" },
-      "EXCESS": { color: "error", text: "THỪA" },
-      "MATCH": { color: "success", text: "ĐỦ" }
-    };
-
-    const statusInfo = statusMap[status] || { color: "default", text: status };
-    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
-  };
-
   // Table pagination handler
   const handleTableChange = (pagination: any) => {
     setPagination({
@@ -367,7 +345,7 @@ const ImportOrderDetail = () => {
     const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
     const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
 
-    // If current time - received time < timeToAllowAssign, don't allow reassignment
+    // If receivedDateTime - now < timeToAllowAssign, don't allow reassignment
     return (receivedDateTime.getTime() - now.getTime()) >= allowAssignMs;
   };
 
@@ -419,9 +397,21 @@ const ImportOrderDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: getDetailStatusTag,
+      render: (status: string) => <StatusTag status={status} type="detail" />, 
       width: '15%',
     }
+  ];
+
+  // Chuẩn bị dữ liệu cho DetailInfoCard
+  const infoItems = [
+    { label: "Mã đơn nhập", value: `#${importOrder?.importOrderId}` },
+    { label: "Ghi chú", value: importOrder?.note || "-", span: 3 },
+    { label: "Nhân viên được phân công", value: assignedStaff?.fullName || "-" },
+    { label: "Ngày nhận hàng", value: importOrder?.dateReceived ? new Date(importOrder?.dateReceived).toLocaleDateString("vi-VN") : "-" },
+    { label: "Giờ nhận hàng", value: importOrder?.timeReceived || "-" },
+    { label: "Người tạo", value: importOrder?.createdBy || "-" },
+    { label: "Ngày tạo", value: importOrder?.createdDate ? new Date(importOrder?.createdDate).toLocaleDateString("vi-VN") : "-" },
+    { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" />, span: 2 },
   ];
 
   // Show loading spinner when initially loading the page
@@ -475,40 +465,7 @@ const ImportOrderDetail = () => {
         )}
       </div>
 
-      <Card className="mb-6">
-        <Descriptions title="Thông tin đơn nhập" bordered>
-          <Descriptions.Item label="Mã đơn nhập">#{importOrder?.importOrderId}</Descriptions.Item>
-          <Descriptions.Item label="Ghi chú" span={3}>
-            {importOrder?.note || "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Nhân viên được phân công">
-            {assignedStaff?.fullName || "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Ngày nhận hàng">
-            {importOrder?.dateReceived ? new Date(importOrder?.dateReceived).toLocaleDateString("vi-VN") : "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Giờ nhận hàng">
-            {importOrder?.timeReceived || "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Người tạo">{importOrder?.createdBy || "-"}</Descriptions.Item>
-          <Descriptions.Item label="Ngày tạo">
-            {importOrder?.createdDate ? new Date(importOrder?.createdDate).toLocaleDateString("vi-VN") : "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Trạng thái" span={2}>
-            {importOrder?.status && (
-              <Tag
-                color={getStatusTag(importOrder.status).props.color}
-                style={{
-                  fontSize: '14px',
-                  height: 'auto'
-                }}
-              >
-                {getStatusTag(importOrder.status).props.children}
-              </Tag>
-            )}
-          </Descriptions.Item>
-        </Descriptions>
-      </Card>
+      <DetailInfoCard title="Thông tin đơn nhập" items={infoItems} />
 
       <div className="flex justify-between items-center mt-16 mb-4">
         <Button
