@@ -7,14 +7,14 @@ interface DetailInfoItem {
   span?: number;
 }
 
-interface DetailInfoCardProps {
+interface DetailCardProps {
   title: string;
   items: DetailInfoItem[];
   children?: React.ReactNode;
   bordered?: boolean;
 }
 
-const DetailInfoCard: React.FC<DetailInfoCardProps> = ({ title, items, children, bordered = true }) => {
+const DetailCard: React.FC<DetailCardProps> = ({ title, items, children, bordered = true }) => {
   return (
     <Card className="mb-6">
       <Descriptions title={title} bordered={bordered}>
@@ -29,4 +29,4 @@ const DetailInfoCard: React.FC<DetailInfoCardProps> = ({ title, items, children,
   );
 };
 
-export default DetailInfoCard; 
+export default DetailCard; 

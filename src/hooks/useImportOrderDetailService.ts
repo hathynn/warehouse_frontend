@@ -13,6 +13,13 @@ export interface ImportOrderDetailResponse {
   status: string;
 }
 
+// Interface to match ImportOrderDetailRequest.java
+export interface ImportOrderDetailRequest {
+  itemId: number;
+  quantity: number;
+  actualQuantity: number;
+}
+
 // Interface to match ImportOrderDetailUpdateRequest.java
 export interface ImportOrderDetailUpdateRequest {
   importOrderDetailId: number;

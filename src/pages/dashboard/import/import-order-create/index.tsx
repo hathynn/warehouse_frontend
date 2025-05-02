@@ -30,10 +30,6 @@ interface UploadedDetail {
   plannedQuantity: number;
 }
 
-interface ImportRequestDetailWithPlanned extends ImportRequestDetailResponse {
-  plannedQuantity: number;
-}
-
 interface TablePagination {
   current: number;
   pageSize: number;
@@ -93,7 +89,7 @@ const ImportOrderCreate = () => {
 
   const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
   const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
-  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailWithPlanned[]>([]);
+  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [uploadedDetails, setUploadedDetails] = useState<UploadedDetail[]>([]);
@@ -118,7 +114,6 @@ const ImportOrderCreate = () => {
   const {
     loading: importRequestLoading,
     getAllImportRequests,
-    getImportRequestById
   } = useImportRequestService();
 
   const {
@@ -270,14 +265,6 @@ const ImportOrderCreate = () => {
     }
   };
 
-  const handleTableChange = (newPagination: TablePagination) => {
-    setPagination({
-      current: newPagination.current,
-      pageSize: newPagination.pageSize,
-      total: newPagination.total
-    });
-  };
-
   const downloadTemplate = () => {
     const template = [
       {
@@ -350,35 +337,46 @@ const ImportOrderCreate = () => {
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
+      render: (id: number) => `#${id}`,
+      align: "center" as const
     },
     {
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
-      width: "30%"
+      width: "30%",
     },
     {
-      title: "Số lượng đã lên đơn nhập",
+      title: "Tổng dự nhập",
+      dataIndex: "expectQuantity",
+      key: "expectQuantity",
+      align: "center" as const,
+    },
+    {
+      title: "Tổng đã lên đơn",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
+      align: "center" as const,
     },
     {
-      title: "Số lượng sẽ nhập (dự tính)",
+      title: "Dự nhập của đơn này",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
-      render: (_: any, record: ImportRequestDetailWithPlanned) => {
+      align: "center" as const,
+      render: (_: any, record: ImportRequestDetailResponse) => {
         const uploadedDetail = uploadedDetails.find(d => d.itemId === record.itemId);
-        const plannedQuantity = uploadedDetail ? uploadedDetail.plannedQuantity : "Chưa có";
+        const plannedQuantity = uploadedDetail
+          ? uploadedDetail.plannedQuantity
+          : "Chưa có";
         return (
           <span
-            className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md"
-            style={{ display: 'inline-block' }}
+            className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block"
           >
             {plannedQuantity}
           </span>
         );
-      }
-    }
+      },
+    },
   ];
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
@@ -419,6 +417,7 @@ const ImportOrderCreate = () => {
                 onChange={handleTimeChange}
                 format="HH:mm"
                 showNow={false}
+                needConfirm={false}
                 disabledTime={() => {
                   const now = dayjs();
                   const selectedDate = dayjs(formData.dateReceived);

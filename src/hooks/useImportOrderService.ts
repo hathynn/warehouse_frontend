@@ -51,24 +51,6 @@ export interface ImportOrderResponse {
   assignedStaffId?: number;
 }
 
-// Interface to match ImportOrderDetailRequest.java
-export interface ImportOrderDetailRequest {
-  itemId: number;
-  quantity: number;
-  actualQuantity: number;
-}
-
-// Interface to match ImportOrderDetailResponse.java
-export interface ImportOrderDetailResponse {
-  importOrderDetailId: number;
-  importOrderId: number;
-  itemId: number;
-  itemName: string;
-  expectQuantity: number;
-  actualQuantity: number;
-  status: DetailStatus;
-}
-
 // Interface to match AssignStaffRequest.java
 export interface AssignStaffRequest {
   importOrderId: number;

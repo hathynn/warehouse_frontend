@@ -2,13 +2,22 @@ import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, TablePaginationConfig } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
+import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
+import useProviderService from "@/hooks/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import { ResponseDTO } from "@/hooks/useApi";
+
+interface ImportRequestData extends ImportRequestResponse {
+  totalExpectQuantityInRequest: number;
+  totalOrderedQuantityInRequest: number;
+  totalActualQuantityInRequest: number;
+  providerName: string;
+}
 
 const ImportRequestList: React.FC = () => {
-  const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
+  const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
@@ -20,32 +29,79 @@ const ImportRequestList: React.FC = () => {
     loading
   } = useImportRequestService();
 
+  const {
+    getImportRequestDetails
+  } = useImportRequestDetailService();
+
+  const {
+    getAllProviders
+  } = useProviderService();
+
   useEffect(() => {
     fetchImportRequests();
   }, [pagination.current, pagination.pageSize]);
 
   const fetchImportRequests = async (): Promise<void> => {
     try {
-      const response: ResponseDTO<ImportRequestResponse[]> = await getImportRequestsByPage(
+      setDetailsLoading(true);
+
+      const { content, metaDataDTO } = await getImportRequestsByPage(
         pagination.current || 1,
         pagination.pageSize || 10
       );
-      
-      // Update state with the content array from the response
-      if (response && response.content) {
-        setImportRequests(response.content);
-      }
-      
-      // Update pagination with metadata
-      if (response && response.metaDataDTO) {
-        setPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch import requests:", error);
+
+      const { content: providerList = [] } = await getAllProviders();
+
+      const formattedRequests: ImportRequestData[] = await Promise.all(
+        (content || []).map(async (request) => {
+          // Lấy chi tiết của từng phiếu
+          const { content: importRequestDetails = [] } = await getImportRequestDetails(
+            request.importRequestId,
+            1,
+            1000
+          );
+
+          // Tính tổng bằng reduce
+          const totalExpectQuantityInRequest = importRequestDetails.reduce(
+            (runningTotal, detail) => runningTotal + detail.expectQuantity,
+            0
+          );
+          const totalOrderedQuantityInRequest = importRequestDetails.reduce(
+            (runningTotal, detail) => runningTotal + detail.orderedQuantity,
+            0
+          );
+          const totalActualQuantityInRequest = importRequestDetails.reduce(
+            (runningTotal, detail) => runningTotal + detail.actualQuantity,
+            0
+          );
+
+          // Tìm nhà cung cấp
+          const provider = providerList.find(
+            (provider) => provider.id === request.providerId
+          );
+
+          return {
+            ...request,
+            totalExpectQuantityInRequest,
+            totalOrderedQuantityInRequest,
+            totalActualQuantityInRequest,
+            providerName: provider?.name || "",
+          };
+        })
+      );
+
+      setImportRequestsData(formattedRequests);
+
+      // cập nhật phân trang
+      setPagination({
+        current: metaDataDTO.page,
+        pageSize: metaDataDTO.limit,
+        total: metaDataDTO.total,
+      });
+    } catch (err) {
+      console.error("Failed to fetch import requests:", err);
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
@@ -79,60 +135,106 @@ const ImportRequestList: React.FC = () => {
   const getImportTypeText = (type: string): string => {
     switch (type) {
       case "ORDER":
-        return "Đơn hàng";
+        return "Nhập hàng mới";
       case "RETURN":
-        return "Trả hàng";
+        return "Nhập hàng trả";
       default:
         return type;
     }
   };
 
-  const filteredItems = importRequests.filter((item) =>
+  const filteredItems = importRequestsData.filter((item) =>
     item.importRequestId.toString().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
     {
-      title: "Mã phiếu nhập",
+      title: "Mã phiếu",
       dataIndex: "importRequestId",
       key: "importRequestId",
+      align: "center" as const,
       render: (id: number) => `#${id}`,
-      width: '10%',
+      width: '8%',
     },
     {
       title: "Loại nhập",
       dataIndex: "importType",
       key: "importType",
+      align: "center" as const,
       render: (type: string) => getImportTypeText(type),
     },
     {
-      title: "Lý do nhập",
-      dataIndex: "importReason",
-      key: "importReason",
-      ellipsis: true,
-      width: '20%'
+      title: "Tổng dự nhập",
+      dataIndex: "totalExpectQuantityInRequest",
+      key: "totalExpectQuantityInRequest",
+      align: "center" as const,
+      render: (quantity: number) => <div className="text-xl">{quantity || 0}</div>,
     },
     {
-      title: "Mã nhà cung cấp",
-      dataIndex: "providerId",
-      key: "providerId",
+      title: "Tổng đã lên đơn",
+      dataIndex: "totalOrderedQuantityInRequest",
+      key: "totalOrderedQuantityInRequest",
+      align: "center" as const,
+      render: (ordered: number, record: ImportRequestData) => {
+        const expected = record.totalExpectQuantityInRequest || 0;
+        const isEnough = ordered >= expected;
+        return (
+          <div className="text-center">
+            <div className="text-xl">{ordered}</div>
+            {expected > 0 && (
+              <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                {isEnough ? "Đủ" : `Thiếu ${expected - ordered}`}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: "Tổng đã nhập",
+      dataIndex: "totalActualQuantityInRequest",
+      key: "totalActualQuantityInRequest",
+      align: "center" as const,
+      render: (actual: number, record: ImportRequestData) => {
+        const expected = record.totalExpectQuantityInRequest || 0;
+        const isEnough = actual >= expected;
+        return (
+          <div className="text-center">
+            <div className="text-xl">{actual}</div>
+            {expected > 0 && (
+              <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                {isEnough ? "Đủ" : `Thiếu ${expected - actual}`}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      title: "Nhà cung cấp",
+      dataIndex: "providerName",
+      key: "providerName",
+      align: "center" as const,
     },
     {
       title: "Ngày tạo",
       dataIndex: "createdDate",
       key: "createdDate",
+      align: "center" as const,
       render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      align: "center" as const,
       render: (status: string) => getStatusTag(status),
     },
     {
       title: "Chi tiết",
       key: "detail",
-      render: (_: unknown, record: ImportRequestResponse) => (
+      align: "center" as const,
+      render: (_: unknown, record: ImportRequestData) => (
         <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
           <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
             Xem chi tiết
@@ -172,7 +274,7 @@ const ImportRequestList: React.FC = () => {
         dataSource={filteredItems}
         rowKey="importRequestId"
         className="custom-table"
-        loading={loading}
+        loading={loading || detailsLoading}
         onChange={handleTableChange}
         pagination={{
           ...pagination,

@@ -32,7 +32,7 @@ import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
 import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/hooks/useInventoryItemService";
 dayjs.extend(duration);
-import DetailInfoCard from "@/components/commons/DetailInfoCard";
+import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 
 const ImportOrderDetail = () => {
@@ -278,7 +278,11 @@ const ImportOrderDetail = () => {
   };
 
   const handleBack = () => {
-    navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrder?.importRequestId.toString()));
+    if (importOrder?.importRequestId) {
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrder?.importRequestId.toString()));
+    } else {
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
+    }
   };
 
   // Replace the existing handleCancelOrder with this new version
@@ -412,7 +416,7 @@ const ImportOrderDetail = () => {
     }
   ];
 
-  // Chuẩn bị dữ liệu cho DetailInfoCard
+  // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
     { label: "Mã đơn nhập", value: `#${importOrder?.importOrderId}` },
     { label: "Ghi chú", value: importOrder?.note || "-", span: 3 },
@@ -518,7 +522,7 @@ const ImportOrderDetail = () => {
         )}
       </div>
 
-      <DetailInfoCard title="Thông tin đơn nhập" items={infoItems} />
+      <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
       <div className="flex justify-between items-center mt-16 mb-4">
         <Button

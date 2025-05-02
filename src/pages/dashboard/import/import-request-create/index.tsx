@@ -216,7 +216,7 @@ const ImportRequestCreate: React.FC = () => {
     <div className="container mx-auto p-5">
       <Title level={2}>Tạo phiếu nhập kho</Title>
       <div className="flex gap-6">
-        <Card title="Thông tin phiếu nhập" className="w-1/3">
+        <Card title="Thông tin phiếu nhập" className="w-3/10">
           <Space direction="vertical" className="w-full">
             <div>
               <label className="block mb-1">Lý do nhập kho <span className="text-red-500">*</span></label>
@@ -265,7 +265,7 @@ const ImportRequestCreate: React.FC = () => {
             </Button>
           </Space>
         </Card>
-        <div className="w-2/3">
+        <div className="w-7/10">
           <TableSection
             title="Chi tiết hàng hóa từ file Excel"
             columns={columns}

@@ -12,7 +12,7 @@ import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImpor
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
-import DetailInfoCard from "@/components/commons/DetailInfoCard";
+import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 
 interface RouteParams extends Record<string, string> {
@@ -145,26 +145,28 @@ const ImportRequestDetail: React.FC = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: '10%',
+      render: (id: number) => `#${id}`,
+      width: "10%",
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
       ellipsis: true,
+      width: "30%",
     },
     {
-      title: "Số lượng phải nhập theo phiếu",
+      title: "Dự nhập của phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
     },
     {
-      title: "Số lượng đã lên đơn nhập",
+      title: "Đã lên đơn nhập",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
     },
     {
-      title: "Số lượng thực tế đã nhập",
+      title: "Thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
     },
@@ -185,7 +187,7 @@ const ImportRequestDetail: React.FC = () => {
     );
   }
 
-  // Chuẩn bị dữ liệu cho DetailInfoCard
+  // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
     { label: "Mã phiếu nhập", value: `#${importRequest?.importRequestId}` },
     { label: "Loại nhập", value: importRequest?.importType && getImportTypeText(importRequest.importType as ImportType) },
@@ -232,7 +234,7 @@ const ImportRequestDetail: React.FC = () => {
         </div>
       </div>
 
-      <DetailInfoCard title="Thông tin phiếu nhập" items={infoItems} />
+      <DetailCard title="Thông tin phiếu nhập" items={infoItems} />
 
       <div className="flex justify-between items-center mt-12 mb-4">
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
