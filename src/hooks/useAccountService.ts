@@ -50,6 +50,13 @@ export interface AuthenticationResponse {
   refresh_token: string;
 }
 
+// Interface to match ActiveAccountRequest.java
+export interface ActiveAccountRequest {
+  date: string; // ISO date string, e.g. '2025-05-03'
+  importOrderId?: number;
+  exportRequestId?: number;
+}
+
 // Enum to match AccountRole.java
 export enum AccountRole {
   DEPARTMENT = "ROLE_DEPARTMENT",
@@ -167,12 +174,12 @@ const useAccountService = () => {
 
   /**
    * Get all active staff accounts for a specific date
-   * @param date - The date to get active staff for (in YYYY-MM-DD format)
+   * @param request - The request object containing date (and optionally importOrderId/exportRequestId)
    * @returns Promise resolving to an array of AccountResponse objects
    */
-  const getActiveStaffsInDay = async (date: string): Promise<AccountResponse[]> => {
+  const getActiveStaffsInDay = async (request: ActiveAccountRequest): Promise<AccountResponse[]> => {
     try {
-      const response = await callApi("get", `/account/active-staff/${date}`);
+      const response = await callApi("post", "/account/active-staff-in-day", request);
       if (response && response.content) {
         return response.content;
       }

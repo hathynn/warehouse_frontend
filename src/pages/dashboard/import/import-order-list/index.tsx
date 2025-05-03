@@ -153,7 +153,7 @@ const ImportOrderList: React.FC = () => {
       key: "totalExpectQuantityInOrder",
       align: "center" as const,
       render: (expect: number) => (
-        <div className="text-center text-xl">{expect}</div>
+        <div className="text-center text-lg">{expect}</div>
       ),
     },
     {
@@ -166,7 +166,7 @@ const ImportOrderList: React.FC = () => {
         const isEnough = actual >= expected;
         return (
           <div className="text-center">
-            <div className="text-xl">{actual}{" "}</div>
+            <div className="text-lg">{actual}{" "}</div>
             {expected > 0 && (
               <span
                 className={`font-bold ${isEnough ? "text-green-600" : "text-red-600"

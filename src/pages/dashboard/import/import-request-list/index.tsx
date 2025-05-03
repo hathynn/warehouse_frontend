@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, TablePaginationConfig } from "antd";
+import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
 import useProviderService from "@/hooks/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
+import moment from "moment";
 
 interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest: number;
@@ -17,6 +18,8 @@ interface ImportRequestData extends ImportRequestResponse {
 const ImportRequestList: React.FC = () => {
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
+  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -143,9 +146,27 @@ const ImportRequestList: React.FC = () => {
     }
   };
 
-  const filteredItems = importRequestsData.filter((item) =>
-    item.importRequestId.toString().includes(searchTerm.toLowerCase())
-  );
+  // Extract all batch numbers for a given date string (YYYY-MM-DD)
+  const getBatchesForDate = (dateStr: string) => {
+    return importRequestsData
+      .filter(item => item.batchCode && item.batchCode.startsWith(dateStr))
+      .map(item => item.batchCode.split('_')[1])
+      .filter((batch, idx, arr) => arr.indexOf(batch) === idx);
+  };
+
+  // Filtered data logic
+  const filteredItems = importRequestsData.filter((item) => {
+    const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
+    if (selectedDate) {
+      const dateStr = selectedDate.format('YYYY-MM-DD');
+      if (selectedBatch) {
+        return matchesSearch && item.batchCode === `${dateStr}_${selectedBatch}`;
+      } else {
+        return matchesSearch && item.batchCode && item.batchCode.startsWith(dateStr);
+      }
+    }
+    return matchesSearch;
+  });
 
   const columns = [
     {
@@ -164,11 +185,29 @@ const ImportRequestList: React.FC = () => {
       render: (type: string) => getImportTypeText(type),
     },
     {
+      title: "Đợt nhập",
+      dataIndex: "batchCode",
+      key: "batchCode",
+      align: "center" as const,
+      render: (batchCode: string) => {
+        // batchCode: "2025-05-03_1"
+        if (!batchCode) return '';
+        const [dateStr, batchNum] = batchCode.split('_');
+        const [year, month, day] = dateStr.split('-');
+        return (
+          <div className="text-center">
+            <div className="font-bold">Đợt {batchNum}</div>
+            <div className="">Ngày {day}-{month}-{year}</div>
+          </div>
+        );
+      },
+    },
+    {
       title: "Tổng dự nhập",
       dataIndex: "totalExpectQuantityInRequest",
       key: "totalExpectQuantityInRequest",
       align: "center" as const,
-      render: (quantity: number) => <div className="text-xl">{quantity || 0}</div>,
+      render: (quantity: number) => <div className="text-lg">{quantity || 0}</div>,
     },
     {
       title: "Tổng đã lên đơn",
@@ -180,7 +219,7 @@ const ImportRequestList: React.FC = () => {
         const isEnough = ordered >= expected;
         return (
           <div className="text-center">
-            <div className="text-xl">{ordered}</div>
+            <div className="text-lg">{ordered}</div>
             {expected > 0 && (
               <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
                 {isEnough ? "Đủ" : `Thiếu ${expected - ordered}`}
@@ -200,7 +239,7 @@ const ImportRequestList: React.FC = () => {
         const isEnough = actual >= expected;
         return (
           <div className="text-center">
-            <div className="text-xl">{actual}</div>
+            <div className="text-lg">{actual}</div>
             {expected > 0 && (
               <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
                 {isEnough ? "Đủ" : `Thiếu ${expected - actual}`}
@@ -215,13 +254,6 @@ const ImportRequestList: React.FC = () => {
       dataIndex: "providerName",
       key: "providerName",
       align: "center" as const,
-    },
-    {
-      title: "Ngày tạo",
-      dataIndex: "createdDate",
-      key: "createdDate",
-      align: "center" as const,
-      render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
     },
     {
       title: "Trạng thái",
@@ -259,14 +291,38 @@ const ImportRequestList: React.FC = () => {
         </Link>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-2 items-center">
         <Input
           placeholder="Tìm kiếm theo mã phiếu nhập"
           value={searchTerm}
           onChange={handleSearchChange}
           prefix={<SearchOutlined />}
-          className="max-w-md"
+          className="max-w-md font-bold text-black"
+          style={{ color: '#111', fontWeight: 600 }}
         />
+        <DatePicker
+          placeholder="Chọn ngày nhập"
+          format="DD-MM-YYYY"
+          value={selectedDate}
+          onChange={(date) => {
+            setSelectedDate(date);
+            setSelectedBatch(null);
+          }}
+          className="ml-2 font-bold text-black"
+          style={{ color: '#111', fontWeight: 600 }}
+          allowClear
+        />
+        {selectedDate && (
+          <Select
+            allowClear
+            placeholder="Chọn đợt nhập"
+            className="min-w-[120px] font-bold text-black"
+            style={{ color: '#111', fontWeight: 600 }}
+            value={selectedBatch}
+            onChange={setSelectedBatch}
+            options={getBatchesForDate(selectedDate.format('YYYY-MM-DD')).map(batch => ({ label: `Đợt ${batch}`, value: batch }))}
+          />
+        )}
       </div>
 
       <Table

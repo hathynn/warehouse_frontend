@@ -23,6 +23,7 @@ export interface ImportRequestResponse {
   updatedBy: string;
   createdDate: string;
   updatedDate: string;
+  batchCode: string;
 }
 
 const useImportRequestService = () => {

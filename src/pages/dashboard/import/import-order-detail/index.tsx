@@ -161,7 +161,11 @@ const ImportOrderDetail = () => {
 
     try {
       setLoadingStaff(true);
-      const activeStaffs = await getActiveStaffsInDay(importOrder.dateReceived);
+      // Use new API: pass both date and importOrderId
+      const activeStaffs = await getActiveStaffsInDay({
+        date: importOrder.dateReceived,
+        importOrderId: importOrder.importOrderId,
+      });
       setStaffs(activeStaffs);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);

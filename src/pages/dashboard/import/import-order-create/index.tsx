@@ -111,6 +111,8 @@ const ImportOrderCreate = () => {
     status: ImportStatus.NOT_STARTED
   });
 
+  const [showFormFields, setShowFormFields] = useState<boolean>(false);
+
   const {
     loading: importRequestLoading,
     getAllImportRequests,
@@ -245,18 +247,8 @@ const ImportOrderCreate = () => {
       const response = await createImportOrder(createOrderRequest);
       if (response?.content) {
         if (excelFile) {
-          const validData = uploadedDetails.map(detail => ({
-            itemId: detail.itemId,
-            quantity: detail.plannedQuantity
-          }));
-          const ws = XLSX.utils.json_to_sheet(validData);
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, "Valid Items");
-          const validFile = new File([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
-            'valid_items.xlsx',
-            { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-          );
-          await uploadImportOrderDetail(validFile, response.content.importOrderId);
+          // Use the original Excel file instead of creating a new one
+          await uploadImportOrderDetail(excelFile, response.content.importOrderId);
         }
         navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
       }
@@ -269,13 +261,80 @@ const ImportOrderCreate = () => {
     const template = [
       {
         "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)"
+        "quantity": "Số lượng (số)",
+        "dateReceived": "Ngày nhận (DD/MM/YY)", 
+        "timeReceived": "Giờ nhận (HH:MM)",
+        "note": "Ghi chú"
       }
     ];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "import_order_template.xlsx");
+  };
+
+  const parseExcelDate = (value: any): string | null => {
+    if (!value) return null;
+    
+    try {
+      // Handle numeric Excel date (days since 1900-01-01)
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(1900, 0, 1);
+        // Account for Excel's leap year bug
+        const date = new Date(excelEpoch.getTime() + (value - (value > 59 ? 2 : 1)) * 24 * 60 * 60 * 1000);
+        return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      }
+      
+      // Handle string date in DD/MM/YY format
+      const dateStr = value.toString().trim();
+      const separator = dateStr.includes('/') ? '/' : (dateStr.includes('-') ? '-' : null);
+      if (!separator) return null;
+      
+      const dateParts = dateStr.split(separator);
+      if (dateParts.length !== 3) return null;
+      
+      const day = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]);
+      let year = parseInt(dateParts[2]);
+      // If year is two digits, assume 2000+
+      if (year < 100) year = 2000 + year;
+      
+      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    } catch (error) {
+      console.error("Error parsing date:", error);
+      return null;
+    }
+  };
+
+  const parseExcelTime = (value: any): string | null => {
+    if (!value) return null;
+    
+    try {
+      // Handle numeric Excel time (fraction of day)
+      if (typeof value === 'number') {
+        const totalMinutes = Math.round(value * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      }
+      
+      // Handle string time in HH:MM format
+      const timeStr = value.toString().trim();
+      if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return null;
+      
+      const [hours, minutes] = timeStr.split(':');
+      return `${hours.padStart(2, '0')}:${minutes}`;
+    } catch (error) {
+      console.error("Error parsing time:", error);
+      return null;
+    }
+  };
+
+  const getExcelFieldValue = (row: Record<string, any>, possibleNames: string[]): any => {
+    for (const name of possibleNames) {
+      if (name in row) return row[name];
+    }
+    return null;
   };
 
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,13 +354,53 @@ const ImportOrderCreate = () => {
             toast.error("File Excel không có dữ liệu");
             return;
           }
+          
+          // Get the first row of the Excel file
           const firstRow = jsonData[0] as Record<string, any>;
+          
+          // Log available fields for debugging
+          console.log('Available fields in first Excel row:', Object.keys(firstRow));
+          
+          // Check for item and quantity fields
           const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
           const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
           if (!hasItemId || !hasQuantity) {
             toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
             return;
           }
+          
+          // Extract date, time, and note from the first row
+          const dateField = getExcelFieldValue(firstRow, ['dateReceived', 'Ngày nhận', 'ngày nhận', 'Ngay nhan']);
+          const timeField = getExcelFieldValue(firstRow, ['timeReceived', 'Giờ nhận', 'giờ nhận', 'Gio nhan']);
+          const noteField = getExcelFieldValue(firstRow, ['note', 'Ghi chú', 'ghi chú', 'Ghi chu']);
+          
+          // Parse values with helpers
+          const parsedDate = parseExcelDate(dateField);
+          const parsedTime = parseExcelTime(timeField);
+          const parsedNote = noteField ? noteField.toString() : null;
+          
+          // Update form with parsed values or defaults
+          setFormData(prev => ({
+            ...prev,
+            dateReceived: parsedDate || prev.dateReceived,
+            timeReceived: parsedTime || prev.timeReceived,
+            note: parsedNote || prev.note
+          }));
+          
+          // Log the parsed values
+          console.log('Parsed values from Excel:', {
+            dateField,
+            parsedDate: parsedDate || 'Using default',
+            timeField,
+            parsedTime: parsedTime || 'Using default',
+            noteField,
+            parsedNote: parsedNote || 'Using default'
+          });
+          
+          // Show form fields after Excel upload
+          setShowFormFields(true);
+          
+          // Process item details from Excel
           const excelDetails = jsonData.map((row: Record<string, any>) => ({
             itemId: Number(row.itemId || row['Mã hàng']),
             plannedQuantity: Number(row.quantity || row['Số lượng'])
@@ -396,62 +495,7 @@ const ImportOrderCreate = () => {
                   : 'Chưa chọn phiếu nhập'}
               </div>
             </div>
-            <div>
-              <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
-              <DatePicker
-                className="w-full"
-                value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
-                onChange={handleDateChange}
-                disabledDate={(current) => {
-                  const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-                  return current && current.isBefore(dayjs().add(hours, 'hour').startOf('day'));
-                }}
-                showNow={false}
-              />
-            </div>
-            <div>
-              <label className="block mb-1">Giờ nhận <span className="text-red-500">*</span></label>
-              <TimePicker
-                className="w-full"
-                value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
-                onChange={handleTimeChange}
-                format="HH:mm"
-                showNow={false}
-                needConfirm={false}
-                disabledTime={() => {
-                  const now = dayjs();
-                  const selectedDate = dayjs(formData.dateReceived);
-                  const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-                  const minDateTime = now.add(hours, 'hour');
-                  if (selectedDate.isSame(minDateTime, 'day')) {
-                    return {
-                      disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
-                      disabledMinutes: () => {
-                        if (minDateTime.hour() === now.hour()) {
-                          return Array.from({ length: minDateTime.minute() }, (_, i) => i);
-                        }
-                        return [];
-                      }
-                    };
-                  }
-                  return {};
-                }}
-              />
-              <div className="text-sm text-red-500 mt-1">
-                <InfoCircleOutlined className="mr-1" />
-                Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
-              </div>
-            </div>
-            <div>
-              <label className="block mb-1">Ghi chú</label>
-              <TextArea
-                placeholder="Nhập ghi chú"
-                rows={4}
-                value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                className="w-full"
-              />
-            </div>
+            
             {selectedImportRequest && (
               <>
                 <ExcelUploadSection
@@ -470,6 +514,69 @@ const ImportOrderCreate = () => {
                 />
               </>
             )}
+            
+            {/* Show form fields only after Excel upload or when showFormFields is true */}
+            {showFormFields && (
+              <>
+                <div>
+                  <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
+                  <DatePicker
+                    className="w-full"
+                    value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
+                    onChange={handleDateChange}
+                    disabledDate={(current) => {
+                      const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+                      return current && current.isBefore(dayjs().add(hours, 'hour').startOf('day'));
+                    }}
+                    showNow={false}
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Giờ nhận <span className="text-red-500">*</span></label>
+                  <TimePicker
+                    className="w-full"
+                    value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
+                    onChange={handleTimeChange}
+                    format="HH:mm"
+                    showNow={false}
+                    needConfirm={false}
+                    disabledTime={() => {
+                      const now = dayjs();
+                      const selectedDate = dayjs(formData.dateReceived);
+                      const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
+                      const minDateTime = now.add(hours, 'hour');
+                      if (selectedDate.isSame(minDateTime, 'day')) {
+                        return {
+                          disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
+                          disabledMinutes: () => {
+                            if (minDateTime.hour() === now.hour()) {
+                              return Array.from({ length: minDateTime.minute() }, (_, i) => i);
+                            }
+                            return [];
+                          }
+                        };
+                      }
+                      return {};
+                    }}
+                  />
+                  <div className="text-sm text-red-500 mt-1">
+                    <InfoCircleOutlined className="mr-1" />
+                    Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1">Ghi chú</label>
+                  <TextArea
+                    placeholder="Nhập ghi chú"
+                    rows={4}
+                    value={formData.note}
+                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                    className="w-full"
+                  />
+                </div>
+              </>
+            )}
+            
             <Button
               type="primary"
               onClick={handleSubmit}
