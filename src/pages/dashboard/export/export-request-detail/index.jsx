@@ -461,11 +461,13 @@ const ExportRequestDetail = () => {
       title: "Số lượng cần",
       dataIndex: "quantity",
       key: "quantity",
+      render: (text) => <div className="pl-19">{text}</div>,
     },
     {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
+      render: (text) => <div className="pl-32">{text}</div>,
     },
     {
       title: "Quy cách",

@@ -1,37 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
-import {
-  Button,
-  Typography,
-  Space,
-  Card,
-  Alert,
-  Select,
-  Input,
-  Modal,
-} from "antd";
+import { Button, Card, Alert, Space } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
-import {
-  UploadOutlined,
-  DownloadOutlined,
-  PlusOutlined,
-  ArrowLeftOutlined,
-} from "@ant-design/icons";
 import FileUploadSection from "@/components/export-flow/FileUploadSection";
-import UseExportForm from "@/components/export-flow/UseExportForm";
-import LoanExportForm from "@/components/export-flow/LoanExportForm";
 import ExcelDataTable from "@/components/export-flow/ExcelDataTable";
 import SelectModal from "@/components/export-flow/SelectModal";
 import useItemService from "@/hooks/useItemService";
 import useExportRequestService from "@/hooks/useExportRequestService";
 import useExportRequestDetailService from "@/hooks/useExportRequestDetailService";
-import { useSelector } from "react-redux";
-
-const { Title } = Typography;
-const { Option } = Select;
+import ExportRequestInfoForm from "@/components/export-flow/ExportRequestInfoForm";
+import ExportRequestHeader from "@/components/export-flow/ExportRequestHeader";
+import ExportTypeSelector from "@/components/export-flow/ExportTypeSelector";
+import Title from "antd/es/typography/Title";
 
 const ExportRequestCreate = () => {
   // --- State cho file upload và kiểm tra dữ liệu ---
@@ -203,6 +186,11 @@ const ExportRequestCreate = () => {
         type: "PRODUCTION",
         exportDate: formData.exportDate,
         exportTime: formData.exportTime,
+        //gán cứng countingDate
+        countingDate: moment(formData.exportDate, "YYYY-MM-DD")
+          .subtract(1, "day")
+          .format("YYYY-MM-DD"),
+        countingTime: formData.exportTime,
       };
       createdExport = await createExportRequestProduction(payload);
     } else if (formData.exportType === "LOAN") {
@@ -319,18 +307,12 @@ const ExportRequestCreate = () => {
   return (
     <div className="container mx-auto p-5">
       {!fileConfirmed ? (
-        // STEP 1: only show upload  preview  “Proceed” button
         <>
-          <div className="flex items-center mb-4">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              // type="link"
-              className="mr-4"
-              onClick={() => navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST)}
-            >
-              Quay lại
-            </Button>
-          </div>
+          <ExportRequestHeader
+            title=""
+            onBack={() => navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST)}
+          />
+
           <div className="flex justify-between items-center mb-4">
             <Title level={2}>Nhập file excel để tạo phiếu xuất</Title>
 
@@ -350,21 +332,12 @@ const ExportRequestCreate = () => {
             </Space>
           </div>
 
-          <div className="mb-4">
-            <Space direction="horizontal">
-              <span className="font-semibold">Loại phiếu xuất: </span>
-              <Select
-                value={formData.exportType}
-                onChange={(value) =>
-                  setFormData({ ...formData, exportType: value })
-                }
-                style={{ width: 300 }}
-              >
-                <Option value="PRODUCTION">Xuất sản xuất</Option>
-                <Option value="LOAN">Xuất mượn</Option>
-              </Select>
-            </Space>
-          </div>
+          <ExportTypeSelector
+            exportType={formData.exportType}
+            setExportType={(value) =>
+              setFormData({ ...formData, exportType: value })
+            }
+          />
 
           {validationError && (
             <Alert
@@ -397,97 +370,20 @@ const ExportRequestCreate = () => {
           </Button>
         </>
       ) : (
-        // STEP 2: show the form  the same preview on the right  submit
-        <div className="container mx-auto p-5">
-          <div className="flex items-center mb-4">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              // type="link"
-              onClick={() => setFileConfirmed(false)}
-              className="mr-4"
-            >
-              Quay lại
-            </Button>
-          </div>
-          <div className="flex justify-between items-center mb-4">
-            <Title level={2}>Điền thông tin phiếu xuất</Title>
-            <Space>
-              <b>File đã được tải lên:</b> {fileName}
-            </Space>
-          </div>
-
-          {validationError && (
-            <Alert
-              message="Lỗi dữ liệu"
-              description={validationError}
-              type="error"
-              showIcon
-              className="mb-4"
-              closable
-            />
-          )}
-
-          <div className="flex gap-6">
-            <Card title="Thông tin phiếu xuất" className="w-1/3">
-              <Space direction="vertical" className="w-full">
-                {formData.exportType === "PRODUCTION" && (
-                  <UseExportForm
-                    formData={formData}
-                    setFormData={setFormData}
-                    openDepartmentModal={() => setDepartmentModalVisible(true)}
-                  />
-                )}
-                {formData.exportType === "LOAN" && (
-                  <LoanExportForm
-                    formData={formData}
-                    setFormData={setFormData}
-                    openDepartmentModal={() => setDepartmentModalVisible(true)}
-                  />
-                )}
-                <Button
-                  type="primary"
-                  onClick={handleSubmit}
-                  className="w-full mt-4"
-                  disabled={data.length === 0 || !!validationError}
-                >
-                  Xác nhận tạo phiếu xuất
-                </Button>
-              </Space>
-            </Card>
-
-            <div className="w-2/3">
-              <Card title="Chi tiết hàng hóa từ file Excel">
-                {mappedData.length > 0 ? (
-                  <ExcelDataTable data={mappedData} />
-                ) : (
-                  <div className="text-center py-10 text-gray-500">
-                    Vui lòng tải lên file Excel để xem chi tiết hàng hóa
-                  </div>
-                )}
-              </Card>
-            </div>
-          </div>
-
-          {/* Modal chọn phòng ban */}
-          <SelectModal
-            visible={departmentModalVisible}
-            title="Chọn bộ phận/phân xưởng"
-            data={departments}
-            onSelect={async (selectedDepartment) => {
-              const details = await fakeFetchDepartmentDetails(
-                selectedDepartment
-              );
-              setFormData({
-                ...formData,
-                receivingDepartment: selectedDepartment,
-                departmentRepresentative: details?.receiverName || "",
-                departmentRepresentativePhone: details?.receiverPhone || "",
-              });
-              setDepartmentModalVisible(false);
-            }}
-            onCancel={() => setDepartmentModalVisible(false)}
-          />
-        </div>
+        <ExportRequestInfoForm
+          formData={formData}
+          setFormData={setFormData}
+          data={data}
+          mappedData={mappedData}
+          validationError={validationError}
+          handleSubmit={handleSubmit}
+          departmentModalVisible={departmentModalVisible}
+          setDepartmentModalVisible={setDepartmentModalVisible}
+          departments={departments}
+          fakeFetchDepartmentDetails={fakeFetchDepartmentDetails}
+          setFileConfirmed={setFileConfirmed}
+          fileName={fileName}
+        />
       )}
 
       {/* Modal chọn phòng ban */}
