@@ -7,6 +7,7 @@ const ExcelDataTable = ({ data }) => {
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
+      render: (text) => <div>#{text}</div>,
     },
     {
       title: "Tên hàng",
@@ -17,6 +18,7 @@ const ExcelDataTable = ({ data }) => {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
+      render: (text) => <div className="pl-12">{text}</div>,
     },
     {
       title: "Quy cách", // cột measurementValue

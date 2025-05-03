@@ -1,5 +1,5 @@
 import React from "react";
-import { Input, DatePicker } from "antd";
+import { Input, DatePicker, Card } from "antd";
 import moment from "moment";
 import PropTypes from "prop-types";
 
@@ -22,6 +22,8 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
   return (
     <>
       {/* Ngày nhận và Thời gian nhận */}
+      <span className="font-semibold">Loại xuất: Sản Xuất</span>
+      <div className="mb-2"></div>
       <div className="flex gap-4 mb-4">
         <div className="flex-1">
           <label className="block mb-1">
@@ -96,6 +98,10 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
           placeholder="Tự động điền sau khi chọn phòng ban"
           readOnly
           className="w-full"
+          style={{
+            backgroundColor: "#cfcfcf",
+            cursor: "not-allowed",
+          }}
         />
       </div>
 
@@ -107,6 +113,10 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
           placeholder="Tự động điền sau khi chọn phòng ban"
           readOnly
           className="w-full"
+          style={{
+            backgroundColor: "#cfcfcf",
+            cursor: "not-allowed",
+          }}
         />
       </div>
 

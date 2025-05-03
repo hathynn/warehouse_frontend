@@ -26,6 +26,8 @@ const LoanExportForm = ({ formData, setFormData, openDepartmentModal }) => {
 
   return (
     <>
+      <span className="font-semibold">Loại xuất: Mượn</span>
+      <div className="mb-2"></div>
       {/* Row 1: Loan Type & Return Date */}
       <Row gutter={16} className="mb-4">
         <Col span={12}>
@@ -119,6 +121,10 @@ const LoanExportForm = ({ formData, setFormData, openDepartmentModal }) => {
                 placeholder="Tự động điền sau khi chọn phòng ban"
                 readOnly
                 className="w-full"
+                style={{
+                  backgroundColor: "#cfcfcf",
+                  cursor: "not-allowed",
+                }}
               />
             </Col>
             <Col span={12}>
@@ -128,6 +134,10 @@ const LoanExportForm = ({ formData, setFormData, openDepartmentModal }) => {
                 placeholder="Tự động điền sau khi chọn phòng ban"
                 readOnly
                 className="w-full"
+                style={{
+                  backgroundColor: "#cfcfcf",
+                  cursor: "not-allowed",
+                }}
               />
             </Col>
           </Row>
