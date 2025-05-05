@@ -25,7 +25,7 @@ interface FormData extends Omit<ImportOrderCreateRequest, 'dateReceived' | 'time
   status: ImportStatus;
 }
 
-interface UploadedDetail {
+interface ExcelItemContent {
   itemId: number;
   plannedQuantity: number;
 }
@@ -34,6 +34,23 @@ interface TablePagination {
   current: number;
   pageSize: number;
   total: number;
+}
+
+// Convert Excel serial number to YYYY-MM-DD if needed
+function excelDateToYMD(serial: number): string {
+  // Excel epoch is 1899-12-30 (UTC)
+  const excelEpoch = Date.UTC(1899, 11, 30);
+  const ms = serial * 24 * 60 * 60 * 1000;
+  const date = new Date(excelEpoch + ms);
+  return date.toISOString().split('T')[0];
+}
+
+// Convert Excel serial number to HH:mm if needed
+function excelTimeToHM(serial: number): string {
+  const totalMinutes = Math.round(serial * 24 * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
 const ImportOrderCreate = () => {
@@ -92,7 +109,7 @@ const ImportOrderCreate = () => {
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [uploadedDetails, setUploadedDetails] = useState<UploadedDetail[]>([]);
+  const [uploadedExcelItems, setUploadedExcelItems] = useState<ExcelItemContent[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -262,7 +279,7 @@ const ImportOrderCreate = () => {
       {
         "itemId": "Mã hàng (số)",
         "quantity": "Số lượng (số)",
-        "dateReceived": "Ngày nhận (DD/MM/YY)", 
+        "dateReceived": "Ngày nhận (DD/MM/YY)",
         "timeReceived": "Giờ nhận (HH:MM)",
         "note": "Ghi chú"
       }
@@ -271,63 +288,6 @@ const ImportOrderCreate = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "import_order_template.xlsx");
-  };
-
-  const parseExcelDate = (value: any): string | null => {
-    if (!value) return null;
-    
-    try {
-      // Handle numeric Excel date (days since 1900-01-01)
-      if (typeof value === 'number') {
-        const excelEpoch = new Date(1900, 0, 1);
-        // Account for Excel's leap year bug
-        const date = new Date(excelEpoch.getTime() + (value - (value > 59 ? 2 : 1)) * 24 * 60 * 60 * 1000);
-        return date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-      }
-      
-      // Handle string date in DD/MM/YY format
-      const dateStr = value.toString().trim();
-      const separator = dateStr.includes('/') ? '/' : (dateStr.includes('-') ? '-' : null);
-      if (!separator) return null;
-      
-      const dateParts = dateStr.split(separator);
-      if (dateParts.length !== 3) return null;
-      
-      const day = parseInt(dateParts[0]);
-      const month = parseInt(dateParts[1]);
-      let year = parseInt(dateParts[2]);
-      // If year is two digits, assume 2000+
-      if (year < 100) year = 2000 + year;
-      
-      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    } catch (error) {
-      console.error("Error parsing date:", error);
-      return null;
-    }
-  };
-
-  const parseExcelTime = (value: any): string | null => {
-    if (!value) return null;
-    
-    try {
-      // Handle numeric Excel time (fraction of day)
-      if (typeof value === 'number') {
-        const totalMinutes = Math.round(value * 24 * 60);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      }
-      
-      // Handle string time in HH:MM format
-      const timeStr = value.toString().trim();
-      if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return null;
-      
-      const [hours, minutes] = timeStr.split(':');
-      return `${hours.padStart(2, '0')}:${minutes}`;
-    } catch (error) {
-      console.error("Error parsing time:", error);
-      return null;
-    }
   };
 
   const getExcelFieldValue = (row: Record<string, any>, possibleNames: string[]): any => {
@@ -354,13 +314,10 @@ const ImportOrderCreate = () => {
             toast.error("File Excel không có dữ liệu");
             return;
           }
-          
+
           // Get the first row of the Excel file
           const firstRow = jsonData[0] as Record<string, any>;
-          
-          // Log available fields for debugging
-          console.log('Available fields in first Excel row:', Object.keys(firstRow));
-          
+
           // Check for item and quantity fields
           const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
           const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
@@ -368,38 +325,32 @@ const ImportOrderCreate = () => {
             toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
             return;
           }
-          
-          // Extract date, time, and note from the first row
-          const dateField = getExcelFieldValue(firstRow, ['dateReceived', 'Ngày nhận', 'ngày nhận', 'Ngay nhan']);
-          const timeField = getExcelFieldValue(firstRow, ['timeReceived', 'Giờ nhận', 'giờ nhận', 'Gio nhan']);
+
+          // Extract date, time, and note from the first row (handle Excel serial numbers)
+          const dateFieldRaw = getExcelFieldValue(firstRow, ['dateReceived', 'Ngày nhận', 'ngày nhận', 'Ngay nhan']);
+          const timeFieldRaw = getExcelFieldValue(firstRow, ['timeReceived', 'Giờ nhận', 'giờ nhận', 'Gio nhan']);
           const noteField = getExcelFieldValue(firstRow, ['note', 'Ghi chú', 'ghi chú', 'Ghi chu']);
-          
-          // Parse values with helpers
-          const parsedDate = parseExcelDate(dateField);
-          const parsedTime = parseExcelTime(timeField);
-          const parsedNote = noteField ? noteField.toString() : null;
-          
-          // Update form with parsed values or defaults
+
+          let dateField = dateFieldRaw;
+          if (typeof dateFieldRaw === 'number') {
+            dateField = excelDateToYMD(dateFieldRaw);
+          }
+
+          let timeField = timeFieldRaw;
+          if (typeof timeFieldRaw === 'number') {
+            timeField = excelTimeToHM(timeFieldRaw);
+          }
+
           setFormData(prev => ({
             ...prev,
-            dateReceived: parsedDate || prev.dateReceived,
-            timeReceived: parsedTime || prev.timeReceived,
-            note: parsedNote || prev.note
+            dateReceived: dateField || prev.dateReceived,
+            timeReceived: timeField || prev.timeReceived,
+            note: noteField ? noteField.toString() : prev.note
           }));
-          
-          // Log the parsed values
-          console.log('Parsed values from Excel:', {
-            dateField,
-            parsedDate: parsedDate || 'Using default',
-            timeField,
-            parsedTime: parsedTime || 'Using default',
-            noteField,
-            parsedNote: parsedNote || 'Using default'
-          });
-          
+
           // Show form fields after Excel upload
           setShowFormFields(true);
-          
+
           // Process item details from Excel
           const excelDetails = jsonData.map((row: Record<string, any>) => ({
             itemId: Number(row.itemId || row['Mã hàng']),
@@ -414,15 +365,10 @@ const ImportOrderCreate = () => {
             setFileName("");
             return;
           }
-          const updatedDetails = importRequestDetails.map(detail => {
-            const excelDetail = validExcelDetails.find(ed => ed.itemId === detail.itemId);
-            return excelDetail ? { ...detail, plannedQuantity: excelDetail.plannedQuantity } : detail;
-          });
-          setUploadedDetails(validExcelDetails);
+          setUploadedExcelItems(validExcelDetails);
           toast.success(`Đã cập nhật số lượng dự tính cho ${validExcelDetails.length} mã hàng từ file Excel`);
         }
       } catch (error) {
-        console.error("Error parsing Excel file:", error);
         toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
         setExcelFile(null);
         setFileName("");
@@ -463,7 +409,7 @@ const ImportOrderCreate = () => {
       key: "plannedQuantity",
       align: "center" as const,
       render: (_: any, record: ImportRequestDetailResponse) => {
-        const uploadedDetail = uploadedDetails.find(d => d.itemId === record.itemId);
+        const uploadedDetail = uploadedExcelItems.find(d => d.itemId === record.itemId);
         const plannedQuantity = uploadedDetail
           ? uploadedDetail.plannedQuantity
           : "Chưa có";
@@ -483,19 +429,14 @@ const ImportOrderCreate = () => {
   return (
     <div className="container mx-auto p-5">
       <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Tạo đơn nhập kho</Title>
+        <Title level={2}>Tạo đơn nhập kho - {importRequests.find(request => request.importRequestId === selectedImportRequest)
+          ? `Phiếu nhập #${selectedImportRequest}`
+          : 'Chưa chọn phiếu nhập'}
+        </Title>
       </div>
       <div className="flex gap-6">
         <Card title="Thông tin đơn nhập" className="w-3/10">
           <Space direction="vertical" className="w-full">
-            <div>
-              <div className="text-gray-700 py-1 font-bold text-md">
-                {importRequests.find(request => request.importRequestId === selectedImportRequest)
-                  ? `Phiếu nhập #${selectedImportRequest} - ${importRequests.find(request => request.importRequestId === selectedImportRequest).importReason}`
-                  : 'Chưa chọn phiếu nhập'}
-              </div>
-            </div>
-            
             {selectedImportRequest && (
               <>
                 <ExcelUploadSection
@@ -506,7 +447,6 @@ const ImportOrderCreate = () => {
                   buttonLabel="Tải lên file Excel"
                 />
                 <Alert
-                  message="Lưu ý"
                   description="Hệ thống sẽ bỏ qua các itemId (Mã hàng) không tồn tại trong phiếu nhập"
                   type="info"
                   showIcon
@@ -514,7 +454,7 @@ const ImportOrderCreate = () => {
                 />
               </>
             )}
-            
+
             {/* Show form fields only after Excel upload or when showFormFields is true */}
             {showFormFields && (
               <>
@@ -576,7 +516,7 @@ const ImportOrderCreate = () => {
                 </div>
               </>
             )}
-            
+
             <Button
               type="primary"
               onClick={handleSubmit}
@@ -591,7 +531,7 @@ const ImportOrderCreate = () => {
         </Card>
         <div className="w-7/10">
           <TableSection
-            title={`Chi tiết hàng hóa cần nhập từ phiếu nhập  #${selectedImportRequest}`}
+            title={`Danh sách hàng hóa cần nhập - Phiếu nhập #${selectedImportRequest}`}
             columns={columns}
             data={importRequestDetails}
             rowKey="importRequestDetailId"

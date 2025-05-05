@@ -6,6 +6,8 @@ import { logout } from '@/redux/features/userSlice';
 import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/hooks/useAccountService';
+import { useEffect } from 'react';
+import { createPusherClient, WAREHOUSE_MANAGER_CHANNEL, IMPORT_ORDER_EVENT } from '@/config/pusher';
 
 interface HeaderProps {
   title?: string;
@@ -26,6 +28,24 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { fullName, role } = useSelector((state: RootState) => state.user);
+
+  useEffect(() => {
+    // Only subscribe if user is warehouse manager
+    if (role === AccountRole.WAREHOUSE_MANAGER) {
+      console.log(`Subscribe to pusher ${role}`);
+      const pusher = createPusherClient();
+      const channel = pusher.subscribe(WAREHOUSE_MANAGER_CHANNEL);
+      channel.bind(IMPORT_ORDER_EVENT, (data: any) => {
+        // For now, just log to console for testing
+        console.log('[Pusher] New import order notification:', data);
+      });
+      return () => {
+        channel.unbind(IMPORT_ORDER_EVENT);
+        pusher.unsubscribe(WAREHOUSE_MANAGER_CHANNEL);
+        pusher.disconnect();
+      };
+    }
+  }, [role]);
 
   const handleLogout = () => {
     dispatch(logout());
