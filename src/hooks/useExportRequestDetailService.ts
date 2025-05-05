@@ -45,7 +45,10 @@ const useExportRequestDetailService = () => {
         toast.success("Tạo chi tiết phiếu xuất thành công");
         return response.content;
       }
+      console.log("test file 1 dc" + formDataFile);
     } catch (error) {
+      console.log("test file 1 loi" + formDataFile);
+
       if (error.message.inludes("Inventory items not found for item ID")) {
         toast.error("Không tìm thấy hàng hóa trong kho");
       }
