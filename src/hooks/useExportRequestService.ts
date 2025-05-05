@@ -30,6 +30,8 @@ export interface ExportRequestResponse {
   receiverPhone: string; // receiver_phone
   status: string; // status
   type: string; // type
+  countingDate: string; // counting_date
+  countingTime: string; // counting_time
 }
 
 // Khi tạo mới, có thể thiếu một số trường như id, createdDate, updatedDate, ...
@@ -47,6 +49,8 @@ export interface ExportRequestRequest {
   // createdBy và updatedBy có thể do backend tự set hoặc bạn tự set
   createdBy?: string;
   updatedBy?: string;
+  countingDate: string; // counting_date
+  countingTime: string; // counting_time
 }
 
 const useExportRequestService = () => {
