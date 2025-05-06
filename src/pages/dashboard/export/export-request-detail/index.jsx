@@ -29,7 +29,8 @@ const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
   const [configuration, setConfiguration] = useState(null);
   const navigate = useNavigate();
-  const { getExportRequestById, assignStaff } = useExportRequestService();
+  const { getExportRequestById, assignCountingStaff } =
+    useExportRequestService();
   const { getExportRequestDetails } = useExportRequestDetailService();
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
@@ -197,7 +198,7 @@ const ExportRequestDetail = () => {
     setSelectedStaffId(staffId);
   };
 
-  const handleAssignStaff = async () => {
+  const handleAssignCountingStaff = async () => {
     if (!selectedStaffId || !exportRequestId) {
       message.warning("Vui lòng chọn nhân viên để phân công");
       return;
@@ -205,7 +206,7 @@ const ExportRequestDetail = () => {
 
     try {
       setAssigningStaff(true);
-      await assignStaff(exportRequestId, selectedStaffId);
+      await assignCountingStaff(exportRequestId, selectedStaffId);
 
       const exportRequestResponse = await fetchExportRequestData();
       if (exportRequestResponse?.content?.assignedWareHouseKeeperId) {
@@ -231,7 +232,7 @@ const ExportRequestDetail = () => {
   };
 
   // Add new function to check if reassignment is allowed
-  const canReassignStaff = () => {
+  const canReassignCountingStaff = () => {
     if (
       !exportRequest?.exportDate ||
       !exportRequest?.exportTime ||
@@ -272,7 +273,7 @@ const ExportRequestDetail = () => {
     // 2. Hạn chót = nhận hàng + timeToAllowAssign
     const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
     const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
-    const deadline = new Date(receivedDateTime.getTime() + allowAssignMs); //  **+**  ở đây
+    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs); //  **+**  ở đây
 
     // 3. Còn lại bao lâu
     const diffMs = deadline.getTime() - Date.now();
@@ -524,9 +525,9 @@ const ExportRequestDetail = () => {
                   type="primary"
                   icon={<UserAddOutlined />}
                   onClick={handleOpenAssignModal}
-                  disabled={!canReassignStaff()}
+                  disabled={!canReassignCountingStaff()}
                   title={
-                    !canReassignStaff()
+                    !canReassignCountingStaff()
                       ? "Đã quá thời gian cho phép phân công lại"
                       : ""
                   }
@@ -589,7 +590,7 @@ const ExportRequestDetail = () => {
           <Button
             key="submit"
             type="primary"
-            onClick={handleAssignStaff}
+            onClick={handleAssignCountingStaff}
             disabled={!selectedStaffId}
             loading={assigningStaff}
           >

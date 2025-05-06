@@ -144,23 +144,45 @@ const useExportRequestService = () => {
     }
   };
 
-  // Assign warehouse keeper to an export request
-  const assignStaff = async (
+  // Assign warehouse keeper to count an export request
+  const assignCountingStaff = async (
     exportRequestId: number,
     accountId: number
   ): Promise<ExportRequestResponse | undefined> => {
     try {
       const response = await callApi(
         "post",
-        "/export-request/assign-warehouse-keeper",
+        "export-request/counting/assign-warehouse-keeper",
         { exportRequestId, accountId }
       );
       if (response && response.content) {
-        toast.success("Phân công nhân viên kho thành công");
+        toast.success("Phân công nhân viên kiểm đếm thành công");
         return response.content;
       }
     } catch (error) {
-      toast.error("Không thể phân công nhân viên kho");
+      toast.error("Không thể phân công nhân viên kiểm đếm");
+      console.error("Error assigning warehouse keeper:", error);
+      throw error;
+    }
+  };
+
+  // Assign warehouse keeper to confirm an export request
+  const assignConfirmimgStaff = async (
+    exportRequestId: number,
+    accountId: number
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "export-request/assign-warehouse-keeper",
+        { exportRequestId, accountId }
+      );
+      if (response && response.content) {
+        toast.success("Phân công nhân viên xác nhận hàng thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể phân công nhân viên xác nhận hàng");
       console.error("Error assigning warehouse keeper:", error);
       throw error;
     }
@@ -173,7 +195,8 @@ const useExportRequestService = () => {
     getExportRequestsByPage,
     createExportRequestProduction,
     createExportRequestLoan,
-    assignStaff,
+    assignCountingStaff,
+    assignConfirmimgStaff,
   };
 };
 
