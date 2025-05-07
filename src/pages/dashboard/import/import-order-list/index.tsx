@@ -8,7 +8,7 @@ import useImportOrderService, {
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import { AccountRole } from "@/hooks/useAccountService";
+import { AccountRole } from "@/constants/account-roles";
 import { UserState } from "@/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";

@@ -10,12 +10,6 @@ export enum ImportStatus {
   CANCELLED = "CANCELLED"
 }
 
-export enum DetailStatus {
-  LACK = "LACK",
-  EXCESS = "EXCESS",
-  MATCH = "MATCH"
-}
-
 // Interface to match ImportOrderCreateRequest.java
 export interface ImportOrderCreateRequest {
   importRequestId: number;

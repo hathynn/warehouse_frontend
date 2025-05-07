@@ -1,3 +1,4 @@
+import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 
@@ -57,22 +58,6 @@ export interface ActiveAccountRequest {
   exportRequestId?: number;
 }
 
-// Enum to match AccountRole.java
-export enum AccountRole {
-  DEPARTMENT = "ROLE_DEPARTMENT",
-  STAFF = "ROLE_STAFF",
-  ADMIN = "ROLE_ADMIN",
-  WAREHOUSE_MANAGER = "ROLE_WAREHOUSE_MANAGER",
-  ACCOUNTING = "ROLE_ACCOUNTING",
-}
-
-export enum AccountRoleForRequest {
-  DEPARTMENT = "DEPARTMENT",
-  STAFF = "STAFF",
-  ADMIN = "ADMIN",
-  WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
-  ACCOUNTING = "ACCOUNTING",
-}
 
 const useAccountService = () => {
   const { callApi, loading } = useApiService();

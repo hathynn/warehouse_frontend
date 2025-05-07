@@ -19,7 +19,7 @@ import {
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import useAccountService, { AccountRole } from "@/hooks/useAccountService";
+import useAccountService from "@/hooks/useAccountService";
 import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { AccountResponse } from "@/hooks/useAccountService";
@@ -34,6 +34,7 @@ import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
+import { AccountRole } from "@/constants/account-roles";
 
 const ImportOrderDetail = () => {
   const { importOrderId } = useParams<{ importOrderId: string }>();

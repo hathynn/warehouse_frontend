@@ -1,4 +1,4 @@
-import { AccountRole } from "@/hooks/useAccountService";
+import { AccountRole } from "@/constants/account-roles";
 import { ROUTES } from "./routes";
 import { IconType } from "react-icons";
 import {

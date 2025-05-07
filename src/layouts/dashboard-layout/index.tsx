@@ -7,9 +7,9 @@ import Header from "@/components/header/Header";
 import { getPageTitle } from "@/constants/page-titles";
 import { RootState } from "@/redux/store";
 import { UserState } from "@/redux/features/userSlice";
-import { AccountRole } from "@/hooks/useAccountService";
 import { menuItems } from "@/constants/menu-items";
 import type { MenuItem } from "@/constants/menu-items";
+import { AccountRole } from "@/constants/account-roles";
 
 const { Sider } = Layout;
 

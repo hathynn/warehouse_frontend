@@ -23,7 +23,8 @@ import useExportRequestDetailService from "../../../../hooks/useExportRequestDet
 import useItemService from "../../../../hooks/useItemService";
 import { useSelector } from "react-redux";
 import useConfigurationService from "@/hooks/useConfigurationService";
-import useAccountService, { AccountRole } from "@/hooks/useAccountService";
+import useAccountService from "@/hooks/useAccountService";
+import { AccountRole } from "@/constants/account-roles";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();

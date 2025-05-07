@@ -1,13 +1,4 @@
-import { AccountRole } from "@/hooks/useAccountService";
-
-// If AccountRole is not an enum, define its type here for clarity
-// export enum AccountRole {
-//   DEPARTMENT = "DEPARTMENT",
-//   STAFF = "STAFF",
-//   WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
-//   ACCOUNTING = "ACCOUNTING",
-//   ADMIN = "ADMIN",
-// }
+import { AccountRole } from "@/constants/account-roles";
 
 // Base routes
 export const BASE_ROUTES = {
