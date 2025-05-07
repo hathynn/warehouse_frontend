@@ -139,7 +139,10 @@ const ExportRequestDetail = () => {
 
     try {
       setLoadingStaff(true);
-      const activeStaffs = await getActiveStaffsInDay(exportRequest.exportDate);
+      const activeStaffs = await getActiveStaffsInDay({
+        date: exportRequest.exportDate,
+        exportRequestId: exportRequest.exportRequestId,
+      });
       setStaffs(activeStaffs);
     } catch (error) {
       console.error("Failed to fetch warehouse keepers:", error);
@@ -152,9 +155,7 @@ const ExportRequestDetail = () => {
   const fetchAssignedStaff = useCallback(async () => {
     if (!exportRequestId) return;
     try {
-      const response = await findAccountById(
-        exportRequest?.assignedWareHouseKeeperId
-      );
+      const response = await findAccountById(exportRequest?.countingStaffId);
       setAssignedStaff(response);
     } catch (error) {
       console.error("Failed to fetch assigned staff:", error);
@@ -171,7 +172,7 @@ const ExportRequestDetail = () => {
   }, []);
 
   useEffect(() => {
-    if (exportRequest?.assignedWareHouseKeeperId) {
+    if (exportRequest?.countingStaffId) {
       fetchAssignedStaff();
     }
   }, [exportRequest]);

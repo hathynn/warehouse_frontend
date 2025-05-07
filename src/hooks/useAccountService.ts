@@ -63,7 +63,7 @@ export enum AccountRole {
   STAFF = "ROLE_STAFF",
   ADMIN = "ROLE_ADMIN",
   WAREHOUSE_MANAGER = "ROLE_WAREHOUSE_MANAGER",
-  ACCOUNTING = "ROLE_ACCOUNTING"
+  ACCOUNTING = "ROLE_ACCOUNTING",
 }
 
 export enum AccountRoleForRequest {
@@ -71,7 +71,7 @@ export enum AccountRoleForRequest {
   STAFF = "STAFF",
   ADMIN = "ADMIN",
   WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
-  ACCOUNTING = "ACCOUNTING"
+  ACCOUNTING = "ACCOUNTING",
 }
 
 const useAccountService = () => {
@@ -82,7 +82,9 @@ const useAccountService = () => {
    * @param request - The registration request data
    * @returns Promise resolving to RegisterResponse
    */
-  const register = async (request: RegisterRequest): Promise<RegisterResponse> => {
+  const register = async (
+    request: RegisterRequest
+  ): Promise<RegisterResponse> => {
     try {
       const response = await callApi("post", "/account/register", request);
       if (response && response.content) {
@@ -102,7 +104,9 @@ const useAccountService = () => {
    * @param request - The authentication request data
    * @returns Promise resolving to AuthenticationResponse
    */
-  const login = async (request: AuthenticationRequest): Promise<AuthenticationResponse> => {
+  const login = async (
+    request: AuthenticationRequest
+  ): Promise<AuthenticationResponse> => {
     try {
       const response = await callApi("post", "/account/login", request);
       if (response && response.content) {
@@ -140,7 +144,9 @@ const useAccountService = () => {
    * @param role - The role to filter accounts by
    * @returns Promise resolving to an array of AccountResponse objects
    */
-  const getAccountsByRole = async (role: AccountRoleForRequest): Promise<AccountResponse[]> => {
+  const getAccountsByRole = async (
+    role: AccountRoleForRequest
+  ): Promise<AccountResponse[]> => {
     try {
       const response = await callApi("get", `/account/role/${role}`);
       if (response && response.content) {
@@ -177,15 +183,23 @@ const useAccountService = () => {
    * @param request - The request object containing date (and optionally importOrderId/exportRequestId)
    * @returns Promise resolving to an array of AccountResponse objects
    */
-  const getActiveStaffsInDay = async (request: ActiveAccountRequest): Promise<AccountResponse[]> => {
+  const getActiveStaffsInDay = async (
+    request: ActiveAccountRequest
+  ): Promise<AccountResponse[]> => {
     try {
-      const response = await callApi("post", "/account/active-staff-in-day", request);
+      const response = await callApi(
+        "post",
+        "/account/active-staff-in-day",
+        request
+      );
       if (response && response.content) {
         return response.content;
       }
       return [];
     } catch (error) {
-      toast.error("Không thể lấy danh sách nhân viên đang hoạt động trong ngày");
+      toast.error(
+        "Không thể lấy danh sách nhân viên đang hoạt động trong ngày"
+      );
       console.error("Error fetching active staff for date:", error);
       throw error;
     }
@@ -196,7 +210,9 @@ const useAccountService = () => {
    * @param email - The email to search for
    * @returns Promise resolving to AccountResponse
    */
-  const findAccountByEmail = async (email: string): Promise<AccountResponse> => {
+  const findAccountByEmail = async (
+    email: string
+  ): Promise<AccountResponse> => {
     try {
       const response = await callApi("get", `/account/by-email?email=${email}`);
       if (response && response.content) {
@@ -238,8 +254,8 @@ const useAccountService = () => {
     getActiveStaff,
     getActiveStaffsInDay,
     findAccountByEmail,
-    findAccountById
+    findAccountById,
   };
 };
 
-export default useAccountService; 
+export default useAccountService;

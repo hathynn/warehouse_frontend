@@ -1,4 +1,8 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosInstance,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { store } from "@/redux/store";
 import { setCredentials, logout } from "@/redux/features/userSlice";
 
@@ -23,7 +27,7 @@ let failedQueue: Array<{
 
 // Process failed queue
 const processQueue = (error: Error | null) => {
-  failedQueue.forEach(promise => {
+  failedQueue.forEach((promise) => {
     if (error) {
       promise.reject(error);
     } else {
@@ -56,9 +60,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
-    
+
     // If there's no config, or error is not 401, or it's already a retry, reject
-    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+    if (
+      !originalRequest ||
+      error.response?.status !== 401 ||
+      originalRequest._retry
+    ) {
       return Promise.reject(error);
     }
 
@@ -78,31 +86,37 @@ api.interceptors.response.use(
     const refreshToken = state.user.refreshToken;
     console.log(refreshToken);
     try {
-      const response = await axios.post(`${api.defaults.baseURL}/account/refresh-token`, {}, {
-        headers: {
-          Authorization: `Bearer ${refreshToken}`
+      const response = await axios.post(
+        `${api.defaults.baseURL}/account/refresh-token`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${refreshToken}`,
+          },
         }
-      });
+      );
 
       const { access_token, refresh_token } = response.data.content;
-      
+
       // Update tokens in Redux store
-      store.dispatch(setCredentials({
-        accessToken: access_token,
-        refreshToken: refresh_token
-      }));
+      store.dispatch(
+        setCredentials({
+          accessToken: access_token,
+          refreshToken: refresh_token,
+        })
+      );
 
       // Update authorization header for the original request
       originalRequest.headers.Authorization = `Bearer ${access_token}`;
-      
+
       // Process queued requests
       processQueue(null);
-      
+
       return api(originalRequest);
     } catch (refreshError) {
       // If refresh token fails, logout user and reject all queued requests
       store.dispatch(logout());
-      processQueue(new Error('Refresh token failed'));
+      processQueue(new Error("Refresh token failed"));
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

@@ -264,12 +264,13 @@ const ExportRequestCreate = () => {
       return;
     }
 
+    navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
     // Upload file Excel làm chi tiết phiếu xuất
     const fd = new FormData();
     fd.append("file", file);
     await createExportRequestDetail(fd, createdExport.exportRequestId);
 
-    navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+    //navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
 
     // Reset lại trạng thái sau khi submit
     setFormData({
