@@ -230,6 +230,11 @@ const ExportRequestCreate = () => {
           expectedReturnDate: formData.returnDate,
           exportReason: formData.loanReason,
           type: "BORROWING",
+          //gán cứng countingDate
+          countingDate: moment(formData.exportDate, "YYYY-MM-DD")
+            .subtract(1, "day")
+            .format("YYYY-MM-DD"),
+          countingTime: formData.exportTime,
         };
       } else if (formData.loanType === "EXTERNAL") {
         if (
@@ -251,6 +256,11 @@ const ExportRequestCreate = () => {
           expectedReturnDate: formData.returnDate,
           exportReason: formData.loanReason,
           type: "BORROWING",
+          //gán cứng countingDate
+          countingDate: moment(formData.exportDate, "YYYY-MM-DD")
+            .subtract(1, "day")
+            .format("YYYY-MM-DD"),
+          countingTime: formData.exportTime,
         };
       }
       createdExport = await createExportRequestLoan(payload);

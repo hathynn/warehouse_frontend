@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 export enum ExportStatus {
   NOT_STARTED = "NOT_STARTED",
   IN_PROGRESS = "IN_PROGRESS",
+  COUNTED = "COUNTED",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
 }
@@ -20,6 +21,7 @@ export interface ExportRequestResponse {
   exportDate: string; // export_date
   exportTime: string; // export_time
   assignedWarehouseKeeperId?: number; // assigned_warehouse_keeper_id
+  countingStaffId?: number; // counting_staff_id
   createdDate: string; // created_date
   updatedDate: string; // updated_date
   createdBy: string; // created_by
@@ -32,6 +34,9 @@ export interface ExportRequestResponse {
   type: string; // type
   countingDate: string; // counting_date
   countingTime: string; // counting_time
+  paperId: number; // paper_id
+  importRequestIds: number[];
+  exportRequestDetailIds: number[];
 }
 
 // Khi tạo mới, có thể thiếu một số trường như id, createdDate, updatedDate, ...
@@ -188,6 +193,26 @@ const useExportRequestService = () => {
     }
   };
 
+  // Xác nhận phiếu xuất đã kiểm đếm
+  const confirmCountedExportRequest = async (
+    exportRequestId: number
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        `/export-request/confirm-counted/${exportRequestId}`
+      );
+      if (response && response.content) {
+        toast.success("Xác nhận kiểm đếm thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể xác nhận kiểm đếm");
+      console.error("Error confirming counted export request:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -197,6 +222,7 @@ const useExportRequestService = () => {
     createExportRequestLoan,
     assignCountingStaff,
     assignConfirmimgStaff,
+    confirmCountedExportRequest,
   };
 };
 
