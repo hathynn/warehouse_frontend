@@ -72,6 +72,8 @@ const ExportRequestList = () => {
       case "NOT_STARTED":
         return <Tag color="default">Chưa bắt đầu</Tag>;
       case "IN_PROGRESS":
+        return <Tag color="processing">Đang xử lý</Tag>;
+      case "COUNTED":
         return <Tag color="processing">Đã kiểm kho</Tag>;
       case "COMPLETED":
         return <Tag color="success">Hoàn tất</Tag>;
