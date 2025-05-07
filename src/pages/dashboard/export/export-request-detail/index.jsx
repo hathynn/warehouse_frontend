@@ -53,6 +53,9 @@ const ExportRequestDetail = () => {
   const [searchText, setSearchText] = useState("");
   const userRole = useSelector((state) => state.user.role);
 
+  //Confirm counted export request
+  const { confirmCountedExportRequest } = useExportRequestService();
+
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -73,6 +76,8 @@ const ExportRequestDetail = () => {
       case "NOT_STARTED":
         return <Tag color="default">Chưa bắt đầu</Tag>;
       case "IN_PROGRESS":
+        return <Tag color="processing">Đang xử lý</Tag>;
+      case "COUNTED":
         return <Tag color="processing">Đã kiểm kho</Tag>;
       case "COMPLETED":
         return <Tag color="success">Hoàn tất</Tag>;
@@ -152,7 +157,7 @@ const ExportRequestDetail = () => {
     }
   };
 
-  const fetchAssignedStaff = useCallback(async () => {
+  const fetchAssignedCountingStaff = useCallback(async () => {
     if (!exportRequestId) return;
     try {
       const response = await findAccountById(exportRequest?.countingStaffId);
@@ -173,7 +178,7 @@ const ExportRequestDetail = () => {
 
   useEffect(() => {
     if (exportRequest?.countingStaffId) {
-      fetchAssignedStaff();
+      fetchAssignedCountingStaff();
     }
   }, [exportRequest]);
 
@@ -210,10 +215,8 @@ const ExportRequestDetail = () => {
       await assignCountingStaff(exportRequestId, selectedStaffId);
 
       const exportRequestResponse = await fetchExportRequestData();
-      if (exportRequestResponse?.content?.assignedWareHouseKeeperId) {
-        await findAccountById(
-          exportRequestResponse.content.assignedWareHouseKeeperId
-        );
+      if (exportRequestResponse?.content?.countingStaffId) {
+        await findAccountById(exportRequestResponse.content.countingStaffId);
       }
       await fetchActiveStaffs();
 
@@ -446,6 +449,21 @@ const ExportRequestDetail = () => {
     return items;
   };
 
+  const handleConfirmCounted = async () => {
+    try {
+      await confirmCountedExportRequest(exportRequestId);
+      message.success("Đã xác nhận kiểm đếm");
+      fetchDetails();
+    } catch (error) {
+      console.error("Lỗi khi xác nhận kiểm đếm" + error.message);
+      message.error("Lỗi khi xác nhận kiểm đếm");
+    }
+  };
+
+  const allMatched = exportRequestDetails.every(
+    (item) => item.status === "MATCH"
+  );
+
   const columns = [
     {
       title: "Mã sản phẩm",
@@ -519,7 +537,8 @@ const ExportRequestDetail = () => {
           Chi tiết phiếu xuất #{exportRequest?.exportRequestId}
         </h1>
         {exportRequest?.status !== ExportStatus.CANCELLED &&
-          exportRequest?.status !== ExportStatus.COMPLETED && (
+          exportRequest?.status !== ExportStatus.COMPLETED &&
+          exportRequest?.status !== ExportStatus.COUNTED && (
             <>
               {userRole === AccountRole.WAREHOUSE_MANAGER && (
                 <Button
@@ -533,7 +552,7 @@ const ExportRequestDetail = () => {
                       : ""
                   }
                 >
-                  Phân công nhân viên
+                  Phân công nhân viên kiểm đếm
                 </Button>
               )}
             </>
@@ -546,9 +565,19 @@ const ExportRequestDetail = () => {
         </Descriptions>
       </Card>
 
-      <h2 className="text-lg font-semibold mb-4 mt-[20px]">
-        Danh sách chi tiết sản phẩm xuất
+      <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
+        <span>Danh sách chi tiết sản phẩm xuất</span>
+        {userRole === AccountRole.WAREHOUSE_MANAGER && (
+          <Button
+            type="primary"
+            onClick={handleConfirmCounted}
+            disabled={!allMatched}
+          >
+            Xác nhận kiểm đếm
+          </Button>
+        )}
       </h2>
+
       <Table
         columns={columns}
         dataSource={exportRequestDetails}
@@ -570,7 +599,7 @@ const ExportRequestDetail = () => {
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
             <h3 className="text-xl font-semibold text-blue-900">
-              Phân công nhân viên kho
+              Phân công nhân viên kho kiểm đếm
             </h3>
             <p className="text-lg text-blue-700 mt-1">
               Phiếu xuất #{exportRequest?.exportRequestId}
@@ -645,12 +674,12 @@ const ExportRequestDetail = () => {
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
                 onRow={(record) => ({
                   onClick: () =>
-                    record.id !== exportRequest?.assignedWareHouseKeeperId &&
+                    record.id !== exportRequest?.countingStaffId &&
                     handleSelectStaff(record.id),
                   className:
                     selectedStaffId === record.id
                       ? "!bg-blue-100"
-                      : record.id === exportRequest?.assignedWareHouseKeeperId
+                      : record.id === exportRequest?.countingStaffId
                       ? "!opacity-50 !cursor-not-allowed"
                       : "",
                 })}
@@ -676,7 +705,7 @@ const ExportRequestDetail = () => {
                     render: (time, record) => (
                       <span
                         className={`font-medium ${
-                          record.id === exportRequest?.assignedWareHouseKeeperId
+                          record.id === exportRequest?.countingStaffId
                             ? "text-gray-400"
                             : "text-blue-600"
                         }`}
