@@ -1,7 +1,7 @@
 import React from "react";
 import { Tag } from "antd";
 
-export type ImportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type ImportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COUNTED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
 export type DetailStatus = "LACK" | "EXCESS" | "MATCH";
 
 interface StatusTagProps {
@@ -12,6 +12,8 @@ interface StatusTagProps {
 const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
   NOT_STARTED: { color: "default", text: "Chưa bắt đầu" },
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
+  COUNTED: { color: "processing", text: "Đã kiểm kho" },
+  CONFIRMED: { color: "processing", text: "Đã xác nhận" },
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
 };

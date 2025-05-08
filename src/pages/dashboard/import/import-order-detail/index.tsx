@@ -68,7 +68,8 @@ const ImportOrderDetail = () => {
 
   const [searchText, setSearchText] = useState('');
 
-  const { getImportOrderById, assignStaff, cancelImportOrder } = useImportOrderService();
+  const { getImportOrderById, assignStaff, cancelImportOrder, completeImportOrder } = useImportOrderService();
+  const [completing, setCompleting] = useState(false);
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
   const { getActiveStaffsInDay, findAccountById } = useAccountService();
 
@@ -83,7 +84,7 @@ const ImportOrderDetail = () => {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
-  const [qrMap, setQrMap] = useState<Record<number, { itemName: string; itemId: number }> >({});
+  const [qrMap, setQrMap] = useState<Record<number, { itemName: string; itemId: number }>>({});
 
   // Fetch configuration
   const fetchConfiguration = useCallback(async () => {
@@ -262,7 +263,7 @@ const ImportOrderDetail = () => {
         await findAccountById(importOrderResponse.content.assignedStaffId);
       }
       await fetchActiveStaffs();
-      
+
       message.success("Phân công nhân viên thành công");
       setSelectedStaffId(null);
     } catch (error) {
@@ -341,12 +342,12 @@ const ImportOrderDetail = () => {
       .sort((a, b) => {
         // Convert remaining time to minutes for comparison
         const getMinutes = (timeStr: string) => {
-          const [hours, minutes] = timeStr.split(' tiếng ').map(part => 
+          const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
             parseInt(part.replace(' phút', ''))
           );
           return (hours * 60) + minutes;
         };
-        
+
         return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
       });
   };
@@ -416,7 +417,7 @@ const ImportOrderDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => <StatusTag status={status} type="detail" />, 
+      render: (status: string) => <StatusTag status={status} type="detail" />,
       width: '15%',
     }
   ];
@@ -530,13 +531,36 @@ const ImportOrderDetail = () => {
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
       <div className="flex justify-between items-center mt-16 mb-4">
-        <Button
-          type="primary"
-          icon={<PrinterOutlined />}
-          onClick={handleOpenQrModal}
-        >
-          In QRCode
-        </Button>
+        {importOrder?.status === ImportStatus.COMPLETED && (
+          <Button
+            type="primary"
+            icon={<PrinterOutlined />}
+            onClick={handleOpenQrModal}
+          >
+            In QRCode
+          </Button>
+        )}
+        {importOrder?.status === ImportStatus.CONFIRMED && (
+          <Button
+            danger
+            type="primary"
+            loading={completing}
+            onClick={async () => {
+              if (!importOrder?.importOrderId) return;
+              setCompleting(true);
+              try {
+                await completeImportOrder(importOrder.importOrderId);
+                await fetchImportOrderData();
+              } catch (error) {
+                message.error("Không thể xác nhận kiểm đếm");
+              } finally {
+                setCompleting(false);
+              }
+            }}
+          >
+            Xác nhận kiểm đếm
+          </Button>
+        )}
       </div>
 
       <Table
@@ -595,7 +619,7 @@ const ImportOrderDetail = () => {
             <div className="bg-gray-50 p-4 rounded-lg border">
               <h4 className="text-base font-medium text-gray-700 mb-3">Nhân viên đang được phân công</h4>
               <div className="grid grid-cols-2 gap-4">
-              <div>
+                <div>
                   <p className="text-sm text-gray-500">Mã nhân viên</p>
                   <p className="text-base">#{assignedStaff?.id || "-"}</p>
                 </div>
@@ -625,10 +649,10 @@ const ImportOrderDetail = () => {
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
                 onRow={(record) => ({
                   onClick: () => record.id !== importOrder?.assignedStaffId && handleSelectStaff(record.id),
-                  className: selectedStaffId === record.id 
-                    ? '!bg-blue-100' 
-                    : record.id === importOrder?.assignedStaffId 
-                      ? '!opacity-50 !cursor-not-allowed' 
+                  className: selectedStaffId === record.id
+                    ? '!bg-blue-100'
+                    : record.id === importOrder?.assignedStaffId
+                      ? '!opacity-50 !cursor-not-allowed'
                       : ''
                 })}
                 columns={[

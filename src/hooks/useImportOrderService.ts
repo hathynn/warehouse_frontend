@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 export enum ImportStatus {
   NOT_STARTED = "NOT_STARTED",
   IN_PROGRESS = "IN_PROGRESS",
+  COUNTED = "COUNTED",
+  CONFIRMED = "CONFIRMED",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED"
 }
@@ -163,6 +165,21 @@ const useImportOrderService = () => {
     }
   };
 
+  // Complete an import order
+  const completeImportOrder = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", `/import-order/complete/${importOrderId}`);
+      if (response && response.content) {
+        toast.success("Hoàn tất đơn nhập thành công");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể hoàn tất đơn nhập");
+      console.error("Error completing import order:", error);
+      throw error;
+    }
+  };
+
   // Cancel an import order
   const cancelImportOrder = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
@@ -188,6 +205,7 @@ const useImportOrderService = () => {
     updateImportOrder,
     deleteImportOrder,
     assignStaff,
+    completeImportOrder,
     cancelImportOrder,
   };
 };

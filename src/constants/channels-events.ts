@@ -14,4 +14,6 @@ export const PRIVATE_ACCOUNTING_CHANNEL = `private-${ACCOUNTING_CHANNEL}`;
 export const PRIVATE_ADMIN_CHANNEL = `private-${ADMIN_CHANNEL}`;
 
 // Events
-export const IMPORT_ORDER_EVENT = 'import-order-created';
+export const IMPORT_ORDER_CREATED_EVENT = 'import-order-created';
+export const IMPORT_ORDER_COUNTED_EVENT = 'import-order-counted';
+export const IMPORT_ORDER_CONFIRMED_EVENT = 'import-order-confirmed';
