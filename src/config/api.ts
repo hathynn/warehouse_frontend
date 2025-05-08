@@ -13,8 +13,8 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 // Create axios instance with base configuration
 const api: AxiosInstance = axios.create({
-  baseURL: "http://localhost:8080",
-  // baseURL: "https://warehouse-backend-jlcj5.ondigitalocean.app",
+  // baseURL: "http://localhost:8080",
+  baseURL: "https://warehouse-backend-jlcj5.ondigitalocean.app",
 });
 
 // Flag to track if token refresh is in progress
