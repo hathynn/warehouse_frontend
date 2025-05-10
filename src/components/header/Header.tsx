@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/constants/account-roles';
 import { useEffect } from 'react';
-import { createPusherClient } from '@/hooks/usePusherService';
+import { createPusherClient } from '@/config/pusher';
 import {
   IMPORT_ORDER_CREATED_EVENT,
   IMPORT_ORDER_COUNTED_EVENT,

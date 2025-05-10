@@ -49,8 +49,8 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
           </Button>
         </div>
         {fileName && (
-          <div className="flex items-center bg-white px-3 py-2 rounded-md border border-gray-200">
-            <span className="text-gray-600 truncate max-w-[300px]" title={fileName}>
+          <div className="flex justify-center items-center bg-white px-3 py-2 rounded-md border border-gray-200">
+            <span className="text-gray-600 truncate" title={fileName}>
               File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
             </span>
           </div>

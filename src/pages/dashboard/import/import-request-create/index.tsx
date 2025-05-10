@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import TableSection from "@/components/commons/TableSection";
+import { ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -31,7 +32,11 @@ interface FormData {
   exportRequestId: number | null;
 }
 
+const STEP_IMPORT_EXCEL = 0;
+const STEP_IMPORT_REQUEST_INFO = 1;
+
 const ImportRequestCreate: React.FC = () => {
+  const [step, setStep] = useState<number>(STEP_IMPORT_EXCEL);
   const [data, setData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
@@ -176,7 +181,7 @@ const ImportRequestCreate: React.FC = () => {
         setFileName("");
         setData([]);
       }
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const columns = [
@@ -190,11 +195,13 @@ const ImportRequestCreate: React.FC = () => {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
+      align: "right" as const,
     },
     {
       title: "Giá trị đo lường",
       dataIndex: "totalMeasurementValue",
       key: "totalMeasurementValue",
+      align: "right" as const,
     },
     {
       title: "Đơn vị tính",
@@ -213,81 +220,19 @@ const ImportRequestCreate: React.FC = () => {
   const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
-    <div className="container mx-auto p-5">
+    <div className="container mx-auto p-4">
       <Title level={2}>Tạo phiếu nhập kho</Title>
-      {data.length === 0 ? (
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <Card title="Tạo phiếu nhập kho" className="w-[400px] mx-auto">
-            <Space direction="vertical" className="w-full">
-              <ExcelUploadSection
-                fileName={fileName}
-                onFileChange={handleFileUpload}
-                onDownloadTemplate={downloadTemplate}
-                fileInputRef={fileInputRef}
-                buttonLabel="Tải lên file Excel"
-              />
-              <Alert
-                message="Lưu ý"
-                description="Vui lòng tải lên file Excel để tiếp tục. Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
-                type="info"
-                showIcon
-                className="!p-4"
-              />
-            </Space>
-          </Card>
-        </div>
-      ) : (
-        <div className="flex gap-6">
-          <Card title="Thông tin phiếu nhập" className="w-3/10">
-            <Space direction="vertical" className="w-full">
-              <div>
-                <label className="block mb-1">Lý do nhập kho <span className="text-red-500">*</span></label>
-                <TextArea
-                  placeholder="Nhập lý do"
-                  rows={4}
-                  value={formData.importReason}
-                  onChange={(e) => setFormData({...formData, importReason: e.target.value})}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="block mb-1">Loại nhập kho <span className="text-red-500">*</span></label>
-                <Select
-                  value={formData.importType}
-                  onChange={(value) => setFormData({...formData, importType: value})}
-                  className="w-full"
-                >
-                  <Option value="ORDER">Nhập theo kế hoạch</Option>
-                  <Option value="RETURN">Nhập trả</Option>
-                </Select>
-              </div>
-              <ExcelUploadSection
-                fileName={fileName}
-                onFileChange={handleFileUpload}
-                onDownloadTemplate={downloadTemplate}
-                fileInputRef={fileInputRef}
-                buttonLabel="Tải lên file Excel"
-              />
-              <Alert
-                message="Lưu ý"
-                description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
-                type="info"
-                showIcon
-                className="!p-4"
-              />
-              <Button 
-                type="primary" 
-                onClick={handleSubmit} 
-                loading={loading}
-                className="w-full mt-4"
-                id="btn-detail"
-                disabled={data.length === 0 || !!validationError}
-              >
-                Xác nhận tạo phiếu
-              </Button>
-            </Space>
-          </Card>
-          <div className="w-7/10">
+
+      {step === STEP_IMPORT_EXCEL && (
+        <div className="mt-4 flex flex-col items-center gap-6">
+          <div className="w-full">
+            <ExcelUploadSection
+              fileName={fileName}
+              onFileChange={handleFileUpload}
+              onDownloadTemplate={downloadTemplate}
+              fileInputRef={fileInputRef}
+              buttonLabel="Tải lên file Excel"
+            />
             <TableSection
               title="Chi tiết hàng hóa từ file Excel"
               columns={columns}
@@ -312,7 +257,95 @@ const ImportRequestCreate: React.FC = () => {
               emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
             />
           </div>
+          <Button
+            type="primary"
+            onClick={() => setStep(STEP_IMPORT_REQUEST_INFO)}
+            disabled={data.length === 0 || !!validationError}
+          >
+            Tiếp tục nhập thông tin phiếu nhập
+            <ArrowRightOutlined />
+          </Button>
         </div>
+      )}
+      {step === STEP_IMPORT_REQUEST_INFO && (
+        <div>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => setStep(STEP_IMPORT_EXCEL)}
+          >
+            Quay lại
+          </Button>
+          <div className="mt-6 flex gap-6">
+            <Card title="Thông tin phiếu nhập" className="w-3/10">
+              <Space direction="vertical" className="w-full">
+                <div>
+                  <label className="block mb-1">Lý do nhập kho <span className="text-red-500">*</span></label>
+                  <TextArea
+                    placeholder="Nhập lý do"
+                    rows={4}
+                    value={formData.importReason}
+                    onChange={(e) => setFormData({ ...formData, importReason: e.target.value })}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1">Loại nhập kho <span className="text-red-500">*</span></label>
+                  <Select
+                    value={formData.importType}
+                    onChange={(value) => setFormData({ ...formData, importType: value })}
+                    className="w-full"
+                  >
+                    <Option value="ORDER">Nhập theo kế hoạch</Option>
+                    <Option value="RETURN">Nhập trả</Option>
+                  </Select>
+                </div>
+                <Alert
+                  message="Lưu ý"
+                  description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
+                  type="info"
+                  showIcon
+                  className="!p-4"
+                />
+                <Button
+                  type="primary"
+                  onClick={handleSubmit}
+                  loading={loading}
+                  className="w-full mt-4"
+                  id="btn-detail"
+                  disabled={data.length === 0 || !!validationError}
+                >
+                  Xác nhận tạo phiếu
+                </Button>
+              </Space>
+            </Card>
+            <div className="w-7/10">
+              <TableSection
+                title="Chi tiết hàng hóa từ file Excel"
+                columns={columns}
+                data={data}
+                rowKey={(record, index) => index}
+                loading={false}
+                alertNode={data.length > 0 ? (
+                  <Alert
+                    message="Thông tin nhập kho"
+                    description={
+                      <>
+                        <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
+                        <p>Tổng số mặt hàng: {data.length}</p>
+                        <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
+                      </>
+                    }
+                    type="info"
+                    showIcon
+                    className="mb-4"
+                  />
+                ) : null}
+                emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+              />
+            </div>
+          </div>
+        </div>
+
       )}
     </div>
   );
