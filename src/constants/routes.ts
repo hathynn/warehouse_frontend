@@ -7,8 +7,6 @@ export const BASE_ROUTES = {
   OVERVIEW: "/overview",
 } as const;
 
-type BaseRouteKey = keyof typeof BASE_ROUTES;
-
 // Default landing route for each role
 export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
   [AccountRole.DEPARTMENT]: "/import/request-list",

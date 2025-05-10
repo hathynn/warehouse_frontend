@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select } from "antd";
+import { UnorderedListOutlined, FileAddOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
@@ -173,7 +175,7 @@ const ImportRequestList: React.FC = () => {
       title: "Mã phiếu",
       dataIndex: "importRequestId",
       key: "importRequestId",
-      align: "center" as const,
+      align: "right" as const,
       render: (id: number) => `#${id}`,
       width: '8%',
     },
@@ -181,7 +183,7 @@ const ImportRequestList: React.FC = () => {
       title: "Loại nhập",
       dataIndex: "importType",
       key: "importType",
-      align: "center" as const,
+      align: "left" as const,
       render: (type: string) => getImportTypeText(type),
     },
     {
@@ -206,24 +208,29 @@ const ImportRequestList: React.FC = () => {
       title: "Tổng dự nhập",
       dataIndex: "totalExpectQuantityInRequest",
       key: "totalExpectQuantityInRequest",
-      align: "center" as const,
+      align: "right" as const,
       render: (quantity: number) => <div className="text-lg">{quantity || 0}</div>,
     },
     {
       title: "Tổng đã lên đơn",
       dataIndex: "totalOrderedQuantityInRequest",
       key: "totalOrderedQuantityInRequest",
-      align: "center" as const,
       render: (ordered: number, record: ImportRequestData) => {
         const expected = record.totalExpectQuantityInRequest || 0;
         const isEnough = ordered >= expected;
         return (
-          <div className="text-center">
-            <div className="text-lg">{ordered}</div>
-            {expected > 0 && (
-              <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                {isEnough ? "Đủ" : `Thiếu ${expected - ordered}`}
-              </span>
+          <div className="text-right">
+            {ordered === 0 ? (
+              <span className="font-bold text-gray-600">Chưa lên đơn</span>
+            ) : (
+              <>
+                <div className="text-lg">{ordered}</div>
+                {expected > 0 && (
+                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                    {isEnough ? "" : `Thiếu ${expected - ordered}`}
+                  </span>
+                )}
+              </>
             )}
           </div>
         );
@@ -233,17 +240,22 @@ const ImportRequestList: React.FC = () => {
       title: "Tổng đã nhập",
       dataIndex: "totalActualQuantityInRequest",
       key: "totalActualQuantityInRequest",
-      align: "center" as const,
       render: (actual: number, record: ImportRequestData) => {
         const expected = record.totalExpectQuantityInRequest || 0;
         const isEnough = actual >= expected;
         return (
-          <div className="text-center">
-            <div className="text-lg">{actual}</div>
-            {expected > 0 && (
-              <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                {isEnough ? "Đủ" : `Thiếu ${expected - actual}`}
-              </span>
+          <div className="text-right">
+            {actual === 0 ? (
+              <span className="font-bold text-gray-600">Chưa nhập</span>
+            ) : (
+              <>
+                <div className="text-lg">{actual}</div>
+                {expected > 0 && (
+                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                    {isEnough ? "" : `Thiếu ${expected - actual}`}
+                  </span>
+                )}
+              </>
             )}
           </div>
         );
@@ -253,7 +265,7 @@ const ImportRequestList: React.FC = () => {
       title: "Nhà cung cấp",
       dataIndex: "providerName",
       key: "providerName",
-      align: "center" as const,
+      align: "left" as const,
     },
     {
       title: "Trạng thái",
@@ -263,15 +275,26 @@ const ImportRequestList: React.FC = () => {
       render: (status: string) => getStatusTag(status),
     },
     {
-      title: "Chi tiết",
-      key: "detail",
+      title: "Hành động",
+      key: "action",
       align: "center" as const,
       render: (_: unknown, record: ImportRequestData) => (
-        <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
-          <Button id="btn-detail" className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500" type="link">
-            Xem chi tiết
-          </Button>
-        </Link>
+        <div className="flex gap-3 justify-center">
+          <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
+            <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
+              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 bg-blue-900 text-white hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 38, height: 38 }}>
+                <UnorderedListOutlined style={{ fontSize: 22, fontWeight: 700 }} />
+              </span>
+            </Link>
+          </Tooltip>
+          <Tooltip title="Tạo đơn nhập cho phiếu này" placement="top">
+            <Link to={ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(record.importRequestId.toString())}>
+              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 38, height: 38 }}>
+                <FileAddOutlined style={{ fontSize: 22, fontWeight: 700 }} />
+              </span>
+            </Link>
+          </Tooltip>
+        </div>
       ),
     },
   ];

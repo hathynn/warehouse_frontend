@@ -383,7 +383,7 @@ const ImportOrderCreate = () => {
       dataIndex: "itemId",
       key: "itemId",
       render: (id: number) => `#${id}`,
-      align: "center" as const
+      align: "right" as const
     },
     {
       title: "Tên hàng",
@@ -395,19 +395,19 @@ const ImportOrderCreate = () => {
       title: "Tổng dự nhập",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
-      align: "center" as const,
+      align: "right" as const,
     },
     {
       title: "Tổng đã lên đơn",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
-      align: "center" as const,
+      align: "right" as const,
     },
     {
       title: "Dự nhập của đơn này",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
-      align: "center" as const,
+      align: "right" as const,
       render: (_: any, record: ImportRequestDetailResponse) => {
         const uploadedDetail = uploadedExcelItems.find(d => d.itemId === record.itemId);
         const plannedQuantity = uploadedDetail

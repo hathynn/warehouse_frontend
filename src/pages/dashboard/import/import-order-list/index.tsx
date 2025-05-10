@@ -136,7 +136,7 @@ const ImportOrderList: React.FC = () => {
       dataIndex: "importOrderId",
       key: "importOrderId",
       render: (id: number) => `#${id}`,
-      align: "center" as const,
+      align: "right" as const,
       width: "8%",
     },
     {
@@ -144,36 +144,37 @@ const ImportOrderList: React.FC = () => {
       dataIndex: "importRequestId",
       key: "importRequestId",
       render: (id: number) => `#${id}`,
-      align: "center" as const,
+      align: "right" as const,
       width: "8%",
     },
     {
       title: "Tổng đã lên đơn",
       dataIndex: "totalExpectQuantityInOrder",
       key: "totalExpectQuantityInOrder",
-      align: "center" as const,
       render: (expect: number) => (
-        <div className="text-center text-lg">{expect}</div>
+        <div className="text-right text-lg">{expect}</div>
       ),
     },
     {
       title: "Tổng đã nhập",
       dataIndex: "totalActualQuantityInOrder",
       key: "totalActualQuantityInOrder",
-      align: "center" as const,
       render: (actual: number, record: ImportOrderData) => {
         const expected = record.totalExpectQuantityInOrder || 0;
         const isEnough = actual >= expected;
         return (
-          <div className="text-center">
-            <div className="text-lg">{actual}{" "}</div>
-            {expected > 0 && (
-              <span
-                className={`font-bold ${isEnough ? "text-green-600" : "text-red-600"
-                  }`}
-              >
-                {isEnough ? "Đủ" : `Thiếu ${expected - actual}`}
-              </span>
+          <div className="text-right">
+            {actual === 0 ? (
+              <span className="font-bold text-gray-600">Chưa nhập</span>
+            ) : (
+              <>
+                <div className="text-lg">{actual}</div>
+                {expected > 0 && (
+                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                    {isEnough ? "" : `Thiếu ${expected - actual}`}
+                  </span>
+                )}
+              </>
             )}
           </div>
         );
@@ -197,7 +198,7 @@ const ImportOrderList: React.FC = () => {
       title: "Người tạo",
       dataIndex: "createdBy",
       key: "createdBy",
-      align: "center" as const,
+      align: "left" as const,
       render: (createdBy: string) => createdBy || "-",
     },
     {

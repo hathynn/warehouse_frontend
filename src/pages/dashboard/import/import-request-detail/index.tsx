@@ -147,6 +147,7 @@ const ImportRequestDetail: React.FC = () => {
       key: "itemId",
       render: (id: number) => `#${id}`,
       width: "10%",
+      align: "right" as const,
     },
     {
       title: "Tên sản phẩm",
@@ -159,16 +160,19 @@ const ImportRequestDetail: React.FC = () => {
       title: "Dự nhập của phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
+      align: "right" as const,
     },
     {
       title: "Đã lên đơn nhập",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
+      align: "right" as const,
     },
     {
       title: "Thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
+      align: "right" as const,
     },
     {
       title: "Trạng thái",
@@ -176,6 +180,7 @@ const ImportRequestDetail: React.FC = () => {
       key: "status",
       render: (status: string) => <StatusTag status={status} type="detail" />,
       width: '10%',
+      align: "center" as const,
     }
   ];
 

@@ -393,25 +393,29 @@ const ImportOrderDetail = () => {
       dataIndex: "itemId",
       key: "itemId",
       width: '15%',
+      align: 'right' as const,
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
       ellipsis: true,
-      width: '20%',
+      width: '30%',
+      align: 'left' as const,
     },
     {
       title: "Số lượng nhập dự tính của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
-      width: '25%',
+      width: '20%',
+      align: 'right' as const,
     },
     {
       title: "Số lượng nhập thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: '25%',
+      width: '20%',
+      align: 'right' as const,
     },
     {
       title: "Trạng thái",
@@ -419,6 +423,7 @@ const ImportOrderDetail = () => {
       key: "status",
       render: (status: string) => <StatusTag status={status} type="detail" />,
       width: '15%',
+      align: 'center' as const,
     }
   ];
 
@@ -577,7 +582,7 @@ const ImportOrderDetail = () => {
         }}
       />
 
-      {/* Staff Assignment Modal */}
+      {/* Modals */}
       <Modal
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
