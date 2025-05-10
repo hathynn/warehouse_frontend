@@ -5,6 +5,7 @@ import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService from "../../../../hooks/useExportRequestService";
 import { useSelector } from "react-redux";
+import StatusTag from "@/components/commons/StatusTagExport";
 
 const ExportRequestList = () => {
   const [exportRequests, setExportRequests] = useState([]);
@@ -67,23 +68,6 @@ const ExportRequestList = () => {
     });
   };
 
-  const getStatusTag = (status) => {
-    switch (status) {
-      case "NOT_STARTED":
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-      case "IN_PROGRESS":
-        return <Tag color="processing">Đang xử lý</Tag>;
-      case "COUNTED":
-        return <Tag color="processing">Đã kiểm kho</Tag>;
-      case "COMPLETED":
-        return <Tag color="success">Hoàn tất</Tag>;
-      case "CANCELLED":
-        return <Tag color="error">Đã hủy</Tag>;
-      default:
-        return <Tag color="default">{status}</Tag>;
-    }
-  };
-
   const getExportTypeText = (type) => {
     switch (type) {
       case "RETURN":
@@ -137,7 +121,7 @@ const ExportRequestList = () => {
       title: "Trạng thái phiếu",
       dataIndex: "status",
       key: "status",
-      render: (status) => getStatusTag(status),
+      render: (status) => <StatusTag status={status} type="export" />,
     },
     {
       title: "Chi tiết",
