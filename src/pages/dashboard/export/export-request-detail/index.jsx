@@ -7,12 +7,12 @@ import {
   Descriptions,
   Spin,
   message,
-  Tag,
   Modal,
   Input,
 } from "antd";
 import {
   ArrowLeftOutlined,
+  ExclamationCircleOutlined,
   InfoCircleOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
@@ -25,6 +25,7 @@ import { useSelector } from "react-redux";
 import useConfigurationService from "@/hooks/useConfigurationService";
 import useAccountService from "@/hooks/useAccountService";
 import { AccountRole } from "@/constants/account-roles";
+import StatusTag from "@/components/commons/StatusTagExport";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
@@ -53,6 +54,8 @@ const ExportRequestDetail = () => {
   const [assignedStaff, setAssignedStaff] = useState(null);
   const [searchText, setSearchText] = useState("");
   const userRole = useSelector((state) => state.user.role);
+  //Modal confirm counted
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
 
   //Confirm counted export request
   const { confirmCountedExportRequest } = useExportRequestService();
@@ -71,23 +74,6 @@ const ExportRequestDetail = () => {
       setLoading(false);
     }
   }, [exportRequestId, getExportRequestById]);
-
-  const getStatusTag = (status) => {
-    switch (status) {
-      case "NOT_STARTED":
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-      case "IN_PROGRESS":
-        return <Tag color="processing">Đang xử lý</Tag>;
-      case "COUNTED":
-        return <Tag color="processing">Đã kiểm kho</Tag>;
-      case "COMPLETED":
-        return <Tag color="success">Hoàn tất</Tag>;
-      case "CANCELLED":
-        return <Tag color="error">Đã hủy</Tag>;
-      default:
-        return <Tag color="default">{status}</Tag>;
-    }
-  };
 
   // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
   const enrichDetails = async (details) => {
@@ -356,7 +342,7 @@ const ExportRequestDetail = () => {
         #{exportRequest.exportRequestId}
       </Descriptions.Item>,
       <Descriptions.Item label="Trạng thái phiếu" key="status">
-        {getStatusTag(exportRequest.status)}
+        <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
       <Descriptions.Item label="Ngày xuất" key="exportDate">
         {exportRequest.exportDate
@@ -454,16 +440,15 @@ const ExportRequestDetail = () => {
     try {
       await confirmCountedExportRequest(exportRequestId);
       message.success("Đã xác nhận kiểm đếm");
+
+      // Gọi lại để cập nhật status mới từ backend
+      await fetchExportRequestData();
       fetchDetails();
     } catch (error) {
-      console.error("Lỗi khi xác nhận kiểm đếm" + error.message);
+      console.error("Lỗi khi xác nhận kiểm đếm", error);
       message.error("Lỗi khi xác nhận kiểm đếm");
     }
   };
-
-  const allMatched = exportRequestDetails.every(
-    (item) => item.status === "MATCH"
-  );
 
   const columns = [
     {
@@ -488,7 +473,15 @@ const ExportRequestDetail = () => {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      render: (text) => <div className="pl-32">{text}</div>,
+      render: (text, record) => (
+        <div
+          className={`pl-32 ${
+            text < record.quantity ? "text-red-600 font-semibold" : ""
+          }`}
+        >
+          {text}
+        </div>
+      ),
     },
     {
       title: "Quy cách",
@@ -499,7 +492,8 @@ const ExportRequestDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status) => status || "-",
+      render: (status) =>
+        status ? <StatusTag status={status} type="detail" /> : "-", // Use StatusTag component with 'detail' type
     },
   ];
 
@@ -568,15 +562,12 @@ const ExportRequestDetail = () => {
 
       <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
         <span>Danh sách chi tiết sản phẩm xuất</span>
-        {userRole === AccountRole.WAREHOUSE_MANAGER && (
-          <Button
-            type="primary"
-            onClick={handleConfirmCounted}
-            disabled={!allMatched}
-          >
-            Xác nhận kiểm đếm
-          </Button>
-        )}
+        {userRole === AccountRole.WAREHOUSE_MANAGER &&
+          exportRequest?.status === ExportStatus.IN_PROGRESS && (
+            <Button type="primary" onClick={() => setConfirmModalVisible(true)}>
+              Xác nhận kiểm đếm
+            </Button>
+          )}
       </h2>
 
       <Table
@@ -720,6 +711,33 @@ const ExportRequestDetail = () => {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={confirmModalVisible}
+        onCancel={() => setConfirmModalVisible(false)}
+        onOk={async () => {
+          await handleConfirmCounted();
+          setConfirmModalVisible(false);
+        }}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận kiểm đếm
+          </span>
+        }
+        okText="Xác nhận"
+        cancelText="Quay lại"
+        centered
+      >
+        <div className="flex items-start gap-3">
+          <ExclamationCircleOutlined
+            style={{ fontSize: 24, color: "#ff4d4f", marginTop: 4 }}
+          />
+          <p style={{ color: "#ff4d4f", fontWeight: "500", margin: 0 }}>
+            Sau khi bấm xác nhận, bạn phải chịu hoàn toàn trách nhiệm trong mọi
+            trường hợp.
+          </p>
+        </div>
       </Modal>
     </div>
   );
