@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Modal } from "antd";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
@@ -34,6 +34,7 @@ interface FormData {
 }
 
 const ImportRequestCreate: React.FC = () => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [step, setStep] = useState<number>(0);
   const [data, setData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
@@ -348,7 +349,7 @@ const columns = [
                 />
                 <Button
                   type="primary"
-                  onClick={handleSubmit}
+                  onClick={() => setShowConfirmModal(true)}
                   loading={loading}
                   className="w-full mt-4"
                   id="btn-detail"
@@ -356,6 +357,18 @@ const columns = [
                 >
                   Xác nhận tạo phiếu
                 </Button>
+                <Modal
+                  title="Xác nhận tạo phiếu nhập"
+                  open={showConfirmModal}
+                  onOk={handleSubmit}
+                  onCancel={() => setShowConfirmModal(false)}
+                  okText="Xác nhận"
+                  cancelText="Hủy"
+                  confirmLoading={loading}
+                  maskClosable={false}
+                >
+                  Bạn có chắc chắn muốn tạo phiếu nhập này không?
+                </Modal>
               </Space>
             </Card>
             <div className="w-7/10">

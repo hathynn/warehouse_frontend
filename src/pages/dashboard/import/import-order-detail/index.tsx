@@ -9,7 +9,8 @@ import {
   Spin,
   message,
   Modal,
-  Input
+  Input,
+  Checkbox
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -37,6 +38,12 @@ import StatusTag from "@/components/commons/StatusTag";
 import { AccountRole } from "@/constants/account-roles";
 
 const ImportOrderDetail = () => {
+  // Modal xác nhận kiểm đếm
+  const [confirmCompleteModalVisible, setConfirmCompleteModalVisible] = useState(false);
+  const [confirmCompleteChecked, setConfirmCompleteChecked] = useState(false);
+  // Modal xác nhận hủy đơn nhập
+  const [confirmCancelModalVisible, setConfirmCancelModalVisible] = useState(false);
+  const [confirmCancelChecked, setConfirmCancelChecked] = useState(false);
   const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
 
@@ -519,14 +526,32 @@ const ImportOrderDetail = () => {
             )}
             <div className="ml-auto flex gap-2">
               {userRole === AccountRole.DEPARTMENT && (
-                <Button
-                  danger
-                  type="primary"
-                  onClick={handleShowCancelModal}
-                  loading={cancelling}
-                >
-                  Hủy đơn nhập
-                </Button>
+                <>
+                  <Button
+                    danger
+                    type="primary"
+                    onClick={() => setConfirmCancelModalVisible(true)}
+                    loading={cancelling}
+                  >
+                    Hủy đơn nhập
+                  </Button><Modal
+                    title="Xác nhận hủy đơn nhập"
+                    open={confirmCancelModalVisible}
+                    onOk={() => { setConfirmCancelModalVisible(false); setConfirmCancelChecked(false); handleShowCancelModal(); }}
+                    onCancel={() => { setConfirmCancelModalVisible(false); setConfirmCancelChecked(false); }}
+                    okText="Tôi xác nhận hủy đơn nhập"
+                    cancelText="Hủy"
+                    okButtonProps={{ disabled: !confirmCancelChecked, danger: true }}
+                    maskClosable={false}
+                  >
+                    <Checkbox checked={confirmCancelChecked} onChange={e => setConfirmCancelChecked(e.target.checked)}>
+                      Tôi sẵn sàng chịu trách nhiệm về quyết định hủy đơn nhập này.
+                    </Checkbox>
+                    <div className="mt-2 text-red-500">
+                      Hành động này không thể hoàn tác!
+                    </div>
+                  </Modal>
+                </>
               )}
             </div>
           </>
@@ -535,7 +560,7 @@ const ImportOrderDetail = () => {
 
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
-      <div className="flex justify-between items-center mt-16 mb-4">
+      <div className="flex justify-end items-center mt-16 mb-4">
         {importOrder?.status === ImportStatus.COMPLETED && (
           <Button
             type="primary"
@@ -546,25 +571,46 @@ const ImportOrderDetail = () => {
           </Button>
         )}
         {importOrder?.status === ImportStatus.CONFIRMED && (
-          <Button
-            danger
-            type="primary"
-            loading={completing}
-            onClick={async () => {
-              if (!importOrder?.importOrderId) return;
-              setCompleting(true);
-              try {
-                await completeImportOrder(importOrder.importOrderId);
-                await fetchImportOrderData();
-              } catch (error) {
-                message.error("Không thể xác nhận kiểm đếm");
-              } finally {
-                setCompleting(false);
-              }
-            }}
-          >
-            Xác nhận kiểm đếm
-          </Button>
+          <>
+            <Button
+              danger
+              type="primary"
+              loading={completing}
+              onClick={() => setConfirmCompleteModalVisible(true)}
+            >
+              Xác nhận kiểm đếm
+            </Button>
+            <Modal
+              title="Xác nhận kiểm đếm"
+              open={confirmCompleteModalVisible}
+              onOk={async () => {
+                setConfirmCompleteModalVisible(false);
+                setConfirmCompleteChecked(false);
+                if (!importOrder?.importOrderId) return;
+                setCompleting(true);
+                try {
+                  await completeImportOrder(importOrder.importOrderId);
+                  await fetchImportOrderData();
+                } catch (error) {
+                  message.error("Không thể xác nhận kiểm đếm");
+                } finally {
+                  setCompleting(false);
+                }
+              }}
+              onCancel={() => { setConfirmCompleteModalVisible(false); setConfirmCompleteChecked(false); }}
+              okText="Tôi xác nhận kiểm đếm"
+              cancelText="Hủy"
+              okButtonProps={{ disabled: !confirmCompleteChecked, danger: true }}
+              maskClosable={false}
+            >
+              <Checkbox checked={confirmCompleteChecked} onChange={e => setConfirmCompleteChecked(e.target.checked)}>
+                Tôi sẵn sàng chịu trách nhiệm về quyết định xác nhận kiểm đếm này.
+              </Checkbox>
+              <div className="mt-2 text-red-500">
+                Vui lòng kiểm tra kỹ trước khi xác nhận!
+              </div>
+            </Modal>
+          </>
         )}
       </div>
 

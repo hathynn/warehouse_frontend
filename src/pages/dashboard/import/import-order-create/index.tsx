@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
@@ -52,6 +52,7 @@ function excelTimeToHM(serial: number): string {
 import EditableImportOrderTableSection, { ImportOrderDetailRow, ProviderOption } from "@/components/import-flow/EditableImportOrderTableSection";
 
 const ImportOrderCreate = () => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const { getAllProviders } = useProviderService();
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
@@ -630,7 +631,7 @@ const ImportOrderCreate = () => {
                 </div>
                 <Button
                   type="primary"
-                  onClick={handleSubmit}
+                  onClick={() => setShowConfirmModal(true)}
                   loading={loading}
                   className="w-full mt-4"
                   id="btn-detail"
@@ -638,6 +639,18 @@ const ImportOrderCreate = () => {
                 >
                   Xác nhận tạo đơn nhập
                 </Button>
+                <Modal
+                  title="Xác nhận tạo đơn nhập"
+                  open={showConfirmModal}
+                  onOk={handleSubmit}
+                  onCancel={() => setShowConfirmModal(false)}
+                  okText="Xác nhận"
+                  cancelText="Hủy"
+                  confirmLoading={loading}
+                  maskClosable={false}
+                >
+                  Bạn có chắc chắn muốn tạo đơn nhập này không?
+                </Modal>
               </Space>
             </Card>
             <div className="w-7/10">
