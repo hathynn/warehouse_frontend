@@ -273,12 +273,32 @@ const ExportRequestCreate = () => {
       toast.error("Không tạo được phiếu xuất");
       return;
     }
-
     navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
-    // Upload file Excel làm chi tiết phiếu xuất
-    const fd = new FormData();
-    fd.append("file", file);
-    await createExportRequestDetail(fd, createdExport.exportRequestId);
+
+    // Gửi trực tiếp mảng dữ liệu đã chỉnh sửa ở ExcelDataTable
+    const exportDetailsPayload = data.map(
+      ({ itemId, quantity, measurementValue, inventoryItemId }) => {
+        const detail = { itemId, quantity };
+
+        if (measurementValue !== undefined)
+          detail.measurementValue = measurementValue;
+        if (inventoryItemId !== undefined)
+          detail.inventoryItemId = inventoryItemId;
+        console.log("test" + detail);
+        return detail;
+      }
+    );
+
+    try {
+      await createExportRequestDetail(
+        exportDetailsPayload,
+        createdExport.exportRequestId
+      );
+      toast.success("Đã gửi chi tiết phiếu xuất thành công");
+      navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+    } catch (error) {
+      toast.error("Lỗi khi gửi chi tiết phiếu xuất");
+    }
 
     //navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
 
@@ -363,7 +383,28 @@ const ExportRequestCreate = () => {
 
           <Card title="Xem trước dữ liệu Excel" className="mb-4">
             {mappedData.length > 0 ? (
-              <ExcelDataTable data={mappedData} />
+              <ExcelDataTable
+                data={mappedData}
+                items={items.content}
+                onDataChange={(updatedData) => {
+                  const updatedMappedData = updatedData.map((item) => ({
+                    ...item,
+                    itemName:
+                      items.content.find((i) => i.id === item.itemId)?.name ||
+                      "Không xác định",
+                  }));
+
+                  setData(
+                    updatedMappedData.map(
+                      ({ itemId, quantity, measurementValue }) => ({
+                        itemId,
+                        quantity,
+                        measurementValue,
+                      })
+                    )
+                  );
+                }}
+              />
             ) : (
               <div className="text-center py-10 text-gray-500">
                 Vui lòng tải lên file Excel để xem chi tiết hàng hóa
