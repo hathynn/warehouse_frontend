@@ -20,6 +20,8 @@ export interface ExportRequestDetailRequest {
   quantity: number;
   status: string;
   itemName: string;
+  measurementValue: string;
+  inventoryItemId: number;
 }
 
 const useExportRequestDetailService = () => {
@@ -32,31 +34,36 @@ const useExportRequestDetailService = () => {
    * @returns Dữ liệu từ phản hồi của API nếu upload thành công
    */
   const createExportRequestDetail = async (
-    formDataFile: FormData,
+    details: {
+      itemId: number;
+      quantity: number;
+      measurementValue: number;
+      inventoryItemId: number;
+    }[],
     exportRequestId: number
-  ): Promise<ExportRequestDetailResponse | undefined> => {
+  ): Promise<ExportRequestDetailResponse[] | undefined> => {
     try {
       const response = await callApi(
         "post",
         `/export-request-detail/${exportRequestId}`,
-        formDataFile
+        details
       );
       if (response && response.content) {
         toast.success("Tạo chi tiết phiếu xuất thành công");
         return response.content;
       }
-      console.log("test file 1 dc" + formDataFile);
-    } catch (error) {
-      console.log("test file 1 loi" + formDataFile);
-
-      if (error.message.inludes("Inventory items not found for item ID")) {
+      console.log("Request data:", details);
+    } catch (error: any) {
+      console.log("Error Request data:", details);
+      if (error.message.includes("Inventory items not found for item ID")) {
         toast.error("Không tìm thấy hàng hóa trong kho");
+      } else {
+        toast.error("Lỗi khi tạo chi tiết phiếu xuất");
       }
       console.error("Error creating export request detail:", error);
       throw error;
     }
   };
-
   /**
    * Lấy danh sách export request detail theo exportRequestId (có phân trang).
    * @param exportRequestId - Mã phiếu xuất cần lấy chi tiết
