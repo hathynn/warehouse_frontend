@@ -19,6 +19,8 @@ export interface ItemRequest {
 
 // Interface to match ItemResponse.java
 export interface ItemResponse {
+  // List of valid provider IDs for this item
+  providerIds: number[];
   id: number;
   name: string;
   description: string;

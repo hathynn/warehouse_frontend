@@ -4,12 +4,13 @@ import { Button, Input, Select, Typography, Space, Card, Alert } from "antd";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
-import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
+import useImportRequestDetailService, { ImportRequestDetailRequest } from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import TableSection from "@/components/commons/TableSection";
+import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
 import { ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -107,21 +108,26 @@ const ImportRequestCreate: React.FC = () => {
             const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
               const itemId = item["itemId"] || item["Mã hàng"];
               const quantity = item["quantity"] || item["Số lượng"];
-              if (!itemId || !quantity) {
-                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`);
+              const providerId = item["providerId"] || item["Nhà cung cấp"];
+              if (!itemId || !quantity || !providerId) {
+                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
               }
               const foundItem = items.find(i => i.id === Number(itemId));
               if (!foundItem) {
                 throw new Error(`Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`);
               }
-              const foundProvider = providers.find(p => p.id === foundItem.providerId);
+              const foundProvider = providers.find(p => p.id === Number(providerId));
               if (!foundProvider) {
-                throw new Error(`Dòng ${index + 1}: Không tìm thấy nhà cung cấp cho mặt hàng ${foundItem.name}`);
+                throw new Error(`Dòng ${index + 1}: Không tìm thấy nhà cung cấp với ID ${providerId}`);
+              }
+              // Validate the provider is actually linked to the item
+              if (!Array.isArray(foundItem.providerIds) || !foundItem.providerIds.includes(Number(providerId))) {
+                throw new Error(`Dòng ${index + 1}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
               }
               return {
                 itemId: Number(itemId),
                 quantity: Number(quantity),
-                providerId: foundProvider.id,
+                providerId: Number(providerId),
                 itemName: foundItem.name,
                 measurementUnit: foundItem.measurementUnit || "Unknown",
                 totalMeasurementValue: foundItem.totalMeasurementValue || 0,
@@ -146,7 +152,8 @@ const ImportRequestCreate: React.FC = () => {
     const template = [
       {
         "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)"
+        "quantity": "Số lượng (số)",
+        "providerId": "Mã Nhà cung cấp (số)"
       }
     ];
     const ws = XLSX.utils.json_to_sheet(template);
@@ -170,7 +177,12 @@ const ImportRequestCreate: React.FC = () => {
       };
       const createdRequest = await createImportRequest(createRequest);
       if (createdRequest?.content?.importRequestId) {
-        await createImportRequestDetail(file, createdRequest.content.importRequestId);
+        const details: ImportRequestDetailRequest[] = data.map(row => ({
+          itemId: row.itemId,
+          quantity: row.quantity,
+          providerId: row.providerId
+        }));
+        await createImportRequestDetail(details, createdRequest.content.importRequestId);
         navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
         setFormData({
           importReason: "",
@@ -184,38 +196,41 @@ const ImportRequestCreate: React.FC = () => {
     } catch (error) { }
   };
 
-  const columns = [
-    {
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-      width: "20%",
-    },
-    {
-      title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "right" as const,
-    },
-    {
-      title: "Giá trị đo lường",
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
-      align: "right" as const,
-    },
-    {
-      title: "Đơn vị tính",
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
-    },
-    {
-      title: "Nhà cung cấp",
-      dataIndex: "providerName",
-      key: "providerName",
-      width: "40%",
-      render: (text: string, record: ImportRequestDetailRow) => `${text}`
-    }
-  ];
+  // --- columns readonly cho TableSection (không render input/dropdown) ---
+const columns = [
+  {
+    title: <span className="font-semibold">Tên hàng</span>,
+    dataIndex: "itemName",
+    key: "itemName",
+    width: "25%",
+  },
+  {
+    title: <span className="font-semibold">Số lượng</span>,
+    dataIndex: "quantity",
+    key: "quantity",
+    align: "right" as const,
+    width: "15%",
+  },
+  {
+    title: <span className="font-semibold">Giá trị đo lường</span>,
+    dataIndex: "totalMeasurementValue",
+    key: "totalMeasurementValue",
+    align: "right" as const,
+    width: "15%",
+  },
+  {
+    title: <span className="font-semibold">Đơn vị tính</span>,
+    dataIndex: "measurementUnit",
+    key: "measurementUnit",
+    width: "10%",
+  },
+  {
+    title: <span className="font-semibold">Nhà cung cấp</span>,
+    dataIndex: "providerName",
+    key: "providerName",
+    width: "35%",
+  },
+];
 
   const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
@@ -233,11 +248,11 @@ const ImportRequestCreate: React.FC = () => {
               fileInputRef={fileInputRef}
               buttonLabel="Tải lên file Excel"
             />
-            <TableSection
-              title="Chi tiết hàng hóa từ file Excel"
-              columns={columns}
+            <EditableImportRequestTableSection
               data={data}
-              rowKey={(record, index) => index}
+              setData={setData}
+              items={items}
+              providers={providers}
               loading={false}
               alertNode={data.length > 0 ? (
                 <Alert
@@ -255,6 +270,7 @@ const ImportRequestCreate: React.FC = () => {
                 />
               ) : null}
               emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+              title="Chi tiết hàng hóa từ file Excel"
             />
           </div>
           <Button

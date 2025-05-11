@@ -9,7 +9,7 @@ interface ExcelUploadSectionProps {
   accept?: string;
   buttonLabel?: string;
   infoMessage?: React.ReactNode;
-  fileInputRef?: RefObject<HTMLInputElement>;
+  fileInputRef?: RefObject<HTMLInputElement | null>;
 }
 
 const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({

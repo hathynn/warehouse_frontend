@@ -20,6 +20,13 @@ export enum DetailStatus {
   MATCH = "MATCH"
 }
 
+// Interface to match ImportRequestDetailRequest.java
+export interface ImportRequestDetailRequest {
+  itemId: number;
+  quantity: number;
+  providerId: number;
+}
+
 const useImportRequestDetailService = () => {
   const { callApi, loading } = useApiService();
 
@@ -59,54 +66,31 @@ const useImportRequestDetailService = () => {
     }
   };
 
-  // Create import request details from file upload
   const createImportRequestDetail = async (
-    file: File,
+    details: ImportRequestDetailRequest[],
     importRequestId: number
   ): Promise<ResponseDTO<null>> => {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
       const response = await callApi(
-        "post", 
-        `/import-request-detail/${importRequestId}`, 
-        formData
+        "post",
+        `/import-request-detail/${importRequestId}`,
+        details
       );
-      
-      toast.success("Upload danh sách sản phẩm thành công");
+      toast.success("Tạo danh sách sản phẩm thành công");
       return response;
     } catch (error) {
-      toast.error("Không thể upload danh sách sản phẩm");
-      console.error("Error uploading import request detail:", error);
+      toast.error("Không thể tạo danh sách sản phẩm");
+      console.error("Error creating import request detail:", error);
       throw error;
     }
   };
 
-  // Delete import request detail by ID
-  const deleteImportRequestDetail = async (
-    importRequestDetailId: number
-  ): Promise<ResponseDTO<null>> => {
-    try {
-      const response = await callApi(
-        "delete", 
-        `/import-request-detail/${importRequestDetailId}`
-      );
-      
-      toast.success("Xóa chi tiết phiếu nhập thành công");
-      return response;
-    } catch (error) {
-      toast.error("Không thể xóa chi tiết phiếu nhập");
-      console.error("Error deleting import request detail:", error);
-      throw error;
-    }
-  };
 
   return {
     loading,
     getImportRequestDetails,
     getImportRequestDetailById,
-    createImportRequestDetail,
-    deleteImportRequestDetail
+    createImportRequestDetail
   };
 };
 

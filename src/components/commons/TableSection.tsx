@@ -29,7 +29,7 @@ const TableSection: React.FC<TableSectionProps> = ({
         <Table
           columns={columns}
           dataSource={data}
-          rowKey={rowKey}
+          rowKey={rowKey as string}
           loading={loading}
           pagination={pagination}
           className="custom-table"

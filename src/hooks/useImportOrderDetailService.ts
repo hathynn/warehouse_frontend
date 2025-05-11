@@ -13,17 +13,13 @@ export interface ImportOrderDetailResponse {
   status: string;
 }
 
-// Interface to match ImportOrderDetailRequest.java
-export interface ImportOrderDetailRequest {
-  itemId: number;
-  quantity: number;
-  actualQuantity: number;
-}
-
-// Interface to match ImportOrderDetailUpdateRequest.java
-export interface ImportOrderDetailUpdateRequest {
-  importOrderDetailId: number;
-  actualQuantity: number;
+// Interface cho request tạo import order detail (đơn giản)
+export interface ImportOrderDetailCreateRequest {
+  providerId: number;
+  itemOrders: {
+    itemId: number;
+    quantity: number;
+  }[];
 }
 
 const useImportOrderDetailService = () => {
@@ -65,66 +61,22 @@ const useImportOrderDetailService = () => {
     }
   };
 
-  // Create import order details from Excel file
+  // Create import order details using JSON body, not file
   const createImportOrderDetails = async (
-    file: File,
+    request: ImportOrderDetailCreateRequest,
     importOrderId: number
   ): Promise<ResponseDTO<null>> => {
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      
       const response = await callApi(
-        "post", 
-        `/import-order-detail/${importOrderId}`, 
-        formData
+        "post",
+        `/import-order-detail/${importOrderId}`,
+        request
       );
-      
-      toast.success("Upload danh sách sản phẩm thành công");
+      toast.success("Tạo danh sách sản phẩm thành công");
       return response;
     } catch (error) {
-      toast.error("Không thể upload danh sách sản phẩm");
-      console.error("Error uploading import order detail:", error);
-      throw error;
-    }
-  };
-
-  // Update actual quantities of import order details
-  const updateImportOrderDetails = async (
-    importOrderId: number,
-    detailsList: ImportOrderDetailUpdateRequest[]
-  ): Promise<ResponseDTO<null>> => {
-    try {
-      const response = await callApi(
-        "put", 
-        `/import-order-detail/${importOrderId}`, 
-        detailsList
-      );
-      
-      toast.success("Cập nhật chi tiết đơn nhập thành công");
-      return response;
-    } catch (error) {
-      toast.error("Không thể cập nhật chi tiết đơn nhập");
-      console.error("Error updating import order details:", error);
-      throw error;
-    }
-  };
-
-  // Delete import order detail by ID
-  const deleteImportOrderDetail = async (
-    importOrderDetailId: number
-  ): Promise<ResponseDTO<null>> => {
-    try {
-      const response = await callApi(
-        "delete", 
-        `/import-order-detail/${importOrderDetailId}`
-      );
-      
-      toast.success("Xóa chi tiết đơn nhập thành công");
-      return response;
-    } catch (error) {
-      toast.error("Không thể xóa chi tiết đơn nhập");
-      console.error("Error deleting import order detail:", error);
+      toast.error("Không thể tạo danh sách sản phẩm");
+      console.error("Error creating import order detail:", error);
       throw error;
     }
   };
@@ -134,8 +86,6 @@ const useImportOrderDetailService = () => {
     getImportOrderDetailsPaginated,
     getImportOrderDetailById,
     createImportOrderDetails,
-    updateImportOrderDetails,
-    deleteImportOrderDetail
   };
 };
 

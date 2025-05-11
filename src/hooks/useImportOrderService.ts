@@ -21,15 +21,6 @@ export interface ImportOrderCreateRequest {
   note?: string;
 }
 
-// Interface to match ImportOrderUpdateRequest.java
-export interface ImportOrderUpdateRequest {
-  importOrderId: number;
-  status?: ImportStatus;
-  dateReceived?: string;
-  timeReceived?: string;
-  note?: string;
-}
-
 // Interface to match ImportOrderResponse.java
 export interface ImportOrderResponse {
   importOrderId: number;
@@ -122,34 +113,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // Update an existing import order
-  const updateImportOrder = async (requestData: ImportOrderUpdateRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
-    try {
-      const response = await callApi("put", "/import-order", requestData);
-      if (response && response.content) {
-        toast.success("Cập nhật đơn nhập thành công");
-      }
-      return response;
-    } catch (error) {
-      toast.error("Không thể cập nhật đơn nhập");
-      console.error("Error updating import order:", error);
-      throw error;
-    }
-  };
-
-  // Delete an import order
-  const deleteImportOrder = async (importOrderId: number): Promise<ResponseDTO<null>> => {
-    try {
-      const response = await callApi("delete", `/import-order/${importOrderId}`);
-      toast.success("Xóa đơn nhập thành công");
-      return response;
-    } catch (error) {
-      toast.error("Không thể xóa đơn nhập");
-      console.error("Error deleting import order:", error);
-      throw error;
-    }
-  };
-
   // Assign staff to an import order
   const assignStaff = async (requestData: AssignStaffRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
@@ -202,8 +165,6 @@ const useImportOrderService = () => {
     getImportOrdersByRequestId,
     getImportOrderById,
     createImportOrder,
-    updateImportOrder,
-    deleteImportOrder,
     assignStaff,
     completeImportOrder,
     cancelImportOrder,

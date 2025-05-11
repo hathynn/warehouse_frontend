@@ -99,9 +99,9 @@ const ImportRequestList: React.FC = () => {
 
       // cập nhật phân trang
       setPagination({
-        current: metaDataDTO.page,
-        pageSize: metaDataDTO.limit,
-        total: metaDataDTO.total,
+        current: metaDataDTO?.page,
+        pageSize: metaDataDTO?.limit,
+        total: metaDataDTO?.total,
       });
     } catch (err) {
       console.error("Failed to fetch import requests:", err);
@@ -279,25 +279,25 @@ const ImportRequestList: React.FC = () => {
       key: "action",
       align: "center" as const,
       render: (_: unknown, record: ImportRequestData) => (
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-2 justify-center">
           <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
             <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
-                <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 30, height: 30 }}>
+                <EyeOutlined style={{ fontSize: 16, fontWeight: 700 }} />
               </span>
             </Link>
           </Tooltip>
           <Tooltip title="Xem danh sách đơn nhập" placement="top">
             <Link to={ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(record.importRequestId.toString())}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 bg-blue-900 text-white hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
-                <UnorderedListOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 bg-blue-900 text-white hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 30, height: 30 }}>
+                <UnorderedListOutlined style={{ fontSize: 16, fontWeight: 700 }} />
               </span>
             </Link>
           </Tooltip>
           <Tooltip title="Tạo đơn nhập cho phiếu này" placement="top">
             <Link to={ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(record.importRequestId.toString())}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
-                <FileAddOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 30, height: 30 }}>
+                <FileAddOutlined style={{ fontSize: 16, fontWeight: 700 }} />
               </span>
             </Link>
           </Tooltip>

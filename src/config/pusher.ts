@@ -3,8 +3,8 @@ import Pusher from 'pusher-js';
 import api from '@/config/api';
 
 // You may want to load these from env vars in production
-const PUSHER_KEY = '0c02fd43e1874d8d71e4'; // <-- Replace with your actual key
-const PUSHER_CLUSTER = 'ap1'; // <-- Replace with your actual cluster
+const PUSHER_KEY = import.meta.env.VITE_PUSHER_KEY;
+const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_CLUSTER;
 
 /**
  * Create a Pusher client configured for authenticated private channels
