@@ -1,4 +1,3 @@
-import { useState } from "react";
 import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
 
@@ -16,7 +15,7 @@ export interface ImportOrderDetailResponse {
 // Interface cho request tạo import order detail (đơn giản)
 export interface ImportOrderDetailCreateRequest {
   providerId: number;
-  itemOrders: {
+  importOrderItems: {
     itemId: number;
     quantity: number;
   }[];

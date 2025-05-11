@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert } from "antd";
+import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
@@ -8,26 +9,21 @@ import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/ho
 import useConfigurationService from "@/hooks/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
-import { useSelector } from "react-redux";
-import { InfoCircleOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
-import { RootState } from "@/redux/store";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import TableSection from "@/components/commons/TableSection";
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
-interface FormData extends Omit<ImportOrderCreateRequest, 'dateReceived' | 'timeReceived'> {
-  dateReceived: string;
-  timeReceived: string;
-  status: ImportStatus;
-}
-
-interface ExcelItemContent {
+// Use ImportOrderCreateRequest directly for form state
+// Unified Excel item type
+interface ExcelDetailItem {
   itemId: number;
   plannedQuantity: number;
+  providerId: number;
 }
 
 interface TablePagination {
@@ -53,16 +49,33 @@ function excelTimeToHM(serial: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
+import EditableImportOrderTableSection, { ImportOrderDetailRow, ProviderOption } from "@/components/import-flow/EditableImportOrderTableSection";
+
 const ImportOrderCreate = () => {
+  const { getAllProviders } = useProviderService();
+  const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
   const navigate = useNavigate();
-  const user = useSelector((state: RootState) => state.user);
   const { getConfiguration } = useConfigurationService();
   const [configuration, setConfiguration] = useState<{ createRequestTimeAtLeast: string } | null>(null);
   const [defaultDateTime, setDefaultDateTime] = useState<{ date: string; time: string }>({
     date: "",
     time: ""
   });
+  const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
+  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
+
+  // Step state: 0 = upload/edit, 1 = confirm
+  const [step, setStep] = useState<number>(0);
+  // Remove status from form state, handle only in backend if needed
+
+  // Editable table data for step 1
+  const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]); // No change needed here, still use ImportOrderDetailRow
+  const [excelImported, setExcelImported] = useState<boolean>(false);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+  const [uploadedExcelItems, setUploadedExcelItems] = useState<ExcelDetailItem[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getDefaultDateTime = useCallback(() => {
     const now = dayjs();
@@ -73,6 +86,21 @@ const ImportOrderCreate = () => {
       time: defaultTime.format("HH:mm")
     };
   }, [configuration]);
+
+  // Fetch providers on mount
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const response = await getAllProviders(1, 1000);;
+        if (response && response.content) {
+          setProviders(response.content);
+        }
+      } catch (error) {
+        console.error("Error fetching providers:", error);
+      }
+    };
+    fetchProviders();
+  }, []);
 
   useEffect(() => {
     const fetchConfiguration = async () => {
@@ -104,35 +132,26 @@ const ImportOrderCreate = () => {
     }
   }, [defaultDateTime]);
 
-  const [importRequests, setImportRequests] = useState<ImportRequestResponse[]>([]);
-  const [selectedImportRequest, setSelectedImportRequest] = useState<number | null>(null);
-  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
-  const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [uploadedExcelItems, setUploadedExcelItems] = useState<ExcelItemContent[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [pagination, setPagination] = useState<TablePagination>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ImportOrderCreateRequest & { providerId: number | null }>({
     importRequestId: null,
     accountId: null,
     dateReceived: defaultDateTime.date,
     timeReceived: defaultDateTime.time,
     note: "",
-    status: ImportStatus.NOT_STARTED
+    providerId: null
   });
 
   const [showFormFields, setShowFormFields] = useState<boolean>(false);
 
   const {
     loading: importRequestLoading,
-    getAllImportRequests,
+    getImportRequestById,
   } = useImportRequestService();
 
   const {
@@ -147,47 +166,54 @@ const ImportOrderCreate = () => {
 
   const {
     loading: importOrderDetailLoading,
-    createImportOrderDetails: uploadImportOrderDetail
+    createImportOrderDetails
   } = useImportOrderDetailService();
 
   useEffect(() => {
-    const fetchImportRequests = async () => {
+    const fetchImportRequest = async () => {
       try {
-        const response = await getAllImportRequests();
+        const response = await getImportRequestById(Number(paramImportRequestId));
         if (response?.content) {
-          setImportRequests(response.content);
-
-          if (paramImportRequestId) {
-            const importRequestIdNum = Number(paramImportRequestId);
-            setSelectedImportRequest(importRequestIdNum);
-            setFormData(prev => ({
-              ...prev,
-              importRequestId: importRequestIdNum
-            }))
-          }
+          setImportRequest(response.content);
+          const importRequestIdNum = Number(paramImportRequestId);
+          setFormData(prev => ({
+            ...prev,
+            importRequestId: importRequestIdNum
+          }))
         }
       } catch (error) {
         console.error("Error fetching import requests:", error);
       }
     };
 
-    fetchImportRequests();
+    fetchImportRequest();
   }, [paramImportRequestId]);
 
   useEffect(() => {
-    if (selectedImportRequest) {
-      fetchImportRequestDetails();
+    fetchImportRequestDetails();
+  }, [pagination.current, pagination.pageSize]);
+
+  // Khi fetch xong chi tiết phiếu nhập, khởi tạo editableRows nếu chưa import Excel
+  useEffect(() => {
+    if (importRequestDetails.length && !excelImported) {
+      setEditableRows(importRequestDetails.map(row => ({
+        itemId: row.itemId,
+        itemName: row.itemName,
+        expectQuantity: row.expectQuantity,
+        orderedQuantity: row.orderedQuantity,
+        plannedQuantity: 0,
+        providerId: importRequest?.providerId || 0,
+        correctProviderId: importRequest?.providerId || 0,
+      })));
     }
-  }, [selectedImportRequest, pagination.current, pagination.pageSize]);
+  }, [importRequestDetails, importRequest, excelImported]);
 
   const fetchImportRequestDetails = useCallback(async () => {
-    if (!selectedImportRequest) return;
-
     try {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
       const response = await getImportRequestDetails(
-        selectedImportRequest,
+        Number(paramImportRequestId),
         current,
         pageSize
       );
@@ -203,9 +229,9 @@ const ImportOrderCreate = () => {
         if (response.metaDataDTO) {
           setPagination(prev => ({
             ...prev,
-            current: response.metaDataDTO.page,
-            pageSize: response.metaDataDTO.limit,
-            total: response.metaDataDTO.total,
+            current: response.metaDataDTO?.page || 1,
+            pageSize: response.metaDataDTO?.limit || 10,
+            total: response.metaDataDTO?.total || 0,
           }));
         }
       }
@@ -215,7 +241,7 @@ const ImportOrderCreate = () => {
     } finally {
       setDetailsLoading(false);
     }
-  }, [selectedImportRequest, pagination.current, pagination.pageSize, getImportRequestDetails]);
+  }, [paramImportRequestId, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
   const validateDateTime = (date: string, time: string) => {
     const selectedDateTime = dayjs(`${date} ${time}`);
@@ -253,7 +279,12 @@ const ImportOrderCreate = () => {
       toast.error(`Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất ${hours} giờ`);
       return;
     }
+    if (!uploadedExcelItems.length) {
+      toast.error("Vui lòng tải lên file Excel hợp lệ trước khi xác nhận");
+      return;
+    }
     try {
+      // 1. Tạo đơn nhập
       const createOrderRequest: ImportOrderCreateRequest = {
         importRequestId: formData.importRequestId,
         accountId: formData.accountId,
@@ -263,44 +294,61 @@ const ImportOrderCreate = () => {
       };
       const response = await createImportOrder(createOrderRequest);
       if (response?.content) {
-        if (excelFile) {
-          // Use the original Excel file instead of creating a new one
-          await uploadImportOrderDetail(excelFile, response.content.importOrderId);
-        }
-        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(selectedImportRequest.toString()));
+        // 2. Chỉ gửi các itemId có trong phiếu nhập
+        const validItemIds = importRequestDetails.map(row => row.itemId);
+        const filteredItems = uploadedExcelItems.filter(item => validItemIds.includes(item.itemId));
+        const importOrderItems = filteredItems.map(item => ({
+          itemId: item.itemId,
+          quantity: item.plannedQuantity
+        }));
+        await createImportOrderDetails(
+          { providerId: formData.providerId!, importOrderItems },
+          response.content.importOrderId
+        );
+        // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
+        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(paramImportRequestId));
       }
     } catch (error) {
+      toast.error("Đã xảy ra lỗi khi tạo đơn nhập hoặc chi tiết đơn nhập");
       console.error("Error submitting form:", error);
     }
   };
 
   const downloadTemplate = () => {
-    const template = [
-      {
-        "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)",
-        "dateReceived": "Ngày nhận (DD/MM/YY)",
-        "timeReceived": "Giờ nhận (HH:MM)",
-        "note": "Ghi chú"
-      }
-    ];
-    const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
+
+    const ws: { [key: string]: any } = {};
+
+    ws["A1"] = { v: "dateReceived", t: "s" };
+    ws["B1"] = { v: "2025-04-30", t: "d" };
+
+    ws["A2"] = { v: "timeReceived", t: "s" };
+    ws["A2"] = { v: "timeReceived", t: "s" };
+    // Giá trị mẫu: 08:30 (Excel lưu time tốt nhất ở dạng text, hoặc số thập phân phần lẻ của ngày)
+    ws["B2"] = { v: "08:30", t: "s" };
+
+    // Dòng 3: note
+    ws["A3"] = { v: "note", t: "s" };
+    ws["B3"] = { v: "", t: "s" };
+
+    // Dòng 5: header bảng hàng hóa
+    ws["A5"] = { v: "itemId", t: "s" };
+    ws["B5"] = { v: "quantity", t: "s" };
+    ws["C5"] = { v: "providerId", t: "s" };
+
+    ws["!ref"] = "A1:C5";
+    ws["!cols"] = [
+      { wpx: 90 }, { wpx: 100 }, { wpx: 100 }
+    ];
+
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "import_order_template.xlsx");
-  };
-
-  const getExcelFieldValue = (row: Record<string, any>, possibleNames: string[]): any => {
-    for (const name of possibleNames) {
-      if (name in row) return row[name];
-    }
-    return null;
   };
 
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) return;
-    setExcelFile(uploadedFile);
+
     setFileName(uploadedFile.name);
     const reader = new FileReader();
     reader.onload = (event: ProgressEvent<FileReader>) => {
@@ -309,81 +357,101 @@ const ImportOrderCreate = () => {
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(ws);
-          if (jsonData.length === 0) {
-            toast.error("File Excel không có dữ liệu");
-            return;
-          }
-
-          // Get the first row of the Excel file
-          const firstRow = jsonData[0] as Record<string, any>;
-
-          // Check for item and quantity fields
-          const hasItemId = 'itemId' in firstRow || 'Mã hàng' in firstRow;
-          const hasQuantity = 'quantity' in firstRow || 'Số lượng' in firstRow;
-          if (!hasItemId || !hasQuantity) {
-            toast.error("File Excel phải có cột 'itemId'/'Mã hàng' và 'quantity'/'Số lượng'");
-            return;
-          }
-
-          // Extract date, time, and note from the first row (handle Excel serial numbers)
-          const dateFieldRaw = getExcelFieldValue(firstRow, ['dateReceived', 'Ngày nhận', 'ngày nhận', 'Ngay nhan']);
-          const timeFieldRaw = getExcelFieldValue(firstRow, ['timeReceived', 'Giờ nhận', 'giờ nhận', 'Gio nhan']);
-          const noteField = getExcelFieldValue(firstRow, ['note', 'Ghi chú', 'ghi chú', 'Ghi chu']);
-
-          let dateField = dateFieldRaw;
-          if (typeof dateFieldRaw === 'number') {
-            dateField = excelDateToYMD(dateFieldRaw);
-          }
-
-          let timeField = timeFieldRaw;
-          if (typeof timeFieldRaw === 'number') {
-            timeField = excelTimeToHM(timeFieldRaw);
-          }
-
-          setFormData(prev => ({
-            ...prev,
-            dateReceived: dateField || prev.dateReceived,
-            timeReceived: timeField || prev.timeReceived,
-            note: noteField ? noteField.toString() : prev.note
-          }));
-
-          // Show form fields after Excel upload
-          setShowFormFields(true);
-
-          // Process item details from Excel
-          const excelDetails = jsonData.map((row: Record<string, any>) => ({
-            itemId: Number(row.itemId || row['Mã hàng']),
-            plannedQuantity: Number(row.quantity || row['Số lượng'])
-          }));
-          const validExcelDetails = excelDetails.filter(ed =>
-            importRequestDetails.some(ird => ird.itemId === ed.itemId)
-          );
-          if (validExcelDetails.length === 0) {
-            toast.warning("Không có mã hàng nào trong file Excel khớp với phiếu nhập");
-            setExcelFile(null);
+          // Read cells directly for new format
+          const getCell = (cell: string) => ws[cell]?.v;
+          // Get header fields
+          const dateReceived = getCell('B1');
+          const timeReceived = getCell('B2');
+          const note = getCell('B3');
+          // Validate header fields
+          if (!dateReceived || !timeReceived) {
+            toast.error("File Excel phải có đủ thông tin ngày nhận và giờ nhận ở B1, B2");
             setFileName("");
             return;
           }
-          setUploadedExcelItems(validExcelDetails);
-          toast.success(`Đã cập nhật số lượng dự tính cho ${validExcelDetails.length} mã hàng từ file Excel`);
+          setFormData(prev => ({
+            ...prev,
+            dateReceived: typeof dateReceived === 'number' ? excelDateToYMD(dateReceived) : dateReceived,
+            timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
+            note: note ? note.toString() : prev.note
+          }));
+          setShowFormFields(true);
+          // Find where the item table starts (row 5: headers)
+          // Get the range of the sheet
+          if (!ws['!ref']) {
+            toast.error("Không tìm thấy dữ liệu bảng trong file Excel (thiếu !ref).");
+            setFileName("");
+            return;
+          }
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          // Find headers in row 5
+          const headers = [getCell('A5'), getCell('B5'), getCell('C5')];
+          if (headers[0] !== 'itemId' || headers[1] !== 'quantity' || headers[2] !== 'providerId') {
+            toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity, providerId");
+            setFileName("");
+            return;
+          }
+          // Parse data from row 6 onwards
+          const excelDetails: { itemId: number, quantity: number, providerId: number }[] = [];
+          for (let row = 6; row <= range.e.r + 1; row++) {
+            const itemId = getCell(`A${row}`);
+            const quantity = getCell(`B${row}`);
+            const providerId = getCell(`C${row}`);
+            if (itemId && quantity && providerId) {
+              excelDetails.push({
+                itemId: Number(itemId),
+                quantity: Number(quantity),
+                providerId: Number(providerId)
+              });
+            }
+          }
+          if (excelDetails.length === 0) {
+            toast.warning("Không có dữ liệu hàng hóa hợp lệ trong file Excel");
+            setFileName("");
+            return;
+          }
+          // Khi import file Excel, chỉ cập nhật plannedQuantity/providerId cho các itemId có trong Excel, giữ nguyên các dòng khác
+          const updatedRows = editableRows.map(row => {
+            const match = excelDetails.find(d => d.itemId === row.itemId);
+            if (match) {
+              return {
+                ...row,
+                plannedQuantity: match.quantity,
+                providerId: match.providerId,
+              };
+            }
+            return row;
+          });
+          setEditableRows(updatedRows);
+          setUploadedExcelItems(excelDetails.map(d => ({ itemId: d.itemId, plannedQuantity: d.quantity, providerId: d.providerId }))); // ExcelDetailItem
+          // Nếu excel có providerId, tự động set vào formData
+          if (excelDetails.length > 0 && excelDetails[0].providerId) {
+            setFormData(prev => ({ ...prev, providerId: excelDetails[0].providerId }));
+          }
+          setExcelImported(true);
+          toast.success(`Đã tải ${excelDetails.length} hàng hóa từ file Excel`);
         }
       } catch (error) {
         toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
-        setExcelFile(null);
         setFileName("");
       }
     };
     reader.readAsArrayBuffer(uploadedFile);
   };
 
+  // Validation for step 1
+  const isStep1Valid = editableRows.length > 0 && editableRows.every(row =>
+    row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
+    row.plannedQuantity > 0
+  ); // No change needed
+
   const columns = [
     {
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
+      align: "right" as const,
       render: (id: number) => `#${id}`,
-      align: "right" as const
     },
     {
       title: "Tên hàng",
@@ -404,60 +472,82 @@ const ImportOrderCreate = () => {
       align: "right" as const,
     },
     {
-      title: "Dự nhập của đơn này",
+      title: "Dự nhập đơn này",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
       align: "right" as const,
-      render: (_: any, record: ImportRequestDetailResponse) => {
-        const uploadedDetail = uploadedExcelItems.find(d => d.itemId === record.itemId);
-        const plannedQuantity = uploadedDetail
-          ? uploadedDetail.plannedQuantity
-          : "Chưa có";
-        return (
-          <span
-            className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block"
-          >
-            {plannedQuantity}
-          </span>
-        );
-      },
+      render: (_: any, record: ImportOrderDetailRow) => (
+        <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block" style={{ textAlign: 'right' }}>
+          {record.plannedQuantity}
+        </span>
+      ),
     },
-  ];
+  ]
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
 
   return (
-    <div className="container mx-auto p-5">
+    <div className="container mx-auto p-2">
       <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Tạo đơn nhập kho - {importRequests.find(request => request.importRequestId === selectedImportRequest)
-          ? `Phiếu nhập #${selectedImportRequest}`
+        <Title level={2}>Tạo đơn nhập kho - {importRequest
+          ? `Phiếu nhập #${importRequest.importRequestId}`
           : 'Chưa chọn phiếu nhập'}
         </Title>
       </div>
-      <div className="flex gap-6">
-        <Card title="Thông tin đơn nhập" className="w-3/10">
-          <Space direction="vertical" className="w-full">
-            {selectedImportRequest && (
-              <>
-                <ExcelUploadSection
-                  fileName={fileName}
-                  onFileChange={handleExcelUpload}
-                  onDownloadTemplate={downloadTemplate}
-                  fileInputRef={fileInputRef}
-                  buttonLabel="Tải lên file Excel"
-                />
-                <Alert
-                  description="Hệ thống sẽ bỏ qua các itemId (Mã hàng) không tồn tại trong phiếu nhập"
-                  type="info"
-                  showIcon
-                  className="!p-4"
-                />
-              </>
-            )}
 
-            {/* Show form fields only after Excel upload or when showFormFields is true */}
-            {showFormFields && (
-              <>
+      {/* Step 1: Upload Excel + Editable Table */}
+      {step === 0 && (
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-full">
+            <ExcelUploadSection
+              fileName={fileName}
+              onFileChange={handleExcelUpload}
+              onDownloadTemplate={downloadTemplate}
+              fileInputRef={fileInputRef}
+              buttonLabel="Tải lên file Excel"
+            />
+          </div>
+          <Alert
+            description="Hệ thống sẽ bỏ qua các itemId (Mã hàng) trong file Excel không tồn tại trong phiếu nhập"
+            type="info"
+            showIcon
+            style={{ width: 'fit-content', margin: '0 auto', padding: '12px' }}
+          />
+          <div className="w-full">
+            <EditableImportOrderTableSection
+              data={editableRows}
+              onChange={setEditableRows}
+              loading={detailsLoading}
+              title="Danh sách hàng hóa cần nhập"
+              emptyText="Chưa có dữ liệu từ file Excel"
+              excelImported={excelImported}
+            />
+          </div>
+          <Button
+            type="primary"
+            className="mt-2"
+            disabled={!isStep1Valid}
+            onClick={() => setStep(1)}
+          >
+            Tiếp tục nhập thông tin đơn nhập
+            <ArrowRightOutlined />
+          </Button>
+        </div>
+      )}
+
+      {/* Step 2: Show current form */}
+      {step === 1 && (
+        <div>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => setStep(0)}
+            type="primary"
+          >
+            Quay lại
+          </Button>
+          <div className="mt-4 flex gap-6">
+            <Card title="Thông tin đơn nhập" className="w-3/10">
+              <Space direction="vertical" className="w-full">
                 <div>
                   <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
                   <DatePicker
@@ -499,10 +589,34 @@ const ImportOrderCreate = () => {
                       return {};
                     }}
                   />
-                  <div className="text-sm text-red-500 mt-1">
+                  <div className="text-sm text-blue-500">
                     <InfoCircleOutlined className="mr-1" />
                     Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
                   </div>
+                </div>
+                <div className="my-2">
+                  <label className="block mb-1">Nhà cung cấp (theo PHIẾU NHẬP)</label>
+                  <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
+                    {importRequest?.providerId
+                      ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
+                      : "Chưa chọn"}
+                  </Typography.Text>
+                </div>
+                <div className="my-2">
+                  <label className="block mb-1">Nhà cung cấp (theo ĐƠN NHẬP) <span className="text-red-500">*</span></label>
+                  <Select
+                    className={`w-full ${formData.providerId !== importRequest?.providerId ? 'border-red-500' : ''}`}
+                    value={formData.providerId}
+                    onChange={(providerId: number) => setFormData({ ...formData, providerId })}
+                    options={providers.map(p => ({ value: p.id, label: p.name }))}
+                    placeholder="Chọn nhà cung cấp"
+                    showSearch
+                    optionFilterProp="label"
+                    status={formData.providerId !== importRequest?.providerId ? 'error' : undefined}
+                  />
+                  {formData.providerId !== importRequest?.providerId && (
+                    <div className="text-sm text-red-500 mt-1">Nhà cung cấp đơn nhập phải trùng với nhà cung cấp phiếu nhập.</div>
+                  )}
                 </div>
                 <div>
                   <label className="block mb-1">Ghi chú</label>
@@ -514,43 +628,31 @@ const ImportOrderCreate = () => {
                     className="w-full"
                   />
                 </div>
-              </>
-            )}
-
-            <Button
-              type="primary"
-              onClick={handleSubmit}
-              loading={loading}
-              className="w-full mt-4"
-              id="btn-detail"
-              disabled={!selectedImportRequest || !excelFile}
-            >
-              Xác nhận tạo đơn nhập
-            </Button>
-          </Space>
-        </Card>
-        <div className="w-7/10">
-          <TableSection
-            title={`Danh sách hàng hóa cần nhập - Phiếu nhập #${selectedImportRequest}`}
-            columns={columns}
-            data={importRequestDetails}
-            rowKey="importRequestDetailId"
-            loading={detailsLoading}
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-              showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50'],
-              showTotal: (total: number) => `Tổng cộng ${total} sản phẩm trong phiếu nhập`,
-              onChange: (page: number, pageSize: number) => setPagination(prev => ({ ...prev, current: page, pageSize })),
-            }}
-            emptyText={selectedImportRequest
-              ? "Không có dữ liệu chi tiết cho phiếu nhập này"
-              : "Vui lòng chọn phiếu nhập để xem chi tiết"}
-          />
+                <Button
+                  type="primary"
+                  onClick={handleSubmit}
+                  loading={loading}
+                  className="w-full mt-4"
+                  id="btn-detail"
+                  disabled={formData.providerId !== importRequest?.providerId}
+                >
+                  Xác nhận tạo đơn nhập
+                </Button>
+              </Space>
+            </Card>
+            <div className="w-7/10">
+              <TableSection
+                title="Danh sách hàng hóa cần nhập"
+                columns={columns}
+                data={editableRows}
+                rowKey="itemId"
+                loading={detailsLoading}
+                emptyText="Không có dữ liệu"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

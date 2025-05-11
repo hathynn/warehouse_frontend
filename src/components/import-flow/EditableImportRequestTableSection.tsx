@@ -33,6 +33,8 @@ interface EditableImportRequestTableSectionProps {
   alertNode?: React.ReactNode;
   emptyText?: React.ReactNode;
   title?: string;
+  pagination?: any;
+  onChangePage?: (pagination: any) => void;
 }
 
 const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSectionProps> = ({
@@ -43,7 +45,9 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
   loading = false,
   alertNode,
   emptyText,
-  title = "Chi tiết hàng hóa từ file Excel"
+  title = "Danh sách hàng hóa từ file Excel",
+  pagination,
+  onChangePage
 }) => {
   const handleCellChange = (value: any, record: ImportRequestDetailRow, field: keyof ImportRequestDetailRow) => {
     setData(
@@ -184,7 +188,8 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
         dataSource={data}
         rowKey={(record, index) => index as number}
         loading={loading}
-        pagination={false}
+        pagination={pagination || false}
+        onChange={pagination && onChangePage ? (pagination) => onChangePage(pagination) : undefined}
         className="custom-table"
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}
       />

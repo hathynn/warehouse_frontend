@@ -33,11 +33,8 @@ interface FormData {
   exportRequestId: number | null;
 }
 
-const STEP_IMPORT_EXCEL = 0;
-const STEP_IMPORT_REQUEST_INFO = 1;
-
 const ImportRequestCreate: React.FC = () => {
-  const [step, setStep] = useState<number>(STEP_IMPORT_EXCEL);
+  const [step, setStep] = useState<number>(0);
   const [data, setData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
@@ -51,6 +48,25 @@ const ImportRequestCreate: React.FC = () => {
   const [validationError, setValidationError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  // Handler for page change
+  const handleChangePage = (paginationObj: any) => {
+    setPagination(prev => ({
+      ...prev,
+      current: paginationObj.current,
+      pageSize: paginationObj.pageSize || prev.pageSize,
+    }));
+    // Nếu có API backend cho phân trang, gọi lại API ở đây
+    // fetchImportRequestDetails(paginationObj.current, paginationObj.pageSize)
+  };
+
 
   const {
     loading: importLoading,
@@ -235,10 +251,10 @@ const columns = [
   const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-2">
       <Title level={2}>Tạo phiếu nhập kho</Title>
 
-      {step === STEP_IMPORT_EXCEL && (
+      {step === 0 && (
         <div className="mt-4 flex flex-col items-center gap-6">
           <div className="w-full">
             <ExcelUploadSection
@@ -249,7 +265,7 @@ const columns = [
               buttonLabel="Tải lên file Excel"
             />
             <EditableImportRequestTableSection
-              data={data}
+              data={data.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize)}
               setData={setData}
               items={items}
               providers={providers}
@@ -270,12 +286,19 @@ const columns = [
                 />
               ) : null}
               emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
-              title="Chi tiết hàng hóa từ file Excel"
+              title="Danh sách hàng hóa từ file Excel"
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: data.length,
+                showSizeChanger: true
+              }}
+              onChangePage={handleChangePage}
             />
           </div>
           <Button
             type="primary"
-            onClick={() => setStep(STEP_IMPORT_REQUEST_INFO)}
+            onClick={() => setStep(1)}
             disabled={data.length === 0 || !!validationError}
           >
             Tiếp tục nhập thông tin phiếu nhập
@@ -283,15 +306,16 @@ const columns = [
           </Button>
         </div>
       )}
-      {step === STEP_IMPORT_REQUEST_INFO && (
+      {step === 1 && (
         <div>
           <Button
             icon={<ArrowLeftOutlined />}
-            onClick={() => setStep(STEP_IMPORT_EXCEL)}
+            onClick={() => setStep(0)}
+            type="primary"
           >
             Quay lại
           </Button>
-          <div className="mt-6 flex gap-6">
+          <div className="mt-4 flex gap-6">
             <Card title="Thông tin phiếu nhập" className="w-3/10">
               <Space direction="vertical" className="w-full">
                 <div>
@@ -336,7 +360,7 @@ const columns = [
             </Card>
             <div className="w-7/10">
               <TableSection
-                title="Chi tiết hàng hóa từ file Excel"
+                title="Danh sách hàng hóa từ file Excel"
                 columns={columns}
                 data={data}
                 rowKey={(record, index) => index}

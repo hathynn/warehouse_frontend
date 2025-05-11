@@ -13,7 +13,7 @@ import { UserState } from "@/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";
 
-interface RouteParams extends Record<string, string> {
+interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
 }
 interface ImportOrderData extends ImportOrderResponse {
@@ -151,6 +151,7 @@ const ImportOrderList: React.FC = () => {
       title: "Tổng đã lên đơn",
       dataIndex: "totalExpectQuantityInOrder",
       key: "totalExpectQuantityInOrder",
+      align: "right" as const,
       render: (expect: number) => (
         <div className="text-right text-lg">{expect}</div>
       ),
@@ -159,6 +160,7 @@ const ImportOrderList: React.FC = () => {
       title: "Tổng đã nhập",
       dataIndex: "totalActualQuantityInOrder",
       key: "totalActualQuantityInOrder",
+      align: "right" as const,
       render: (actual: number, record: ImportOrderData) => {
         const expected = record.totalExpectQuantityInOrder || 0;
         const isEnough = actual >= expected;

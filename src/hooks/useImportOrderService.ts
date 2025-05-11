@@ -14,8 +14,8 @@ export enum ImportStatus {
 
 // Interface to match ImportOrderCreateRequest.java
 export interface ImportOrderCreateRequest {
-  importRequestId: number;
-  accountId: number;
+  importRequestId: number | null;
+  accountId: number | null;
   dateReceived: string;
   timeReceived: string;
   note?: string;
