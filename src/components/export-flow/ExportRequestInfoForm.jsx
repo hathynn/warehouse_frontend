@@ -4,7 +4,6 @@ import { Button, Space, Card } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import UseExportForm from "@/components/export-flow/UseExportForm";
 import LoanExportForm from "@/components/export-flow/LoanExportForm";
-import ExcelDataTable from "@/components/export-flow/ExcelDataTable";
 import SelectModal from "@/components/export-flow/SelectModal";
 import { Typography } from "antd";
 
@@ -73,7 +72,7 @@ const ExportRequestInfoForm = ({
       <div className="w-2/3">
         <Card title="Chi tiết hàng hóa từ file Excel">
           {mappedData.length > 0 ? (
-            <ExcelDataTable data={mappedData} />
+            <ExcelDataTableAfter data={mappedData} />
           ) : (
             <div className="text-center py-10 text-gray-500">
               Vui lòng tải lên file Excel để xem chi tiết hàng hóa
@@ -103,6 +102,7 @@ const ExportRequestInfoForm = ({
 );
 
 import PropTypes from "prop-types";
+import ExcelDataTableAfter from "./ExcelDataTableAfter";
 
 ExportRequestInfoForm.propTypes = {
   formData: PropTypes.shape({
