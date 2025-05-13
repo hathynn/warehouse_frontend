@@ -73,7 +73,7 @@ const ExportRequestList = () => {
       case "RETURN":
         return "Xuất trả nhà cung cấp";
       case "PRODUCTION":
-        return "Xuất sử dụng";
+        return "Xuất sản xuất";
       case "BORROWING":
         return "Xuất mượn";
       default:

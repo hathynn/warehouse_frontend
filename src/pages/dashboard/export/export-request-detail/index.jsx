@@ -338,9 +338,9 @@ const ExportRequestDetail = () => {
   const renderDescriptionItems = () => {
     if (!exportRequest) return null;
     const items = [
-      <Descriptions.Item label="Mã phiếu xuất" key="exportId">
-        #{exportRequest.exportRequestId}
-      </Descriptions.Item>,
+      // <Descriptions.Item label="Mã phiếu xuất" key="exportId">
+      //   #{exportRequest.exportRequestId}
+      // </Descriptions.Item>,
       <Descriptions.Item label="Trạng thái phiếu" key="status">
         <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
@@ -349,9 +349,9 @@ const ExportRequestDetail = () => {
           ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
           : "-"}
       </Descriptions.Item>,
-      <Descriptions.Item label="Người lập phiếu" key="createdBy">
-        {exportRequest.createdBy || "-"}
-      </Descriptions.Item>,
+      // <Descriptions.Item label="Người lập phiếu" key="createdBy">
+      //   {exportRequest.createdBy || "-"}
+      // </Descriptions.Item>,
     ];
 
     if (exportRequest.type === "PRODUCTION") {
@@ -362,14 +362,23 @@ const ExportRequestDetail = () => {
         // <Descriptions.Item label="Phòng ban" key="receivingDepartment">
         //   {exportRequest.departmentId || "-"}
         // </Descriptions.Item>,
-        <Descriptions.Item label="Lý do xuất" key="exportReason">
-          {exportRequest.exportReason || "-"}
+        <Descriptions.Item label="Người kiểm đếm" key="countingStaffId">
+          {assignedStaff?.fullName || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item
+          label="Người xác nhận hàng"
+          key="assignedWareHouseKeeperId"
+        >
+          {exportRequest.assignedWareHouseKeeperId || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
           {exportRequest.receiverName || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Số điện thoại nhận hàng" key="receiverPhone">
           {exportRequest.receiverPhone || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item label="Lý do xuất" key="exportReason">
+          {exportRequest.exportReason || "-"}
         </Descriptions.Item>
       );
     } else if (exportRequest.type === "BORROWING") {
