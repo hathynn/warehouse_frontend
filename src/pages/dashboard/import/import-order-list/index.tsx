@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Input, Tag, Spin, TablePaginationConfig } from "antd";
+import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
   ImportOrderResponse,
@@ -110,21 +111,6 @@ const ImportOrderList: React.FC = () => {
     });
   };
 
-  const getStatusTag = (status: ImportStatus): React.ReactNode => {
-    switch (status) {
-      case ImportStatus.NOT_STARTED:
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-      case ImportStatus.IN_PROGRESS:
-        return <Tag color="processing">Đang xử lý</Tag>;
-      case ImportStatus.COMPLETED:
-        return <Tag color="success">Hoàn tất</Tag>;
-      case ImportStatus.CANCELLED:
-        return <Tag color="error">Đã hủy</Tag>;
-      default:
-        return <Tag color="default">Chưa bắt đầu</Tag>;
-    }
-  };
-
   const filteredItems = importOrdersData.filter((item) =>
     item.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
     item.importRequestId.toString().includes(searchTerm.toLowerCase())
@@ -215,7 +201,7 @@ const ImportOrderList: React.FC = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      render: (status: ImportStatus) => getStatusTag(status),
+      render: (status: ImportStatus) => <StatusTag status={status} type="import" />,
     },
     {
       title: "Chi tiết",

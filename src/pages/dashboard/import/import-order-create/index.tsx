@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal } from "antd";
 import { useParams, useNavigate } from "react-router-dom";
-import useImportOrderService, { ImportOrderCreateRequest, ImportStatus } from "@/hooks/useImportOrderService";
+import useImportOrderService, { ImportOrderCreateRequest } from "@/hooks/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
@@ -14,12 +14,12 @@ import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import TableSection from "@/components/commons/TableSection";
+import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/EditableImportOrderTableSection";
+import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirmModal";
 
 const { Title } = Typography;
 const { TextArea } = Input;
 
-// Use ImportOrderCreateRequest directly for form state
-// Unified Excel item type
 interface ExcelDetailItem {
   itemId: number;
   plannedQuantity: number;
@@ -49,8 +49,6 @@ function excelTimeToHM(serial: number): string {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-import EditableImportOrderTableSection, { ImportOrderDetailRow, ProviderOption } from "@/components/import-flow/EditableImportOrderTableSection";
-
 const ImportOrderCreate = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const { getAllProviders } = useProviderService();
@@ -74,7 +72,6 @@ const ImportOrderCreate = () => {
   const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]); // No change needed here, still use ImportOrderDetailRow
   const [excelImported, setExcelImported] = useState<boolean>(false);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
-  const [uploadedExcelItems, setUploadedExcelItems] = useState<ExcelDetailItem[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -87,6 +84,42 @@ const ImportOrderCreate = () => {
       time: defaultTime.format("HH:mm")
     };
   }, [configuration]);
+
+  const [pagination, setPagination] = useState<TablePagination>({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  const [formData, setFormData] = useState<ImportOrderCreateRequest & { providerId: number | null }>({
+    importRequestId: null,
+    accountId: null,
+    dateReceived: defaultDateTime.date,
+    timeReceived: defaultDateTime.time,
+    note: "",
+    providerId: null
+  });
+
+  const {
+    loading: importRequestLoading,
+    getImportRequestById,
+  } = useImportRequestService();
+
+  const {
+    loading: importRequestDetailLoading,
+    getImportRequestDetails,
+  } = useImportRequestDetailService();
+
+  const {
+    loading: importOrderLoading,
+    createImportOrder,
+  } = useImportOrderService();
+
+  const {
+    loading: importOrderDetailLoading,
+    createImportOrderDetails
+  } = useImportOrderDetailService();
+
 
   // Fetch providers on mount
   useEffect(() => {
@@ -133,43 +166,6 @@ const ImportOrderCreate = () => {
     }
   }, [defaultDateTime]);
 
-  const [pagination, setPagination] = useState<TablePagination>({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-
-  const [formData, setFormData] = useState<ImportOrderCreateRequest & { providerId: number | null }>({
-    importRequestId: null,
-    accountId: null,
-    dateReceived: defaultDateTime.date,
-    timeReceived: defaultDateTime.time,
-    note: "",
-    providerId: null
-  });
-
-  const [showFormFields, setShowFormFields] = useState<boolean>(false);
-
-  const {
-    loading: importRequestLoading,
-    getImportRequestById,
-  } = useImportRequestService();
-
-  const {
-    loading: importRequestDetailLoading,
-    getImportRequestDetails,
-  } = useImportRequestDetailService();
-
-  const {
-    loading: importOrderLoading,
-    createImportOrder,
-  } = useImportOrderService();
-
-  const {
-    loading: importOrderDetailLoading,
-    createImportOrderDetails
-  } = useImportOrderDetailService();
-
   useEffect(() => {
     const fetchImportRequest = async () => {
       try {
@@ -179,7 +175,8 @@ const ImportOrderCreate = () => {
           const importRequestIdNum = Number(paramImportRequestId);
           setFormData(prev => ({
             ...prev,
-            importRequestId: importRequestIdNum
+            importRequestId: importRequestIdNum,
+            providerId: response.content.providerId
           }))
         }
       } catch (error) {
@@ -197,15 +194,19 @@ const ImportOrderCreate = () => {
   // Khi fetch xong chi tiết phiếu nhập, khởi tạo editableRows nếu chưa import Excel
   useEffect(() => {
     if (importRequestDetails.length && !excelImported) {
-      setEditableRows(importRequestDetails.map(row => ({
-        itemId: row.itemId,
-        itemName: row.itemName,
-        expectQuantity: row.expectQuantity,
-        orderedQuantity: row.orderedQuantity,
-        plannedQuantity: 0,
-        providerId: importRequest?.providerId || 0,
-        correctProviderId: importRequest?.providerId || 0,
-      })));
+      setEditableRows(
+        importRequestDetails
+          .filter(row => row.expectQuantity !== row.orderedQuantity)
+          .map(row => ({
+            itemId: row.itemId,
+            itemName: row.itemName,
+            expectQuantity: row.expectQuantity,
+            orderedQuantity: row.orderedQuantity,
+            plannedQuantity: row.expectQuantity - row.orderedQuantity,
+            importRequestProviderId: importRequest?.providerId || 0,
+            importOrderProviderId: importRequest?.providerId || 0,
+          }))
+      );
     }
   }, [importRequestDetails, importRequest, excelImported]);
 
@@ -280,10 +281,6 @@ const ImportOrderCreate = () => {
       toast.error(`Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất ${hours} giờ`);
       return;
     }
-    if (!uploadedExcelItems.length) {
-      toast.error("Vui lòng tải lên file Excel hợp lệ trước khi xác nhận");
-      return;
-    }
     try {
       // 1. Tạo đơn nhập
       const createOrderRequest: ImportOrderCreateRequest = {
@@ -296,11 +293,10 @@ const ImportOrderCreate = () => {
       const response = await createImportOrder(createOrderRequest);
       if (response?.content) {
         // 2. Chỉ gửi các itemId có trong phiếu nhập
-        const validItemIds = importRequestDetails.map(row => row.itemId);
-        const filteredItems = uploadedExcelItems.filter(item => validItemIds.includes(item.itemId));
-        const importOrderItems = filteredItems.map(item => ({
-          itemId: item.itemId,
-          quantity: item.plannedQuantity
+        const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
+        const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
+          itemId: row.itemId,
+          quantity: row.plannedQuantity
         }));
         await createImportOrderDetails(
           { providerId: formData.providerId!, importOrderItems },
@@ -376,7 +372,6 @@ const ImportOrderCreate = () => {
             timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
             note: note ? note.toString() : prev.note
           }));
-          setShowFormFields(true);
           // Find where the item table starts (row 5: headers)
           // Get the range of the sheet
           if (!ws['!ref']) {
@@ -424,7 +419,6 @@ const ImportOrderCreate = () => {
             return row;
           });
           setEditableRows(updatedRows);
-          setUploadedExcelItems(excelDetails.map(d => ({ itemId: d.itemId, plannedQuantity: d.quantity, providerId: d.providerId }))); // ExcelDetailItem
           // Nếu excel có providerId, tự động set vào formData
           if (excelDetails.length > 0 && excelDetails[0].providerId) {
             setFormData(prev => ({ ...prev, providerId: excelDetails[0].providerId }));
@@ -603,22 +597,24 @@ const ImportOrderCreate = () => {
                       : "Chưa chọn"}
                   </Typography.Text>
                 </div>
-                <div className="my-2">
-                  <label className="block mb-1">Nhà cung cấp (theo ĐƠN NHẬP) <span className="text-red-500">*</span></label>
-                  <Select
-                    className={`w-full ${formData.providerId !== importRequest?.providerId ? 'border-red-500' : ''}`}
-                    value={formData.providerId}
-                    onChange={(providerId: number) => setFormData({ ...formData, providerId })}
-                    options={providers.map(p => ({ value: p.id, label: p.name }))}
-                    placeholder="Chọn nhà cung cấp"
-                    showSearch
-                    optionFilterProp="label"
-                    status={formData.providerId !== importRequest?.providerId ? 'error' : undefined}
-                  />
-                  {formData.providerId !== importRequest?.providerId && (
-                    <div className="text-sm text-red-500 mt-1">Nhà cung cấp đơn nhập phải trùng với nhà cung cấp phiếu nhập.</div>
-                  )}
-                </div>
+                {excelImported && (
+                  <div className="my-2">
+                    <label className="block mb-1">Nhà cung cấp (theo ĐƠN NHẬP) <span className="text-red-500">*</span></label>
+                    <Select
+                      className={`w-full ${formData.providerId !== importRequest?.providerId ? 'border-red-500' : ''}`}
+                      value={formData.providerId}
+                      onChange={(providerId: number) => setFormData({ ...formData, providerId })}
+                      options={providers.map(p => ({ value: p.id, label: p.name }))}
+                      placeholder="Chọn nhà cung cấp"
+                      showSearch
+                      optionFilterProp="label"
+                      status={formData.providerId !== importRequest?.providerId ? 'error' : undefined}
+                    />
+                    {formData.providerId !== importRequest?.providerId && (
+                      <div className="text-sm text-red-500 mt-1">Nhà cung cấp đơn nhập phải trùng với nhà cung cấp phiếu nhập.</div>
+                    )}
+                  </div>
+                )}
                 <div>
                   <label className="block mb-1">Ghi chú</label>
                   <TextArea
@@ -637,20 +633,8 @@ const ImportOrderCreate = () => {
                   id="btn-detail"
                   disabled={formData.providerId !== importRequest?.providerId}
                 >
-                  Xác nhận tạo đơn nhập
+                  Xác nhận thông tin  
                 </Button>
-                <Modal
-                  title="Xác nhận tạo đơn nhập"
-                  open={showConfirmModal}
-                  onOk={handleSubmit}
-                  onCancel={() => setShowConfirmModal(false)}
-                  okText="Xác nhận"
-                  cancelText="Hủy"
-                  confirmLoading={loading}
-                  maskClosable={false}
-                >
-                  Bạn có chắc chắn muốn tạo đơn nhập này không?
-                </Modal>
               </Space>
             </Card>
             <div className="w-7/10">
@@ -666,6 +650,16 @@ const ImportOrderCreate = () => {
           </div>
         </div>
       )}
+      <ImportOrderConfirmModal
+        open={showConfirmModal}
+        onOk={handleSubmit}
+        onCancel={() => setShowConfirmModal(false)}
+        confirmLoading={loading}
+        formData={formData}
+        details={editableRows}
+        providers={providers.reduce((acc, p) => ({ ...acc, [p.id]: p.name }), {})}
+        importRequestProvider={providers.find(p => p.id === importRequest?.providerId)?.name}
+      />
     </div>
   );
 };

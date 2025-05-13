@@ -8,8 +8,8 @@ export interface ImportOrderDetailRow {
   expectQuantity: number;
   orderedQuantity: number;
   plannedQuantity: number;
-  providerId: number;
-  correctProviderId: number;
+  importRequestProviderId: number;
+  importOrderProviderId: number;
 }
 
 export interface ProviderOption {

@@ -39,11 +39,11 @@ import { AccountRole } from "@/constants/account-roles";
 
 const ImportOrderDetail = () => {
   // Modal xác nhận kiểm đếm
-  const [confirmCompleteModalVisible, setConfirmCompleteModalVisible] = useState(false);
-  const [confirmCompleteChecked, setConfirmCompleteChecked] = useState(false);
+  const [confirmCountingModalVisible, setConfirmCountingModalVisible] = useState(false);
+  const [confirmCountingResponsibilityChecked, setConfirmCountingResponsibilityChecked] = useState(false);
   // Modal xác nhận hủy đơn nhập
-  const [confirmCancelModalVisible, setConfirmCancelModalVisible] = useState(false);
-  const [confirmCancelChecked, setConfirmCancelChecked] = useState(false);
+  const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
+  const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
   const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
 
@@ -154,7 +154,7 @@ const ImportOrderDetail = () => {
   const fetchAssignedStaff = useCallback(async () => {
     if (!importOrderId) return;
     try {
-      const response = await findAccountById(importOrder?.assignedStaffId);
+      const response = await findAccountById(importOrder?.assignedStaffId!);
       setAssignedStaff(response);
     } catch (error) {
       console.error("Failed to fetch assigned staff:", error);
@@ -340,6 +340,11 @@ const ImportOrderDetail = () => {
         remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00", defaultWorkingMinutes)
       }))
       .filter(staff => {
+        // Filter out already assigned staff
+        if (staff.id === importOrder?.assignedStaffId) {
+          return false;
+        }
+        
         const searchLower = searchText.toLowerCase();
         return (
           staff.fullName.toLowerCase().includes(searchLower) ||
@@ -530,24 +535,24 @@ const ImportOrderDetail = () => {
                   <Button
                     danger
                     type="primary"
-                    onClick={() => setConfirmCancelModalVisible(true)}
+                    onClick={() => setCancelImportOrderModalVisible(true)}
                     loading={cancelling}
                   >
                     Hủy đơn nhập
                   </Button><Modal
                     title="Xác nhận hủy đơn nhập"
-                    open={confirmCancelModalVisible}
-                    onOk={() => { setConfirmCancelModalVisible(false); setConfirmCancelChecked(false); handleShowCancelModal(); }}
-                    onCancel={() => { setConfirmCancelModalVisible(false); setConfirmCancelChecked(false); }}
+                    open={cancelImportOrderModalVisible}
+                    onOk={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); handleShowCancelModal(); }}
+                    onCancel={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); }}
                     okText="Tôi xác nhận hủy đơn nhập"
                     cancelText="Hủy"
-                    okButtonProps={{ disabled: !confirmCancelChecked, danger: true }}
+                    okButtonProps={{ disabled: !cancelImportOrderResponsibilityChecked, danger: true }}
                     maskClosable={false}
                   >
-                    <Checkbox checked={confirmCancelChecked} onChange={e => setConfirmCancelChecked(e.target.checked)}>
+                    <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
                       Tôi sẵn sàng chịu trách nhiệm về quyết định hủy đơn nhập này.
                     </Checkbox>
-                    <div className="mt-2 text-red-500">
+                    <div className="text-red-500">
                       Hành động này không thể hoàn tác!
                     </div>
                   </Modal>
@@ -576,16 +581,16 @@ const ImportOrderDetail = () => {
               danger
               type="primary"
               loading={completing}
-              onClick={() => setConfirmCompleteModalVisible(true)}
+              onClick={() => setConfirmCountingModalVisible(true)}
             >
               Xác nhận kiểm đếm
             </Button>
             <Modal
               title="Xác nhận kiểm đếm"
-              open={confirmCompleteModalVisible}
+              open={confirmCountingModalVisible}
               onOk={async () => {
-                setConfirmCompleteModalVisible(false);
-                setConfirmCompleteChecked(false);
+                setConfirmCountingModalVisible(false);
+                setConfirmCountingResponsibilityChecked(false);
                 if (!importOrder?.importOrderId) return;
                 setCompleting(true);
                 try {
@@ -597,16 +602,16 @@ const ImportOrderDetail = () => {
                   setCompleting(false);
                 }
               }}
-              onCancel={() => { setConfirmCompleteModalVisible(false); setConfirmCompleteChecked(false); }}
+              onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
               okText="Tôi xác nhận kiểm đếm"
               cancelText="Hủy"
-              okButtonProps={{ disabled: !confirmCompleteChecked, danger: true }}
+              okButtonProps={{ disabled: !confirmCountingResponsibilityChecked, danger: true }}
               maskClosable={false}
             >
-              <Checkbox checked={confirmCompleteChecked} onChange={e => setConfirmCompleteChecked(e.target.checked)}>
+              <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
                 Tôi sẵn sàng chịu trách nhiệm về quyết định xác nhận kiểm đếm này.
               </Checkbox>
-              <div className="mt-2 text-red-500">
+              <div className="text-red-500">
                 Vui lòng kiểm tra kỹ trước khi xác nhận!
               </div>
             </Modal>
@@ -699,12 +704,10 @@ const ImportOrderDetail = () => {
                 pagination={false}
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
                 onRow={(record) => ({
-                  onClick: () => record.id !== importOrder?.assignedStaffId && handleSelectStaff(record.id),
+                  onClick: () => handleSelectStaff(record.id),
                   className: selectedStaffId === record.id
                     ? '!bg-blue-100'
-                    : record.id === importOrder?.assignedStaffId
-                      ? '!opacity-50 !cursor-not-allowed'
-                      : ''
+                    : ''
                 })}
                 columns={[
                   {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert, Modal } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert } from "antd";
+import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
@@ -180,10 +181,6 @@ const ImportRequestCreate: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formData.importReason) {
-      toast.error("Vui lòng nhập lý do nhập kho");
-      return;
-    }
     if (!file || data.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
       return;
@@ -214,40 +211,40 @@ const ImportRequestCreate: React.FC = () => {
   };
 
   // --- columns readonly cho TableSection (không render input/dropdown) ---
-const columns = [
-  {
-    title: <span className="font-semibold">Tên hàng</span>,
-    dataIndex: "itemName",
-    key: "itemName",
-    width: "25%",
-  },
-  {
-    title: <span className="font-semibold">Số lượng</span>,
-    dataIndex: "quantity",
-    key: "quantity",
-    align: "right" as const,
-    width: "15%",
-  },
-  {
-    title: <span className="font-semibold">Giá trị đo lường</span>,
-    dataIndex: "totalMeasurementValue",
-    key: "totalMeasurementValue",
-    align: "right" as const,
-    width: "15%",
-  },
-  {
-    title: <span className="font-semibold">Đơn vị tính</span>,
-    dataIndex: "measurementUnit",
-    key: "measurementUnit",
-    width: "10%",
-  },
-  {
-    title: <span className="font-semibold">Nhà cung cấp</span>,
-    dataIndex: "providerName",
-    key: "providerName",
-    width: "35%",
-  },
-];
+  const columns = [
+    {
+      title: <span className="font-semibold">Tên hàng</span>,
+      dataIndex: "itemName",
+      key: "itemName",
+      width: "25%",
+    },
+    {
+      title: <span className="font-semibold">Số lượng</span>,
+      dataIndex: "quantity",
+      key: "quantity",
+      align: "right" as const,
+      width: "15%",
+    },
+    {
+      title: <span className="font-semibold">Giá trị đo lường</span>,
+      dataIndex: "totalMeasurementValue",
+      key: "totalMeasurementValue",
+      align: "right" as const,
+      width: "15%",
+    },
+    {
+      title: <span className="font-semibold">Đơn vị tính</span>,
+      dataIndex: "measurementUnit",
+      key: "measurementUnit",
+      width: "10%",
+    },
+    {
+      title: <span className="font-semibold">Nhà cung cấp</span>,
+      dataIndex: "providerName",
+      key: "providerName",
+      width: "35%",
+    },
+  ];
 
   const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
@@ -353,22 +350,10 @@ const columns = [
                   loading={loading}
                   className="w-full mt-4"
                   id="btn-detail"
-                  disabled={data.length === 0 || !!validationError}
+                  disabled={data.length === 0 || !!validationError || !formData.importReason}
                 >
-                  Xác nhận tạo phiếu
+                  Xác nhận thông tin
                 </Button>
-                <Modal
-                  title="Xác nhận tạo phiếu nhập"
-                  open={showConfirmModal}
-                  onOk={handleSubmit}
-                  onCancel={() => setShowConfirmModal(false)}
-                  okText="Xác nhận"
-                  cancelText="Hủy"
-                  confirmLoading={loading}
-                  maskClosable={false}
-                >
-                  Bạn có chắc chắn muốn tạo phiếu nhập này không?
-                </Modal>
               </Space>
             </Card>
             <div className="w-7/10">
@@ -400,6 +385,15 @@ const columns = [
         </div>
 
       )}
+      <ImportRequestConfirmModal
+        open={showConfirmModal}
+        onOk={handleSubmit}
+        onCancel={() => setShowConfirmModal(false)}
+        confirmLoading={loading}
+        formData={formData}
+        details={data}
+        providers={providers.reduce((acc, cur) => { acc[cur.id] = cur.name; return acc; }, {} as Record<number, string>)}
+      />
     </div>
   );
 };

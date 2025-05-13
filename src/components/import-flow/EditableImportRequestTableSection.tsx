@@ -120,7 +120,7 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       dataIndex: "quantity",
       key: "quantity",
       align: "right" as const,
-      width: "15%",
+      width: "10%",
       render: (value: number, record: ImportRequestDetailRow) => (
         <Input
           inputMode="numeric"
@@ -152,7 +152,7 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       title: <span className="font-semibold">Đơn vị tính</span>,
       dataIndex: "measurementUnit",
       key: "measurementUnit",
-      width: "10%",
+      width: "15%",
     },
     {
       title: <span className="font-semibold">Nhà cung cấp</span>,

@@ -12,11 +12,11 @@ import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImpor
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
-import DetailCard from "@/components/commons/DetailCard";
+import DetailCard, { type DetailInfoItem } from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 
 interface RouteParams extends Record<string, string> {
-  importRequestId?: string;
+  importRequestId: string;
 }
 
 interface PaginationType {
@@ -202,7 +202,7 @@ const ImportRequestDetail: React.FC = () => {
     { label: "Ngày tạo", value: importRequest?.createdDate ? new Date(importRequest.createdDate).toLocaleDateString("vi-VN") : "-" },
     importRequest?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequest.exportRequestId}` } : null,
     { label: "Lý do nhập", value: importRequest?.importReason, span: 2 },
-  ].filter(Boolean);
+  ].filter(Boolean) as DetailInfoItem[];
 
   return (
     <div className="mx-auto p-5">

@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, Descriptions } from "antd";
 
-interface DetailInfoItem {
+export interface DetailInfoItem {
   label: React.ReactNode;
   value: React.ReactNode;
   span?: number;
