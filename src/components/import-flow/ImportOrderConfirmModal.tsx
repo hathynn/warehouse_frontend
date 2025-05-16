@@ -1,15 +1,8 @@
 import React, { useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
 import dayjs from "dayjs";
+import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
 
-interface ImportOrderDetailRow {
-  itemId: number;
-  itemName: string;
-  expectQuantity: number;
-  orderedQuantity: number;
-  plannedQuantity: number;
-  providerId?: number;
-}
 
 interface ImportOrderConfirmModalProps {
   open: boolean;
@@ -54,15 +47,15 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       width: "30%"
     },
     { 
-      title: "Tổng dự nhập", 
+      title: "Dự nhập theo phiếu", 
       dataIndex: "expectQuantity", 
       key: "expectQuantity",
       align: "right" as const
     },
     { 
-      title: "Tổng đã lên đơn", 
-      dataIndex: "orderedQuantity", 
-      key: "orderedQuantity",
+      title: "Thực tế đã nhập", 
+      dataIndex: "actualQuantity", 
+      key: "actualQuantity",
       align: "right" as const
     },
     { 

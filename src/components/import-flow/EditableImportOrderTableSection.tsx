@@ -8,6 +8,7 @@ export interface ImportOrderDetailRow {
   expectQuantity: number;
   orderedQuantity: number;
   plannedQuantity: number;
+  actualQuantity: number;
   importRequestProviderId: number;
   importOrderProviderId: number;
 }
@@ -60,15 +61,21 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     },
 
     {
-      title: "Tổng dự nhập",
+      title: "Dự nhập theo phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
     },
     {
-      title: "Tổng đã lên đơn",
+      title: "Đã lên đơn",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
+      align: "right" as const,
+    },
+    {
+      title: "Thực tế đã nhập",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
       align: "right" as const,
     },
     {
@@ -77,7 +84,13 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       key: "plannedQuantity",
       align: "right" as const,
       render: (_: any, record: ImportOrderDetailRow) => {
-        const maxAllowed = record.expectQuantity - record.orderedQuantity;
+        let maxAllowed = 0;
+        if (record.actualQuantity === 0){
+          maxAllowed = record.expectQuantity - record.orderedQuantity;
+        }
+        else {
+          maxAllowed = record.expectQuantity - record.actualQuantity;
+        }
         const isInvalid = record.plannedQuantity > maxAllowed;
         return (
           <Input
@@ -101,7 +114,13 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   // Tổng hợp lỗi
   const invalidRows = data
     .map((row, idx) => {
-      const maxAllowed = row.expectQuantity - row.orderedQuantity;
+      let maxAllowed = 0;
+      if (row.actualQuantity === 0){
+        maxAllowed = row.expectQuantity - row.orderedQuantity;
+      }
+      else {
+        maxAllowed = row.expectQuantity - row.actualQuantity;
+      }
       if (row.plannedQuantity > maxAllowed) {
         return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
       }

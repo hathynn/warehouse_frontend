@@ -268,7 +268,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                 }
               }
             }}
-            popupRender={() => (
+            dropdownRender={() => (
               <div className="w-[340px] max-h-[440px] overflow-y-auto bg-white rounded-xl shadow-lg p-0">
                 <div className="py-3 px-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                   <span className="font-bold text-base">Thông báo</span>
@@ -316,18 +316,19 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             placement="bottomRight"
             trigger={['click']}
           >
-            <span className="relative">
+            <div className="relative">
               <Badge count={hasUnreadNotifications && !recentNotification.visible ? notifications.filter(n => !n.isViewed).length : 0} style={{ backgroundColor: '#ff4d4f' }}>
                 <span className={`text-[28px] cursor-pointer transition-colors ${hasUnreadNotifications ? 'text-red-500' : 'text-gray-600'}`}>
                   <BellOutlined />
                 </span>
-                {recentNotification.visible && (
-                  <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
-                    Có thông báo mới
-                  </div>
-                )}
               </Badge>
-            </span>
+              
+              {recentNotification.visible && (
+                <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
+                  Có thông báo mới
+                </div>
+              )}
+            </div>
           </Dropdown>
           <Dropdown 
             menu={{ items: userMenuItems as ItemType[] }} 

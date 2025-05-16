@@ -16,6 +16,8 @@ import DetailCard, { type DetailInfoItem } from "@/components/commons/DetailCard
 import StatusTag from "@/components/commons/StatusTag";
 import { ImportRequestData } from "../import-request-list";
 import useProviderService from "@/hooks/useProviderService";
+import useImportOrderService, { ImportOrderResponse } from "@/hooks/useImportOrderService";
+import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 
 interface RouteParams extends Record<string, string> {
   importRequestId: string;
@@ -27,7 +29,6 @@ interface PaginationType {
   total: number;
 }
 
-type ImportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type ImportType = "ORDER" | "RETURN";
 
 const ImportRequestDetail: React.FC = () => {
@@ -36,6 +37,8 @@ const ImportRequestDetail: React.FC = () => {
 
   const [importRequestData, setImportRequestData] = useState<ImportRequestData | null>(null);
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
+  const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
+  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<PaginationType>({
@@ -51,6 +54,14 @@ const ImportRequestDetail: React.FC = () => {
   const {
     getImportRequestDetails,
   } = useImportRequestDetailService();
+  
+  const {
+    getImportOrdersByRequestId,
+  } = useImportOrderService();
+
+  const {
+    getImportOrderDetailsPaginated,
+  } = useImportOrderDetailService();
 
   const {
     getProviderById
@@ -67,6 +78,12 @@ const ImportRequestDetail: React.FC = () => {
       fetchImportRequestDetails();
     }
   }, [pagination.current, pagination.pageSize]);
+
+  useEffect(() => {
+    if (importRequestId) {
+      fetchImportOrders();
+    }
+  }, [importRequestId]);
 
   const {
     totalExpectQuantityInRequest,
@@ -146,6 +163,48 @@ const ImportRequestDetail: React.FC = () => {
     }
   }, [importRequestId, pagination, getImportRequestDetails]);
 
+  const fetchImportOrders = useCallback(async () => {
+    if (!importRequestId) return;
+    try {
+      setDetailsLoading(true);
+      const response = await getImportOrdersByRequestId(
+        parseInt(importRequestId)
+      );
+      if (response?.content) {
+        setImportOrders(response.content);
+      }
+    } catch (error) {
+      console.error("Failed to fetch import orders:", error);
+      message.error("Không thể tải danh sách đơn nhập");
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [importRequestId, getImportOrdersByRequestId]);
+
+  const fetchImportOrderDetails = useCallback(async () => {
+    if (!importRequestId) return;
+    try {
+      setDetailsLoading(true);
+      const response = await getImportOrderDetailsPaginated(
+        parseInt(importRequestId)
+      );
+      if (response?.content) {
+        setImportOrderDetails(response.content);
+      }
+    } catch (error) {
+      console.error("Failed to fetch import order details:", error);
+      message.error("Không thể tải danh sách chi tiết đơn nhập");
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [importRequestId, getImportOrderDetailsPaginated]);
+
+  useEffect(() => {
+    if (importRequestId) {
+      fetchImportOrderDetails();
+    }
+  }, [importRequestId]);
+
   const getImportTypeText = (type: ImportType): string => {
     const typeMap: Record<ImportType, string> = {
       "ORDER": "Nhập theo kế hoạch",
@@ -177,6 +236,45 @@ const ImportRequestDetail: React.FC = () => {
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importRequestId));
     }
   };
+
+  const isAbleToCreateImportOrder = useMemo(() => {
+    // Nếu phiếu nhập đã hoàn thành hoặc đã hủy, không hiển thị nút
+    if (importRequestData?.status === "COMPLETED" || importRequestData?.status === "CANCELLED") {
+      return false;
+    }
+
+    if (importOrders.length === 0) {
+      return totalExpectQuantityInRequest > totalOrderedQuantityInRequest;
+    }
+
+    // Kiểm tra nếu tất cả import orders đã completed
+    if (importOrders.length > 0 && importOrders.every(order => order.status === "COMPLETED")) {
+      return totalExpectQuantityInRequest > totalActualQuantityInRequest;
+    }
+    
+    // Nếu có ít nhất một order chưa hoàn thành và có sản phẩm đã nhập
+    if (totalActualQuantityInRequest > 0) {
+      // Tính tổng ordered quantity của các order details chưa completed
+      const totalOrderedQuantityOfIncompleteOrders = importOrders
+        .filter(order => order.status !== "COMPLETED")
+        .reduce((total, order) => {
+          const orderDetails = importOrderDetails.filter(detail => detail.importOrderId === order.importOrderId);
+          return total + orderDetails.reduce((sum, detail) => sum + (detail.expectQuantity || 0), 0);
+        }, 0);
+        
+      return totalExpectQuantityInRequest > (totalActualQuantityInRequest + totalOrderedQuantityOfIncompleteOrders);
+    }
+    
+    // Nếu không có import order hoặc không có sản phẩm đã nhập
+    return false;
+  }, [
+    importRequestData?.status,
+    importOrders,
+    importOrderDetails,
+    totalExpectQuantityInRequest,
+    totalActualQuantityInRequest,
+    totalOrderedQuantityInRequest
+  ]);
 
   const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
@@ -265,7 +363,7 @@ const ImportRequestDetail: React.FC = () => {
               Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
-          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && totalExpectQuantityInRequest > totalActualQuantityInRequest && (
+          {isAbleToCreateImportOrder === true && (
             <Button
               type="primary"
               icon={<FileAddOutlined />}

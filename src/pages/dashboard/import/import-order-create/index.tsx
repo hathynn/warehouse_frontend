@@ -111,7 +111,8 @@ const ImportOrderCreate = () => {
 
   const {
     loading: importOrderDetailLoading,
-    createImportOrderDetails
+    createImportOrderDetails,
+    getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
 
 
@@ -190,13 +191,22 @@ const ImportOrderCreate = () => {
     if (importRequestDetails.length && !excelImported) {
       setEditableRows(
         importRequestDetails
-          .filter(row => row.expectQuantity !== row.orderedQuantity)
+          .filter(row => {
+            if (row.actualQuantity === 0) {
+              return row.expectQuantity !== row.orderedQuantity;
+            } else {
+              return row.expectQuantity !== row.actualQuantity;
+            }
+          })
           .map(row => ({
             itemId: row.itemId,
             itemName: row.itemName,
             expectQuantity: row.expectQuantity,
             orderedQuantity: row.orderedQuantity,
-            plannedQuantity: row.expectQuantity - row.orderedQuantity,
+            plannedQuantity: row.actualQuantity === 0 
+              ? row.expectQuantity - row.orderedQuantity 
+              : row.expectQuantity - row.actualQuantity,
+            actualQuantity: row.actualQuantity,
             importRequestProviderId: importRequest?.providerId || 0,
             importOrderProviderId: importRequest?.providerId || 0,
           }))
@@ -239,6 +249,8 @@ const ImportOrderCreate = () => {
     }
   }, [paramImportRequestId, pagination.current, pagination.pageSize, getImportRequestDetails]);
 
+
+  
   const validateDateTime = (date: string, time: string) => {
     const selectedDateTime = dayjs(`${date} ${time}`);
     const now = dayjs();
@@ -429,10 +441,16 @@ const ImportOrderCreate = () => {
   };
 
   // Validation for step 1
-  const isStep1Valid = editableRows.length > 0 && editableRows.every(row =>
-    row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
-    row.plannedQuantity > 0
-  ); // No change needed
+  const isStep1Valid = editableRows.length > 0 && editableRows.every(row => {
+    if (row.actualQuantity === 0){
+      return row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
+      row.plannedQuantity > 0
+    }
+    else {
+      return row.plannedQuantity <= (row.expectQuantity - row.actualQuantity) &&
+      row.plannedQuantity > 0
+    }
+  });
 
   const columns = [
     {
@@ -449,15 +467,15 @@ const ImportOrderCreate = () => {
       width: "30%",
     },
     {
-      title: "Tổng dự nhập",
+      title: "Dự nhập theo phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
     },
     {
-      title: "Tổng đã lên đơn",
-      dataIndex: "orderedQuantity",
-      key: "orderedQuantity",
+      title: "Thực tế đã nhập",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
       align: "right" as const,
     },
     {

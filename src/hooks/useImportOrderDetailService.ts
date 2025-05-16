@@ -28,7 +28,7 @@ const useImportOrderDetailService = () => {
   const getImportOrderDetailsPaginated = async (
     importOrderId: number, 
     page = 1, 
-    limit = 10
+    limit = 999
   ): Promise<ResponseDTO<ImportOrderDetailResponse[]>> => {
     try {
       const response = await callApi(
