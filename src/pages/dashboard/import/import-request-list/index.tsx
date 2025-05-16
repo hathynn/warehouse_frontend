@@ -12,9 +12,9 @@ import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 
 export interface ImportRequestData extends ImportRequestResponse {
-  totalExpectQuantityInRequest: number;
-  totalOrderedQuantityInRequest: number;
-  totalActualQuantityInRequest: number;
+  totalExpectQuantityInRequest?: number;
+  totalOrderedQuantityInRequest?: number;
+  totalActualQuantityInRequest?: number;
   providerName: string;
 }
 

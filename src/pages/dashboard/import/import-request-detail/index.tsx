@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, JSX } from "react";
+import { useState, useEffect, useCallback, JSX, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -56,6 +56,45 @@ const ImportRequestDetail: React.FC = () => {
     getProviderById
   } = useProviderService();
 
+  useEffect(() => {
+    if (importRequestId) {
+      fetchImportRequestData();
+    }
+  }, [importRequestId]);
+
+  useEffect(() => {
+    if (importRequestId) {
+      fetchImportRequestDetails();
+    }
+  }, [pagination.current, pagination.pageSize]);
+
+  const {
+    totalExpectQuantityInRequest,
+    totalOrderedQuantityInRequest,
+    totalActualQuantityInRequest,
+  } = useMemo(() => {
+    if (!importRequestDetails || importRequestDetails.length === 0) {
+      return {
+        totalExpectQuantityInRequest: 0,
+        totalOrderedQuantityInRequest: 0,
+        totalActualQuantityInRequest: 0,
+      };
+    }
+  
+    return importRequestDetails.reduce(
+      (totals, detail) => ({
+        totalExpectQuantityInRequest: totals.totalExpectQuantityInRequest + (detail.expectQuantity || 0),
+        totalOrderedQuantityInRequest: totals.totalOrderedQuantityInRequest + (detail.orderedQuantity || 0),
+        totalActualQuantityInRequest: totals.totalActualQuantityInRequest + (detail.actualQuantity || 0),
+      }),
+      {
+        totalExpectQuantityInRequest: 0,
+        totalOrderedQuantityInRequest: 0,
+        totalActualQuantityInRequest: 0,
+      }
+    );
+  }, [importRequestDetails]);
+
   const fetchImportRequestData = useCallback(async () => {
     if (!importRequestId) return;
     try {
@@ -64,24 +103,9 @@ const ImportRequestDetail: React.FC = () => {
       if (response?.content) {
         const importRequestData = response.content;
         const providerName = importRequestData.providerId ? (await getProviderById(importRequestData.providerId))?.content?.name : "-";
-        const totalExpectQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.expectQuantity,
-          0
-        );
-        const totalOrderedQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.orderedQuantity,
-          0
-        );
-        const totalActualQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.actualQuantity,
-          0
-        );
         setImportRequestData({
           ...importRequestData,
-          providerName,
-          totalExpectQuantityInRequest,
-          totalOrderedQuantityInRequest,
-          totalActualQuantityInRequest,
+          providerName
         });
       }
     } catch (error) {
@@ -121,18 +145,6 @@ const ImportRequestDetail: React.FC = () => {
       setDetailsLoading(false);
     }
   }, [importRequestId, pagination, getImportRequestDetails]);
-
-  useEffect(() => {
-    if (importRequestId) {
-      fetchImportRequestData();
-    }
-  }, [importRequestId]);
-
-  useEffect(() => {
-    if (importRequestId) {
-      fetchImportRequestDetails();
-    }
-  }, [pagination.current, pagination.pageSize]);
 
   const getImportTypeText = (type: ImportType): string => {
     const typeMap: Record<ImportType, string> = {
@@ -253,7 +265,7 @@ const ImportRequestDetail: React.FC = () => {
               Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
-          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && importRequestData?.totalExpectQuantityInRequest! > importRequestData?.totalActualQuantityInRequest! && (
+          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && totalExpectQuantityInRequest > totalOrderedQuantityInRequest && (
             <Button
               type="primary"
               icon={<FileAddOutlined />}
