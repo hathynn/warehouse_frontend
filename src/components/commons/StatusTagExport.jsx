@@ -9,7 +9,7 @@ const exportStatusMap = {
   COUNTED: { color: "processing", text: "Đã kiểm đếm" },
   COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm đếm" },
   WAITING_EXPORT: { color: "processing", text: "Chờ xuất kho" },
-  CONFIRMED: { color: "processing", text: "Đã xác nhận xuất kho" },
+  CONFIRMED: { color: "processing", text: "Đã xuất kho" },
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
 };
