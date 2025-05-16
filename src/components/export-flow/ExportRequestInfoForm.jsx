@@ -51,7 +51,7 @@ const ExportRequestInfoForm = ({
               openDepartmentModal={() => setDepartmentModalVisible(true)}
             />
           )}
-          {formData.exportType === "LOAN" && (
+          {formData.exportType === "BORROWING" && (
             <LoanExportForm
               formData={formData}
               setFormData={setFormData}

@@ -6,8 +6,10 @@ import PropTypes from "prop-types";
 const exportStatusMap = {
   NOT_STARTED: { color: "default", text: "Chưa bắt đầu" },
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
-  COUNTED: { color: "processing", text: "Đã kiểm kho" },
-  CONFIRMED: { color: "processing", text: "Đợi xác nhận" },
+  COUNTED: { color: "processing", text: "Đã kiểm đếm" },
+  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm đếm" },
+  WAITING_EXPORT: { color: "processing", text: "Chờ xuất kho" },
+  CONFIRMED: { color: "processing", text: "Đã xác nhận xuất kho" },
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
 };
