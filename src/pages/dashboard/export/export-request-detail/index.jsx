@@ -26,13 +26,20 @@ import useConfigurationService from "@/hooks/useConfigurationService";
 import useAccountService from "@/hooks/useAccountService";
 import { AccountRole } from "@/constants/account-roles";
 import StatusTag from "@/components/commons/StatusTagExport";
+import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
+import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
   const [configuration, setConfiguration] = useState(null);
   const navigate = useNavigate();
-  const { getExportRequestById, assignCountingStaff } =
-    useExportRequestService();
+  const {
+    getExportRequestById,
+    assignCountingStaff,
+    updateExportRequestStatus,
+    updateExportDateTime,
+    assignConfirmimgStaff,
+  } = useExportRequestService();
   const { getExportRequestDetails } = useExportRequestDetailService();
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
@@ -56,9 +63,16 @@ const ExportRequestDetail = () => {
   const userRole = useSelector((state) => state.user.role);
   //Modal confirm counted
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  //Modal update date time
+  const [updateDateTimeModalOpen, setUpdateDateTimeModalOpen] = useState(false);
 
-  //Confirm counted export request
-  const { confirmCountedExportRequest } = useExportRequestService();
+  const [assignKeeperModalVisible, setAssignKeeperModalVisible] =
+    useState(false);
+  const [assigningKeeper, setAssigningKeeper] = useState(false);
+  const [selectedKeeperId, setSelectedKeeperId] = useState(null);
+  const [assignedKeeper, setAssignedKeeper] = useState(null);
+  const [keeperStaffs, setKeeperStaffs] = useState([]);
+  const [loadingKeeperStaff, setLoadingKeeperStaff] = useState(false);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -144,6 +158,25 @@ const ExportRequestDetail = () => {
     }
   };
 
+  const fetchActiveKeeperStaffs = async () => {
+    if (!exportRequest?.exportDate) {
+      message.error("Ngày nhận hàng không hợp lệ");
+      return;
+    }
+    try {
+      setLoadingKeeperStaff(true);
+      const activeStaffs = await getActiveStaffsInDay({
+        date: exportRequest.exportDate,
+        exportRequestId: exportRequest.exportRequestId,
+      });
+      setKeeperStaffs(activeStaffs);
+    } catch (error) {
+      message.error("Không thể tải danh sách nhân viên xuất hàng");
+    } finally {
+      setLoadingKeeperStaff(false);
+    }
+  };
+
   const fetchAssignedCountingStaff = useCallback(async () => {
     if (!exportRequestId) return;
     try {
@@ -154,6 +187,18 @@ const ExportRequestDetail = () => {
       message.error("Không thể tải thông tin nhân viên đã phân công");
     }
   }, [exportRequestId, findAccountById]);
+
+  const fetchAssignedKeeper = useCallback(async () => {
+    if (!exportRequest?.assignedWareHouseKeeperId) return;
+    try {
+      const keeperInfo = await findAccountById(
+        exportRequest.assignedWareHouseKeeperId
+      );
+      setAssignedKeeper(keeperInfo);
+    } catch (error) {
+      setAssignedKeeper(null);
+    }
+  }, [exportRequest?.assignedWareHouseKeeperId, findAccountById]);
 
   useEffect(() => {
     fetchExportRequestData();
@@ -169,6 +214,10 @@ const ExportRequestDetail = () => {
     }
   }, [exportRequest]);
 
+  useEffect(() => {
+    fetchAssignedKeeper();
+  }, [exportRequest?.assignedWareHouseKeeperId]);
+
   const handleOpenAssignModal = async () => {
     setSelectedStaffId(null);
     // Lấy configuration
@@ -180,6 +229,12 @@ const ExportRequestDetail = () => {
     }
     fetchActiveStaffs();
     setAssignModalVisible(true);
+  };
+
+  const handleOpenAssignKeeperModal = async () => {
+    setSelectedKeeperId(null);
+    await fetchActiveKeeperStaffs();
+    setAssignKeeperModalVisible(true);
   };
 
   const handleCloseAssignModal = () => {
@@ -305,6 +360,28 @@ const ExportRequestDetail = () => {
     setSearchText(value);
   };
 
+  const handleAssignKeeper = async () => {
+    if (!selectedKeeperId || !exportRequestId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+
+    try {
+      setAssigningKeeper(true);
+      await assignConfirmimgStaff(exportRequestId, selectedKeeperId);
+      await fetchExportRequestData();
+      message.success("Phân công nhân viên xuất hàng thành công");
+      setAssignKeeperModalVisible(false);
+      setSelectedKeeperId(null);
+    } catch (error) {
+      message.error(
+        "Không thể phân công nhân viên xuất hàng. Vui lòng thử lại"
+      );
+    } finally {
+      setAssigningKeeper(false);
+    }
+  };
+
   const getFilteredAndSortedStaffs = () => {
     const defaultWorkingMinutes = getDefaultWorkingMinutes();
     return staffs
@@ -366,10 +443,10 @@ const ExportRequestDetail = () => {
           {assignedStaff?.fullName || "-"}
         </Descriptions.Item>,
         <Descriptions.Item
-          label="Người xác nhận hàng"
+          label="Người xuất hàng"
           key="assignedWareHouseKeeperId"
         >
-          {exportRequest.assignedWareHouseKeeperId || "-"}
+          {assignedKeeper?.fullName || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
           {exportRequest.receiverName || "-"}
@@ -447,15 +524,18 @@ const ExportRequestDetail = () => {
 
   const handleConfirmCounted = async () => {
     try {
-      await confirmCountedExportRequest(exportRequestId);
+      await updateExportRequestStatus(
+        parseInt(exportRequestId),
+        ExportStatus.COUNT_CONFIRMED
+      );
       message.success("Đã xác nhận kiểm đếm");
 
-      // Gọi lại để cập nhật status mới từ backend
+      // Gọi lại dữ liệu để cập nhật giao diện
       await fetchExportRequestData();
       fetchDetails();
     } catch (error) {
-      console.error("Lỗi khi xác nhận kiểm đếm", error);
-      message.error("Lỗi khi xác nhận kiểm đếm");
+      console.error("Lỗi khi cập nhật trạng thái", error);
+      message.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
     }
   };
 
@@ -540,9 +620,8 @@ const ExportRequestDetail = () => {
         <h1 className="text-xl font-bold m-0 mr-10">
           Chi tiết phiếu xuất #{exportRequest?.exportRequestId}
         </h1>
-        {exportRequest?.status !== ExportStatus.CANCELLED &&
-          exportRequest?.status !== ExportStatus.COMPLETED &&
-          exportRequest?.status !== ExportStatus.COUNTED && (
+        {exportRequest?.status === ExportStatus.IN_PROGRESS ||
+          (exportRequest?.status === ExportStatus.NOT_STARTED && (
             <>
               {userRole === AccountRole.WAREHOUSE_MANAGER && (
                 <Button
@@ -560,6 +639,28 @@ const ExportRequestDetail = () => {
                 </Button>
               )}
             </>
+          ))}
+        {userRole === AccountRole.WAREHOUSE_MANAGER &&
+          exportRequest?.status === ExportStatus.WAITING_EXPORT && (
+            <Button
+              type="primary"
+              icon={<UserAddOutlined />}
+              className="ml-4"
+              onClick={handleOpenAssignKeeperModal}
+            >
+              Phân công nhân viên xuất hàng
+            </Button>
+          )}
+        {/* Nút cập nhật ngày khách nhận hàng */}
+        {userRole === AccountRole.DEPARTMENT &&
+          exportRequest?.status === ExportStatus.COUNT_CONFIRMED && (
+            <Button
+              type="primary"
+              className="ml-4"
+              onClick={() => setUpdateDateTimeModalOpen(true)}
+            >
+              Cập nhật ngày khách nhận hàng
+            </Button>
           )}
       </div>
 
@@ -572,7 +673,7 @@ const ExportRequestDetail = () => {
       <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
         <span>Danh sách chi tiết sản phẩm xuất</span>
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
-          exportRequest?.status === ExportStatus.IN_PROGRESS && (
+          exportRequest?.status === ExportStatus.COUNTED && (
             <Button type="primary" onClick={() => setConfirmModalVisible(true)}>
               Xác nhận kiểm đếm
             </Button>
@@ -723,6 +824,127 @@ const ExportRequestDetail = () => {
       </Modal>
 
       <Modal
+        title={
+          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-blue-900">
+              Phân công nhân viên xuất hàng
+            </h3>
+            <p className="text-lg text-blue-700 mt-1">
+              Phiếu xuất #{exportRequest?.exportRequestId}
+            </p>
+          </div>
+        }
+        open={assignKeeperModalVisible}
+        onCancel={() => {
+          setAssignKeeperModalVisible(false);
+          setSelectedKeeperId(null);
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => setAssignKeeperModalVisible(false)}
+          >
+            Đóng
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleAssignKeeper}
+            disabled={!selectedKeeperId}
+            loading={assigningKeeper}
+          >
+            Phân công
+          </Button>,
+        ]}
+        width={700}
+        className="!top-[50px]"
+      >
+        {loadingStaff ? (
+          <div className="flex justify-center items-center py-8">
+            <Spin size="large" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Current Assignment Info */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h4 className="text-base font-medium text-gray-700 mb-3">
+                Nhân viên đang được phân công xuất hàng
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Mã nhân viên</p>
+                  <p className="text-base">#{assignedKeeper?.id || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Họ tên</p>
+                  <p className="text-base">{assignedKeeper?.fullName || "-"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff List */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-base font-medium text-gray-700">
+                  Danh sách nhân viên có thể phân công
+                </h4>
+                <Input.Search
+                  placeholder="Tìm theo tên hoặc mã nhân viên"
+                  allowClear
+                  onSearch={handleSearch}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  style={{ width: 300 }}
+                />
+              </div>
+              <Table
+                dataSource={keeperStaffs.map((staff) => ({
+                  ...staff,
+                  remainingTime: calculateRemainingTime(
+                    staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
+                    getDefaultWorkingMinutes()
+                  ),
+                }))}
+                rowKey="id"
+                pagination={false}
+                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
+                onRow={(record) => ({
+                  onClick: () => setSelectedKeeperId(record.id),
+                  className:
+                    selectedKeeperId === record.id ? "!bg-blue-100" : "",
+                })}
+                columns={[
+                  {
+                    title: "Mã nhân viên",
+                    dataIndex: "id",
+                    key: "id",
+                    render: (id) => `#${id}`,
+                    width: "25%",
+                  },
+                  {
+                    title: "Họ tên",
+                    dataIndex: "fullName",
+                    key: "fullName",
+                    width: "45%",
+                  },
+                  {
+                    title: "Thời gian rảnh còn lại",
+                    dataIndex: "remainingTime",
+                    key: "remainingTime",
+                    width: "30%",
+                    render: (time) => (
+                      <span className="font-medium text-blue-600">
+                        {time || "8 tiếng 0 phút"}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* <Modal
         open={confirmModalVisible}
         onCancel={() => setConfirmModalVisible(false)}
         onOk={async () => {
@@ -747,7 +969,66 @@ const ExportRequestDetail = () => {
             trường hợp.
           </p>
         </div>
+      </Modal> */}
+      <Modal
+        open={confirmModalVisible}
+        onCancel={() => setConfirmModalVisible(false)}
+        onOk={async () => {
+          await handleConfirmCounted();
+          setConfirmModalVisible(false);
+        }}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận kiểm đếm
+          </span>
+        }
+        okText="Xác nhận"
+        cancelText="Quay lại"
+        width={700}
+        centered
+      >
+        <div className="mb-4 font-semibold">
+          Tổng sản phẩm kiểm đếm: {exportRequestDetails.length} sản phẩm
+        </div>
+
+        <div className="mb-4 font-semibold">
+          Tổng số sản phẩm có trạng thái thiếu:{" "}
+          <span className="text-red-600">
+            {exportRequestDetails.filter((d) => d.status === "LACK").length}
+          </span>{" "}
+          sản phẩm
+        </div>
+
+        {exportRequestDetails.some((d) => d.status === "LACK") && (
+          <>
+            <div className="mb-2 font-semibold">Danh sách sản phẩm thiếu:</div>
+            <LackProductTable
+              data={exportRequestDetails.filter((d) => d.status === "LACK")}
+            />
+          </>
+        )}
+        <div className="flex items-start gap-3 mb-4">
+          <ExclamationCircleOutlined
+            style={{ fontSize: 17, color: "#ff4d4f", marginTop: 2 }}
+          />
+          <p style={{ color: "#ff4d4f", fontWeight: "500", margin: 0 }}>
+            Sau khi bấm xác nhận, bạn phải chịu hoàn toàn trách nhiệm trong mọi
+            trường hợp.
+          </p>
+        </div>
       </Modal>
+      <UpdateExportDateTimeModal
+        open={updateDateTimeModalOpen}
+        onCancel={() => setUpdateDateTimeModalOpen(false)}
+        exportRequest={exportRequest || {}}
+        updateExportDateTime={updateExportDateTime}
+        updateExportRequestStatus={updateExportRequestStatus}
+        loading={loading}
+        onSuccess={async () => {
+          setUpdateDateTimeModalOpen(false);
+          await fetchExportRequestData();
+        }}
+      />
     </div>
   );
 };

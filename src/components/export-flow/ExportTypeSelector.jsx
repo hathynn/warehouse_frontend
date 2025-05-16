@@ -14,7 +14,7 @@ const ExportTypeSelector = ({ exportType, setExportType }) => (
       style={{ width: 300 }}
     >
       <Option value="PRODUCTION">Xuất sản xuất</Option>
-      <Option value="LOAN">Xuất mượn</Option>
+      <Option value="BORROWING">Xuất mượn</Option>
       <Option value="RETURN">Xuất trả nhà cung cấp</Option>
       <Option value="LIQUIDATION">Xuất thanh lý</Option>
       <Option value="PARTIAL">Xuất một phần</Option>

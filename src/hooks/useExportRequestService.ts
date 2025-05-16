@@ -5,6 +5,8 @@ export enum ExportStatus {
   NOT_STARTED = "NOT_STARTED",
   IN_PROGRESS = "IN_PROGRESS",
   COUNTED = "COUNTED",
+  COUNT_CONFIRMED = "COUNT_CONFIRMED",
+  WAITING_EXPORT = "WAITING_EXPORT",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
 }
@@ -213,6 +215,49 @@ const useExportRequestService = () => {
     }
   };
 
+  // Cập nhật trạng thái phiếu xuất
+  const updateExportRequestStatus = async (
+    exportRequestId: number,
+    status: ExportStatus
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        `/export-request/update-status/${exportRequestId}?status=${status}`
+      );
+      if (response && response.content) {
+        toast.success("Cập nhật trạng thái phiếu xuất thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể cập nhật trạng thái phiếu xuất");
+      console.error("Error updating export request status:", error);
+      throw error;
+    }
+  };
+
+  // Cập nhật ngày và giờ xuất phiếu xuất
+  const updateExportDateTime = async (
+    exportRequestId: number,
+    data: { exportDate: string; exportTime: string }
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        `/export-request/update-export-date-time/${exportRequestId}`,
+        data
+      );
+      if (response && response.content) {
+        toast.success("Cập nhật ngày giờ xuất thành công");
+        return response.content;
+      }
+    } catch (error) {
+      toast.error("Không thể cập nhật ngày giờ xuất");
+      console.error("Error updating export date/time:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -223,6 +268,8 @@ const useExportRequestService = () => {
     assignCountingStaff,
     assignConfirmimgStaff,
     confirmCountedExportRequest,
+    updateExportRequestStatus,
+    updateExportDateTime,
   };
 };
 
