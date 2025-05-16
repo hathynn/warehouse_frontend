@@ -74,6 +74,10 @@ const ExportRequestDetail = () => {
   const [keeperStaffs, setKeeperStaffs] = useState([]);
   const [loadingKeeperStaff, setLoadingKeeperStaff] = useState(false);
 
+  const [completeModalVisible, setCompleteModalVisible] = useState(false);
+  const [completeChecked, setCompleteChecked] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -229,6 +233,25 @@ const ExportRequestDetail = () => {
     }
     fetchActiveStaffs();
     setAssignModalVisible(true);
+  };
+
+  const handleConfirmComplete = async () => {
+    setCompleting(true);
+    try {
+      await updateExportRequestStatus(
+        parseInt(exportRequestId),
+        ExportStatus.COMPLETED
+      );
+      message.success("Xác nhận hoàn thành phiếu xuất thành công");
+      setCompleteModalVisible(false);
+      setCompleteChecked(false);
+      await fetchExportRequestData();
+      fetchDetails();
+    } catch (err) {
+      message.error("Không thể xác nhận hoàn thành phiếu xuất");
+    } finally {
+      setCompleting(false);
+    }
   };
 
   const handleOpenAssignKeeperModal = async () => {
@@ -620,26 +643,35 @@ const ExportRequestDetail = () => {
         <h1 className="text-xl font-bold m-0 mr-10">
           Chi tiết phiếu xuất #{exportRequest?.exportRequestId}
         </h1>
-        {exportRequest?.status === ExportStatus.IN_PROGRESS ||
-          (exportRequest?.status === ExportStatus.NOT_STARTED && (
-            <>
-              {userRole === AccountRole.WAREHOUSE_MANAGER && (
-                <Button
-                  type="primary"
-                  icon={<UserAddOutlined />}
-                  onClick={handleOpenAssignModal}
-                  disabled={!canReassignCountingStaff()}
-                  title={
-                    !canReassignCountingStaff()
-                      ? "Đã quá thời gian cho phép phân công lại"
-                      : ""
-                  }
-                >
-                  Phân công nhân viên kiểm đếm
-                </Button>
-              )}
-            </>
-          ))}
+        {userRole === AccountRole.WAREHOUSE_MANAGER &&
+          exportRequest?.status === ExportStatus.CONFIRMED && (
+            <Button
+              type="primary"
+              className="ml-4"
+              onClick={() => setCompleteModalVisible(true)}
+            >
+              Xác nhận hoàn thành
+            </Button>
+          )}
+        {exportRequest?.status === ExportStatus.IN_PROGRESS && (
+          <>
+            {userRole === AccountRole.WAREHOUSE_MANAGER && (
+              <Button
+                type="primary"
+                icon={<UserAddOutlined />}
+                onClick={handleOpenAssignModal}
+                disabled={!canReassignCountingStaff()}
+                title={
+                  !canReassignCountingStaff()
+                    ? "Đã quá thời gian cho phép phân công lại"
+                    : ""
+                }
+              >
+                Phân công nhân viên kiểm đếm
+              </Button>
+            )}
+          </>
+        )}
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
           exportRequest?.status === ExportStatus.WAITING_EXPORT && (
             <Button
@@ -651,6 +683,7 @@ const ExportRequestDetail = () => {
               Phân công nhân viên xuất hàng
             </Button>
           )}
+
         {/* Nút cập nhật ngày khách nhận hàng */}
         {userRole === AccountRole.DEPARTMENT &&
           exportRequest?.status === ExportStatus.COUNT_CONFIRMED && (
@@ -1015,6 +1048,45 @@ const ExportRequestDetail = () => {
             Sau khi bấm xác nhận, bạn phải chịu hoàn toàn trách nhiệm trong mọi
             trường hợp.
           </p>
+        </div>
+      </Modal>
+      <Modal
+        open={completeModalVisible}
+        onCancel={() => setCompleteModalVisible(false)}
+        onOk={handleConfirmComplete}
+        okText="Xác nhận"
+        cancelText="Quay lại"
+        okButtonProps={{
+          disabled: !completeChecked,
+          loading: completing,
+        }}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận hoàn thành phiếu xuất #{exportRequest?.exportRequestId}
+          </span>
+        }
+        centered
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <ExclamationCircleOutlined
+            style={{ fontSize: 17, color: "#ff4d4f", marginTop: 2 }}
+          />
+          <span style={{ color: "#ff4d4f", fontWeight: "500" }}>
+            Hành động này không thể hoàn tác. Vui lòng xác nhận bạn đã xuất kho
+            xong và chịu toàn bộ trách nhiệm sau khi chấp nhận.
+          </span>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <label style={{ fontWeight: 500 }}>
+            <input
+              type="checkbox"
+              checked={completeChecked}
+              onChange={(e) => setCompleteChecked(e.target.checked)}
+              style={{ marginRight: 8 }}
+            />
+            Tôi xác nhận đã xuất kho xong, tôi xin chịu toàn bộ trách nhiệm sau
+            khi chấp nhận.
+          </label>
         </div>
       </Modal>
       <UpdateExportDateTimeModal
