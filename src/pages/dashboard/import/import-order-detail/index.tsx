@@ -575,7 +575,7 @@ const ImportOrderDetail = () => {
             In QRCode
           </Button>
         )}
-        {importOrder?.status === ImportStatus.CONFIRMED && (
+        {importOrder?.status === ImportStatus.COUNTED && (
           <>
             <Button
               danger

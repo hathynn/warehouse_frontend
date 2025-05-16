@@ -20,12 +20,6 @@ import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirm
 const { Title } = Typography;
 const { TextArea } = Input;
 
-interface ExcelDetailItem {
-  itemId: number;
-  plannedQuantity: number;
-  providerId: number;
-}
-
 interface TablePagination {
   current: number;
   pageSize: number;

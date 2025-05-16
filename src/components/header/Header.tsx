@@ -1,13 +1,12 @@
-import { Avatar, Dropdown, notification, Badge, List } from 'antd';
+import { Avatar, Dropdown, Badge, List, Empty, Spin } from 'antd';
 import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined } from '@ant-design/icons';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/redux/store'; // You'll need to ensure this path is correct
+import { RootState } from '@/redux/store';
 import { logout } from '@/redux/features/userSlice';
 import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/constants/account-roles';
-import { useEffect } from 'react';
 import { createPusherClient } from '@/config/pusher';
 import {
   IMPORT_ORDER_CREATED_EVENT,
@@ -20,6 +19,8 @@ import {
   PRIVATE_ADMIN_CHANNEL
 } from '@/constants/channels-events';
 import { ROUTES } from '@/constants/routes';
+import useNotificationService, { NotificationResponse } from '@/hooks/useNotificationService';
+import notificationWav from "@/assets/notification-sound.wav";
 
 interface HeaderProps {
   title?: string;
@@ -37,40 +38,112 @@ const getRoleDisplayName = (role: AccountRole): string => {
 };
 
 function Header({ title = "Dashboard" }: HeaderProps) {
-  type NotificationType = 'created' | 'counted' | 'confirmed';
-  interface NotificationItem {
-    id: number;
-    message: string;
-    type: NotificationType;
-    timestamp: string;
-  }
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  const [recentNotification, setRecentNotification] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const notificationTimerRef = useRef<number | null>(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { fullName, role } = useSelector((state: RootState) => state.user);
+  const { fullName, role, id: accountId } = useSelector((state: RootState) => state.user);
 
-  const [api, contextHolder] = notification.useNotification();
+  const { 
+    loading, 
+    getAllNotifications, 
+    deleteNotification, 
+    viewAllNotifications, 
+    clickNotification 
+  } = useNotificationService();
 
+  const playNotificationSound = async () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
+      const response = await fetch(notificationWav);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+      source.start();
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
 
-  // Request notification permission on mount
+  const loadNotifications = async () => {
+    if (!accountId) return;
+    
+    try {
+      const response = await getAllNotifications(Number(accountId));
+      if (response && response.content) {
+        setNotifications(response.content);
+        
+        const hasUnread = response.content.some(notif => !notif.isViewed);
+        setHasUnreadNotifications(hasUnread);
+      }
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'default') {
         Notification.requestPermission();
       }
     }
-  }, []);
+    
+    loadNotifications();
+  }, [accountId]);
+
+  const handleNotificationClick = async (notification: NotificationResponse) => {
+    try {
+      await clickNotification(notification.id);
+      
+      if (notification.objectId) {
+        navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(notification.objectId.toString())}`);
+      }
+      
+      setDropdownVisible(false);
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!accountId) return;
+    
+    try {
+      await viewAllNotifications(Number(accountId));
+      
+      setHasUnreadNotifications(false);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const handleDeleteNotification = async (notification: NotificationResponse, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    try {
+      await deleteNotification(notification.id);
+      
+      setNotifications(prev => 
+        prev.filter(n => n.id !== notification.id)
+      );
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
 
   useEffect(() => {
-    if (!role) return;
+    if (!role || !accountId) return;
     
     console.log(`Subscribing to Pusher notifications for role: ${role}`);
     const pusher = createPusherClient();
     let channelName = "";
     
-    // Determine which private channel to subscribe to based on user role
     switch (role) {
       case AccountRole.WAREHOUSE_MANAGER:
         channelName = PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
@@ -93,83 +166,48 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     }
     
     try {
-      // Subscribe to the private channel
       const channel = pusher.subscribe(channelName);
       
-      // Handle connection success
       channel.bind('pusher:subscription_succeeded', () => {
         console.log(`Successfully subscribed to ${channelName}`);
       });
       
-      // Handle connection error
       channel.bind('pusher:subscription_error', (error: any) => {
         console.error(`Error subscribing to ${channelName}:`, error);
       });
       
-      // Bind to specific events
+      const handleNotificationEvent = (data: any, eventType: string) => {
+        playNotificationSound();
+        
+        loadNotifications();
+        
+        setRecentNotification({ message: 'Có thông báo mới', visible: true });
+        
+        if (notificationTimerRef.current !== null) {
+          window.clearTimeout(notificationTimerRef.current);
+        }
+        
+        notificationTimerRef.current = window.setTimeout(() => {
+          setRecentNotification(prev => ({ ...prev, visible: false }));
+          notificationTimerRef.current = null;
+        }, 5000);
+      };
+      
       channel.bind(IMPORT_ORDER_CREATED_EVENT, (data: any) => {
         console.log('[Pusher] Import order created notification:', data);
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play();
-        }
-        const message = `Đơn nhập #${data.id} đã được tạo.`;
-        setNotifications(prev => [{ id: data.id, message, type: 'created', timestamp: new Date().toISOString() }, ...prev]);
-        // Show system notification
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('Thông báo', { body: message, icon: '/favicon.ico' });
-        }
-        api.info({
-          message: 'Thông báo',
-          description: message,
-          placement: 'topRight',
-          icon: <BellOutlined style={{ color: '#1890ff' }} />,
-          duration: 3
-        });
-      });
-      channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => {
-        console.log('[Pusher] Import order counted notification:', data);
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play();
-        }
-        const message = `Đơn nhập #${data.id} đã được kiểm đếm.`;
-        setNotifications(prev => [{ id: data.id, message, type: 'counted', timestamp: new Date().toISOString() }, ...prev]);
-        // Show system notification
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('Thông báo', { body: message, icon: '/favicon.ico' });
-        }
-        api.info({
-          message: 'Thông báo',
-          description: message,
-          placement: 'topRight',
-          icon: <BellOutlined style={{ color: '#1890ff' }} />,
-          duration: 3
-        });
-      });
-      channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => {
-        console.log('[Pusher] Import order confirmed notification:', data);
-        if (audioRef.current) {
-          console.log('[Debug] audioRef.current exists:', audioRef.current);
-          audioRef.current.currentTime = 0;
-          const playPromise = audioRef.current.play();
-        }
-        const message = `Đơn nhập #${data.id} đã được xác nhận.`;
-        setNotifications(prev => [{ id: data.id, message, type: 'confirmed', timestamp: new Date().toISOString() }, ...prev]);
-        // Show system notification
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('Thông báo', { body: message, icon: '/favicon.ico' });
-        }
-        api.info({
-          message: 'Thông báo',
-          description: message,
-          placement: 'topRight',
-          icon: <BellOutlined style={{ color: '#1890ff' }} />,
-          duration: 3
-        });
+        handleNotificationEvent(data, IMPORT_ORDER_CREATED_EVENT);
       });
       
-      // Clean up function
+      channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => {
+        console.log('[Pusher] Import order counted notification:', data);
+        handleNotificationEvent(data, IMPORT_ORDER_COUNTED_EVENT);
+      });
+      
+      channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => {
+        console.log('[Pusher] Import order confirmed notification:', data);
+        handleNotificationEvent(data, IMPORT_ORDER_CONFIRMED_EVENT);
+      });
+      
       return () => {
         console.log(`Unsubscribing from ${channelName}`);
         channel.unbind_all();
@@ -179,11 +217,11 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     } catch (error) {
       console.error('Error setting up Pusher:', error);
     }
-  }, [role, api]);
+  }, [role, accountId, loadNotifications]);
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login'); // Adjust the route as needed
+    navigate('/login');
   };
 
   const userMenuItems = [
@@ -191,13 +229,13 @@ function Header({ title = "Dashboard" }: HeaderProps) {
       key: 'profile',
       icon: <UserOutlined />,
       label: 'Thông tin cá nhân',
-      onClick: () => navigate('/profile') // Adjust the route as needed
+      onClick: () => navigate('/profile')
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Cài đặt',
-      onClick: () => navigate('/settings') // Adjust the route as needed
+      onClick: () => navigate('/settings')
     },
     {
       type: 'divider',
@@ -213,52 +251,85 @@ function Header({ title = "Dashboard" }: HeaderProps) {
 
   return (
     <>
-      {contextHolder}
-      {/* Notification sound */}
-      <audio ref={audioRef} src="/notification-sound.wav" preload="auto" />
       <div className="flex justify-between pb-4 items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
         </div>
         <div className="flex gap-3 items-center">
-          {/* Notification Bell */}
           <Dropdown
             open={dropdownVisible}
-            onOpenChange={setDropdownVisible}
-            dropdownRender={() => (
-              <div style={{ width: 340, maxHeight: 440, overflowY: 'auto', background: '#fff', borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', padding: 0 }}>
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', fontWeight: 700, fontSize: 16, background: '#f7f7f7' }}>Thông báo</div>
-                <List
-                  dataSource={notifications}
-                  locale={{ emptyText: 'Không có thông báo' }}
-                  renderItem={item => (
-                    <List.Item
-                      key={item.id + '-' + item.type + '-' + item.timestamp}
-                      style={{ cursor: 'pointer', padding: '12px 16px', borderBottom: '1px solid #f0f0f0', alignItems: 'flex-start' }}
-                      onClick={() => {
-                        setDropdownVisible(false);
-                        navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(item.id.toString())}`);
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                        <div style={{ fontWeight: 500, color: '#1a237e', marginBottom: 2 }}>{item.message}</div>
-                        {item.timestamp && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{new Date(item.timestamp).toLocaleString('vi-VN')}</div>}
-                      </div>
-                    </List.Item>
-                  )}
-                />
+            onOpenChange={(visible) => {
+              setDropdownVisible(visible);
+              if (visible) {
+                loadNotifications();
+                handleMarkAllAsRead();
+                if (recentNotification.visible) {
+                  setRecentNotification(prev => ({ ...prev, visible: false }));
+                }
+              }
+            }}
+            popupRender={() => (
+              <div className="w-[340px] max-h-[440px] overflow-y-auto bg-white rounded-xl shadow-lg p-0">
+                <div className="py-3 px-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                  <span className="font-bold text-base">Thông báo</span>
+                </div>
+                
+                {loading ? (
+                  <div className="py-10 text-center">
+                    <Spin />
+                  </div>
+                ) : (
+                  <List
+                    dataSource={notifications}
+                    locale={{ emptyText: <Empty description="Không có thông báo" /> }}
+                    renderItem={item => (
+                      <List.Item
+                        key={item.id}
+                        className={`cursor-pointer py-3 px-4 border-b border-gray-100 items-start hover:bg-gray-50 ${!item.isClicked ? 'bg-blue-50/50' : ''}`}
+                        onClick={() => handleNotificationClick(item)}
+                        style={{ padding: '0.75rem 1rem' }}
+                      >
+                        <div className="flex flex-col w-full">
+                          <div className="flex justify-between">
+                            <span className={`${item.isClicked ? 'font-normal text-gray-800' : 'font-semibold text-indigo-900'}`}>
+                              {item.content}
+                            </span>
+                            <span 
+                              onClick={(e) => handleDeleteNotification(item, e)}
+                              className="ml-2 text-xs text-gray-500 cursor-pointer"
+                            >
+                              ✕
+                            </span>
+                          </div>
+                          {item.createdDate && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(item.createdDate).toLocaleString('vi-VN')}
+                            </div>
+                          )}
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                )}
               </div>
             )}
             placement="bottomRight"
             trigger={['click']}
           >
-            <Badge count={notifications.length} overflowCount={99} style={{ backgroundColor: '#ff4d4f', boxShadow: '0 0 0 2px #fff' }}>
-              <span style={{ fontSize: 28, cursor: 'pointer', color: notifications.length ? '#ff4d4f' : '#444', transition: 'color 0.2s' }}>
-                <BellOutlined />
-              </span>
-            </Badge>
+            <div className="relative">
+              <Badge count={hasUnreadNotifications && !recentNotification.visible ? notifications.filter(n => !n.isViewed).length : 0} style={{ backgroundColor: '#ff4d4f' }}>
+                <span className={`text-[28px] cursor-pointer transition-colors ${hasUnreadNotifications ? 'text-red-500' : 'text-gray-600'}`}>
+                  <BellOutlined />
+                </span>
+              </Badge>
+              
+              {recentNotification.visible && (
+                <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
+                  Có thông báo mới
+                </div>
+              )}
+            </div>
           </Dropdown>
-          {/* User Dropdown */}
           <Dropdown 
             menu={{ items: userMenuItems as ItemType[] }} 
             placement="bottomRight" 

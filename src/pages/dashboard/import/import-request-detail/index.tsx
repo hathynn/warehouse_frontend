@@ -14,6 +14,8 @@ import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
 import DetailCard, { type DetailInfoItem } from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
+import { ImportRequestData } from "../import-request-list";
+import useProviderService from "@/hooks/useProviderService";
 
 interface RouteParams extends Record<string, string> {
   importRequestId: string;
@@ -32,7 +34,7 @@ const ImportRequestDetail: React.FC = () => {
   const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
 
-  const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
+  const [importRequestData, setImportRequestData] = useState<ImportRequestData | null>(null);
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
@@ -47,8 +49,12 @@ const ImportRequestDetail: React.FC = () => {
   } = useImportRequestService();
 
   const {
-    getImportRequestDetails
+    getImportRequestDetails,
   } = useImportRequestDetailService();
+
+  const {
+    getProviderById
+  } = useProviderService();
 
   const fetchImportRequestData = useCallback(async () => {
     if (!importRequestId) return;
@@ -56,7 +62,27 @@ const ImportRequestDetail: React.FC = () => {
       setLoading(true);
       const response = await getImportRequestById(parseInt(importRequestId));
       if (response?.content) {
-        setImportRequest(response.content);
+        const importRequestData = response.content;
+        const providerName = importRequestData.providerId ? (await getProviderById(importRequestData.providerId))?.content?.name : "-";
+        const totalExpectQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.expectQuantity,
+          0
+        );
+        const totalOrderedQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.orderedQuantity,
+          0
+        );
+        const totalActualQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.actualQuantity,
+          0
+        );
+        setImportRequestData({
+          ...importRequestData,
+          providerName,
+          totalExpectQuantityInRequest,
+          totalOrderedQuantityInRequest,
+          totalActualQuantityInRequest,
+        });
       }
     } catch (error) {
       console.error("Failed to fetch import request:", error);
@@ -184,7 +210,7 @@ const ImportRequestDetail: React.FC = () => {
     }
   ];
 
-  if (loading && !importRequest) {
+  if (loading && !importRequestData) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
@@ -194,14 +220,14 @@ const ImportRequestDetail: React.FC = () => {
 
   // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
-    { label: "Mã phiếu nhập", value: `#${importRequest?.importRequestId}` },
-    { label: "Loại nhập", value: importRequest?.importType && getImportTypeText(importRequest.importType as ImportType) },
-    { label: "Trạng thái", value: <StatusTag status={importRequest?.status || ""} type="import" /> },
-    { label: "Mã nhà cung cấp", value: importRequest?.providerId },
-    { label: "Người tạo", value: importRequest?.createdBy },
-    { label: "Ngày tạo", value: importRequest?.createdDate ? new Date(importRequest.createdDate).toLocaleDateString("vi-VN") : "-" },
-    importRequest?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequest.exportRequestId}` } : null,
-    { label: "Lý do nhập", value: importRequest?.importReason, span: 2 },
+    { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
+    { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
+    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
+    { label: "Nhà cung cấp", value: importRequestData?.providerName },
+    { label: "Người tạo", value: importRequestData?.createdBy },
+    { label: "Ngày tạo", value: importRequestData?.createdDate ? new Date(importRequestData.createdDate).toLocaleDateString("vi-VN") : "-" },
+    importRequestData?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` } : null,
+    { label: "Lý do nhập", value: importRequestData?.importReason, span: 2 },
   ].filter(Boolean) as DetailInfoItem[];
 
   return (
@@ -215,25 +241,25 @@ const ImportRequestDetail: React.FC = () => {
           >
             Quay lại
           </Button>
-          <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequest?.importRequestId}</h1>
+          <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequestData?.importRequestId}</h1>
         </div>
         <div className="space-x-3">
-          {importRequest?.importOrdersId && importRequest.importOrdersId.length > 0 && (
+          {importRequestData?.importOrdersId && importRequestData.importOrdersId.length > 0 && (
             <Button
               type="primary"
               icon={<UnorderedListOutlined />}
               onClick={handleViewImportOrders}
             >
-              Xem đơn nhập của phiếu #{importRequest?.importRequestId}
+              Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
-          {importRequest?.status !== "COMPLETED" && importRequest?.status !== "CANCELLED" && (
+          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && importRequestData?.totalExpectQuantityInRequest! > importRequestData?.totalActualQuantityInRequest! && (
             <Button
               type="primary"
               icon={<FileAddOutlined />}
               onClick={handleCreateImportOrder}
             >
-              Tạo đơn nhập cho phiếu #{importRequest?.importRequestId}
+              Tạo đơn nhập cho phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
         </div>

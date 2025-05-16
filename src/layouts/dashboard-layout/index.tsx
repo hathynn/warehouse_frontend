@@ -10,6 +10,7 @@ import { UserState } from "@/redux/features/userSlice";
 import { menuItems } from "@/constants/menu-items";
 import type { MenuItem } from "@/constants/menu-items";
 import { AccountRole } from "@/constants/account-roles";
+import { ItemType } from "antd/es/menu/interface";
 
 const { Sider } = Layout;
 
@@ -93,7 +94,7 @@ const DashboardLayout: React.FC = () => {
   };
 
   // Transform menu items with consistent styling
-  const getStyledMenuItems = (items: MenuItem[]) => {
+  const getStyledMenuItems = (items: MenuItem[]): ItemType[] => {
     return items.map((item) => {
       const baseItem = {
         key: item.key,

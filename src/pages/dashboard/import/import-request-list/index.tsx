@@ -11,7 +11,7 @@ import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 
-interface ImportRequestData extends ImportRequestResponse {
+export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest: number;
   totalOrderedQuantityInRequest: number;
   totalActualQuantityInRequest: number;
