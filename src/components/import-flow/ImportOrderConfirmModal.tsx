@@ -86,7 +86,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       confirmLoading={confirmLoading}
       width={800}
       maskClosable={false}
-      okButtonProps={{ disabled: !confirmCreateImportOrderChecked, danger: true }}
+      okButtonProps={{ disabled: !confirmCreateImportOrderChecked, danger: false }}
     >
       <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>
         <Descriptions.Item label="Mã phiếu nhập">#{formData.importRequestId}</Descriptions.Item>

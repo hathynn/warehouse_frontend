@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
+
 interface ImportRequestDetailRow {
   itemId: number;
   quantity: number;
@@ -31,6 +32,19 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
   providers,
 }) => {
   const [confirmCreateImportRequestChecked, setConfirmCreateImportRequestChecked] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: details.length,
+  });
+
+  const handleTableChange = (newPagination: any) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+    });
+  };
 
   const columns = [
     { title: "Tên hàng hóa", dataIndex: "itemName", key: "itemName" },
@@ -51,7 +65,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       confirmLoading={confirmLoading}
       width={800}
       maskClosable={false}
-      okButtonProps={{ disabled: !confirmCreateImportRequestChecked, danger: true }}
+      okButtonProps={{ disabled: !confirmCreateImportRequestChecked, danger: false }}
     >
       <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>
         <Descriptions.Item label="Lý do nhập">{formData.importReason}</Descriptions.Item>
@@ -62,7 +76,16 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
         columns={columns}
         dataSource={details}
         rowKey={(record) => `${record.itemId}`}
-        pagination={false}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: details.length,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50'],
+          showTotal: (total) => `Tổng ${total} mục`,
+          locale: { items_per_page: '/ trang' }
+        }}
+        onChange={handleTableChange}
         size="small"
         bordered
       />
