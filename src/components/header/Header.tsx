@@ -316,19 +316,18 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             placement="bottomRight"
             trigger={['click']}
           >
-            <div className="relative">
+            <span className="relative">
               <Badge count={hasUnreadNotifications && !recentNotification.visible ? notifications.filter(n => !n.isViewed).length : 0} style={{ backgroundColor: '#ff4d4f' }}>
                 <span className={`text-[28px] cursor-pointer transition-colors ${hasUnreadNotifications ? 'text-red-500' : 'text-gray-600'}`}>
                   <BellOutlined />
                 </span>
+                {recentNotification.visible && (
+                  <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
+                    Có thông báo mới
+                  </div>
+                )}
               </Badge>
-              
-              {recentNotification.visible && (
-                <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
-                  Có thông báo mới
-                </div>
-              )}
-            </div>
+            </span>
           </Dropdown>
           <Dropdown 
             menu={{ items: userMenuItems as ItemType[] }} 

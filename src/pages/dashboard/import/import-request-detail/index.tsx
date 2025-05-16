@@ -265,7 +265,7 @@ const ImportRequestDetail: React.FC = () => {
               Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
-          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && totalExpectQuantityInRequest > totalOrderedQuantityInRequest && (
+          {importRequestData?.status !== "COMPLETED" && importRequestData?.status !== "CANCELLED" && totalExpectQuantityInRequest > totalActualQuantityInRequest && (
             <Button
               type="primary"
               icon={<FileAddOutlined />}
