@@ -550,11 +550,8 @@ const ImportOrderDetail = () => {
                     maskClosable={false}
                   >
                     <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
-                      Tôi sẵn sàng chịu trách nhiệm về quyết định hủy đơn nhập này.
+                      Tôi xác nhận và chịu trách nhiệm về quyết định hủy đơn nhập này.
                     </Checkbox>
-                    <div className="text-red-500">
-                      Hành động này không thể hoàn tác!
-                    </div>
                   </Modal>
                 </>
               )}
@@ -609,11 +606,8 @@ const ImportOrderDetail = () => {
               maskClosable={false}
             >
               <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
-                Tôi sẵn sàng chịu trách nhiệm về quyết định xác nhận kiểm đếm này.
+                Tôi xác nhận những thông tin trên là đúng sự thật.
               </Checkbox>
-              <div className="text-red-500">
-                Vui lòng kiểm tra kỹ trước khi xác nhận!
-              </div>
             </Modal>
           </>
         )}

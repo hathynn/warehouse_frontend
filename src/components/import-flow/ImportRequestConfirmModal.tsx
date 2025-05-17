@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
 
 interface ImportRequestDetailRow {
@@ -38,11 +38,17 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     total: details.length,
   });
 
+  useEffect(() => {
+    if (!open) {
+      setConfirmCreateImportRequestChecked(false);
+    }
+  }, [open]);
+
   const handleTableChange = (newPagination: any) => {
     setPagination({
       ...pagination,
       current: newPagination.current,
-      pageSize: newPagination.pageSize,
+      pageSize: 10,
     });
   };
 
@@ -63,38 +69,40 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       okText="Xác nhận tạo phiếu"
       cancelText="Hủy"
       confirmLoading={confirmLoading}
-      width={800}
+      width={960}
       maskClosable={false}
       okButtonProps={{ disabled: !confirmCreateImportRequestChecked, danger: false }}
     >
-      <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>
-        <Descriptions.Item label="Lý do nhập">{formData.importReason}</Descriptions.Item>
-        <Descriptions.Item label="Loại nhập">{formData.importType === "ORDER" ? "Nhập theo đơn" : "Nhập trả hàng"}</Descriptions.Item>
-      </Descriptions>
-      <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>
-      <Table
-        columns={columns}
-        dataSource={details}
-        rowKey={(record) => `${record.itemId}`}
-        pagination={{
-          current: pagination.current,
-          pageSize: pagination.pageSize,
-          total: details.length,
-          showSizeChanger: true,
-          pageSizeOptions: ['10', '20', '50'],
-          showTotal: (total) => `Tổng ${total} mục`,
-          locale: { items_per_page: '/ trang' }
-        }}
-        onChange={handleTableChange}
-        size="small"
-        bordered
-      />
-      <Checkbox checked={confirmCreateImportRequestChecked} onChange={e => setConfirmCreateImportRequestChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
-        Tôi sẵn sàng chịu trách nhiệm về quyết định tạo phiếu nhập này.
-      </Checkbox>
-      <div className="text-red-500">
-        Vui lòng kiểm tra kỹ trước khi xác nhận!
-      </div>
+        <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }} labelStyle={{ width: "20%", fontWeight: "bold" }}>
+          <Descriptions.Item label="Lý do nhập">
+            <div className="max-h-[48px] overflow-y-auto leading-[24px]">
+              {formData.importReason}
+            </div>
+          </Descriptions.Item>
+          <Descriptions.Item label="Loại nhập">
+            {formData.importType === "ORDER" ? "Nhập theo đơn" : "Nhập trả hàng"}
+          </Descriptions.Item>
+        </Descriptions>
+        <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>
+        <Table
+          columns={columns}
+          dataSource={details}
+          rowKey={(record) => `${record.itemId}`}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: details.length,
+            showSizeChanger: false,
+            showTotal: (total) => `Tổng ${total} mục`,
+          }}
+          onChange={handleTableChange}
+          size="small"
+          bordered
+          style={{ height: "490px", overflowY: "auto" }}
+        />
+        <Checkbox checked={confirmCreateImportRequestChecked} onChange={e => setConfirmCreateImportRequestChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
+          Tôi đã kiểm tra và xác nhận phiếu nhập trên đầy đủ thông tin.
+        </Checkbox>
     </Modal>
   );
 };

@@ -316,17 +316,19 @@ const ImportRequestCreate: React.FC = () => {
           <div className="mt-4 flex gap-6">
             <Card title="Thông tin phiếu nhập" className="w-3/10">
               <Space direction="vertical" className="w-full">
-                <div>
+                <div className="mb-2">
                   <label className="block mb-1">Lý do nhập kho <span className="text-red-500">*</span></label>
                   <TextArea
                     placeholder="Nhập lý do"
                     rows={4}
                     value={formData.importReason}
-                    onChange={(e) => setFormData({ ...formData, importReason: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
                     className="w-full"
+                    maxLength={150}
+                    showCount
                   />
                 </div>
-                <div>
+                <div className="mb-2">
                   <label className="block mb-1">Loại nhập kho <span className="text-red-500">*</span></label>
                   <Select
                     value={formData.importType}
@@ -392,7 +394,10 @@ const ImportRequestCreate: React.FC = () => {
         confirmLoading={loading}
         formData={formData}
         details={data}
-        providers={providers.reduce((acc, cur) => { acc[cur.id] = cur.name; return acc; }, {} as Record<number, string>)}
+        providers={providers.reduce((providerNameMap, provider) => { 
+          providerNameMap[provider.id] = provider.name; 
+          return providerNameMap; 
+        }, {} as Record<number, string>)}
       />
     </div>
   );
