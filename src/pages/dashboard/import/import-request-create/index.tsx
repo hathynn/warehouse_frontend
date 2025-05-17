@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Table } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
@@ -10,7 +10,6 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
-import TableSection from "@/components/commons/TableSection";
 import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
 import { ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
 
@@ -65,8 +64,6 @@ const ImportRequestCreate: React.FC = () => {
       current: paginationObj.current,
       pageSize: paginationObj.pageSize || prev.pageSize,
     }));
-    // Nếu có API backend cho phân trang, gọi lại API ở đây
-    // fetchImportRequestDetails(paginationObj.current, paginationObj.pageSize)
   };
 
 
@@ -210,7 +207,6 @@ const ImportRequestCreate: React.FC = () => {
     } catch (error) { }
   };
 
-  // --- columns readonly cho TableSection (không render input/dropdown) ---
   const columns = [
     {
       title: <span className="font-semibold">Tên hàng</span>,
@@ -263,7 +259,7 @@ const ImportRequestCreate: React.FC = () => {
               buttonLabel="Tải lên file Excel"
             />
             <EditableImportRequestTableSection
-              data={data.slice((pagination.current - 1) * pagination.pageSize, pagination.current * pagination.pageSize)}
+              data={data}
               setData={setData}
               items={items}
               providers={providers}
@@ -275,7 +271,7 @@ const ImportRequestCreate: React.FC = () => {
                     <>
                       <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
                       <p>Tổng số mặt hàng: {data.length}</p>
-                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
+                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
                     </>
                   }
                   type="info"
@@ -285,13 +281,6 @@ const ImportRequestCreate: React.FC = () => {
               ) : null}
               emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
               title="Danh sách hàng hóa từ file Excel"
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
-                total: data.length,
-                showSizeChanger: true
-              }}
-              onChangePage={handleChangePage}
             />
           </div>
           <Button
@@ -341,7 +330,7 @@ const ImportRequestCreate: React.FC = () => {
                 </div>
                 <Alert
                   message="Lưu ý"
-                  description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt cho từng nhà cung cấp dựa trên dữ liệu từ file Excel."
+                  description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt từng nhà cung cấp dựa trên dữ liệu từ file Excel."
                   type="info"
                   showIcon
                   className="!p-4"
@@ -359,28 +348,34 @@ const ImportRequestCreate: React.FC = () => {
               </Space>
             </Card>
             <div className="w-7/10">
-              <TableSection
-                title="Danh sách hàng hóa từ file Excel"
-                columns={columns}
-                data={data}
-                rowKey={(record, index) => index}
-                loading={false}
-                alertNode={data.length > 0 ? (
+              <Card title="Danh sách hàng hóa từ file Excel">
+                {data.length > 0 && (
                   <Alert
                     message="Thông tin nhập kho"
                     description={
                       <>
                         <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
                         <p>Tổng số mặt hàng: {data.length}</p>
-                        <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng cho từng nhà cung cấp</p>
+                        <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
                       </>
                     }
                     type="info"
                     showIcon
                     className="mb-4"
                   />
-                ) : null}
-                emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+                )}
+              </Card>
+              <Table
+                columns={columns}
+                dataSource={data}
+                rowKey={(record, index) => index as number}
+                loading={false}
+                pagination={{
+                  ...pagination,
+                  showTotal: (total: number) => `Tổng ${total} mục`,
+                }}
+                onChange={handleChangePage}
+                locale={{ emptyText: "Không có dữ liệu" }}
               />
             </div>
           </div>
@@ -394,9 +389,9 @@ const ImportRequestCreate: React.FC = () => {
         confirmLoading={loading}
         formData={formData}
         details={data}
-        providers={providers.reduce((providerNameMap, provider) => { 
-          providerNameMap[provider.id] = provider.name; 
-          return providerNameMap; 
+        providers={providers.reduce((providerNameMap, provider) => {
+          providerNameMap[provider.id] = provider.name;
+          return providerNameMap;
         }, {} as Record<number, string>)}
       />
     </div>

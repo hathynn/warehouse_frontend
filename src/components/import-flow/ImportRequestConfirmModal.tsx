@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
+import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
 
 interface ImportRequestDetailRow {
   itemId: number;
@@ -44,11 +44,11 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     }
   }, [open]);
 
-  const handleTableChange = (newPagination: any) => {
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
       ...pagination,
-      current: newPagination.current,
-      pageSize: 10,
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 10,
     });
   };
 
@@ -92,7 +92,11 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: details.length,
-            showSizeChanger: false,
+            // showSizeChanger: true,
+            // pageSizeOptions: ['5', '10', '20', '50'],
+            // locale: {
+            //   items_per_page: "/ trang"
+            // },
             showTotal: (total) => `Tổng ${total} mục`,
           }}
           onChange={handleTableChange}

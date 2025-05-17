@@ -1,6 +1,5 @@
-import React from "react";
-import { Select, InputNumber, Input, Alert } from "antd";
-import TableSection from "@/components/commons/TableSection";
+import React, { useState } from "react";
+import { Select, InputNumber, Input, Alert, TablePaginationConfig, Card, Table } from "antd";
 
 export interface ImportOrderDetailRow {
   itemId: number;
@@ -36,6 +35,20 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   emptyText,
 }) => {
 
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: data.length,
+  });
+
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 10,
+    });
+  };
+
 
   const handlePlannedQuantityChange = (value: number | null, record: ImportOrderDetailRow) => {
     const newData = data.map(row =>
@@ -49,7 +62,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
-      width: "8%",
+      width: "10%",
       render: (id: number) => `#${id}`,
       align: "right" as const,
     },
@@ -85,7 +98,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       align: "right" as const,
       render: (_: any, record: ImportOrderDetailRow) => {
         let maxAllowed = 0;
-        if (record.actualQuantity === 0){
+        if (record.actualQuantity === 0) {
           maxAllowed = record.expectQuantity - record.orderedQuantity;
         }
         else {
@@ -115,7 +128,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   const invalidRows = data
     .map((row, idx) => {
       let maxAllowed = 0;
-      if (row.actualQuantity === 0){
+      if (row.actualQuantity === 0) {
         maxAllowed = row.expectQuantity - row.orderedQuantity;
       }
       else {
@@ -149,15 +162,26 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   ) : null;
 
   return (
-    <TableSection
-      title={title!}
-      columns={columns}
-      data={data}
-      rowKey="itemId"
-      loading={loading}
-      alertNode={validationAlertNode}
-      emptyText={emptyText}
-    />
+    <Card title={title!}>
+      {validationAlertNode}
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="itemId"
+        loading={loading}
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '10', '20', '50'],
+          locale: {
+            items_per_page: "/ trang"
+          },
+          showTotal: (total: number) => `Tổng ${total} mục`,
+        }}
+        locale={{ emptyText: emptyText || "Không có dữ liệu" }}
+        onChange={handleTableChange}
+      />
+    </Card>
   );
 };
 

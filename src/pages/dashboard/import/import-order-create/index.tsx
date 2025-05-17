@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal } from "antd";
-import { useParams, useNavigate } from "react-router-dom";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal, TablePaginationConfig, Table } from "antd";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/hooks/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
+import { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import useConfigurationService from "@/hooks/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
@@ -13,18 +13,11 @@ import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-
 import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
-import TableSection from "@/components/commons/TableSection";
 import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/EditableImportOrderTableSection";
 import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirmModal";
 
 const { Title } = Typography;
 const { TextArea } = Input;
-
-interface TablePagination {
-  current: number;
-  pageSize: number;
-  total: number;
-}
 
 // Convert Excel serial number to YYYY-MM-DD if needed
 function excelDateToYMD(serial: number): string {
@@ -48,6 +41,7 @@ const ImportOrderCreate = () => {
   const { getAllProviders } = useProviderService();
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
+  const { importRequestDetails } = useLocation().state as { importRequestDetails: ImportRequestDetailResponse[] } || {};
   const navigate = useNavigate();
   const { getConfiguration } = useConfigurationService();
   const [configuration, setConfiguration] = useState<{ createRequestTimeAtLeast: string } | null>(null);
@@ -56,7 +50,6 @@ const ImportOrderCreate = () => {
     time: ""
   });
   const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
-  const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
 
   // Step state: 0 = upload/edit, 1 = confirm
   const [step, setStep] = useState<number>(0);
@@ -65,7 +58,6 @@ const ImportOrderCreate = () => {
   // Editable table data for step 1
   const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]); // No change needed here, still use ImportOrderDetailRow
   const [excelImported, setExcelImported] = useState<boolean>(false);
-  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,10 +71,10 @@ const ImportOrderCreate = () => {
     };
   }, [configuration]);
 
-  const [pagination, setPagination] = useState<TablePagination>({
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
-    pageSize: 10,
-    total: 0,
+    pageSize: 5,
+    total: importRequestDetails.length,
   });
 
   const [formData, setFormData] = useState<ImportOrderCreateRequest & { providerId: number | null }>({
@@ -100,11 +92,6 @@ const ImportOrderCreate = () => {
   } = useImportRequestService();
 
   const {
-    loading: importRequestDetailLoading,
-    getImportRequestDetails,
-  } = useImportRequestDetailService();
-
-  const {
     loading: importOrderLoading,
     createImportOrder,
   } = useImportOrderService();
@@ -112,7 +99,6 @@ const ImportOrderCreate = () => {
   const {
     loading: importOrderDetailLoading,
     createImportOrderDetails,
-    getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
 
 
@@ -182,11 +168,8 @@ const ImportOrderCreate = () => {
     fetchImportRequest();
   }, [paramImportRequestId]);
 
-  useEffect(() => {
-    fetchImportRequestDetails();
-  }, [pagination.current, pagination.pageSize]);
-
   // Khi fetch xong chi tiết phiếu nhập, khởi tạo editableRows nếu chưa import Excel
+  console.log(importRequestDetails.length)
   useEffect(() => {
     if (importRequestDetails.length && !excelImported) {
       setEditableRows(
@@ -203,8 +186,8 @@ const ImportOrderCreate = () => {
             itemName: row.itemName,
             expectQuantity: row.expectQuantity,
             orderedQuantity: row.orderedQuantity,
-            plannedQuantity: row.actualQuantity === 0 
-              ? row.expectQuantity - row.orderedQuantity 
+            plannedQuantity: row.actualQuantity === 0
+              ? row.expectQuantity - row.orderedQuantity
               : row.expectQuantity - row.actualQuantity,
             actualQuantity: row.actualQuantity,
             importRequestProviderId: importRequest?.providerId || 0,
@@ -214,43 +197,14 @@ const ImportOrderCreate = () => {
     }
   }, [importRequestDetails, importRequest, excelImported]);
 
-  const fetchImportRequestDetails = useCallback(async () => {
-    try {
-      setDetailsLoading(true);
-      const { current, pageSize } = pagination;
-      const response = await getImportRequestDetails(
-        Number(paramImportRequestId),
-        current,
-        pageSize
-      );
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 5,
+    });
+  };
 
-      if (response?.content) {
-        const detailsWithPlannedQuantity = response.content.map(detail => ({
-          ...detail,
-          plannedQuantity: detail.expectQuantity
-        }));
-
-        setImportRequestDetails(detailsWithPlannedQuantity);
-
-        if (response.metaDataDTO) {
-          setPagination(prev => ({
-            ...prev,
-            current: response.metaDataDTO?.page || 1,
-            pageSize: response.metaDataDTO?.limit || 10,
-            total: response.metaDataDTO?.total || 0,
-          }));
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch import request details:", error);
-      message.error("Không thể tải danh sách chi tiết phiếu nhập");
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [paramImportRequestId, pagination.current, pagination.pageSize, getImportRequestDetails]);
-
-
-  
   const validateDateTime = (date: string, time: string) => {
     const selectedDateTime = dayjs(`${date} ${time}`);
     const now = dayjs();
@@ -442,13 +396,13 @@ const ImportOrderCreate = () => {
 
   // Validation for step 1
   const isStep1Valid = editableRows.length > 0 && editableRows.every(row => {
-    if (row.actualQuantity === 0){
+    if (row.actualQuantity === 0) {
       return row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
-      row.plannedQuantity > 0
+        row.plannedQuantity > 0
     }
     else {
       return row.plannedQuantity <= (row.expectQuantity - row.actualQuantity) &&
-      row.plannedQuantity > 0
+        row.plannedQuantity > 0
     }
   });
 
@@ -491,8 +445,7 @@ const ImportOrderCreate = () => {
     },
   ]
 
-  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || importRequestDetailLoading;
-
+  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
   return (
     <div className="container mx-auto p-2">
       <div className="flex justify-between items-center mb-4">
@@ -524,7 +477,6 @@ const ImportOrderCreate = () => {
             <EditableImportOrderTableSection
               data={editableRows}
               onChange={setEditableRows}
-              loading={detailsLoading}
               title="Danh sách hàng hóa cần nhập"
               emptyText="Chưa có dữ liệu từ file Excel"
               excelImported={excelImported}
@@ -633,31 +585,42 @@ const ImportOrderCreate = () => {
                     placeholder="Nhập ghi chú"
                     rows={4}
                     value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, note: e.target.value.slice(0, 150) })}
                     className="w-full"
+                    maxLength={150}
+                    showCount
                   />
                 </div>
                 <Button
                   type="primary"
                   onClick={() => setShowConfirmModal(true)}
                   loading={loading}
-                  className="w-full mt-4"
+                  className="w-full mt-8"
                   id="btn-detail"
                   disabled={formData.providerId !== importRequest?.providerId}
                 >
-                  Xác nhận thông tin  
+                  Xác nhận thông tin
                 </Button>
               </Space>
             </Card>
             <div className="w-7/10">
-              <TableSection
-                title="Danh sách hàng hóa cần nhập"
-                columns={columns}
-                data={editableRows}
-                rowKey="itemId"
-                loading={detailsLoading}
-                emptyText="Không có dữ liệu"
-              />
+              <Card title="Danh sách hàng hóa cần nhập">
+                {editableRows.length > 0 ? (
+                  <Table
+                    columns={columns}
+                    dataSource={editableRows}
+                    rowKey="itemId"
+                    loading={loading}
+                    pagination={pagination}
+                    onChange={handleTableChange}
+                    className="custom-table"
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    "Không có dữ liệu"
+                  </div>
+                )}
+              </Card>
             </div>
           </div>
         </div>
@@ -669,7 +632,6 @@ const ImportOrderCreate = () => {
         confirmLoading={loading}
         formData={formData}
         details={editableRows}
-        providers={providers.reduce((acc, p) => ({ ...acc, [p.id]: p.name }), {})}
         importRequestProvider={providers.find(p => p.id === importRequest?.providerId)?.name}
       />
     </div>

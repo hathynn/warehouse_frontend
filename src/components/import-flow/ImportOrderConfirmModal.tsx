@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
+import React, { useEffect, useState } from "react";
+import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
 import dayjs from "dayjs";
 import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
 
@@ -16,7 +16,6 @@ interface ImportOrderConfirmModalProps {
     importRequestId: number | null;
   };
   details: ImportOrderDetailRow[];
-  providers: Record<number, string>;
   importRequestProvider?: string;
 }
 
@@ -27,10 +26,28 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
   confirmLoading,
   formData,
   details,
-  providers,
   importRequestProvider,
 }) => {
   const [confirmCreateImportOrderChecked, setConfirmCreateImportOrderChecked] = useState(false);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 5,
+    total: details.length,
+  });
+
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 5,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) {
+      setConfirmCreateImportOrderChecked(false);
+    }
+  }, [open]);
 
   const columns = [
     { 
@@ -84,11 +101,11 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       okText="Xác nhận tạo đơn nhập"
       cancelText="Hủy"
       confirmLoading={confirmLoading}
-      width={800}
+      width={960}
       maskClosable={false}
       okButtonProps={{ disabled: !confirmCreateImportOrderChecked, danger: false }}
     >
-      <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }}>
+      <Descriptions bordered column={2} size="small" labelStyle={{ fontWeight: "bold" }} style={{ marginBottom: 24 }}>
         <Descriptions.Item label="Mã phiếu nhập">#{formData.importRequestId}</Descriptions.Item>
         <Descriptions.Item label="Nhà cung cấp (theo phiếu nhập)">{importRequestProvider || "-"}</Descriptions.Item>
         <Descriptions.Item label="Ngày nhận hàng">{formattedDate}</Descriptions.Item>
@@ -100,20 +117,29 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         columns={columns}
         dataSource={details}
         rowKey={(record) => `${record.itemId}`}
-        pagination={false}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: details.length,
+          // showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} mục`,
+          // pageSizeOptions: ['5', '10', '20', '50'],
+          // locale: {
+          //   items_per_page: "/ trang"
+          // },
+        }}
+        onChange={handleTableChange}
         size="small"
         bordered
+        style={{ height: "350px", overflowY: "auto" }}
       />
       <Checkbox 
         checked={confirmCreateImportOrderChecked} 
         onChange={e => setConfirmCreateImportOrderChecked(e.target.checked)} 
-        style={{ marginTop: 16, fontSize: 14, fontWeight: "bold"}}
+        style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}
       >
-        Tôi sẵn sàng chịu trách nhiệm về quyết định tạo đơn nhập kho này.
+        Tôi đã kiểm tra và xác nhận đơn nhập trên đầy đủ thông tin.
       </Checkbox>
-      <div className="text-red-500 mt-2">
-        Vui lòng kiểm tra kỹ thông tin trước khi xác nhận!
-      </div>
     </Modal>
   );
 };

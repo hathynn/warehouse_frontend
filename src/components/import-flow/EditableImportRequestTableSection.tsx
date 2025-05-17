@@ -1,5 +1,5 @@
-import React from "react";
-import { Table, Select, Input, Card } from "antd";
+import React, { useState } from "react";
+import { Table, Select, Input, Card, TablePaginationConfig } from "antd";
 
 interface ImportRequestDetailRow {
   itemId: number;
@@ -33,8 +33,6 @@ interface EditableImportRequestTableSectionProps {
   alertNode?: React.ReactNode;
   emptyText?: React.ReactNode;
   title?: string;
-  pagination?: any;
-  onChangePage?: (pagination: any) => void;
 }
 
 const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSectionProps> = ({
@@ -46,9 +44,22 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
   alertNode,
   emptyText,
   title = "Danh sách hàng hóa từ file Excel",
-  pagination,
-  onChangePage
 }) => {
+
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: data.length,
+  });
+
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current || 1,
+      pageSize: newPagination.pageSize || 10,
+    });
+  };
+
   const handleCellChange = (value: any, record: ImportRequestDetailRow, field: keyof ImportRequestDetailRow) => {
     setData(
       data.map(row => {
@@ -188,9 +199,16 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
         dataSource={data}
         rowKey={(record, index) => index as number}
         loading={loading}
-        pagination={pagination || false}
-        onChange={pagination && onChangePage ? (pagination) => onChangePage(pagination) : undefined}
-        className="custom-table"
+        pagination={{
+          ...pagination,
+          showSizeChanger: true,
+          showTotal: (total: number) => `Tổng ${total} mục`,
+          pageSizeOptions: ['5', '10', '20', '50'],
+          locale: {
+            items_per_page: "/ trang"
+          }
+        }}
+        onChange={handleTableChange}
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}
       />
     </Card>

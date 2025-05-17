@@ -348,13 +348,15 @@ const ImportRequestList: React.FC = () => {
         columns={columns}
         dataSource={filteredItems}
         rowKey="importRequestId"
-        className="custom-table"
         loading={loading || detailsLoading}
         onChange={handleTableChange}
         pagination={{
           ...pagination,
           showSizeChanger: true,
-          pageSizeOptions: ['10', '50'],
+          pageSizeOptions: ['10', '20', '50', '100'],
+          locale: {
+            items_per_page: "/ trang"
+          },
           showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập`,
         }}
       />

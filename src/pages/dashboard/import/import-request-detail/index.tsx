@@ -227,7 +227,11 @@ const ImportRequestDetail: React.FC = () => {
 
   const handleCreateImportOrder = (): void => {
     if (importRequestId) {
-      navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId));
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId), {
+        state: {
+          importRequestDetails,
+        },
+      });
     }
   };
 
@@ -243,7 +247,8 @@ const ImportRequestDetail: React.FC = () => {
       return false;
     }
 
-    if (importOrders.length === 0) {
+    // Nếu không có import order hoặc tổng số lượng đã nhập bằng 0
+    if (importOrders.length === 0 || totalActualQuantityInRequest === 0) {
       return totalExpectQuantityInRequest > totalOrderedQuantityInRequest;
     }
 
@@ -381,7 +386,7 @@ const ImportRequestDetail: React.FC = () => {
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
       </div>
 
-      <Table<ImportRequestDetailResponse>
+      <Table
         columns={columns}
         dataSource={importRequestDetails}
         rowKey="importRequestDetailId"
@@ -390,7 +395,10 @@ const ImportRequestDetail: React.FC = () => {
         pagination={{
           ...pagination,
           showSizeChanger: true,
-          pageSizeOptions: ['10', '50'],
+          pageSizeOptions: ['5', '10', '20', '50'],
+          locale: {
+            items_per_page: "/ trang"
+          },
           showTotal: (total) => `Tổng cộng ${total} sản phẩm trong phiếu nhập`,
         }}
       />
