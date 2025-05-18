@@ -1,11 +1,12 @@
-// ExportRequestInfoForm.jsx
-import React from "react";
-import { Button, Space, Card } from "antd";
+import React, { useState } from "react";
+import { Button, Space, Card, Typography } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import UseExportForm from "@/components/export-flow/UseExportForm";
 import LoanExportForm from "@/components/export-flow/LoanExportForm";
 import SelectModal from "@/components/export-flow/SelectModal";
-import { Typography } from "antd";
+import ExcelDataTableAfter from "./ExcelDataTableAfter";
+import ExportRequestConfirmModal from "./ExportRequestConfirmModal";
+import PropTypes from "prop-types";
 
 const { Title } = Typography;
 
@@ -22,91 +23,148 @@ const ExportRequestInfoForm = ({
   fakeFetchDepartmentDetails,
   setFileConfirmed,
   fileName,
-}) => (
-  <div className="container mx-auto p-5">
-    <div className="flex items-center mb-4">
-      <Button
-        icon={<ArrowLeftOutlined />}
-        onClick={() => setFileConfirmed(false)}
-        className="mr-4"
-      >
-        Quay lại
-      </Button>
-    </div>
+}) => {
+  const [timeError, setTimeError] = useState("");
+  const [mandatoryError, setMandatoryError] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
-    <div className="flex justify-between items-center mb-4">
-      <Title level={2}>Điền thông tin phiếu xuất</Title>
-      <Space>
-        <b>File đã được tải lên:</b> {fileName}
-      </Space>
-    </div>
+  const missingFields =
+    !formData.exportDate ||
+    !formData.exportTime ||
+    !formData.exportReason ||
+    !formData.receivingDepartment;
 
-    <div className="flex gap-6">
-      <Card title="Thông tin phiếu xuất" className="w-1/3">
-        <Space direction="vertical" className="w-full">
-          {formData.exportType === "PRODUCTION" && (
-            <UseExportForm
-              formData={formData}
-              setFormData={setFormData}
-              openDepartmentModal={() => setDepartmentModalVisible(true)}
-            />
-          )}
-          {formData.exportType === "BORROWING" && (
-            <LoanExportForm
-              formData={formData}
-              setFormData={setFormData}
-              openDepartmentModal={() => setDepartmentModalVisible(true)}
-            />
-          )}
-          <Button
-            type="primary"
-            onClick={handleSubmit}
-            className="w-full mt-4"
-            disabled={data.length === 0 || !!validationError}
-          >
-            Xác nhận tạo phiếu xuất
-          </Button>
-        </Space>
-      </Card>
+  const onSubmit = () => {
+    if (missingFields) {
+      setMandatoryError("Vui lòng nhập đầy đủ các trường bắt buộc.");
+      return;
+    }
+    setMandatoryError("");
+    setShowConfirmModal(true);
+  };
 
-      <div className="w-2/3">
-        <Card title="Chi tiết hàng hóa từ file Excel">
-          {mappedData.length > 0 ? (
-            <ExcelDataTableAfter data={mappedData} />
-          ) : (
-            <div className="text-center py-10 text-gray-500">
-              Vui lòng tải lên file Excel để xem chi tiết hàng hóa
-            </div>
-          )}
-        </Card>
+  const handleConfirmModalOk = async () => {
+    setConfirmLoading(true);
+    await handleSubmit();
+    setConfirmLoading(false);
+    setShowConfirmModal(false);
+  };
+
+  return (
+    <div className="container mx-auto p-5">
+      <div className="flex items-center mb-4">
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => setFileConfirmed(false)}
+          className="mr-4"
+        >
+          Quay lại
+        </Button>
       </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <Title level={2}>Điền thông tin phiếu xuất</Title>
+        <Space>
+          <b>File đã được tải lên:</b> {fileName}
+        </Space>
+      </div>
+
+      <div className="flex gap-6">
+        <Card title="Thông tin phiếu xuất" className="w-1/3">
+          <Space direction="vertical" className="w-full">
+            {formData.exportType === "PRODUCTION" && (
+              <UseExportForm
+                formData={formData}
+                setFormData={setFormData}
+                openDepartmentModal={() => setDepartmentModalVisible(true)}
+                timeError={timeError}
+                setTimeError={setTimeError}
+                mandatoryError={mandatoryError}
+                setMandatoryError={setMandatoryError}
+              />
+            )}
+            {formData.exportType === "BORROWING" && (
+              <LoanExportForm
+                formData={formData}
+                setFormData={setFormData}
+                openDepartmentModal={() => setDepartmentModalVisible(true)}
+                timeError={timeError}
+                setTimeError={setTimeError}
+                mandatoryError={mandatoryError}
+                setMandatoryError={setMandatoryError}
+              />
+            )}
+            {mandatoryError && (
+              <div className="text-red-500 text-sm mb-2">{mandatoryError}</div>
+            )}
+            <Button
+              type="primary"
+              onClick={onSubmit}
+              className="w-full mt-4"
+              disabled={
+                data.length === 0 ||
+                !!validationError ||
+                !!timeError ||
+                missingFields
+              }
+            >
+              Xác nhận tạo phiếu xuất
+            </Button>
+          </Space>
+        </Card>
+
+        <div className="w-2/3">
+          <Card title="Chi tiết hàng hóa từ file Excel">
+            {mappedData.length > 0 ? (
+              <ExcelDataTableAfter data={mappedData} />
+            ) : (
+              <div className="text-center py-10 text-gray-500">
+                Vui lòng tải lên file Excel để xem chi tiết hàng hóa
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      <SelectModal
+        visible={departmentModalVisible}
+        title="Chọn bộ phận/phân xưởng"
+        data={departments}
+        onSelect={async (selectedDepartment) => {
+          const details = await fakeFetchDepartmentDetails(selectedDepartment);
+          setFormData({
+            ...formData,
+            receivingDepartment: selectedDepartment,
+            departmentRepresentative: details?.receiverName || "",
+            departmentRepresentativePhone: details?.receiverPhone || "",
+          });
+          setDepartmentModalVisible(false);
+        }}
+        onCancel={() => setDepartmentModalVisible(false)}
+      />
+
+      <ExportRequestConfirmModal
+        open={showConfirmModal}
+        onOk={handleConfirmModalOk}
+        onCancel={() => setShowConfirmModal(false)}
+        confirmLoading={confirmLoading}
+        formData={formData}
+        details={mappedData}
+      />
     </div>
-
-    <SelectModal
-      visible={departmentModalVisible}
-      title="Chọn bộ phận/phân xưởng"
-      data={departments}
-      onSelect={async (selectedDepartment) => {
-        const details = await fakeFetchDepartmentDetails(selectedDepartment);
-        setFormData({
-          ...formData,
-          receivingDepartment: selectedDepartment,
-          departmentRepresentative: details?.receiverName || "",
-          departmentRepresentativePhone: details?.receiverPhone || "",
-        });
-        setDepartmentModalVisible(false);
-      }}
-      onCancel={() => setDepartmentModalVisible(false)}
-    />
-  </div>
-);
-
-import PropTypes from "prop-types";
-import ExcelDataTableAfter from "./ExcelDataTableAfter";
+  );
+};
 
 ExportRequestInfoForm.propTypes = {
   formData: PropTypes.shape({
     exportType: PropTypes.string.isRequired,
+    exportDate: PropTypes.string.isRequired,
+    exportTime: PropTypes.string.isRequired,
+    exportReason: PropTypes.string.isRequired,
+    receivingDepartment: PropTypes.string.isRequired,
+    departmentRepresentative: PropTypes.string,
+    departmentRepresentativePhone: PropTypes.string,
   }).isRequired,
   setFormData: PropTypes.func.isRequired,
   data: PropTypes.array.isRequired,
@@ -120,4 +178,5 @@ ExportRequestInfoForm.propTypes = {
   setFileConfirmed: PropTypes.func.isRequired,
   fileName: PropTypes.string.isRequired,
 };
+
 export default ExportRequestInfoForm;

@@ -1,22 +1,45 @@
 import React from "react";
-import { Input, DatePicker, Card } from "antd";
+import { Input, DatePicker } from "antd";
 import moment from "moment";
 import PropTypes from "prop-types";
 
-const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
-  UseExportForm.propTypes = {
-    formData: PropTypes.shape({
-      exportReason: PropTypes.string,
-      exportDate: PropTypes.string,
-      exportTime: PropTypes.string,
-      receivingDepartment: PropTypes.object, // expected to have { id, name }
-      departmentRepresentative: PropTypes.string,
-      departmentRepresentativePhone: PropTypes.string,
-      note: PropTypes.string,
-      type: PropTypes.string, // luôn là "USE"
-    }).isRequired,
-    setFormData: PropTypes.func.isRequired,
-    openDepartmentModal: PropTypes.func.isRequired,
+const UseExportForm = ({
+  formData,
+  setFormData,
+  openDepartmentModal,
+  timeError,
+  setTimeError,
+  mandatoryError,
+  setMandatoryError,
+}) => {
+  // Kiểm tra giờ nhận
+  const checkTimeValid = (dateString, timeString) => {
+    if (!dateString || !timeString) {
+      setTimeError("");
+      return;
+    }
+    const selected = moment(
+      `${dateString} ${timeString}`,
+      "YYYY-MM-DD HH:mm:ss"
+    );
+    const now = moment();
+    const diff = selected.diff(now, "hours", true);
+    if (diff < 6) {
+      setTimeError(
+        "Thời gian nhận phải lớn hơn thời điểm hiện tại ít nhất 6 giờ"
+      );
+    } else {
+      setTimeError("");
+    }
+  };
+
+  // Chặn nhập quá 150 ký tự
+  const handleReasonChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= 150) {
+      setFormData({ ...formData, exportReason: value });
+      setMandatoryError(""); // clear lỗi khi bắt đầu nhập
+    }
   };
 
   return (
@@ -30,12 +53,27 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
             Ngày nhận <span className="text-red-500">*</span>
           </label>
           <DatePicker
-            value={formData.exportDate ? moment(formData.exportDate) : null}
-            onChange={(date, dateString) =>
-              setFormData({ ...formData, exportDate: dateString })
+            value={
+              formData.exportDate
+                ? moment(formData.exportDate, "YYYY-MM-DD")
+                : null
             }
+            onChange={(date, dateString) => {
+              setFormData({ ...formData, exportDate: dateString || null }); // Sửa thành null thay vì ""
+              setMandatoryError("");
+              if (formData.exportTime) {
+                checkTimeValid(dateString, formData.exportTime);
+              }
+            }}
             className="w-full"
+            allowClear
+            placeholder="Chọn ngày nhận"
           />
+          {!formData.exportDate && (
+            <div className="text-red-500 text-xs mt-1">
+              Vui lòng chọn ngày nhận.
+            </div>
+          )}
         </div>
         <div className="flex-1">
           <label className="block mb-1">
@@ -49,11 +87,23 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
                 ? moment(formData.exportTime, "HH:mm:ss")
                 : null
             }
-            onChange={(time, timeString) =>
-              setFormData({ ...formData, exportTime: timeString })
-            }
+            onChange={(time, timeString) => {
+              setFormData({ ...formData, exportTime: timeString || null }); // Sửa thành null thay vì ""
+              setMandatoryError("");
+              checkTimeValid(formData.exportDate, timeString);
+            }}
             className="w-full"
+            allowClear
+            placeholder="Chọn thời gian nhận"
           />
+          {!formData.exportTime && (
+            <div className="text-red-500 text-xs mt-1">
+              Vui lòng chọn thời gian nhận.
+            </div>
+          )}
+          {timeError && (
+            <div className="text-red-500 text-xs mt-1">{timeError}</div>
+          )}
         </div>
       </div>
 
@@ -62,14 +112,20 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
         <label className="block mb-1">
           Lý do xuất <span className="text-red-500">*</span>
         </label>
-        <Input
+        <Input.TextArea
           value={formData.exportReason || ""}
           placeholder="Nhập lý do xuất"
-          onChange={(e) =>
-            setFormData({ ...formData, exportReason: e.target.value })
-          }
+          maxLength={150}
+          rows={2}
+          onChange={handleReasonChange}
           className="w-full"
+          showCount
         />
+        {!formData.exportReason && (
+          <div className="text-red-500 text-xs mt-1">
+            Vui lòng nhập lý do xuất.
+          </div>
+        )}
       </div>
 
       {/* Phòng ban: onClick mở modal */}
@@ -88,6 +144,11 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
           onClick={openDepartmentModal}
           className="w-full cursor-pointer"
         />
+        {!formData.receivingDepartment && (
+          <div className="text-red-500 text-xs mt-1">
+            Vui lòng chọn phòng ban.
+          </div>
+        )}
       </div>
 
       {/* Người đại diện phòng ban */}
@@ -119,25 +180,27 @@ const UseExportForm = ({ formData, setFormData, openDepartmentModal }) => {
           }}
         />
       </div>
-
-      {/* Field type ẩn */}
-      <div className="mb-4" style={{ display: "none" }}>
-        <Input value={formData.type || "USE"} readOnly />
-      </div>
-
-      {/* Ghi chú
-      <div className="mb-4">
-        <label className="block mb-1">Ghi chú</label>
-        <Input.TextArea
-          rows={3}
-          value={formData.note || ""}
-          placeholder="Nhập ghi chú (nếu có)"
-          onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-          className="w-full"
-        />
-      </div> */}
     </>
   );
+};
+
+UseExportForm.propTypes = {
+  formData: PropTypes.shape({
+    exportReason: PropTypes.string,
+    exportDate: PropTypes.string,
+    exportTime: PropTypes.string,
+    receivingDepartment: PropTypes.object,
+    departmentRepresentative: PropTypes.string,
+    departmentRepresentativePhone: PropTypes.string,
+    note: PropTypes.string,
+    type: PropTypes.string,
+  }).isRequired,
+  setFormData: PropTypes.func.isRequired,
+  openDepartmentModal: PropTypes.func.isRequired,
+  timeError: PropTypes.string,
+  setTimeError: PropTypes.func,
+  mandatoryError: PropTypes.string,
+  setMandatoryError: PropTypes.func,
 };
 
 export default UseExportForm;

@@ -36,8 +36,9 @@ const LackProductTable = ({ data }) => {
       columns={columns}
       dataSource={data}
       rowKey="id"
-      pagination={{ pageSize: 5 }}
+      pagination={{ pageSize: 10 }}
       size="small"
+      style={{ height: "420px", overflowY: "auto" }}
     />
   );
 };
