@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Select, InputNumber, Input, Alert, TablePaginationConfig, Card, Table } from "antd";
+import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 
 export interface ImportOrderDetailRow {
   itemId: number;
@@ -25,6 +26,7 @@ interface EditableImportOrderTableSectionProps {
   emptyText?: string;
   alertNode?: React.ReactNode;
   excelImported?: boolean;
+  setIsAllPagesViewed?: (value: boolean) => void;
 }
 
 const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionProps> = ({
@@ -33,6 +35,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   loading,
   title,
   emptyText,
+  setIsAllPagesViewed,
 }) => {
 
   const [pagination, setPagination] = useState({
@@ -40,6 +43,20 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     pageSize: 10,
     total: data.length,
   });
+
+  const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
+    data.length,
+    pagination.pageSize,
+    pagination.current
+  );
+
+  useEffect(() => {
+    if (allPagesViewed) {
+      setIsAllPagesViewed?.(true);
+    } else {
+      setIsAllPagesViewed?.(false);
+    }
+  }, [allPagesViewed, setIsAllPagesViewed]);
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({

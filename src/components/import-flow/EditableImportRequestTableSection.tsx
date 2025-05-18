@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Select, Input, Card, TablePaginationConfig } from "antd";
+import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 
 interface ImportRequestDetailRow {
   itemId: number;
@@ -33,6 +34,7 @@ interface EditableImportRequestTableSectionProps {
   alertNode?: React.ReactNode;
   emptyText?: React.ReactNode;
   title?: string;
+  setIsAllPagesViewed?: (isValid: boolean) => void;
 }
 
 const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSectionProps> = ({
@@ -44,6 +46,7 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
   alertNode,
   emptyText,
   title = "Danh sách hàng hóa từ file Excel",
+  setIsAllPagesViewed,
 }) => {
 
   const [pagination, setPagination] = useState({
@@ -52,12 +55,27 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
     total: data.length,
   });
 
+  const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
+    data.length,
+    pagination.pageSize,
+    pagination.current
+  );
+
+  useEffect(() => {
+    if (allPagesViewed) {
+      setIsAllPagesViewed?.(true);
+    } else {
+      setIsAllPagesViewed?.(false);
+    }
+  }, [allPagesViewed, setIsAllPagesViewed]);
+
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
       ...pagination,
       current: newPagination.current || 1,
       pageSize: newPagination.pageSize || 10,
     });
+    markPageAsViewed(newPagination.current || 1);
   };
 
   const handleCellChange = (value: any, record: ImportRequestDetailRow, field: keyof ImportRequestDetailRow) => {

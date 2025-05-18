@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
 import dayjs from "dayjs";
 import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
-
+import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 
 interface ImportOrderConfirmModalProps {
   open: boolean;
@@ -35,12 +35,21 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     total: details.length,
   });
 
+  const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
+    details.length,
+    pagination.pageSize,
+    pagination.current
+  );
+
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
       ...pagination,
       current: newPagination.current || 1,
       pageSize: newPagination.pageSize || 5,
     });
+    if (newPagination.current) {
+      markPageAsViewed(newPagination.current);
+    }
   };
 
   useEffect(() => {
@@ -136,12 +145,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
           current: pagination.current,
           pageSize: pagination.pageSize,
           total: details.length,
-          // showSizeChanger: true,
           showTotal: (total) => `Tổng ${total} mục`,
-          // pageSizeOptions: ['5', '10', '20', '50'],
-          // locale: {
-          //   items_per_page: "/ trang"
-          // },
         }}
         onChange={handleTableChange}
         size="small"
@@ -152,8 +156,10 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         checked={confirmCreateImportOrderChecked} 
         onChange={e => setConfirmCreateImportOrderChecked(e.target.checked)} 
         style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}
+        disabled={!allPagesViewed}
       >
         Tôi đã kiểm tra và xác nhận đơn nhập trên đầy đủ thông tin.
+        {!allPagesViewed && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
       </Checkbox>
     </Modal>
   );

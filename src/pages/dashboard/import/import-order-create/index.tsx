@@ -58,6 +58,7 @@ const ImportOrderCreate = () => {
   // Editable table data for step 1
   const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]); // No change needed here, still use ImportOrderDetailRow
   const [excelImported, setExcelImported] = useState<boolean>(false);
+  const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +102,23 @@ const ImportOrderCreate = () => {
     createImportOrderDetails,
   } = useImportOrderDetailService();
 
+  // Thêm state cho validation step 1
+  const [isImportOrderDataValid, setIsImportOrderDataValid] = useState<boolean>(false);
+
+  // Cập nhật giá trị isStep1Valid khi editableRows thay đổi
+  useEffect(() => {
+    const valid = editableRows.length > 0 && editableRows.every(row => {
+      if (row.actualQuantity === 0) {
+        return row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
+          row.plannedQuantity > 0
+      }
+      else {
+        return row.plannedQuantity <= (row.expectQuantity - row.actualQuantity) &&
+          row.plannedQuantity > 0
+      }
+    });
+    setIsImportOrderDataValid(valid);
+  }, [editableRows]);
 
   // Fetch providers on mount
   useEffect(() => {
@@ -394,18 +412,6 @@ const ImportOrderCreate = () => {
     reader.readAsArrayBuffer(uploadedFile);
   };
 
-  // Validation for step 1
-  const isStep1Valid = editableRows.length > 0 && editableRows.every(row => {
-    if (row.actualQuantity === 0) {
-      return row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
-        row.plannedQuantity > 0
-    }
-    else {
-      return row.plannedQuantity <= (row.expectQuantity - row.actualQuantity) &&
-        row.plannedQuantity > 0
-    }
-  });
-
   const columns = [
     {
       title: "Mã hàng",
@@ -495,15 +501,17 @@ const ImportOrderCreate = () => {
               title="Danh sách hàng hóa cần nhập"
               emptyText="Chưa có dữ liệu từ file Excel"
               excelImported={excelImported}
+              setIsAllPagesViewed={setIsAllPagesViewed}
             />
           </div>
           <Button
             type="primary"
             className="mt-2"
-            disabled={!isStep1Valid}
+            disabled={!isImportOrderDataValid || !isAllPagesViewed}
             onClick={() => setStep(1)}
           >
             Tiếp tục nhập thông tin đơn nhập
+            {!isAllPagesViewed && isImportOrderDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
             <ArrowRightOutlined />
           </Button>
         </div>
@@ -526,6 +534,7 @@ const ImportOrderCreate = () => {
                   <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
                   <DatePicker
                     className="w-full"
+                    format="DD/MM/YYYY"
                     value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                     onChange={handleDateChange}
                     disabledDate={(current) => {

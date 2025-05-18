@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
+import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, notification } from "antd";
+import { CheckboxChangeEvent } from "antd/es/checkbox";
+import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 
 interface ImportRequestDetailRow {
   itemId: number;
@@ -37,12 +39,13 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     pageSize: 10,
     total: details.length,
   });
-
-  useEffect(() => {
-    if (!open) {
-      setConfirmCreateImportRequestChecked(false);
-    }
-  }, [open]);
+  
+  // Use the custom hook for page confirmation gating
+  const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
+    details.length,
+    pagination.pageSize,
+    pagination.current
+  );
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
@@ -50,7 +53,24 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       current: newPagination.current || 1,
       pageSize: newPagination.pageSize || 10,
     });
+    
+    // Mark this page as viewed
+    if (newPagination.current) {
+      markPageAsViewed(newPagination.current);
+    }
   };
+
+  useEffect(() => {
+    if (!open) {
+      setPagination({
+        current: 1,
+        pageSize: 10,
+        total: details.length,
+      });
+      setConfirmCreateImportRequestChecked(false);
+      resetViewedPages(1);
+    }
+  }, [open, details.length, resetViewedPages]);
 
   const columns = [
     { 
@@ -130,11 +150,6 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: details.length,
-            // showSizeChanger: true,
-            // pageSizeOptions: ['5', '10', '20', '50'],
-            // locale: {
-            //   items_per_page: "/ trang"
-            // },
             showTotal: (total) => `Tổng ${total} mục`,
           }}
           onChange={handleTableChange}
@@ -142,8 +157,14 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
           bordered
           style={{ height: "490px", overflowY: "auto" }}
         />
-        <Checkbox checked={confirmCreateImportRequestChecked} onChange={e => setConfirmCreateImportRequestChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
-          Tôi đã kiểm tra và xác nhận phiếu nhập trên đầy đủ thông tin.
+        <Checkbox 
+          checked={confirmCreateImportRequestChecked} 
+          onChange={(e: CheckboxChangeEvent) => setConfirmCreateImportRequestChecked(e.target.checked)} 
+          style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}
+          disabled={!allPagesViewed}
+        >
+          Tôi đã kiểm tra và xác nhận phiếu nhập trên đầy đủ thông tin và đồng ý tạo.
+          {!allPagesViewed && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
         </Checkbox>
     </Modal>
   );

@@ -46,7 +46,8 @@ const ImportRequestCreate: React.FC = () => {
   });
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
-  const [validationError, setValidationError] = useState<string>("");
+  const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
+  const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -150,10 +151,10 @@ const ImportRequestCreate: React.FC = () => {
               };
             });
             setData(transformedData);
-            setValidationError("");
+            setIsImportRequestDataValid(true);
           } catch (error) {
             if (error instanceof Error) {
-              setValidationError(error.message);
+              setIsImportRequestDataValid(false);
               toast.error(error.message);
             }
           }
@@ -274,6 +275,7 @@ const ImportRequestCreate: React.FC = () => {
               buttonLabel="Tải lên file Excel"
             />
             <EditableImportRequestTableSection
+              setIsAllPagesViewed={setIsAllPagesViewed}
               data={data}
               setData={setData}
               items={items}
@@ -301,10 +303,11 @@ const ImportRequestCreate: React.FC = () => {
           <Button
             type="primary"
             onClick={() => setStep(1)}
-            disabled={data.length === 0 || !!validationError}
+            disabled={data.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
           >
             Tiếp tục nhập thông tin phiếu nhập
             <ArrowRightOutlined />
+            {!isAllPagesViewed && isImportRequestDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
           </Button>
         </div>
       )}
@@ -356,7 +359,7 @@ const ImportRequestCreate: React.FC = () => {
                   loading={loading}
                   className="w-full mt-4"
                   id="btn-detail"
-                  disabled={data.length === 0 || !!validationError || !formData.importReason}
+                  disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason}
                 >
                   Xác nhận thông tin
                 </Button>
