@@ -26,6 +26,7 @@ const ExportRequestCreate = () => {
   const [fileConfirmed, setFileConfirmed] = useState(false);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const [hasTableError, setHasTableError] = useState(false);
 
   // --- Lấy danh sách sản phẩm ---
   const [items, setItems] = useState([]);
@@ -72,6 +73,17 @@ const ExportRequestCreate = () => {
     { id: 3, name: "Bộ phận C" },
   ];
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
+
+  const enrichDataWithItemMeta = (dataArray, itemsArray) =>
+    dataArray.map((row) => {
+      const itemMeta = itemsArray.find((i) => i.id === row.itemId) || {};
+      return {
+        ...row,
+        itemName: itemMeta.name || "Không xác định",
+        totalMeasurementValue: itemMeta.totalMeasurementValue ?? "",
+        measurementUnit: itemMeta.measurementUnit ?? "",
+      };
+    });
 
   // --- Fake API: Lấy chi tiết phòng ban (dành cho Production) ---
   const fakeFetchDepartmentDetails = (department) => {
@@ -326,14 +338,7 @@ const ExportRequestCreate = () => {
 
   // --- Mapping dữ liệu Excel để hiển thị ---
   // Thêm cột measurementValue vào mappedData
-  const mappedData = data.map((row) => {
-    const foundItem = items.content.find((i) => i.id === row.itemId);
-    return {
-      ...row,
-      itemName: foundItem ? foundItem.name : "Không xác định",
-      measurementValue: row.measurementValue,
-    };
-  });
+  const mappedData = enrichDataWithItemMeta(data, items.content);
 
   return (
     <div className="container mx-auto p-5">
@@ -387,23 +392,9 @@ const ExportRequestCreate = () => {
                 data={mappedData}
                 items={items.content}
                 onDataChange={(updatedData) => {
-                  const updatedMappedData = updatedData.map((item) => ({
-                    ...item,
-                    itemName:
-                      items.content.find((i) => i.id === item.itemId)?.name ||
-                      "Không xác định",
-                  }));
-
-                  setData(
-                    updatedMappedData.map(
-                      ({ itemId, quantity, measurementValue }) => ({
-                        itemId,
-                        quantity,
-                        measurementValue,
-                      })
-                    )
-                  );
+                  setData(enrichDataWithItemMeta(updatedData, items.content));
                 }}
+                onTableErrorChange={setHasTableError}
               />
             ) : (
               <div className="text-center py-10 text-gray-500">
@@ -414,7 +405,7 @@ const ExportRequestCreate = () => {
 
           <Button
             type="primary"
-            disabled={data.length === 0 || !!validationError}
+            disabled={data.length === 0 || !!validationError || hasTableError}
             onClick={() => setFileConfirmed(true)}
             className="w-full"
           >
