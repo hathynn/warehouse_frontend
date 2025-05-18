@@ -78,13 +78,12 @@ const ImportOrderCreate = () => {
     total: importRequestDetails.length,
   });
 
-  const [formData, setFormData] = useState<ImportOrderCreateRequest & { providerId: number | null }>({
+  const [formData, setFormData] = useState<ImportOrderCreateRequest>({
     importRequestId: null,
     accountId: null,
     dateReceived: defaultDateTime.date,
     timeReceived: defaultDateTime.time,
-    note: "",
-    providerId: null
+    note: ""
   });
 
   const {
@@ -209,7 +208,6 @@ const ImportOrderCreate = () => {
               : row.expectQuantity - row.actualQuantity,
             actualQuantity: row.actualQuantity,
             importRequestProviderId: importRequest?.providerId || 0,
-            importOrderProviderId: importRequest?.providerId || 0,
           }))
       );
     }
@@ -277,7 +275,7 @@ const ImportOrderCreate = () => {
           quantity: row.plannedQuantity
         }));
         await createImportOrderDetails(
-          { providerId: formData.providerId!, importOrderItems },
+          { providerId: importRequest?.providerId!, importOrderItems },
           response.content.importOrderId
         );
         // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
@@ -309,11 +307,10 @@ const ImportOrderCreate = () => {
     // Dòng 5: header bảng hàng hóa
     ws["A5"] = { v: "itemId", t: "s" };
     ws["B5"] = { v: "quantity", t: "s" };
-    ws["C5"] = { v: "providerId", t: "s" };
 
-    ws["!ref"] = "A1:C5";
+    ws["!ref"] = "A1:B5";
     ws["!cols"] = [
-      { wpx: 90 }, { wpx: 100 }, { wpx: 100 }
+      { wpx: 90 }, { wpx: 100 }
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -359,23 +356,21 @@ const ImportOrderCreate = () => {
           }
           const range = XLSX.utils.decode_range(ws['!ref']);
           // Find headers in row 5
-          const headers = [getCell('A5'), getCell('B5'), getCell('C5')];
-          if (headers[0] !== 'itemId' || headers[1] !== 'quantity' || headers[2] !== 'providerId') {
-            toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity, providerId");
+          const headers = [getCell('A5'), getCell('B5')];
+          if (headers[0] !== 'itemId' || headers[1] !== 'quantity') {
+            toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity");
             setFileName("");
             return;
           }
           // Parse data from row 6 onwards
-          const excelDetails: { itemId: number, quantity: number, providerId: number }[] = [];
+          const excelDetails: { itemId: number, quantity: number }[] = [];
           for (let row = 6; row <= range.e.r + 1; row++) {
             const itemId = getCell(`A${row}`);
             const quantity = getCell(`B${row}`);
-            const providerId = getCell(`C${row}`);
-            if (itemId && quantity && providerId) {
+            if (itemId && quantity) {
               excelDetails.push({
                 itemId: Number(itemId),
-                quantity: Number(quantity),
-                providerId: Number(providerId)
+                quantity: Number(quantity)
               });
             }
           }
@@ -384,23 +379,18 @@ const ImportOrderCreate = () => {
             setFileName("");
             return;
           }
-          // Khi import file Excel, chỉ cập nhật plannedQuantity/providerId cho các itemId có trong Excel, giữ nguyên các dòng khác
+          // Khi import file Excel, chỉ cập nhật plannedQuantity cho các itemId có trong Excel, giữ nguyên các dòng khác
           const updatedRows = editableRows.map(row => {
             const match = excelDetails.find(d => d.itemId === row.itemId);
             if (match) {
               return {
                 ...row,
                 plannedQuantity: match.quantity,
-                providerId: match.providerId,
               };
             }
             return row;
           });
           setEditableRows(updatedRows);
-          // Nếu excel có providerId, tự động set vào formData
-          if (excelDetails.length > 0 && excelDetails[0].providerId) {
-            setFormData(prev => ({ ...prev, providerId: excelDetails[0].providerId }));
-          }
           setExcelImported(true);
           toast.success(`Đã tải ${excelDetails.length} hàng hóa từ file Excel`);
         }
@@ -585,24 +575,6 @@ const ImportOrderCreate = () => {
                       : "Chưa chọn"}
                   </Typography.Text>
                 </div>
-                {excelImported && (
-                  <div className="my-2">
-                    <label className="block mb-1">Nhà cung cấp (theo ĐƠN NHẬP) <span className="text-red-500">*</span></label>
-                    <Select
-                      className={`w-full ${formData.providerId !== importRequest?.providerId ? 'border-red-500' : ''}`}
-                      value={formData.providerId}
-                      onChange={(providerId: number) => setFormData({ ...formData, providerId })}
-                      options={providers.map(p => ({ value: p.id, label: p.name }))}
-                      placeholder="Chọn nhà cung cấp"
-                      showSearch
-                      optionFilterProp="label"
-                      status={formData.providerId !== importRequest?.providerId ? 'error' : undefined}
-                    />
-                    {formData.providerId !== importRequest?.providerId && (
-                      <div className="text-sm text-red-500 mt-1">Nhà cung cấp đơn nhập phải trùng với nhà cung cấp phiếu nhập.</div>
-                    )}
-                  </div>
-                )}
                 <div>
                   <label className="block mb-1">Ghi chú</label>
                   <TextArea
@@ -621,7 +593,7 @@ const ImportOrderCreate = () => {
                   loading={loading}
                   className="w-full mt-8"
                   id="btn-detail"
-                  disabled={formData.providerId !== importRequest?.providerId}
+                  // disabled={formData.providerId !== importRequest?.providerId}
                 >
                   Xác nhận thông tin
                 </Button>

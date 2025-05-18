@@ -141,9 +141,9 @@ const ImportOrderList: React.FC = () => {
     });
   };
 
-  const filteredItems = importOrdersData.filter((item) =>
-    item.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
-    item.importRequestId.toString().includes(searchTerm.toLowerCase())
+  const filteredItems = importOrdersData.filter((importOrder) =>
+    importOrder.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
+    importOrder.importRequestId.toString().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
@@ -183,8 +183,12 @@ const ImportOrderList: React.FC = () => {
       dataIndex: "importOrderDetailsCompletedCount",
       key: "importOrderDetailsCompletedCount",
       align: "right" as const,
-      render: (count: number) => (
-        <div className="text-right text-lg">{count}</div>
+      render: (count: number, record: ImportOrderData) => (
+        record.totalActualQuantityInOrder === 0 ? (
+          <div className="text-right font-bold text-gray-600">Chưa nhập</div>
+        ) : (
+          <div className="text-right font-bold">{count}</div>
+        )
       ),
     },
     // {

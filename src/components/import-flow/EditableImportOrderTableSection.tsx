@@ -10,7 +10,6 @@ export interface ImportOrderDetailRow {
   plannedQuantity: number;
   actualQuantity: number;
   importRequestProviderId: number;
-  importOrderProviderId: number;
 }
 
 export interface ProviderOption {
