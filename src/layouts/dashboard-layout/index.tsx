@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Layout, Menu } from "antd";
+import { Layout, Menu, theme } from "antd";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -13,34 +13,31 @@ import { AccountRole } from "@/constants/account-roles";
 import { ItemType } from "antd/es/menu/interface";
 
 const { Sider } = Layout;
-
-// Styling constants
-const LAYOUT_STYLES = {
-  sider: {
-    width: 280,
-    colors: {
-      background: '#fff',
-      text: '#1e293b',
-      active: '#1677ff',
-      hover: '#f5f5f5',
-      border: '#f0f0f0'
-    },
-    typography: {
-      logo: {
-        fontSize: '18px',
-        fontWeight: 700
-      },
-      menu: {
-        fontSize: '15px',
-        fontWeight: 600,
-        iconSize: 20
-      }
-    }
-  }
-};
+const SIDER_WIDTH = 280;
+const COLLAPSED_WIDTH = 80;
+const IPAD_13_BREAKPOINT = 1366; // iPad 13-inch width threshold
+const MIN_CONTENT_WIDTH = 1024; // Minimum content width for overflow
 
 const DashboardLayout: React.FC = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  // Responsive state
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  
+  // Update window width on resize
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Automatically collapse sidebar on smaller screens
+  const [collapsed, setCollapsed] = useState(windowWidth < IPAD_13_BREAKPOINT);
+  
+  // Update collapsed state when window width changes
+  useEffect(() => {
+    if (windowWidth < IPAD_13_BREAKPOINT) {
+      setCollapsed(true);
+    }
+  }, [windowWidth]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
@@ -100,13 +97,13 @@ const DashboardLayout: React.FC = () => {
         key: item.key,
         icon: item.icon ? React.createElement(item.icon, {
           style: { 
-            fontSize: LAYOUT_STYLES.sider.typography.menu.iconSize,
+            fontSize: '20px',
             marginRight: '8px'
           }
         }) : null,
         label: <span style={{ 
-          fontSize: LAYOUT_STYLES.sider.typography.menu.fontSize,
-          fontWeight: LAYOUT_STYLES.sider.typography.menu.fontWeight 
+          fontSize: '15px',
+          fontWeight: 600
         }}>{item.label}</span>,
       };
 
@@ -122,30 +119,41 @@ const DashboardLayout: React.FC = () => {
 
   return (
     <Layout className="min-h-screen">
-      <Layout>
+      <Layout style={{ 
+        minWidth: MIN_CONTENT_WIDTH,
+        overflowX: 'auto'
+      }}>
         {/* Sidebar */}
         <Sider
-          width={LAYOUT_STYLES.sider.width}
+          width={SIDER_WIDTH}
           collapsed={collapsed}
           collapsible
           trigger={null}
           style={{
-            background: LAYOUT_STYLES.sider.colors.background,
-            borderRight: `1px solid ${LAYOUT_STYLES.sider.colors.border}`,
+            backgroundColor: '#fff',
+            borderRight: '1px solid #f0f0f0',
             height: '100vh',
             position: 'fixed',
             left: 0,
             top: 0,
             bottom: 0,
+            zIndex: 1000
           }}
+          theme="light"
         >
           {/* Logo Area */}
-          <div className="h-16 flex items-center justify-center border-b px-6"
-            style={{ borderColor: LAYOUT_STYLES.sider.colors.border }}>
-            <span style={{ 
-              fontSize: LAYOUT_STYLES.sider.typography.logo.fontSize,
-              fontWeight: LAYOUT_STYLES.sider.typography.logo.fontWeight,
-              color: LAYOUT_STYLES.sider.colors.text
+          <div style={{
+            height: '64px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderBottom: '1px solid #f0f0f0',
+            padding: '0 24px'
+          }}>
+            <span style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#1e293b'
             }}>
               {collapsed ? "WM" : "Warehouse Management"}
             </span>
@@ -162,34 +170,67 @@ const DashboardLayout: React.FC = () => {
             style={{
               border: 'none',
               padding: '16px 0',
-              fontSize: LAYOUT_STYLES.sider.typography.menu.fontSize,
-              fontWeight: LAYOUT_STYLES.sider.typography.menu.fontWeight,
+              fontSize: '15px',
+              fontWeight: 600
             }}
           />
 
           {/* Collapse Toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute top-20 -right-3 z-10 bg-white hover:bg-gray-50 
-                     shadow-md hover:shadow-lg transition-all duration-200 
-                     rounded-full w-6 h-6 flex items-center justify-center border"
-            style={{ borderColor: LAYOUT_STYLES.sider.colors.border }}
+            style={{
+              position: 'absolute',
+              top: '80px',
+              right: '-12px',
+              zIndex: 10,
+              backgroundColor: '#fff',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              borderRadius: '9999px',
+              width: '24px',
+              height: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid #f0f0f0',
+              transition: 'all 0.2s ease-in-out',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#f5f5f5';
+              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#fff';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+            }}
           >
             {collapsed ? <MdKeyboardArrowRight /> : <MdKeyboardArrowLeft />}
           </button>
         </Sider>
 
         {/* Main Content Area */}
-        <Layout style={{
-          marginLeft: collapsed ? 80 : LAYOUT_STYLES.sider.width,
-          transition: 'margin-left 0.2s',
-        }}>
-          <div className="p-6">
+        <Layout 
+          style={{
+            marginLeft: collapsed ? COLLAPSED_WIDTH : SIDER_WIDTH,
+            transition: 'margin-left 0.2s',
+            minWidth: `calc(${MIN_CONTENT_WIDTH}px - ${collapsed ? COLLAPSED_WIDTH : SIDER_WIDTH}px)`,
+            overflow: 'auto'
+          }}
+        >
+          <div style={{ 
+            padding: '24px',
+            minWidth: '100%' 
+          }}>
             {/* Header */}
             <Header title={getPageTitle(location.pathname)} />
 
             {/* Content */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
+            <div style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+              padding: '24px',
+              overflowX: 'auto'
+            }}>
               <Outlet />
             </div>
           </div>
