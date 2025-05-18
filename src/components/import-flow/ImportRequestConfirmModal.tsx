@@ -53,11 +53,49 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
   };
 
   const columns = [
-    { title: "Tên hàng hóa", dataIndex: "itemName", key: "itemName" },
-    { title: "Số lượng", dataIndex: "quantity", key: "quantity", align: "right" as const },
-    { title: "Giá trị đo lường", dataIndex: "totalMeasurementValue", key: "totalMeasurementValue", align: "right" as const },
-    { title: "Đơn vị tính", dataIndex: "measurementUnit", key: "measurementUnit" },
-    { title: "Nhà cung cấp", dataIndex: "providerId", key: "providerId", render: (id: number) => providers[id] || "-" },
+    { 
+      title: "Tên hàng hóa", 
+      dataIndex: "itemName", 
+      key: "itemName",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+    },
+    { 
+      title: "Số lượng", 
+      dataIndex: "quantity", 
+      key: "quantity", 
+      align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }), 
+    },
+    { 
+      title: "Giá trị đo lường", 
+      dataIndex: "totalMeasurementValue", 
+      key: "totalMeasurementValue", 
+      align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }), 
+    },
+    { 
+      title: "Đơn vị tính", 
+      dataIndex: "measurementUnit", 
+      key: "measurementUnit", 
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }), 
+    },
+    { 
+      title: "Nhà cung cấp", 
+      dataIndex: "providerId", 
+      key: "providerId", 
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }), 
+      render: (id: number) => providers[id] || "-" 
+    },
   ];
 
   return (

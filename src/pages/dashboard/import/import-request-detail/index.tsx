@@ -283,45 +283,63 @@ const ImportRequestDetail: React.FC = () => {
 
   const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
+      width: '10%',
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
       render: (id: number) => `#${id}`,
-      width: "10%",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '30%',
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
       ellipsis: true,
-      width: "30%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Dự nhập của phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Đã lên đơn nhập",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '10%',
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (status: string) => <StatusTag status={status} type="detail" />,
-      width: '10%',
       align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     }
   ];
 

@@ -102,10 +102,13 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
 
   const columns = [
     {
+      width: "25%",
       title: <span className="font-semibold">Tên hàng</span>,
       dataIndex: "itemName",
       key: "itemName",
-      width: "25%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: any, record: ImportRequestDetailRow) => {
         const usedItemIds = data.filter(r => r !== record).map(r => r.itemId);
         const selectableItems = items.filter(item => !usedItemIds.includes(item.id) || item.id === record.itemId);
@@ -127,11 +130,14 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       },
     },
     {
+      width: "10%",
       title: <span className="font-semibold">Số lượng</span>,
       dataIndex: "quantity",
       key: "quantity",
       align: "right" as const,
-      width: "10%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (value: number, record: ImportRequestDetailRow) => (
         <Input
           inputMode="numeric"
@@ -153,23 +159,32 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       ),
     },
     {
+      width: "15%",
       title: <span className="font-semibold">Giá trị đo lường</span>,
       dataIndex: "totalMeasurementValue",
       key: "totalMeasurementValue",
       align: "right" as const,
-      width: "15%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: "15%",
       title: <span className="font-semibold">Đơn vị tính</span>,
       dataIndex: "measurementUnit",
       key: "measurementUnit",
-      width: "15%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: "35%",
       title: <span className="font-semibold">Nhà cung cấp</span>,
       dataIndex: "providerName",
       key: "providerName",
-      width: "35%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: any, record: ImportRequestDetailRow) => {
         const selectedItem = items.find(i => i.id === record.itemId);
         const validProviderIds = selectedItem ? selectedItem.providerIds : [];

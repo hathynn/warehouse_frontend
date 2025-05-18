@@ -412,31 +412,46 @@ const ImportOrderCreate = () => {
       dataIndex: "itemId",
       key: "itemId",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (id: number) => `#${id}`,
     },
     {
+      width: "30%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
-      width: "30%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Dự nhập theo phiếu",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Dự nhập đơn này",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: any, record: ImportOrderDetailRow) => (
         <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block" style={{ textAlign: 'right' }}>
           {record.plannedQuantity}

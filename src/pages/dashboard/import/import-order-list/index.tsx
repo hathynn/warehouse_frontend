@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, Spin, TablePaginationConfig } from "antd";
+import { Table, Button, Input, Tag, Spin, TablePaginationConfig, Tooltip } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
@@ -7,26 +7,29 @@ import useImportOrderService, {
   ImportStatus
 } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import { SearchOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
 import { UserState } from "@/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";
+import useAccountService, { AccountResponse } from "@/hooks/useAccountService";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
 }
 interface ImportOrderData extends ImportOrderResponse {
+  importOrderDetailsCount: number;
+  importOrderDetailsCompletedCount: number;
   totalExpectQuantityInOrder: number;
   totalActualQuantityInOrder: number;
 }
 
 const ImportOrderList: React.FC = () => {
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
-
-  const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
+  const { importRequestId } = useParams<RouteParams>();
+  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -45,9 +48,26 @@ const ImportOrderList: React.FC = () => {
     getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
 
+  const {
+    getAccountsByRole
+  } = useAccountService();
+
   useEffect(() => {
     fetchImportOrders();
   }, [pagination.current, pagination.pageSize, importRequestId]);
+
+  useEffect(() => {
+    fetchAccountsByRole();
+  }, []);
+
+  const fetchAccountsByRole = async (): Promise<void> => {
+    try {
+      const response = await getAccountsByRole(AccountRoleForRequest.STAFF);
+      setStaffs(response || []);
+    } catch (error) {
+      console.error("Failed to fetch accounts:", error);
+    }
+  };
 
   const fetchImportOrders = async (): Promise<void> => {
     try {
@@ -80,8 +100,18 @@ const ImportOrderList: React.FC = () => {
             (sum, d) => sum + d.actualQuantity,
             0
           );
+          const importOrderDetailsCompletedCount = importOrderDetails.reduce(
+            (sum, d) => sum + (d.actualQuantity > 0 ? 1 : 0),
+            0
+          );
 
-          return { ...order, totalExpectQuantityInOrder, totalActualQuantityInOrder };
+          return { 
+            ...order, 
+            importOrderDetailsCount: importOrderDetails.length, 
+            importOrderDetailsCompletedCount, 
+            totalExpectQuantityInOrder, 
+            totalActualQuantityInOrder 
+          };
         })
       );
 
@@ -118,108 +148,142 @@ const ImportOrderList: React.FC = () => {
 
   const columns = [
     {
+      width: "10%",
       title: "Mã đơn",
       dataIndex: "importOrderId",
       key: "importOrderId",
       render: (id: number) => `#${id}`,
       align: "right" as const,
-      width: "8%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: "10%",
       title: "Mã phiếu",
       dataIndex: "importRequestId",
       key: "importRequestId",
       render: (id: number) => `#${id}`,
       align: "right" as const,
-      width: "8%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
-      title: "Tổng đã lên đơn",
-      dataIndex: "totalExpectQuantityInOrder",
-      key: "totalExpectQuantityInOrder",
+      title: "Số mặt hàng cần nhập",
+      dataIndex: "importOrderDetailsCount",
+      key: "importOrderDetailsCount",
       align: "right" as const,
-      render: (expect: number) => (
-        <div className="text-right text-lg">{expect}</div>
+      render: (count: number) => (
+        <div className="text-right text-lg">{count}</div>
       ),
     },
     {
-      title: "Tổng đã nhập",
-      dataIndex: "totalActualQuantityInOrder",
-      key: "totalActualQuantityInOrder",
+      title: "Số mặt hàng đã nhập đủ",
+      dataIndex: "importOrderDetailsCompletedCount",
+      key: "importOrderDetailsCompletedCount",
       align: "right" as const,
-      render: (actual: number, record: ImportOrderData) => {
-        const expected = record.totalExpectQuantityInOrder || 0;
-        const isEnough = actual >= expected;
-        return (
-          <div className="text-right">
-            {actual === 0 ? (
-              <span className="font-bold text-gray-600">Chưa nhập</span>
-            ) : (
-              <>
-                <div className="text-lg">{actual}</div>
-                {expected > 0 && (
-                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                    {isEnough ? "" : `Thiếu ${expected - actual}`}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        );
-      },
+      render: (count: number) => (
+        <div className="text-right text-lg">{count}</div>
+      ),
     },
+    // {
+    //   title: "Tổng đã lên đơn",
+    //   dataIndex: "totalExpectQuantityInOrder",
+    //   key: "totalExpectQuantityInOrder",
+    //   align: "right" as const,
+    //   render: (expect: number) => (
+    //     <div className="text-right text-lg">{expect}</div>
+    //   ),
+    // },
+    // {
+    //   title: "Tổng đã nhập",
+    //   dataIndex: "totalActualQuantityInOrder",
+    //   key: "totalActualQuantityInOrder",
+    //   align: "right" as const,
+    //   render: (actual: number, record: ImportOrderData) => {
+    //     const expected = record.totalExpectQuantityInOrder || 0;
+    //     const isEnough = actual >= expected;
+    //     return (
+    //       <div className="text-right">
+    //         {actual === 0 ? (
+    //           <span className="font-bold text-gray-600">Chưa nhập</span>
+    //         ) : (
+    //           <>
+    //             <div className="text-lg">{actual}</div>
+    //             {expected > 0 && (
+    //               <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+    //                 {isEnough ? "" : `Thiếu ${expected - actual}`}
+    //               </span>
+    //             )}
+    //           </>
+    //         )}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
-      title: "Ngày nhận hàng",
+      title: "Thời điểm nhận hàng",
+      key: "receivedDateTime",
+      align: "center" as const,
       dataIndex: "dateReceived",
-      key: "dateReceived",
-      align: "center" as const,
-      render: (date: string) =>
-        date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (_: any, record: ImportOrderData) => {
+        const { dateReceived, timeReceived } = record;
+        if (!dateReceived || !timeReceived) return "-";
+        const [year, month, day] = dateReceived.split("-");
+        const formattedDate = `${day}-${month}-${year}`;
+        const formattedTime = timeReceived.slice(0, 5); // HH:mm
+        return (
+          <>
+            <div>Ngày <b>{formattedDate}</b></div>
+            <div>Lúc <b>{formattedTime}</b></div>
+          </>
+        );
+      }
     },
     {
-      title: "Giờ nhận hàng",
-      dataIndex: "timeReceived",
-      align: "center" as const,
-      key: "timeReceived",
-    },
-    {
-      title: "Người tạo",
-      dataIndex: "createdBy",
-      key: "createdBy",
+      width: "15%",
+      title: "Phân công cho",
+      dataIndex: "assignedStaffId",
+      key: "assignedStaffId",
       align: "left" as const,
-      render: (createdBy: string) => createdBy || "-",
-    },
-    {
-      title: "Ngày tạo",
-      dataIndex: "createdDate",
-      align: "center" as const,
-      key: "createdDate",
-      render: (date: string) =>
-        date ? new Date(date).toLocaleDateString("vi-VN") : "-",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (assignedStaffId: number) => {
+        if (!assignedStaffId) return "-";
+        const staff = staffs.find((s) => s.id === assignedStaffId);
+        return staff?.fullName
+      },
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (status: ImportStatus) => <StatusTag status={status} type="import" />,
     },
     {
-      title: "Chi tiết",
-      key: "detail",
+      title: "Hành động",
+      key: "action",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: unknown, record: ImportOrderData) => (
-        <Link
-          to={ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(
-            record.importOrderId.toString()
-          )}
-        >
-          <Button
-            id="btn-detail"
-            className="!p-2 !text-white !font-bold !bg-blue-900 hover:!bg-blue-500"
-            type="link"
-          >
-            Xem chi tiết
-          </Button>
-        </Link>
+        <Tooltip title="Xem chi tiết đơn nhập" placement="top">
+          <Link to={ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
+            <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
+              <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+            </span>
+          </Link>
+        </Tooltip>
       ),
     },
   ];

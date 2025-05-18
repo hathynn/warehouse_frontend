@@ -164,45 +164,59 @@ const ImportRequestList: React.FC = () => {
       dataIndex: "importRequestId",
       key: "importRequestId",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (id: number) => `#${id}`,
-      width: '8%',
     },
     {
       title: "Loại nhập",
       dataIndex: "importType",
       key: "importType",
       align: "left" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (type: string) => getImportTypeText(type),
     },
-    {
-      title: "Đợt nhập",
-      dataIndex: "batchCode",
-      key: "batchCode",
-      align: "center" as const,
-      render: (batchCode: string) => {
-        // batchCode: "2025-05-03_1"
-        if (!batchCode) return '';
-        const [dateStr, batchNum] = batchCode.split('_');
-        const [year, month, day] = dateStr.split('-');
-        return (
-          <div className="text-center">
-            <div className="font-bold">Đợt {batchNum}</div>
-            <div className="">Ngày {day}-{month}-{year}</div>
-          </div>
-        );
-      },
-    },
+    // {
+    //   title: "Đợt nhập",
+    //   dataIndex: "batchCode",
+    //   key: "batchCode",
+    //   align: "center" as const,
+    //   onHeaderCell: () => ({
+    //     style: { textAlign: 'center' as const }
+    //   }),
+    //   render: (batchCode: string) => {
+    //     // batchCode: "2025-05-03_1"
+    //     if (!batchCode) return '';
+    //     const [dateStr, batchNum] = batchCode.split('_');
+    //     const [year, month, day] = dateStr.split('-');
+    //     return (
+    //       <div className="text-center">
+    //         <div className="font-bold">Đợt {batchNum}</div>
+    //         <div className="">Ngày {day}-{month}-{year}</div>
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       title: "Tổng dự nhập",
       dataIndex: "totalExpectQuantityInRequest",
       key: "totalExpectQuantityInRequest",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (quantity: number) => <div className="text-lg">{quantity || 0}</div>,
     },
     {
       title: "Tổng đã lên đơn",
       dataIndex: "totalOrderedQuantityInRequest",
       key: "totalOrderedQuantityInRequest",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (ordered: number, record: ImportRequestData) => {
         const expected = record.totalExpectQuantityInRequest || 0;
         const isEnough = ordered >= expected;
@@ -228,6 +242,9 @@ const ImportRequestList: React.FC = () => {
       title: "Tổng đã nhập",
       dataIndex: "totalActualQuantityInRequest",
       key: "totalActualQuantityInRequest",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (actual: number, record: ImportRequestData) => {
         const expected = record.totalExpectQuantityInRequest || 0;
         const isEnough = actual >= expected;
@@ -254,12 +271,18 @@ const ImportRequestList: React.FC = () => {
       dataIndex: "providerName",
       key: "providerName",
       align: "left" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (status: string) => <StatusTag status={status} type="import" />,
 
     },
@@ -267,6 +290,9 @@ const ImportRequestList: React.FC = () => {
       title: "Hành động",
       key: "action",
       align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: unknown, record: ImportRequestData) => (
         <div className="flex gap-3 justify-center">
           <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
@@ -331,7 +357,7 @@ const ImportRequestList: React.FC = () => {
           style={{ color: '#111', fontWeight: 600 }}
           allowClear
         />
-        {selectedDate && (
+        {/* {selectedDate && (
           <Select
             allowClear
             placeholder="Chọn đợt nhập"
@@ -341,7 +367,7 @@ const ImportRequestList: React.FC = () => {
             onChange={setSelectedBatch}
             options={getBatchesForDate(selectedDate.format('YYYY-MM-DD')).map(batch => ({ label: `Đợt ${batch}`, value: batch }))}
           />
-        )}
+        )} */}
       </div>
 
       <Table

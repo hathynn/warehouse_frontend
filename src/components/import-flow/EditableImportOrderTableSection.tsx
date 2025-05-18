@@ -59,18 +59,24 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
 
   const columns = [
     {
+      width: "10%",
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
-      width: "10%",
       render: (id: number) => `#${id}`,
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: "30%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
-      width: "30%",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
 
     {
@@ -78,24 +84,36 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Đã lên đơn",
       dataIndex: "orderedQuantity",
       key: "orderedQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Thực tế đã nhập",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
       title: "Dự nhập đơn này",
       dataIndex: "plannedQuantity",
       key: "plannedQuantity",
       align: "right" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
       render: (_: any, record: ImportOrderDetailRow) => {
         let maxAllowed = 0;
         if (record.actualQuantity === 0) {

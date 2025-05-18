@@ -401,41 +401,56 @@ const ImportOrderDetail = () => {
   // Table columns definition
   const columns = [
     {
+      width: '15%',
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: '15%',
       align: 'right' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '30%',
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
       ellipsis: true,
-      width: '30%',
       align: 'left' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '20%',
       title: "Số lượng nhập dự tính của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
-      width: '20%',
       align: 'right' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '20%',
       title: "Số lượng nhập thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: '20%',
       align: 'right' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     },
     {
+      width: '15%',
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       render: (status: string) => <StatusTag status={status} type="detail" />,
-      width: '15%',
       align: 'center' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
     }
   ];
 
