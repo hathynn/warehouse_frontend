@@ -9,6 +9,7 @@ import {
   message,
   Modal,
   Input,
+  Checkbox,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -77,6 +78,7 @@ const ExportRequestDetail = () => {
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false); // đặt bên ngoài modal
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -977,32 +979,6 @@ const ExportRequestDetail = () => {
         )}
       </Modal>
 
-      {/* <Modal
-        open={confirmModalVisible}
-        onCancel={() => setConfirmModalVisible(false)}
-        onOk={async () => {
-          await handleConfirmCounted();
-          setConfirmModalVisible(false);
-        }}
-        title={
-          <span style={{ fontWeight: 700, fontSize: "18px" }}>
-            Xác nhận kiểm đếm
-          </span>
-        }
-        okText="Xác nhận"
-        cancelText="Quay lại"
-        centered
-      >
-        <div className="flex items-start gap-3">
-          <ExclamationCircleOutlined
-            style={{ fontSize: 24, color: "#ff4d4f", marginTop: 4 }}
-          />
-          <p style={{ color: "#ff4d4f", fontWeight: "500", margin: 0 }}>
-            Sau khi bấm xác nhận, bạn phải chịu hoàn toàn trách nhiệm trong mọi
-            trường hợp.
-          </p>
-        </div>
-      </Modal> */}
       <Modal
         open={confirmModalVisible}
         onCancel={() => setConfirmModalVisible(false)}
@@ -1019,6 +995,9 @@ const ExportRequestDetail = () => {
         cancelText="Quay lại"
         width={700}
         centered
+        okButtonProps={{
+          disabled: !confirmChecked, // disable nếu chưa tick
+        }}
       >
         <div className="mb-4 font-semibold">
           Tổng sản phẩm kiểm đếm: {exportRequestDetails.length} sản phẩm
@@ -1040,15 +1019,16 @@ const ExportRequestDetail = () => {
             />
           </>
         )}
-        <div className="flex items-start gap-3 mb-4">
-          <ExclamationCircleOutlined
-            style={{ fontSize: 17, color: "#ff4d4f", marginTop: 2 }}
-          />
-          <p style={{ color: "#ff4d4f", fontWeight: "500", margin: 0 }}>
-            Sau khi bấm xác nhận, bạn phải chịu hoàn toàn trách nhiệm trong mọi
-            trường hợp.
-          </p>
-        </div>
+
+        <Checkbox
+          className="mb-4"
+          checked={confirmChecked}
+          onChange={(e) => setConfirmChecked(e.target.checked)}
+          style={{ fontWeight: "500" }}
+        >
+          Tôi đã đọc và kiểm tra kỹ các thông tin trên. Nếu có sai sót tôi sẽ
+          chịu trách nhiệm hoàn toàn.
+        </Checkbox>
       </Modal>
       <Modal
         open={completeModalVisible}

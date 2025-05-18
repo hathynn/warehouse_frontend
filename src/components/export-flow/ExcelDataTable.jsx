@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Table, Input } from "antd";
 import PropTypes from "prop-types";
 
-const ExcelDataTable = ({ data, onDataChange, items, onTableErrorChange }) => {
+const ExcelDataTable = ({
+  data,
+  onDataChange,
+  items,
+  onTableErrorChange,
+  pagination,
+  onPaginationChange,
+}) => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   // Hàm validate đúng từng dòng theo itemId của dòng đó
@@ -127,7 +134,10 @@ const ExcelDataTable = ({ data, onDataChange, items, onTableErrorChange }) => {
       columns={columns}
       dataSource={data}
       rowKey={(_, index) => index}
-      pagination={{ pageSize: 10 }}
+      pagination={pagination} // nhận từ props
+      onChange={(paginationObj) => {
+        if (onPaginationChange) onPaginationChange(paginationObj);
+      }}
     />
   );
 };
