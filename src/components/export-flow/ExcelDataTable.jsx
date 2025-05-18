@@ -1,61 +1,71 @@
-import React, { useState } from "react";
-import { Table, Input, Space, Button, Popconfirm, InputNumber } from "antd";
-import {
-  EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
-  DeleteOutlined,
-} from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { Table, Input } from "antd";
 import PropTypes from "prop-types";
 
-const ExcelDataTable = ({ data, onDataChange, items }) => {
-  const [editIndex, setEditIndex] = useState(null);
-  const [editQuantity, setEditQuantity] = useState(null);
-  const [maxAvailableQuantity, setMaxAvailableQuantity] = useState(null);
-  const [fieldError, setFieldError] = useState("");
+const ExcelDataTable = ({ data, onDataChange, items, onTableErrorChange }) => {
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const handleEdit = (index, quantity) => {
-    const currentItem = data[index];
-    const itemMeta = items.find((i) => i.id === currentItem.itemId);
-    const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
-    setEditIndex(index);
-    setEditQuantity(quantity);
-    setMaxAvailableQuantity(maxValue);
-  };
-
-  const handleSave = (index) => {
-    const value = Number(editQuantity);
-    if (isNaN(value) || value <= 0) {
-      return setFieldError("Phải lớn hơn 0");
+  // Hàm validate đúng từng dòng theo itemId của dòng đó
+  const validateQuantity = (value, itemId) => {
+    if (value === "" || value === undefined || value === null) {
+      return "Vui lòng nhập số!";
     }
-
-    const currentItem = data[index];
-    const itemMeta = items.find((item) => item.id === currentItem.itemId);
-    const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
-
-    if (value > maxValue) {
-      return setFieldError(`Tối đa còn ${maxValue}`);
+    if (!/^\d+$/.test(value)) {
+      return "Không nhập chữ!";
     }
-
-    setFieldError(""); // xoá lỗi khi hợp lệ
-
-    const newData = data.map((item, idx) =>
-      idx === index ? { ...item, quantity: value } : item
-    );
-    onDataChange(newData);
-    setEditIndex(null);
-    setEditQuantity(null);
+    const num = Number(value);
+    if (isNaN(num) || num <= 0) {
+      return "Phải lớn hơn 0!";
+    }
+    // Lấy maxValue đúng theo itemId
+    const itemMeta = items.find((item) => item.id === itemId);
+    const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
+    if (num > maxValue) {
+      return `Tối đa còn ${maxValue}!`;
+    }
+    return "";
   };
 
-  const handleCancel = () => {
-    setEditIndex(null);
-    setEditQuantity(null);
-    setFieldError("");
-  };
+  // Kiểm tra lỗi cho từng dòng khi load data/items
+  useEffect(() => {
+    const newErrors = {};
+    data.forEach((item, idx) => {
+      const error = validateQuantity(item.quantity?.toString(), item.itemId);
+      if (error) newErrors[idx] = error;
+    });
+    setFieldErrors(newErrors);
+    // Báo cho cha biết có lỗi không
+    if (typeof onTableErrorChange === "function") {
+      onTableErrorChange(Object.keys(newErrors).length > 0);
+    }
+  }, [data, items]); // luôn chạy khi data hoặc items đổi
 
-  const handleDelete = (index) => {
-    const newData = data.filter((_, idx) => idx !== index);
-    onDataChange(newData);
+  // Khi nhập thì validate theo từng itemId
+  const handleQuantityChange = (index, value) => {
+    const itemId = data[index].itemId;
+    const error = validateQuantity(value, itemId);
+
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev };
+      if (error) {
+        newErrors[index] = error;
+      } else {
+        delete newErrors[index]; // xoá lỗi khi hợp lệ
+      }
+      // Báo cho cha biết có lỗi không (realtime mỗi lần nhập)
+      if (typeof onTableErrorChange === "function") {
+        onTableErrorChange(Object.keys(newErrors).length > 0);
+      }
+      return newErrors;
+    });
+
+    // Nếu hợp lệ thì cập nhật data
+    if (!error) {
+      const newData = data.map((item, idx) =>
+        idx === index ? { ...item, quantity: Number(value) } : item
+      );
+      onDataChange(newData);
+    }
   };
 
   const columns = [
@@ -75,88 +85,40 @@ const ExcelDataTable = ({ data, onDataChange, items }) => {
       dataIndex: "quantity",
       width: 140,
       key: "quantity",
-      render: (text, record, index) =>
-        editIndex === index ? (
-          <>
-            <Input
-              type="number"
-              value={editQuantity}
-              onChange={(e) => {
-                const v = e.target.value;
-                setEditQuantity(v);
-
-                // validate realtime
-                if (v === "") return setFieldError("Vui lòng nhập số!");
-                if (!/^\d+$/.test(v)) {
-                  return setFieldError("Không nhập chữ!");
-                }
-                const num = Number(v);
-
-                if (isNaN(num) || num <= 0) {
-                  return setFieldError("Phải lớn hơn 0!");
-                }
-                if (num > maxAvailableQuantity) {
-                  return setFieldError(`Tối đa còn ${maxAvailableQuantity}!`);
-                }
-                setFieldError("");
-              }}
-              style={{ width: 75 }}
-              status={
-                fieldError ? "error" : undefined // chỉ đỏ khi có lỗi
-              }
-            />
-            {fieldError && (
-              <div className="text-red-500 text-xs mt-1">{fieldError}</div>
-            )}
-          </>
-        ) : (
-          <div className="pl-12 text-right">{text}</div>
-        ),
+      render: (text, record, index) => (
+        <div>
+          <Input
+            value={record.quantity}
+            onChange={(e) => handleQuantityChange(index, e.target.value)}
+            style={{ width: 75, textAlign: "right" }}
+            status={fieldErrors[index] ? "error" : undefined}
+            min={1}
+          />
+          {fieldErrors[index] && (
+            <div className="text-red-500 text-xs mt-1">
+              {fieldErrors[index]}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "Giá trị đo lường",
+      dataIndex: "totalMeasurementValue",
+      key: "totalMeasurementValue",
+      width: 140,
+      render: (text) => <div className="pl-12 text-right">{text}</div>,
+    },
+    {
+      title: "Đơn vị tính",
+      dataIndex: "measurementUnit",
+      key: "measurementUnit",
+      render: (text) => <div>{text}</div>,
     },
     {
       title: "Quy cách",
       dataIndex: "measurementValue",
       key: "measurementValue",
-    },
-    {
-      title: "Hành động",
-      key: "actions",
-      align: "center",
-      render: (_, record, index) => (
-        <Space>
-          {editIndex === index ? (
-            <>
-              <Button
-                icon={<CheckOutlined />}
-                type="link"
-                disabled={!!fieldError || editQuantity === null}
-                onClick={() => handleSave(index)}
-              />
-              <Button
-                icon={<CloseOutlined />}
-                type="link"
-                onClick={handleCancel}
-              />
-            </>
-          ) : (
-            <>
-              <Button
-                icon={<EditOutlined />}
-                type="link"
-                onClick={() => handleEdit(index, record.quantity)}
-              />
-              <Popconfirm
-                title="Bạn chắc chắn muốn xóa dòng này?"
-                onConfirm={() => handleDelete(index)}
-                okText="Xóa"
-                cancelText="Hủy"
-              >
-                <Button icon={<DeleteOutlined />} type="link" danger />
-              </Popconfirm>
-            </>
-          )}
-        </Space>
-      ),
     },
   ];
 
@@ -175,12 +137,13 @@ ExcelDataTable.propTypes = {
     PropTypes.shape({
       itemId: PropTypes.number,
       itemName: PropTypes.string,
-      quantity: PropTypes.number,
+      quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       measurementValue: PropTypes.string,
     })
   ).isRequired,
   onDataChange: PropTypes.func.isRequired,
   items: PropTypes.array.isRequired,
+  onTableErrorChange: PropTypes.func,
 };
 
 export default ExcelDataTable;
