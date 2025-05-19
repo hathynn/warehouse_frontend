@@ -26,7 +26,7 @@ import { useSelector } from "react-redux";
 import useConfigurationService from "@/hooks/useConfigurationService";
 import useAccountService from "@/hooks/useAccountService";
 import { AccountRole } from "@/constants/account-roles";
-import StatusTag from "@/components/commons/StatusTagExport";
+import StatusTag from "@/components/commons/StatusTag";
 import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 

@@ -5,7 +5,7 @@ import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService from "../../../../hooks/useExportRequestService";
 import { useSelector } from "react-redux";
-import StatusTag from "@/components/commons/StatusTagExport";
+import StatusTag from "@/components/commons/StatusTag";
 
 const ExportRequestList = () => {
   const [exportRequests, setExportRequests] = useState([]);
