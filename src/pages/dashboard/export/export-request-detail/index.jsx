@@ -85,7 +85,7 @@ const ExportRequestDetail = () => {
     if (!exportRequestId) return;
     try {
       setLoading(true);
-      const data = await getExportRequestById(parseInt(exportRequestId));
+      const data = await getExportRequestById(exportRequestId);
       setExportRequest(data);
     } catch (error) {
       console.error("Failed to fetch export request:", error);
@@ -121,7 +121,7 @@ const ExportRequestDetail = () => {
     try {
       setDetailsLoading(true);
       const response = await getExportRequestDetails(
-        parseInt(exportRequestId),
+        exportRequestId,
         page,
         pageSize
       );
@@ -240,10 +240,7 @@ const ExportRequestDetail = () => {
   const handleConfirmComplete = async () => {
     setCompleting(true);
     try {
-      await updateExportRequestStatus(
-        parseInt(exportRequestId),
-        ExportStatus.COMPLETED
-      );
+      await updateExportRequestStatus(exportRequestId, ExportStatus.COMPLETED);
       message.success("Xác nhận hoàn thành phiếu xuất thành công");
       setCompleteModalVisible(false);
       setCompleteChecked(false);
@@ -550,7 +547,7 @@ const ExportRequestDetail = () => {
   const handleConfirmCounted = async () => {
     try {
       await updateExportRequestStatus(
-        parseInt(exportRequestId),
+        exportRequestId,
         ExportStatus.COUNT_CONFIRMED
       );
       message.success("Đã xác nhận kiểm đếm");

@@ -20,7 +20,7 @@ export enum DetailStatus {
 
 // Các trường trong DB export_request:
 export interface ExportRequestResponse {
-  id: number;
+  id: string;
   exportDate: string; // export_date
   exportTime: string; // export_time
   assignedWarehouseKeeperId?: number; // assigned_warehouse_keeper_id
@@ -37,9 +37,9 @@ export interface ExportRequestResponse {
   type: string; // type
   countingDate: string; // counting_date
   countingTime: string; // counting_time
-  paperId: number; // paper_id
-  importRequestIds: number[];
-  exportRequestDetailIds: number[];
+  paperId: string; // paper_id
+  importRequestIds: string[];
+  exportRequestDetailIds: string[];
 }
 
 // Khi tạo mới, có thể thiếu một số trường như id, createdDate, updatedDate, ...
