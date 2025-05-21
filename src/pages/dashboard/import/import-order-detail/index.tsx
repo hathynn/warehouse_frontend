@@ -105,7 +105,7 @@ const ImportOrderDetail = () => {
 
     try {
       setLoading(true);
-      const response = await getImportOrderById(parseInt(importOrderId));
+      const response = await getImportOrderById(importOrderId);
       if (response?.content) {
         setImportOrder(response.content);
       }
@@ -125,7 +125,7 @@ const ImportOrderDetail = () => {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
       const response = await getImportOrderDetailsPaginated(
-        parseInt(importOrderId),
+        importOrderId,
         current,
         pageSize
       );
@@ -261,7 +261,7 @@ const ImportOrderDetail = () => {
     try {
       setAssigningStaff(true);
       await assignStaff({
-        importOrderId: parseInt(importOrderId),
+        importOrderId: importOrderId,
         accountId: selectedStaffId!
       });
 
@@ -310,7 +310,7 @@ const ImportOrderDetail = () => {
       setCancelling(true);
       setCancelModalText('Đang xử lý huỷ đơn nhập...');
 
-      await cancelImportOrder(parseInt(importOrderId));
+      await cancelImportOrder(importOrderId);
       await fetchImportOrderData();
 
       message.success('Đã hủy đơn nhập thành công');

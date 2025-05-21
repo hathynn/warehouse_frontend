@@ -13,7 +13,7 @@ interface ImportOrderConfirmModalProps {
     dateReceived: string;
     timeReceived: string;
     note?: string;
-    importRequestId: number | null;
+    importRequestId: string | null;
   };
   details: ImportOrderDetailRow[];
   importRequestProvider?: string;

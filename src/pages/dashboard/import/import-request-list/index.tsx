@@ -296,14 +296,14 @@ const ImportRequestList: React.FC = () => {
       render: (_: unknown, record: ImportRequestData) => (
         <div className="flex gap-3 justify-center">
           <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
-            <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId.toString())}>
+            <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId)}>
               <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
                 <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
               </span>
             </Link>
           </Tooltip>
           <Tooltip title="Xem danh sách đơn nhập" placement="top">
-            <Link to={ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(record.importRequestId.toString())}>
+            <Link to={ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(record.importRequestId)}>
               <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 bg-blue-900 text-white hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
                 <UnorderedListOutlined style={{ fontSize: 20, fontWeight: 700 }} />
               </span>

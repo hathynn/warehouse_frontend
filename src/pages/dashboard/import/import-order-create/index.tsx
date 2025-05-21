@@ -167,13 +167,12 @@ const ImportOrderCreate = () => {
   useEffect(() => {
     const fetchImportRequest = async () => {
       try {
-        const response = await getImportRequestById(Number(paramImportRequestId));
+        const response = await getImportRequestById(paramImportRequestId!);
         if (response?.content) {
           setImportRequest(response.content);
-          const importRequestIdNum = Number(paramImportRequestId);
           setFormData(prev => ({
             ...prev,
-            importRequestId: importRequestIdNum,
+            importRequestId: paramImportRequestId!,
             providerId: response.content.providerId
           }))
         }

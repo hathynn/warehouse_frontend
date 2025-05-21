@@ -116,7 +116,7 @@ const ImportRequestDetail: React.FC = () => {
     if (!importRequestId) return;
     try {
       setLoading(true);
-      const response = await getImportRequestById(parseInt(importRequestId));
+      const response = await getImportRequestById(importRequestId);
       if (response?.content) {
         const importRequestData = response.content;
         const providerName = importRequestData.providerId ? (await getProviderById(importRequestData.providerId))?.content?.name : "-";
@@ -139,7 +139,7 @@ const ImportRequestDetail: React.FC = () => {
       setDetailsLoading(true);
       const { current, pageSize } = pagination;
       const response = await getImportRequestDetails(
-        parseInt(importRequestId),
+        importRequestId,
         current,
         pageSize
       );
@@ -168,7 +168,7 @@ const ImportRequestDetail: React.FC = () => {
     try {
       setDetailsLoading(true);
       const response = await getImportOrdersByRequestId(
-        parseInt(importRequestId)
+        importRequestId
       );
       if (response?.content) {
         setImportOrders(response.content);
@@ -186,7 +186,7 @@ const ImportRequestDetail: React.FC = () => {
     try {
       setDetailsLoading(true);
       const response = await getImportOrderDetailsPaginated(
-        parseInt(importRequestId)
+        importRequestId
       );
       if (response?.content) {
         setImportOrderDetails(response.content);

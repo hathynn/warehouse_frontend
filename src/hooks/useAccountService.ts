@@ -54,8 +54,8 @@ export interface AuthenticationResponse {
 // Interface to match ActiveAccountRequest.java
 export interface ActiveAccountRequest {
   date: string; // ISO date string, e.g. '2025-05-03'
-  importOrderId?: number;
-  exportRequestId?: number;
+  importOrderId?: string;
+  exportRequestId?: string;
 }
 
 

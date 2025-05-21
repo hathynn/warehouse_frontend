@@ -75,7 +75,7 @@ const ImportOrderList: React.FC = () => {
 
       if (importRequestId) {
         response = await getImportOrdersByRequestId(
-          parseInt(importRequestId),
+          importRequestId,
           pagination.current || 1,
           pagination.pageSize || 10
         );

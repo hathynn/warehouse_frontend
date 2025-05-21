@@ -74,7 +74,7 @@ const useInventoryItemService = () => {
 
   // Get inventory items by import order detail ID
   const getByImportOrderDetailId = async (
-    importOrderDetailId: number,
+    importOrderDetailId: string,
     page = 1,
     limit = 10
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {

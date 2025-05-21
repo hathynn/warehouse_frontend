@@ -3,8 +3,8 @@ import { toast } from "react-toastify";
 
 // Interface to match ImportOrderDetailResponse.java
 export interface ImportOrderDetailResponse {
-  importOrderDetailId: number;
-  importOrderId: number;
+  importOrderDetailId: string;
+  importOrderId: string;
   itemId: number;
   itemName: string;
   expectQuantity: number;
@@ -26,7 +26,7 @@ const useImportOrderDetailService = () => {
 
   // Get paginated import order details by import order ID
   const getImportOrderDetailsPaginated = async (
-    importOrderId: number, 
+    importOrderId: string, 
     page = 1, 
     limit = 999
   ): Promise<ResponseDTO<ImportOrderDetailResponse[]>> => {
@@ -45,7 +45,7 @@ const useImportOrderDetailService = () => {
 
   // Get import order detail by ID
   const getImportOrderDetailById = async (
-    importOrderDetailId: number
+    importOrderDetailId: string
   ): Promise<ResponseDTO<ImportOrderDetailResponse>> => {
     try {
       const response = await callApi(
@@ -63,7 +63,7 @@ const useImportOrderDetailService = () => {
   // Create import order details using JSON body, not file
   const createImportOrderDetails = async (
     request: ImportOrderDetailCreateRequest,
-    importOrderId: number
+    importOrderId: string
   ): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi(

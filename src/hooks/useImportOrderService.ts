@@ -14,7 +14,7 @@ export enum ImportStatus {
 
 // Interface to match ImportOrderCreateRequest.java
 export interface ImportOrderCreateRequest {
-  importRequestId: number | null;
+  importRequestId: string | null;
   accountId: number | null;
   dateReceived: string;
   timeReceived: string;
@@ -23,8 +23,8 @@ export interface ImportOrderCreateRequest {
 
 // Interface to match ImportOrderResponse.java
 export interface ImportOrderResponse {
-  importOrderId: number;
-  importRequestId: number;
+  importOrderId: string;
+  importRequestId: string;
   dateReceived: string;
   timeReceived: string;
   note?: string;
@@ -40,13 +40,13 @@ export interface ImportOrderResponse {
 
 // Interface to match AssignStaffRequest.java
 export interface AssignStaffRequest {
-  importOrderId: number;
+  importOrderId: string;
   accountId: number;
 }
 
 const useImportOrderService = () => {
   const { callApi, loading } = useApiService();
-  const [importOrderId, setImportOrderId] = useState<number | null>(null);
+  const [importOrderId, setImportOrderId] = useState<string | null>(null);
 
   // Add new function to get all import orders
   const getAllImportOrders = async (
@@ -68,7 +68,7 @@ const useImportOrderService = () => {
 
   // Get all import orders for a specific import request with pagination
   const getImportOrdersByRequestId = async (
-    importRequestId: number, 
+    importRequestId: string, 
     page = 1, 
     limit = 10
   ): Promise<ResponseDTO<ImportOrderResponse[]>> => {
@@ -86,7 +86,7 @@ const useImportOrderService = () => {
   };
 
   // Get import order by ID
-  const getImportOrderById = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+  const getImportOrderById = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("get", `/import-order/${importOrderId}`);
       return response;
@@ -129,7 +129,7 @@ const useImportOrderService = () => {
   };
 
   // Complete an import order
-  const completeImportOrder = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+  const completeImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/complete/${importOrderId}`);
       if (response && response.content) {
@@ -144,7 +144,7 @@ const useImportOrderService = () => {
   };
 
   // Cancel an import order
-  const cancelImportOrder = async (importOrderId: number): Promise<ResponseDTO<ImportOrderResponse>> => {
+  const cancelImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/cancel/${importOrderId}`);
       if (response && response.content) {

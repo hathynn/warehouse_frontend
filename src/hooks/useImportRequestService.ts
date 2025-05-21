@@ -11,7 +11,7 @@ export interface ImportRequestCreateRequest {
 
 // Interface to match ImportRequestResponse.java
 export interface ImportRequestResponse {
-  importRequestId: number;
+  importRequestId: string;
   importReason: string;
   importType: string;
   status: string;
@@ -42,7 +42,7 @@ const useImportRequestService = () => {
   };
 
   // Get import request by ID
-  const getImportRequestById = async (importRequestId: number): Promise<ResponseDTO<ImportRequestResponse>> => {
+  const getImportRequestById = async (importRequestId: string): Promise<ResponseDTO<ImportRequestResponse>> => {
     try {
       const response = await callApi("get", `/import-request/${importRequestId}`);
       return response;
