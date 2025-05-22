@@ -137,23 +137,24 @@ const ImportRequestList: React.FC = () => {
   };
 
   // Extract all batch numbers for a given date string (YYYY-MM-DD)
-  const getBatchesForDate = (dateStr: string) => {
-    return importRequestsData
-      .filter(item => item.batchCode && item.batchCode.startsWith(dateStr))
-      .map(item => item.batchCode.split('_')[1])
-      .filter((batch, idx, arr) => arr.indexOf(batch) === idx);
-  };
+  // const getBatchesForDate = (dateStr: string) => {
+  //   return importRequestsData
+  //     .filter(item => item.batchCode && item.batchCode.startsWith(dateStr))
+  //     .map(item => item.batchCode.split('_')[1])
+  //     .filter((batch, idx, arr) => arr.indexOf(batch) === idx);
+  // };
 
   // Filtered data logic
   const filteredItems = importRequestsData.filter((item) => {
     const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
     if (selectedDate) {
       const dateStr = selectedDate.format('YYYY-MM-DD');
-      if (selectedBatch) {
-        return matchesSearch && item.batchCode === `${dateStr}_${selectedBatch}`;
-      } else {
-        return matchesSearch && item.batchCode && item.batchCode.startsWith(dateStr);
-      }
+      // if (selectedBatch) {
+      //   return matchesSearch && item.batchCode === `${dateStr}_${selectedBatch}`;
+      // } else {
+      //   return matchesSearch && item.batchCode && item.batchCode.startsWith(dateStr);
+      // }
+      return dateStr === item.createdDate?.split('T')[0];
     }
     return matchesSearch;
   });

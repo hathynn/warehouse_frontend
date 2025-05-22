@@ -54,7 +54,7 @@ const ImportRequestDetail: React.FC = () => {
   const {
     getImportRequestDetails,
   } = useImportRequestDetailService();
-  
+
   const {
     getImportOrdersByRequestId,
   } = useImportOrderService();
@@ -97,7 +97,7 @@ const ImportRequestDetail: React.FC = () => {
         totalActualQuantityInRequest: 0,
       };
     }
-  
+
     return importRequestDetails.reduce(
       (totals, detail) => ({
         totalExpectQuantityInRequest: totals.totalExpectQuantityInRequest + (detail.expectQuantity || 0),
@@ -221,10 +221,6 @@ const ImportRequestDetail: React.FC = () => {
     });
   };
 
-  const handleBack = (): void => {
-    navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
-  };
-
   const handleCreateImportOrder = (): void => {
     if (importRequestId) {
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId), {
@@ -256,7 +252,7 @@ const ImportRequestDetail: React.FC = () => {
     if (importOrders.length > 0 && importOrders.every(order => order.status === "COMPLETED")) {
       return totalExpectQuantityInRequest > totalActualQuantityInRequest;
     }
-    
+
     // Nếu có ít nhất một order chưa hoàn thành và có sản phẩm đã nhập
     if (totalActualQuantityInRequest > 0) {
       // Tính tổng ordered quantity của các order details chưa completed
@@ -266,10 +262,10 @@ const ImportRequestDetail: React.FC = () => {
           const orderDetails = importOrderDetails.filter(detail => detail.importOrderId === order.importOrderId);
           return total + orderDetails.reduce((sum, detail) => sum + (detail.expectQuantity || 0), 0);
         }, 0);
-        
+
       return totalExpectQuantityInRequest > (totalActualQuantityInRequest + totalOrderedQuantityOfIncompleteOrders);
     }
-    
+
     // Nếu không có import order hoặc không có sản phẩm đã nhập
     return false;
   }, [
@@ -364,19 +360,19 @@ const ImportRequestDetail: React.FC = () => {
   ].filter(Boolean) as DetailInfoItem[];
 
   return (
-    <div className="mx-auto p-5">
-      <div className="flex items-center mb-4 justify-between">
-        <div className="flex items-center">
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBack}
-            className="mr-4"
-          >
-            Quay lại
-          </Button>
-          <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequestData?.importRequestId}</h1>
-        </div>
-        <div className="space-x-3">
+    <div className="mx-auto p-3 pt-0">
+      <div className="flex items-center mb-4">
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST)}
+          className="mr-4"
+        >
+          Quay lại
+        </Button>
+      </div>
+      <div className="flex items-center mb-4">
+        <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequestData?.importRequestId}</h1>
+        <div className="ml-auto space-x-3">
           {importRequestData?.importOrdersId && importRequestData.importOrdersId.length > 0 && (
             <Button
               type="primary"

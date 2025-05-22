@@ -148,32 +148,32 @@ const ImportOrderList: React.FC = () => {
 
   const columns = [
     {
-      width: "10%",
+      width: "15%",
       title: "Mã đơn",
       dataIndex: "importOrderId",
       key: "importOrderId",
       render: (id: number) => `#${id}`,
-      align: "right" as const,
+      align: "left" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
-    {
-      width: "10%",
-      title: "Mã phiếu",
-      dataIndex: "importRequestId",
-      key: "importRequestId",
-      render: (id: number) => `#${id}`,
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
+    // {
+    //   width: "10%",
+    //   title: "Mã phiếu",
+    //   dataIndex: "importRequestId",
+    //   key: "importRequestId",
+    //   render: (id: number) => `#${id}`,
+    //   align: "right" as const,
+    //   onHeaderCell: () => ({
+    //     style: { textAlign: 'center' as const }
+    //   }),
+    // },
     {
       title: "Số mặt hàng cần nhập",
       dataIndex: "importOrderDetailsCount",
       key: "importOrderDetailsCount",
-      align: "right" as const,
+      align: "center" as const,
       render: (count: number) => (
         <div className="text-right text-lg">{count}</div>
       ),
@@ -182,7 +182,7 @@ const ImportOrderList: React.FC = () => {
       title: "Số mặt hàng đã nhập đủ",
       dataIndex: "importOrderDetailsCompletedCount",
       key: "importOrderDetailsCompletedCount",
-      align: "right" as const,
+      align: "center" as const,
       render: (count: number, record: ImportOrderData) => (
         record.totalActualQuantityInOrder === 0 ? (
           <div className="text-right font-bold text-gray-600">Chưa nhập</div>
@@ -315,7 +315,7 @@ const ImportOrderList: React.FC = () => {
           </Button>
         )}
       </div>
-      <h1 className="text-xl font-bold mr-4 mb-3">
+      <h1 className="text-2xl font-bold mr-4 mb-3">
         {importRequestId
           ? `Danh sách đơn nhập - Phiếu nhập #${importRequestId}`
           : 'Danh sách tất cả đơn nhập'}

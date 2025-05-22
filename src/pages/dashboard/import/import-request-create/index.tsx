@@ -261,7 +261,16 @@ const ImportRequestCreate: React.FC = () => {
   const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
-    <div className="container mx-auto p-2">
+    <div className="container mx-auto p-3 pt-0">
+      <div className="flex items-center mb-4">
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST)}
+          className="mr-4"
+        >
+          Quay lại
+        </Button>
+      </div>
       <Title level={2}>Tạo phiếu nhập kho</Title>
 
       {step === 0 && (

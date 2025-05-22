@@ -163,7 +163,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
           style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}
           disabled={!allPagesViewed}
         >
-          Tôi đã kiểm tra và xác nhận phiếu nhập trên đầy đủ thông tin và đồng ý tạo.
+          Tôi xác nhận thông tin phiếu nhập trên là đúng và đồng ý tạo.
           {!allPagesViewed && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
         </Checkbox>
     </Modal>

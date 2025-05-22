@@ -185,7 +185,6 @@ const ImportOrderCreate = () => {
   }, [paramImportRequestId]);
 
   // Khi fetch xong chi tiết phiếu nhập, khởi tạo editableRows nếu chưa import Excel
-  console.log(importRequestDetails.length)
   useEffect(() => {
     if (importRequestDetails.length && !excelImported) {
       setEditableRows(
@@ -457,7 +456,16 @@ const ImportOrderCreate = () => {
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
   return (
-    <div className="container mx-auto p-2">
+    <div className="container mx-auto p-3 pt-0">
+      <div className="flex items-center mb-4">
+        <Button
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId))}
+          className="mr-4"
+        >
+          Quay lại
+        </Button>
+      </div>
       <div className="flex justify-between items-center mb-4">
         <Title level={2}>Tạo đơn nhập kho - {importRequest
           ? `Phiếu nhập #${importRequest.importRequestId}`
@@ -477,12 +485,6 @@ const ImportOrderCreate = () => {
               buttonLabel="Tải lên file Excel"
             />
           </div>
-          <Alert
-            description="Hệ thống sẽ bỏ qua các itemId (Mã hàng) trong file Excel không tồn tại trong phiếu nhập"
-            type="info"
-            showIcon
-            style={{ width: 'fit-content', margin: '0 auto', padding: '12px' }}
-          />
           <div className="w-full">
             <EditableImportOrderTableSection
               data={editableRows}
@@ -592,7 +594,7 @@ const ImportOrderCreate = () => {
                   loading={loading}
                   className="w-full mt-8"
                   id="btn-detail"
-                  // disabled={formData.providerId !== importRequest?.providerId}
+                // disabled={formData.providerId !== importRequest?.providerId}
                 >
                   Xác nhận thông tin
                 </Button>

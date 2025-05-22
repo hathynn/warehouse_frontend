@@ -52,10 +52,24 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     const findActiveMenuItem = (items: MenuItem[]): void => {
       for (const item of items) {
+        // Exact path match
         if (location.pathname === item.path) {
           setSelectedKeys([item.key]);
           return;
         }
+        
+        // Special case for import order routes
+        if (item.key === "import-order" && 
+            (location.pathname === "/import/orders" || 
+             location.pathname.startsWith("/import/order-list/") || 
+             location.pathname.startsWith("/import/order-detail/") ||
+             location.pathname.startsWith("/import/create-order/"))) {
+          setSelectedKeys([item.key]);
+          setOpenKeys(["import"]);
+          return;
+        }
+        
+        // Check children
         if (item.children) {
           const childMatch = item.children.find(child =>
             location.pathname === child.path || location.pathname.startsWith(child.path + '/')
@@ -64,6 +78,19 @@ const DashboardLayout: React.FC = () => {
             setSelectedKeys([childMatch.key]);
             setOpenKeys([item.key]);
             return;
+          }
+          
+          // Special case for child items
+          for (const child of item.children) {
+            if (child.key === "import-order" && 
+                (location.pathname === "/import/orders" || 
+                 location.pathname.startsWith("/import/order-list/") || 
+                 location.pathname.startsWith("/import/order-detail/") ||
+                 location.pathname.startsWith("/import/create-order/"))) {
+              setSelectedKeys([child.key]);
+              setOpenKeys([item.key]);
+              return;
+            }
           }
         }
       }
