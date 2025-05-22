@@ -1,6 +1,7 @@
 import React from "react";
 import { Table } from "antd";
 import PropTypes from "prop-types";
+import { InfoCircleFilled } from "@ant-design/icons";
 
 const ExcelDataTableAfter = ({ data }) => {
   const columns = [
@@ -41,12 +42,38 @@ const ExcelDataTableAfter = ({ data }) => {
   ];
 
   return (
-    <Table
-      columns={columns}
-      dataSource={data}
-      rowKey={(record, index) => index}
-      pagination={{ pageSize: 10 }}
-    />
+    <>
+      <div
+        style={{
+          backgroundColor: "#e6f7ff",
+          border: "1px solid #91d5ff",
+          borderRadius: 8,
+          padding: 16,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            fontWeight: 600,
+            fontSize: 16,
+          }}
+        >
+          <InfoCircleFilled
+            style={{ color: "#1677ff", fontSize: 22, marginRight: 8 }}
+          />
+          Thông tin xuất kho
+        </div>
+        <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey={(record, index) => index}
+        pagination={{ pageSize: 10 }}
+      />
+    </>
   );
 };
 

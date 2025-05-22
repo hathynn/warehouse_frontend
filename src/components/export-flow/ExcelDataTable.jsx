@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Table, Input } from "antd";
 import PropTypes from "prop-types";
+import { InfoCircleFilled } from "@ant-design/icons";
+// Thêm vào đầu file
 
 const ExcelDataTable = ({
   data,
@@ -9,70 +11,129 @@ const ExcelDataTable = ({
   onTableErrorChange,
   pagination,
   onPaginationChange,
+  setPagination, // <--- thêm prop này
 }) => {
   const [fieldErrors, setFieldErrors] = useState({});
+  const pendingScrollItemId = useRef(null);
 
-  // Hàm validate đúng từng dòng theo itemId của dòng đó
+  // Validate số lượng
   const validateQuantity = (value, itemId) => {
-    if (value === "" || value === undefined || value === null) {
+    if (value === "" || value === undefined || value === null)
       return "Vui lòng nhập số!";
-    }
-    if (!/^\d+$/.test(value)) {
-      return "Không nhập chữ!";
-    }
+    if (!/^\d+$/.test(value)) return "Không nhập chữ!";
     const num = Number(value);
-    if (isNaN(num) || num <= 0) {
-      return "Phải lớn hơn 0!";
-    }
-    // Lấy maxValue đúng theo itemId
-    const itemMeta = items.find((item) => item.id === itemId);
+    if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
+    const itemMeta = items.find((item) => String(item.id) === String(itemId));
     const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
-    if (num > maxValue) {
-      return `Tối đa còn ${maxValue}!`;
-    }
+    if (num > maxValue) return `Tối đa còn ${maxValue}!`;
     return "";
   };
 
-  // Kiểm tra lỗi cho từng dòng khi load data/items
   useEffect(() => {
     const newErrors = {};
-    data.forEach((item, idx) => {
+    data.forEach((item) => {
       const error = validateQuantity(item.quantity?.toString(), item.itemId);
-      if (error) newErrors[idx] = error;
+      if (error) newErrors[item.itemId] = error;
     });
     setFieldErrors(newErrors);
-    // Báo cho cha biết có lỗi không
-    if (typeof onTableErrorChange === "function") {
+    if (onTableErrorChange)
       onTableErrorChange(Object.keys(newErrors).length > 0);
+  }, [data, items]);
+
+  const handleQuantityChange = (itemId, value) => {
+    const updatedData = data.map((item) =>
+      item.itemId === itemId ? { ...item, quantity: value } : item
+    );
+    onDataChange(updatedData);
+  };
+
+  // Đây là cách tốt nhất: chuyển trang và sau đó scroll đúng dòng
+  const handleScrollToRow = (itemId) => {
+    const index = data.findIndex(
+      (item) => String(item.itemId) === String(itemId)
+    );
+    if (index === -1) return;
+    const page = Math.floor(index / pagination.pageSize) + 1;
+    if (pagination.current !== page) {
+      pendingScrollItemId.current = itemId;
+      // Gọi setPagination để chuyển trang
+      if (setPagination) setPagination((prev) => ({ ...prev, current: page }));
+      if (onPaginationChange)
+        onPaginationChange({ ...pagination, current: page });
+    } else {
+      doScroll(itemId);
     }
-  }, [data, items]); // luôn chạy khi data hoặc items đổi
+  };
 
-  // Khi nhập thì validate theo từng itemId
-  const handleQuantityChange = (index, value) => {
-    const itemId = data[index].itemId;
-    const error = validateQuantity(value, itemId);
-
-    setFieldErrors((prev) => {
-      const newErrors = { ...prev };
-      if (error) {
-        newErrors[index] = error;
-      } else {
-        delete newErrors[index]; // xoá lỗi khi hợp lệ
-      }
-      // Báo cho cha biết có lỗi không (realtime mỗi lần nhập)
-      if (typeof onTableErrorChange === "function") {
-        onTableErrorChange(Object.keys(newErrors).length > 0);
-      }
-      return newErrors;
-    });
-
-    // Nếu hợp lệ thì cập nhật data
-    if (!error) {
-      const newData = data.map((item, idx) =>
-        idx === index ? { ...item, quantity: Number(value) } : item
-      );
-      onDataChange(newData);
+  // Sau khi Table render lại (pagination.current thay đổi), scroll nếu cần
+  useEffect(() => {
+    if (pendingScrollItemId.current) {
+      setTimeout(() => {
+        doScroll(pendingScrollItemId.current);
+        pendingScrollItemId.current = null;
+      }, 100); // Table Antd cần thời gian để render xong
     }
+  }, [pagination.current]);
+
+  // Hàm scroll và highlight
+  const doScroll = (itemId) => {
+    const el = document.getElementById(`row-${itemId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.transition = "background-color 0.3s";
+      el.style.backgroundColor = "#fff1f0";
+      setTimeout(() => {
+        el.style.backgroundColor = "";
+      }, 1500);
+    }
+  };
+
+  const QuantityInput = ({ record }) => {
+    const [localValue, setLocalValue] = useState(record.quantity);
+
+    useEffect(() => {
+      setLocalValue(record.quantity);
+    }, [record.quantity]);
+
+    const handleBlur = () => {
+      handleQuantityChange(record.itemId, localValue);
+    };
+
+    return (
+      <div>
+        <Input
+          inputMode="numeric"
+          pattern="[0-9]*"
+          min={1}
+          value={localValue}
+          style={{ textAlign: "right", width: 75 }}
+          onWheel={(e) => e.currentTarget.blur()}
+          onKeyDown={(e) => {
+            if (["e", "E", "+", "-", "."].includes(e.key)) {
+              e.preventDefault();
+            }
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={handleBlur}
+          status={fieldErrors[record.itemId] ? "error" : undefined}
+        />
+        {fieldErrors[record.itemId] && (
+          <div style={{ color: "red", fontSize: 12, marginTop: 4 }}>
+            {fieldErrors[record.itemId]}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  QuantityInput.propTypes = {
+    record: PropTypes.shape({
+      quantity: PropTypes.number.isRequired,
+      itemId: PropTypes.string.isRequired,
+    }).isRequired,
   };
 
   const columns = [
@@ -82,45 +143,27 @@ const ExcelDataTable = ({
       key: "itemId",
       render: (text) => <div>#{text}</div>,
     },
-    {
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-    },
+    { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
     {
       title: "Số lượng",
       dataIndex: "quantity",
-      width: 140,
       key: "quantity",
-      render: (text, record, index) => (
-        <div>
-          <Input
-            value={record.quantity}
-            onChange={(e) => handleQuantityChange(index, e.target.value)}
-            style={{ width: 75, textAlign: "right" }}
-            status={fieldErrors[index] ? "error" : undefined}
-            min={1}
-          />
-          {fieldErrors[index] && (
-            <div className="text-red-500 text-xs mt-1">
-              {fieldErrors[index]}
-            </div>
-          )}
-        </div>
-      ),
+      width: 140,
+      render: (text, record) => <QuantityInput record={record} />,
     },
     {
       title: "Giá trị đo lường",
       dataIndex: "totalMeasurementValue",
       key: "totalMeasurementValue",
       width: 140,
-      render: (text) => <div className="pl-12 text-right">{text}</div>,
+      render: (text) => (
+        <div style={{ paddingLeft: 12, textAlign: "right" }}>{text}</div>
+      ),
     },
     {
       title: "Đơn vị tính",
       dataIndex: "measurementUnit",
       key: "measurementUnit",
-      render: (text) => <div>{text}</div>,
     },
     {
       title: "Quy cách",
@@ -130,30 +173,95 @@ const ExcelDataTable = ({
   ];
 
   return (
-    <Table
-      columns={columns}
-      dataSource={data}
-      rowKey={(_, index) => index}
-      pagination={pagination} // nhận từ props
-      onChange={(paginationObj) => {
-        if (onPaginationChange) onPaginationChange(paginationObj);
-      }}
-    />
+    <>
+      {/* Khối thông tin xuất kho */}
+      <div
+        style={{
+          backgroundColor: "#e6f7ff",
+          border: "1px solid #91d5ff",
+          borderRadius: 8,
+          padding: 16,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            fontWeight: 600,
+            fontSize: 16,
+          }}
+        >
+          <InfoCircleFilled
+            style={{ color: "#1677ff", fontSize: 22, marginRight: 8 }}
+          />
+          Thông tin xuất kho
+        </div>
+        <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
+        {Object.keys(fieldErrors).length > 0 && (
+          <>
+            <div style={{ marginTop: 4, color: "red" }}>
+              Tổng số mặt hàng vượt số lượng được xuất:{" "}
+              {Object.keys(fieldErrors).length}
+            </div>
+            <div style={{ marginTop: 4, color: "red" }}>
+              Các mặt hàng lỗi:{" "}
+              {Object.keys(fieldErrors).map((id, idx) => (
+                <span
+                  key={id}
+                  onClick={() => handleScrollToRow(id)}
+                  style={{
+                    cursor: "pointer",
+                    color: "#1890ff",
+                    textDecoration: "underline",
+                    marginRight: 4,
+                  }}
+                >
+                  #{id}
+                  {idx < Object.keys(fieldErrors).length - 1 ? "," : ""}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Bảng dữ liệu */}
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey={(record) => String(record?.itemId)}
+        pagination={pagination}
+        onChange={onPaginationChange}
+        components={{
+          body: {
+            row: ({ children, ...restProps }) => (
+              <tr {...restProps} id={`row-${restProps["data-row-key"]}`}>
+                {children}
+              </tr>
+            ),
+          },
+        }}
+      />
+    </>
   );
 };
 
 ExcelDataTable.propTypes = {
   data: PropTypes.arrayOf(
     PropTypes.shape({
-      itemId: PropTypes.number,
+      itemId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       itemName: PropTypes.string,
-      quantity: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      quantity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       measurementValue: PropTypes.string,
     })
   ).isRequired,
   onDataChange: PropTypes.func.isRequired,
   items: PropTypes.array.isRequired,
   onTableErrorChange: PropTypes.func,
+  pagination: PropTypes.object,
+  onPaginationChange: PropTypes.func,
+  setPagination: PropTypes.func, // <--- thêm cái này
 };
 
 export default ExcelDataTable;
