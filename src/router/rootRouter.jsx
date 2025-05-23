@@ -26,11 +26,10 @@ import ExportRequestCreate from '@/pages/dashboard/export/export-request-create'
 import InventoryItemList from '@/pages/dashboard/inventory-item';
 import ConfigurationPage from '@/pages/dashboard/configuration';
 
-export const rootRouter = createBrowserRouter([
+export const RootRouter = createBrowserRouter([
   {
     errorElement: <SomethingWrong />,
     children: [
-      // Add root route
       {
         path: '/',
         element: <Navigate to={ROUTES.PROTECTED.OVERVIEW} replace />,
@@ -139,4 +138,4 @@ export const rootRouter = createBrowserRouter([
   },
 ]);
 
-export default rootRouter;
+export default RootRouter;

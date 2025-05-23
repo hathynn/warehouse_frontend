@@ -61,22 +61,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Add admin specific routes here
     "/configuration/list",
   ],
-};
-
-// Helper function to check permission
-export const checkRoutePermission = (role: AccountRole, pathname: string): boolean => {
-  const permissions = ROUTE_PERMISSIONS[role] || [];
-  return permissions.some((permission) => {
-    const permissionPattern = permission.replace(/:id/g, "[^/]+");
-    const regex = new RegExp(`^${permissionPattern}$`);
-    return regex.test(pathname);
-  });
-};
-
-// Helper function to get default route for role
-export const getDefaultRouteForRole = (role: AccountRole): string => {
-  return ROLE_DEFAULT_ROUTES[role] || "/overview";
-};
+}
 
 // Route definitions
 export const ROUTES = {

@@ -33,9 +33,3 @@ export const pageTitles: PageTitlesType = {
   [ROUTES.PUBLIC.REGISTER]: "Đăng ký",
 };
 
-// Helper function to get page title
-export const getPageTitle = (path: string): string => {
-  // Handle dynamic routes with IDs
-  const normalizedPath = path.replace(/\/\d+/g, '/:id');
-  return pageTitles[normalizedPath] || "Warehouse Management System";
-}; 

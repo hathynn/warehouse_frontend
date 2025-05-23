@@ -75,7 +75,6 @@ const useImportRequestDetailService = () => {
         `/import-request-detail/${importRequestId}`,
         details
       );
-      toast.success("Tạo danh sách sản phẩm thành công");
       return response;
     } catch (error) {
       toast.error("Không thể tạo danh sách sản phẩm");

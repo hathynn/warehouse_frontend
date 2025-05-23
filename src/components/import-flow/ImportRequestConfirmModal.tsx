@@ -9,6 +9,7 @@ interface ImportRequestDetailRow {
   itemName: string;
   measurementUnit?: string;
   totalMeasurementValue?: number;
+  providerId: number;
 }
 
 interface ImportRequestConfirmModalProps {
@@ -22,6 +23,31 @@ interface ImportRequestConfirmModalProps {
   };
   details: ImportRequestDetailRow[];
   providers: Record<number, string>;
+}
+
+// Helper function để group và sort theo providerId, đồng thời tính rowSpan
+function groupAndSortByProvider(details: any[]) {
+  // Sắp xếp theo providerId
+  const sorted = [...details].sort((a, b) => a.providerId - b.providerId);
+
+  // Tính rowSpan cho từng providerId
+  let lastProviderId: number | null = null;
+  let count = 0;
+  const rowSpanMap: Record<number, number> = {};
+  sorted.forEach((row, idx) => {
+    if (row.providerId !== lastProviderId) {
+      // Đếm số dòng cho providerId này
+      count = sorted.filter(r => r.providerId === row.providerId).length;
+      rowSpanMap[idx] = count;
+      lastProviderId = row.providerId;
+    }
+  });
+
+  // Gắn rowSpan vào từng dòng
+  return sorted.map((row, idx) => ({
+    ...row,
+    rowSpan: rowSpanMap[idx] || 0,
+  }));
 }
 
 const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
@@ -72,6 +98,8 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     }
   }, [open, details.length, resetViewedPages]);
 
+  const groupedDetails = groupAndSortByProvider(details);
+
   const columns = [
     { 
       title: "Tên hàng hóa", 
@@ -114,7 +142,18 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }), 
-      render: (id: number) => providers[id] || "-" 
+      render: (_: any, record: any, index: number) => {
+        if (record.rowSpan > 0) {
+          return {
+            children: providers[record.providerId] || "-",
+            props: { rowSpan: record.rowSpan }
+          };
+        }
+        return {
+          children: null,
+          props: { rowSpan: 0 }
+        };
+      }
     },
   ];
 
@@ -144,7 +183,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
         <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>
         <Table
           columns={columns}
-          dataSource={details}
+          dataSource={groupedDetails}
           rowKey={(record) => `${record.itemId}`}
           pagination={{
             current: pagination.current,

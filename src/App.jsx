@@ -5,7 +5,7 @@ import { persistor, store } from "./redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 // import "aos/dist/aos.css";
 import "./index.css";
-import rootRouter from "./router/rootRouter";
+import RootRouter from "./router/RootRouter";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -13,7 +13,7 @@ function App() {
   return (
     <Provider store={store}>
       <PersistGate persistor={persistor}>
-        <RouterProvider router={rootRouter} />
+        <RouterProvider router={RootRouter} />
         <ToastContainer
           position="top-center"
           autoClose={3000}

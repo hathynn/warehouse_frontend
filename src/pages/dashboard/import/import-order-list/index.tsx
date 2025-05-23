@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, Spin, TablePaginationConfig, Tooltip } from "antd";
+import { Table, Button, Input, Tag, Spin, TablePaginationConfig, Tooltip, Alert, Space } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
@@ -7,13 +7,14 @@ import useImportOrderService, {
   ImportStatus
 } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
+import { SearchOutlined, ArrowLeftOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
 import { UserState } from "@/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";
 import useAccountService, { AccountResponse } from "@/hooks/useAccountService";
+import { LegendItem } from "@/components/commons/LegendItem";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
@@ -88,7 +89,7 @@ const ImportOrderList: React.FC = () => {
 
       const formatted: ImportOrderData[] = await Promise.all(
         (response.content ?? []).map(async (order) => {
-          // “limit = 1000” đủ để ôm hết chi tiết 1 đơn
+          // "limit = 1000" đủ để ôm hết chi tiết 1 đơn
           const { content: importOrderDetails = [] } =
             await getImportOrderDetailsPaginated(order.importOrderId, 1, 1000);
 
@@ -105,12 +106,12 @@ const ImportOrderList: React.FC = () => {
             0
           );
 
-          return { 
-            ...order, 
-            importOrderDetailsCount: importOrderDetails.length, 
-            importOrderDetailsCompletedCount, 
-            totalExpectQuantityInOrder, 
-            totalActualQuantityInOrder 
+          return {
+            ...order,
+            importOrderDetailsCount: importOrderDetails.length,
+            importOrderDetailsCompletedCount,
+            totalExpectQuantityInOrder,
+            totalActualQuantityInOrder
           };
         })
       );
@@ -146,14 +147,24 @@ const ImportOrderList: React.FC = () => {
     importOrder.importRequestId.toString().includes(searchTerm.toLowerCase())
   );
 
+  const isNearReceivingTime = (dateReceived: string, timeReceived: string): boolean => {
+    if (!dateReceived || !timeReceived) return false;
+
+    const receivingDateTime = new Date(`${dateReceived}T${timeReceived}`);
+    const now = new Date();
+    const diffInHours = (receivingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    return diffInHours > 0 && diffInHours <= 6;
+  };
+  
   const columns = [
     {
-      width: "15%",
-      title: "Mã đơn",
+      width: "16%",
+      title: "Mã đơn nhập",
       dataIndex: "importOrderId",
       key: "importOrderId",
       render: (id: number) => `#${id}`,
-      align: "left" as const,
+      align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -315,20 +326,34 @@ const ImportOrderList: React.FC = () => {
           </Button>
         )}
       </div>
-      <h1 className="text-2xl font-bold mr-4 mb-3">
-        {importRequestId
-          ? `Danh sách đơn nhập - Phiếu nhập #${importRequestId}`
-          : 'Danh sách tất cả đơn nhập'}
-      </h1>
+      <div className="flex items-center justify-between mb-3">
+        <h1 className="text-2xl font-bold">
+          {importRequestId
+            ? `Danh sách đơn nhập - Phiếu nhập #${importRequestId}`
+            : 'Danh sách tất cả đơn nhập'}
+        </h1>
+        <Space size="large">
+          <LegendItem
+            color="rgba(220, 38, 38, 0.1)"
+            borderColor="rgba(220, 38, 38, 0.5)"
+            title="Gần đến giờ nhận hàng"
+            description="Đơn nhập có thời điểm nhận hàng trong vòng 6 tiếng tới so với bây giờ"
+          />
+        </Space>
+      </div>
 
       <div className="mb-4">
-        <Input
-          placeholder="Tìm kiếm theo mã đơn nhập hoặc mã phiếu nhập"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          prefix={<SearchOutlined />}
-          className="max-w-md"
-        />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <Input
+              placeholder="Tìm kiếm theo mã đơn nhập hoặc mã phiếu nhập"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              prefix={<SearchOutlined />}
+              className="max-w-md"
+            />
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -340,7 +365,11 @@ const ImportOrderList: React.FC = () => {
           columns={columns}
           dataSource={filteredItems}
           rowKey="importOrderId"
-          className="custom-table mb-4"
+          rowClassName={(record) => {
+            const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
+            return isNearTime ? 'bg-[rgba(220,38,38,0.04)]' : 'no-bg-row';
+          }}
+          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.06)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50': ''}`}
           onChange={handleTableChange}
           pagination={{
             ...pagination,

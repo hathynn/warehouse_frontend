@@ -4,7 +4,7 @@ import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "@/components/header/Header";
-import { getPageTitle } from "@/constants/page-titles";
+import { pageTitles } from "@/constants/page-titles";
 import { RootState } from "@/redux/store";
 import { UserState } from "@/redux/features/userSlice";
 import { menuItems } from "@/constants/menu-items";
@@ -17,6 +17,12 @@ const SIDER_WIDTH = 280;
 const COLLAPSED_WIDTH = 80;
 const IPAD_13_BREAKPOINT = 1366; // iPad 13-inch width threshold
 const MIN_CONTENT_WIDTH = 1024; // Minimum content width for overflow
+
+const getPageTitle = (path: string): string => {
+  // Handle dynamic routes with IDs
+  const normalizedPath = path.replace(/\/\d+/g, '/:id');
+  return pageTitles[normalizedPath] || "Warehouse Management System";
+}; 
 
 const DashboardLayout: React.FC = () => {
   // Responsive state

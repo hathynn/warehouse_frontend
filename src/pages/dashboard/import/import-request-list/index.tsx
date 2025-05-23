@@ -23,6 +23,9 @@ const ImportRequestList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
   const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
+  const [selectedImportType, setSelectedImportType] = useState<string[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -123,7 +126,7 @@ const ImportRequestList: React.FC = () => {
     });
   };
 
-  
+
 
   const getImportTypeText = (type: string): string => {
     switch (type) {
@@ -147,21 +150,30 @@ const ImportRequestList: React.FC = () => {
   // Filtered data logic
   const filteredItems = importRequestsData.filter((item) => {
     const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
-    if (selectedDate) {
-      const dateStr = selectedDate.format('YYYY-MM-DD');
-      // if (selectedBatch) {
-      //   return matchesSearch && item.batchCode === `${dateStr}_${selectedBatch}`;
-      // } else {
-      //   return matchesSearch && item.batchCode && item.batchCode.startsWith(dateStr);
-      // }
-      return dateStr === item.createdDate?.split('T')[0];
-    }
-    return matchesSearch;
+    const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
+    const matchesImportType = selectedImportType.length > 0 ? selectedImportType.includes(item.importType) : true;
+    const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
+    const matchesStatus = selectedStatus.length > 0 ? selectedStatus.includes(item.status) : true;
+
+    return matchesSearch && matchesDate && matchesImportType && matchesProvider && matchesStatus;
   });
+
+  // Get unique providers from data
+  const uniqueProviders = Array.from(new Set(importRequestsData.map(item => item.providerName))).filter(Boolean);
+
+  // Get status options
+  const statusOptions = [
+    { label: 'Chưa bắt đầu', value: 'NOT_STARTED' },
+    { label: 'Đang xử lý', value: 'IN_PROGRESS' },
+    { label: 'Đã kiểm đếm', value: 'COUNTED' },
+    { label: 'Đã xác nhận', value: 'CONFIRMED' },
+    { label: 'Hoàn tất', value: 'COMPLETED' },
+    { label: 'Đã hủy', value: 'CANCELLED' }
+  ];
 
   const columns = [
     {
-      title: "Mã phiếu",
+      title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
       key: "importRequestId",
       align: "right" as const,
@@ -323,7 +335,7 @@ const ImportRequestList: React.FC = () => {
   ];
 
   return (
-    <div className={`mx-auto`}>
+    <div className={`mx-auto ImportRequestList`}>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Danh sách phiếu nhập</h1>
         <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
@@ -338,15 +350,17 @@ const ImportRequestList: React.FC = () => {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2 items-center">
-        <Input
-          placeholder="Tìm kiếm theo mã phiếu nhập"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          prefix={<SearchOutlined />}
-          className="max-w-md font-bold text-black"
-          style={{ color: '#111', fontWeight: 600 }}
-        />
-        <DatePicker
+        <div className="min-w-[300px]">
+          <Input
+            placeholder="Tìm theo mã phiếu nhập"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            prefix={<SearchOutlined />}
+            className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+          />
+        </div>
+
+        {/* <DatePicker
           placeholder="Chọn ngày nhập"
           format="DD-MM-YYYY"
           value={selectedDate}
@@ -357,7 +371,7 @@ const ImportRequestList: React.FC = () => {
           className="ml-2 font-bold text-black"
           style={{ color: '#111', fontWeight: 600 }}
           allowClear
-        />
+        /> */}
         {/* {selectedDate && (
           <Select
             allowClear
@@ -369,6 +383,41 @@ const ImportRequestList: React.FC = () => {
             options={getBatchesForDate(selectedDate.format('YYYY-MM-DD')).map(batch => ({ label: `Đợt ${batch}`, value: batch }))}
           />
         )} */}
+        <div className="flex gap-2 items-center">
+          <Select
+            mode="multiple"
+            placeholder="Loại nhập"
+            className="min-w-[150px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+            value={selectedImportType}
+            onChange={setSelectedImportType}
+            allowClear
+            maxTagCount="responsive"
+            options={[
+              { label: 'Nhập hàng mới', value: 'ORDER' },
+              { label: 'Nhập hàng trả', value: 'RETURN' }
+            ]}
+          />
+          <Select
+            mode="multiple"
+            placeholder="Nhà cung cấp"
+            className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+            value={selectedProvider}
+            onChange={setSelectedProvider}
+            allowClear
+            maxTagCount="responsive"
+            options={uniqueProviders.map(provider => ({ label: provider, value: provider }))}
+          />
+          <Select
+            mode="multiple"
+            placeholder="Trạng thái"
+            className="min-w-[150px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+            value={selectedStatus}
+            onChange={setSelectedStatus}
+            allowClear
+            maxTagCount="responsive"
+            options={statusOptions}
+          />
+        </div>
       </div>
 
       <Table
@@ -377,6 +426,8 @@ const ImportRequestList: React.FC = () => {
         rowKey="importRequestId"
         loading={loading || detailsLoading}
         onChange={handleTableChange}
+        rowClassName={(_, index) => index % 2 === 1 ? 'bg-[rgba(0,0,0,0.04)]' : 'no-bg-row'}
+        className={`[&_.ant-table-cell]:!p-3 ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50' : ''}`}
         pagination={{
           ...pagination,
           showSizeChanger: true,

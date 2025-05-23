@@ -277,7 +277,7 @@ const ImportOrderCreate = () => {
           response.content.importOrderId
         );
         // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
-        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(paramImportRequestId));
+        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
       }
     } catch (error) {
       toast.error("Đã xảy ra lỗi khi tạo đơn nhập hoặc chi tiết đơn nhập");
@@ -319,7 +319,6 @@ const ImportOrderCreate = () => {
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) return;
 
-    setFileName(uploadedFile.name);
     const reader = new FileReader();
     reader.onload = (event: ProgressEvent<FileReader>) => {
       try {
@@ -327,39 +326,36 @@ const ImportOrderCreate = () => {
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
+          
           // Read cells directly for new format
           const getCell = (cell: string) => ws[cell]?.v;
+          
           // Get header fields
           const dateReceived = getCell('B1');
           const timeReceived = getCell('B2');
           const note = getCell('B3');
-          // Validate header fields
+          
+          // Validate header fields first
           if (!dateReceived || !timeReceived) {
             toast.error("File Excel phải có đủ thông tin ngày nhận và giờ nhận ở B1, B2");
-            setFileName("");
             return;
           }
-          setFormData(prev => ({
-            ...prev,
-            dateReceived: typeof dateReceived === 'number' ? excelDateToYMD(dateReceived) : dateReceived,
-            timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
-            note: note ? note.toString() : prev.note
-          }));
-          // Find where the item table starts (row 5: headers)
+          
           // Get the range of the sheet
           if (!ws['!ref']) {
             toast.error("Không tìm thấy dữ liệu bảng trong file Excel (thiếu !ref).");
-            setFileName("");
             return;
           }
+          
           const range = XLSX.utils.decode_range(ws['!ref']);
+          
           // Find headers in row 5
           const headers = [getCell('A5'), getCell('B5')];
           if (headers[0] !== 'itemId' || headers[1] !== 'quantity') {
             toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity");
-            setFileName("");
             return;
           }
+          
           // Parse data from row 6 onwards
           const excelDetails: { itemId: number, quantity: number }[] = [];
           for (let row = 6; row <= range.e.r + 1; row++) {
@@ -372,11 +368,22 @@ const ImportOrderCreate = () => {
               });
             }
           }
+          
           if (excelDetails.length === 0) {
             toast.warning("Không có dữ liệu hàng hóa hợp lệ trong file Excel");
-            setFileName("");
             return;
           }
+          
+          // Only update state if all validations pass
+          setFileName(uploadedFile.name);
+          
+          setFormData(prev => ({
+            ...prev,
+            dateReceived: typeof dateReceived === 'number' ? excelDateToYMD(dateReceived) : dateReceived,
+            timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
+            note: note ? note.toString() : prev.note
+          }));
+          
           // Khi import file Excel, chỉ cập nhật plannedQuantity cho các itemId có trong Excel, giữ nguyên các dòng khác
           const updatedRows = editableRows.map(row => {
             const match = excelDetails.find(d => d.itemId === row.itemId);
@@ -388,13 +395,13 @@ const ImportOrderCreate = () => {
             }
             return row;
           });
+          
           setEditableRows(updatedRows);
           setExcelImported(true);
           toast.success(`Đã tải ${excelDetails.length} hàng hóa từ file Excel`);
         }
       } catch (error) {
         toast.error("Không thể đọc file Excel. Vui lòng kiểm tra định dạng file.");
-        setFileName("");
       }
     };
     reader.readAsArrayBuffer(uploadedFile);

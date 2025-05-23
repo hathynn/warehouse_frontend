@@ -127,25 +127,25 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (_: any, record: ImportRequestDetailRow) => {
-        const usedItemIds = data.filter(r => r !== record).map(r => r.itemId);
-        const selectableItems = items.filter(item => !usedItemIds.includes(item.id) || item.id === record.itemId);
-        return (
-          <Select
-            value={record.itemId}
-            onChange={val => handleCellChange(val, record, 'itemId')}
-            style={{ width: '100%' }}
-            showSearch
-            optionFilterProp="children"
-          >
-            {selectableItems.map(item => (
-              <Select.Option key={item.id} value={item.id}>
-                {item.name}
-              </Select.Option>
-            ))}
-          </Select>
-        );
-      },
+      // render: (_: any, record: ImportRequestDetailRow) => {
+      //   const usedItemIds = data.filter(r => r !== record).map(r => r.itemId);
+      //   const selectableItems = items.filter(item => !usedItemIds.includes(item.id) || item.id === record.itemId);
+      //   return (
+      //     <Select
+      //       value={record.itemId}
+      //       onChange={val => handleCellChange(val, record, 'itemId')}
+      //       style={{ width: '100%' }}
+      //       showSearch
+      //       optionFilterProp="children"
+      //     >
+      //       {selectableItems.map(item => (
+      //         <Select.Option key={item.id} value={item.id}>
+      //           {item.name}
+      //         </Select.Option>
+      //       ))}
+      //     </Select>
+      //   );
+      // },
     },
     {
       width: "10%",

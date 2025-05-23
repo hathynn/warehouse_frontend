@@ -149,28 +149,3 @@ export const menuItems: RoleMenuConfig = {
     ...configurationMenuItems,
   ],
 };
-
-// Helper function to get menu items for a specific role
-export const getMenuItemsByRole = (role: AccountRole): MenuItem[] => {
-  return menuItems[role] || baseMenuItems;
-};
-
-// Helper function to check if a menu item should be visible for a role
-export const isMenuItemVisibleForRole = (
-  path: string,
-  role: AccountRole
-): boolean => {
-  const roleMenuItems = getMenuItemsByRole(role);
-
-  const isPathInMenuItems = (items: MenuItem[]): boolean => {
-    for (const item of items) {
-      if (item.path === path) return true;
-      if (item.children?.length) {
-        if (isPathInMenuItems(item.children)) return true;
-      }
-    }
-    return false;
-  };
-
-  return isPathInMenuItems(roleMenuItems);
-}; 
