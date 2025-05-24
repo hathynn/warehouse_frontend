@@ -1,9 +1,6 @@
 import React from "react";
 import { Tag } from "antd";
-
-export type ImportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COUNTED" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
-export type ExportStatus = "NOT_STARTED" | "IN_PROGRESS" | "COUNTED" | "COUNT_CONFIRMED" | "WAITING_EXPORT" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
-export type DetailStatus = "LACK" | "EXCESS" | "MATCH";
+import { ImportStatus, ExportStatus, DetailStatus } from "@/utils/enums";
 
 interface StatusTagProps {
   status: string;
@@ -17,6 +14,7 @@ const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
   CONFIRMED: { color: "processing", text: "Đã xác nhận" },
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
+  EXTENDED: { color: "warning", text: "Đã gia hạn" },
 };
 
 const exportStatusMap: Record<ExportStatus, { color: string; text: string }> = {

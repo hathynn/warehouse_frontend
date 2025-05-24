@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ROLE_DEFAULT_ROUTES, ROUTES, ROUTE_PERMISSIONS } from '@/constants/routes';
-import { AccountRole } from '@/constants/account-roles';
+import { AccountRole } from '@/utils/enums';
 import { RootState } from '@/contexts/redux/store';
 
 // Helper function to check permission

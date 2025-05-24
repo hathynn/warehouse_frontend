@@ -22,7 +22,7 @@ import {
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useAccountService from "@/hooks/useAccountService";
-import { ImportStatus, ImportOrderResponse, ExtendImportOrderRequest } from "@/hooks/useImportOrderService";
+import { ImportOrderResponse, ExtendImportOrderRequest } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
@@ -36,7 +36,7 @@ import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole, ImportStatus } from "@/utils/enums";
 import { 
   getDefaultAssignedDateTimeForAction, 
   isDateDisabledForAction, 

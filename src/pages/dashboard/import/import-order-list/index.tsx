@@ -4,12 +4,11 @@ import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
   ImportOrderResponse,
-  ImportStatus
 } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
+import { AccountRole, AccountRoleForRequest, ImportStatus } from "@/utils/enums";
 import { UserState } from "@/contexts/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";

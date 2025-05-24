@@ -1,4 +1,4 @@
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole } from "@/utils/enums";
 import { ROUTES } from "./routes";
 import { IconType } from "react-icons";
 import {

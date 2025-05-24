@@ -1,4 +1,4 @@
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole } from "@/utils/enums";
 
 // Base routes
 export const BASE_ROUTES = {

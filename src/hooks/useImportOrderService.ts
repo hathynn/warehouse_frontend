@@ -1,16 +1,8 @@
 import { useState } from "react";
 import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
+import { ImportStatus } from "@/utils/enums";
 
-// Enum to match ImportStatus.java
-export enum ImportStatus {
-  NOT_STARTED = "NOT_STARTED",
-  IN_PROGRESS = "IN_PROGRESS",
-  COUNTED = "COUNTED",
-  CONFIRMED = "CONFIRMED",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED"
-}
 
 export interface ImportOrderCreateRequest {
   importRequestId: string | null;

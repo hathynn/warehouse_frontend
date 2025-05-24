@@ -17,15 +17,13 @@ import {
   InfoCircleOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
-import useExportRequestService, {
-  ExportStatus,
-} from "../../../../hooks/useExportRequestService";
+import useExportRequestService from "../../../../hooks/useExportRequestService";
 import useExportRequestDetailService from "../../../../hooks/useExportRequestDetailService";
 import useItemService from "../../../../hooks/useItemService";
 import { useSelector } from "react-redux";
 import useConfigurationService from "@/hooks/useConfigurationService";
 import useAccountService from "@/hooks/useAccountService";
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole, ExportStatus } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
 import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";

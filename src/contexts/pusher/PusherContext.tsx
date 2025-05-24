@@ -10,7 +10,7 @@ import {
 import { useSelector } from 'react-redux';
 import { RootState } from '@/contexts/redux/store';
 import { createPusherClient } from '@/config/pusher';
-import { AccountRole } from '@/constants/account-roles';
+import { AccountRole } from '@/utils/enums';
 import {
   IMPORT_ORDER_CREATED_EVENT,
   IMPORT_ORDER_COUNTED_EVENT,

@@ -1,22 +1,6 @@
+import { ExportStatus } from "@/utils/enums";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
-
-export enum ExportStatus {
-  NOT_STARTED = "NOT_STARTED",
-  IN_PROGRESS = "IN_PROGRESS",
-  COUNTED = "COUNTED",
-  COUNT_CONFIRMED = "COUNT_CONFIRMED",
-  WAITING_EXPORT = "WAITING_EXPORT",
-  CONFIRMED = "CONFIRMED",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED",
-}
-
-export enum DetailStatus {
-  LACK = "LACK",
-  EXCESS = "EXCESS",
-  MATCH = "MATCH",
-}
 
 // Các trường trong DB export_request:
 export interface ExportRequestResponse {

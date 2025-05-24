@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole } from "@/utils/enums";
 
 export interface UserState {
   id: string;

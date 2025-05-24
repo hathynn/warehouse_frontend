@@ -1,4 +1,4 @@
-import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
+import { AccountRole, AccountRoleForRequest } from "@/utils/enums";
 import useApiService from "./useApi";
 import { toast } from "react-toastify";
 

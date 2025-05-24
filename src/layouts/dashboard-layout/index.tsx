@@ -9,7 +9,7 @@ import { RootState } from "@/contexts/redux/store";
 import { UserState } from "@/contexts/redux/features/userSlice";
 import { menuItems } from "@/constants/menu-items";
 import type { MenuItem } from "@/constants/menu-items";
-import { AccountRole } from "@/constants/account-roles";
+import { AccountRole } from "@/utils/enums";
 import { ItemType } from "antd/es/menu/interface";
 
 const { Sider } = Layout;

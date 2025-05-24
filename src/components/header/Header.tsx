@@ -6,7 +6,7 @@ import { RootState } from '@/contexts/redux/store';
 import { logout } from '@/contexts/redux/features/userSlice';
 import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
-import { AccountRole } from '@/constants/account-roles';
+import { AccountRole } from '@/utils/enums';
 import { ROUTES } from '@/constants/routes';
 import useNotificationService, { NotificationResponse } from '@/hooks/useNotificationService';
 import notificationWav from "@/assets/notification-sound.wav";
@@ -50,7 +50,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
 
   const playNotificationSound = async () => {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContext = window.AudioContext;
       const audioContext = new AudioContext();
       const response = await fetch(notificationWav);
       const arrayBuffer = await response.arrayBuffer();
