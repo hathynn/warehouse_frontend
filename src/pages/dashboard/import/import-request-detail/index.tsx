@@ -56,7 +56,7 @@ const ImportRequestDetail: React.FC = () => {
   } = useImportRequestDetailService();
 
   const {
-    getImportOrdersByRequestId,
+    getAllImportOrdersByImportRequestId,
   } = useImportOrderService();
 
   const {
@@ -77,7 +77,7 @@ const ImportRequestDetail: React.FC = () => {
     if (importRequestId) {
       fetchImportRequestDetails();
     }
-  }, [pagination.current, pagination.pageSize]);
+  }, []);
 
   useEffect(() => {
     if (importRequestId) {
@@ -137,23 +137,11 @@ const ImportRequestDetail: React.FC = () => {
     if (!importRequestId) return;
     try {
       setDetailsLoading(true);
-      const { current, pageSize } = pagination;
       const response = await getImportRequestDetails(
-        importRequestId,
-        current,
-        pageSize
+        importRequestId
       );
       if (response?.content) {
         setImportRequestDetails(response.content);
-        if (response.metaDataDTO) {
-          const { page, limit, total } = response.metaDataDTO;
-          setPagination(prev => ({
-            ...prev,
-            current: page,
-            pageSize: limit,
-            total: total,
-          }));
-        }
       }
     } catch (error) {
       console.error("Failed to fetch import request details:", error);
@@ -161,13 +149,13 @@ const ImportRequestDetail: React.FC = () => {
     } finally {
       setDetailsLoading(false);
     }
-  }, [importRequestId, pagination, getImportRequestDetails]);
+  }, [importRequestId, getImportRequestDetails]);
 
   const fetchImportOrders = useCallback(async () => {
     if (!importRequestId) return;
     try {
       setDetailsLoading(true);
-      const response = await getImportOrdersByRequestId(
+      const response = await getAllImportOrdersByImportRequestId(
         importRequestId
       );
       if (response?.content) {
@@ -179,7 +167,7 @@ const ImportRequestDetail: React.FC = () => {
     } finally {
       setDetailsLoading(false);
     }
-  }, [importRequestId, getImportOrdersByRequestId]);
+  }, [importRequestId, getAllImportOrdersByImportRequestId]);
 
   const fetchImportOrderDetails = useCallback(async () => {
     if (!importRequestId) return;

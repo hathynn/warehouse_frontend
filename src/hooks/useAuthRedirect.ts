@@ -1,7 +1,7 @@
 // src/hooks/useAuthRedirect.ts
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@/redux/store'; // Thêm type này vào store.js
+import type { RootState } from '@/contexts/redux/store'; // Thêm type này vào store.js
 import { ROLE_DEFAULT_ROUTES } from '@/constants/routes';
 
 export const useAuthRedirect = () => {

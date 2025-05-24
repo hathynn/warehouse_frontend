@@ -2,25 +2,15 @@ import { Avatar, Dropdown, Badge, List, Empty, Spin } from 'antd';
 import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined } from '@ant-design/icons';
 import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/redux/store';
-import { logout } from '@/redux/features/userSlice';
+import { RootState } from '@/contexts/redux/store';
+import { logout } from '@/contexts/redux/features/userSlice';
 import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/constants/account-roles';
-import { createPusherClient } from '@/config/pusher';
-import {
-  IMPORT_ORDER_CREATED_EVENT,
-  IMPORT_ORDER_COUNTED_EVENT,
-  IMPORT_ORDER_CONFIRMED_EVENT,
-  PRIVATE_WAREHOUSE_MANAGER_CHANNEL,
-  PRIVATE_DEPARTMENT_CHANNEL,
-  PRIVATE_STAFF_CHANNEL,
-  PRIVATE_ACCOUNTING_CHANNEL,
-  PRIVATE_ADMIN_CHANNEL
-} from '@/constants/channels-events';
 import { ROUTES } from '@/constants/routes';
 import useNotificationService, { NotificationResponse } from '@/hooks/useNotificationService';
 import notificationWav from "@/assets/notification-sound.wav";
+import { usePusherContext } from '@/contexts/pusher/PusherContext';
 
 interface HeaderProps {
   title?: string;
@@ -54,6 +44,9 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     viewAllNotifications, 
     clickNotification 
   } = useNotificationService();
+
+  // Use Pusher context for notifications
+  const { latestNotification } = usePusherContext();
 
   const playNotificationSound = async () => {
     try {
@@ -137,87 +130,32 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     }
   };
 
+  // Handle notifications from Pusher context
   useEffect(() => {
-    if (!role || !accountId) return;
-    
-    console.log(`Subscribing to Pusher notifications for role: ${role}`);
-    const pusher = createPusherClient();
-    let channelName = "";
-    
-    switch (role) {
-      case AccountRole.WAREHOUSE_MANAGER:
-        channelName = PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
-        break;
-      case AccountRole.DEPARTMENT:
-        channelName = PRIVATE_DEPARTMENT_CHANNEL;
-        break;
-      case AccountRole.STAFF:
-        channelName = PRIVATE_STAFF_CHANNEL;
-        break;
-      case AccountRole.ACCOUNTING:
-        channelName = PRIVATE_ACCOUNTING_CHANNEL;
-        break;
-      case AccountRole.ADMIN:
-        channelName = PRIVATE_ADMIN_CHANNEL;
-        break;
-      default:
-        console.warn(`No channel defined for role: ${role}`);
-        return;
+    if (latestNotification) {
+      console.log('[Header] Received notification from context:', latestNotification);
+      
+      // Play notification sound
+      playNotificationSound();
+      
+      // Reload notifications
+      loadNotifications();
+      
+      // Show recent notification popup
+      setRecentNotification({ message: 'Có thông báo mới', visible: true });
+      
+      // Clear existing timer
+      if (notificationTimerRef.current !== null) {
+        window.clearTimeout(notificationTimerRef.current);
+      }
+      
+      // Set timer to hide notification popup
+      notificationTimerRef.current = window.setTimeout(() => {
+        setRecentNotification(prev => ({ ...prev, visible: false }));
+        notificationTimerRef.current = null;
+      }, 5000);
     }
-    
-    try {
-      const channel = pusher.subscribe(channelName);
-      
-      channel.bind('pusher:subscription_succeeded', () => {
-        console.log(`Successfully subscribed to ${channelName}`);
-      });
-      
-      channel.bind('pusher:subscription_error', (error: any) => {
-        console.error(`Error subscribing to ${channelName}:`, error);
-      });
-      
-      const handleNotificationEvent = (data: any, eventType: string) => {
-        playNotificationSound();
-        
-        loadNotifications();
-        
-        setRecentNotification({ message: 'Có thông báo mới', visible: true });
-        
-        if (notificationTimerRef.current !== null) {
-          window.clearTimeout(notificationTimerRef.current);
-        }
-        
-        notificationTimerRef.current = window.setTimeout(() => {
-          setRecentNotification(prev => ({ ...prev, visible: false }));
-          notificationTimerRef.current = null;
-        }, 5000);
-      };
-      
-      channel.bind(IMPORT_ORDER_CREATED_EVENT, (data: any) => {
-        console.log('[Pusher] Import order created notification:', data);
-        handleNotificationEvent(data, IMPORT_ORDER_CREATED_EVENT);
-      });
-      
-      channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => {
-        console.log('[Pusher] Import order counted notification:', data);
-        handleNotificationEvent(data, IMPORT_ORDER_COUNTED_EVENT);
-      });
-      
-      channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => {
-        console.log('[Pusher] Import order confirmed notification:', data);
-        handleNotificationEvent(data, IMPORT_ORDER_CONFIRMED_EVENT);
-      });
-      
-      return () => {
-        console.log(`Unsubscribing from ${channelName}`);
-        channel.unbind_all();
-        pusher.unsubscribe(channelName);
-        pusher.disconnect();
-      };
-    } catch (error) {
-      console.error('Error setting up Pusher:', error);
-    }
-  }, [role, accountId, loadNotifications]);
+  }, [latestNotification]);
 
   const handleLogout = () => {
     dispatch(logout());

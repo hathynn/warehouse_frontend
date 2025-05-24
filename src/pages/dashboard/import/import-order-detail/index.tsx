@@ -3,32 +3,33 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
-  Card,
-  Descriptions,
-  Tag,
   Spin,
   message,
   Modal,
   Input,
-  Checkbox
+  Checkbox,
+  DatePicker,
+  TimePicker,
+  Space
 } from "antd";
 import {
   ArrowLeftOutlined,
   UserAddOutlined,
   PrinterOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  ClockCircleOutlined
 } from "@ant-design/icons";
 import useImportOrderService from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import useAccountService from "@/hooks/useAccountService";
-import { ImportStatus, ImportOrderResponse } from "@/hooks/useImportOrderService";
+import { ImportStatus, ImportOrderResponse, ExtendImportOrderRequest } from "@/hooks/useImportOrderService";
 import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
 import { AccountResponse } from "@/hooks/useAccountService";
 import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
-import { UserState } from "@/redux/features/userSlice";
+import { UserState } from "@/contexts/redux/features/userSlice";
 import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
 import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/hooks/useInventoryItemService";
@@ -36,6 +37,13 @@ dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 import { AccountRole } from "@/constants/account-roles";
+import { 
+  getDefaultAssignedDateTimeForAction, 
+  isDateDisabledForAction, 
+  getDisabledTimeConfigForAction 
+} from "@/utils/helpers";
+
+const { TextArea } = Input;
 
 const ImportOrderDetail = () => {
   // Modal xác nhận kiểm đếm
@@ -44,6 +52,18 @@ const ImportOrderDetail = () => {
   // Modal xác nhận hủy đơn nhập
   const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
   const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
+  // Modal gia hạn đơn nhập
+  const [extendModalVisible, setExtendModalVisible] = useState(false);
+  const [extending, setExtending] = useState(false);
+  const [extendFormData, setExtendFormData] = useState<{
+    extendedDate: string;
+    extendedTime: string;
+    extendedReason: string;
+  }>({
+    extendedDate: "",
+    extendedTime: "",
+    extendedReason: ""
+  });
   const { importOrderId } = useParams<{ importOrderId: string }>();
   const navigate = useNavigate();
 
@@ -75,7 +95,7 @@ const ImportOrderDetail = () => {
 
   const [searchText, setSearchText] = useState('');
 
-  const { getImportOrderById, assignStaff, cancelImportOrder, completeImportOrder } = useImportOrderService();
+  const { getImportOrderById, assignStaff, cancelImportOrder, completeImportOrder, extendImportOrder } = useImportOrderService();
   const [completing, setCompleting] = useState(false);
   const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
   const { getActiveStaffsInDay, findAccountById } = useAccountService();
@@ -91,7 +111,7 @@ const ImportOrderDetail = () => {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
-  const [qrMap, setQrMap] = useState<Record<number, { itemName: string; itemId: number }>>({});
+  const [qrMap, setQrMap] = useState<Record<string, { itemName: string; itemId: string }>>({});
 
   // Fetch configuration
   const fetchConfiguration = useCallback(async () => {
@@ -298,7 +318,6 @@ const ImportOrderDetail = () => {
     }
   };
 
-  // Replace the existing handleCancelOrder with this new version
   const handleShowCancelModal = () => {
     setCancelModalVisible(true);
   };
@@ -344,7 +363,7 @@ const ImportOrderDetail = () => {
         if (staff.id === importOrder?.assignedStaffId) {
           return false;
         }
-        
+
         const searchLower = searchText.toLowerCase();
         return (
           staff.fullName.toLowerCase().includes(searchLower) ||
@@ -364,7 +383,7 @@ const ImportOrderDetail = () => {
       });
   };
 
-  // Add new function to check if reassignment is allowed
+  // Function to check if reassignment is allowed
   const canReassignStaff = () => {
     if (!importOrder?.dateReceived || !importOrder?.timeReceived || !configuration?.timeToAllowAssign) {
       return true;
@@ -396,6 +415,77 @@ const ImportOrderDetail = () => {
     const diffHours = Math.floor(diffMinutes / 60);
     const diffMins = diffMinutes % 60;
     return `${diffHours} tiếng ${diffMins} phút`;
+  };
+
+  // Helper functions for extend functionality
+  const getDefaultExtendDateTime = useCallback(() => {
+    return getDefaultAssignedDateTimeForAction("extend-import-order", configuration);
+  }, [configuration]);
+
+  const handleOpenExtendModal = () => {
+    if (configuration) {
+      const defaultDateTime = getDefaultExtendDateTime();
+      setExtendFormData({
+        extendedDate: defaultDateTime.date,
+        extendedTime: defaultDateTime.time,
+        extendedReason: ""
+      });
+    }
+    setExtendModalVisible(true);
+  };
+
+  const handleCloseExtendModal = () => {
+    setExtendModalVisible(false);
+    setExtendFormData({
+      extendedDate: "",
+      extendedTime: "",
+      extendedReason: ""
+    });
+  };
+
+  const handleExtendDateChange = (date: Dayjs | null) => {
+    if (!date) return;
+    const newDate = date.format("YYYY-MM-DD");
+    setExtendFormData(prev => ({
+      ...prev,
+      extendedDate: newDate
+    }));
+  };
+
+  const handleExtendTimeChange = (time: Dayjs | null) => {
+    if (!time) return;
+    const newTime = time.format("HH:mm");
+    setExtendFormData(prev => ({
+      ...prev,
+      extendedTime: newTime
+    }));
+  };
+
+  const handleExtendSubmit = async () => {
+    if (!importOrderId || !extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()) {
+      message.warning("Vui lòng điền đầy đủ thông tin gia hạn");
+      return;
+    }
+
+    try {
+      setExtending(true);
+      const extendRequest: ExtendImportOrderRequest = {
+        importOrderId: importOrderId,
+        extendedDate: extendFormData.extendedDate,
+        extendedTime: extendFormData.extendedTime,
+        extendedReason: extendFormData.extendedReason
+      };
+
+      await extendImportOrder(extendRequest);
+      await fetchImportOrderData();
+      handleCloseExtendModal();
+      message.success("Gia hạn đơn nhập thành công");
+    } catch (error) {
+      console.error("Failed to extend import order:", error);
+      message.error("Không thể gia hạn đơn nhập. Vui lòng thử lại");
+    } finally {
+      setExtending(false);
+    }
   };
 
   // Table columns definition
@@ -454,16 +544,59 @@ const ImportOrderDetail = () => {
     }
   ];
 
-  // Chuẩn bị dữ liệu cho DetailCard
+    // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
     { label: "Mã đơn nhập", value: `#${importOrder?.importOrderId}` },
-    { label: "Ghi chú", value: importOrder?.note || "-", span: 3 },
-    { label: "Nhân viên được phân công", value: assignedStaff?.fullName || "-" },
-    { label: "Ngày nhận hàng", value: importOrder?.dateReceived ? new Date(importOrder?.dateReceived).toLocaleDateString("vi-VN") : "-" },
-    { label: "Giờ nhận hàng", value: importOrder?.timeReceived || "-" },
     { label: "Người tạo", value: importOrder?.createdBy || "-" },
     { label: "Ngày tạo", value: importOrder?.createdDate ? new Date(importOrder?.createdDate).toLocaleDateString("vi-VN") : "-" },
-    { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" />, span: 2 },
+    { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" /> },
+    { label: "Nhân viên được phân công", value: assignedStaff?.fullName || "-" },
+    { 
+      label: "Thời điểm nhận hàng", 
+      value: (
+        <div className="flex items-center justify-between">
+          <span> Ngày <strong>{importOrder?.dateReceived ? new Date(importOrder.dateReceived).toLocaleDateString("vi-VN") : "-"}</strong>
+            {importOrder?.timeReceived && ` - Lúc `}<strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong>
+          </span>
+          {!importOrder?.isExtended && (importOrder?.status == ImportStatus.NOT_STARTED || importOrder?.status == ImportStatus.IN_PROGRESS) ? (
+            <Button
+              className="[.ant-btn-primary]:!p-2"
+              type="primary"
+              icon={<ClockCircleOutlined />}
+              onClick={handleOpenExtendModal}
+            >
+              Gia hạn
+            </Button>
+          ) : (
+            <Button
+              className="[.ant-btn-primary]:!p-2"
+              type="primary"
+              icon={<ClockCircleOutlined />}
+              disabled
+            >
+              Đã gia hạn
+            </Button>
+          )}
+        </div>
+      )
+    },
+    ...(importOrder?.isExtended ? [
+      {
+        label: "Thời điểm nhận hàng sau gia hạn",
+        value: (
+          <span className="text-orange-600 font-medium">
+            Ngày <strong>{importOrder?.extendedDate ? new Date(importOrder.extendedDate).toLocaleDateString("vi-VN") : "-"}</strong>
+            {importOrder?.extendedTime && ` - Lúc `}<strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong>
+          </span>
+        )
+      },
+      {
+        label: "Lý do gia hạn",
+        value: importOrder?.extendedReason || "-",
+        span: 2
+      }
+    ] : []),
+    { label: "Ghi chú", value: importOrder?.note || "-", span: 3 }
   ];
 
   // Lấy danh sách QRCode khi mở modal
@@ -472,8 +605,8 @@ const ImportOrderDetail = () => {
     setQrLoading(true);
     try {
       // Lấy tất cả inventoryItemId từ các importOrderDetail
-      const allInventoryItemIds: number[] = [];
-      const itemInfoMap: Record<number, { itemName: string; itemId: number }> = {};
+      const allInventoryItemIds: string[] = [];
+      const itemInfoMap: Record<string, { itemName: string; itemId: string }> = {};
       for (const detail of importOrderDetails) {
         const res = await getByImportOrderDetailId(detail.importOrderDetailId, 1, 999);
         if (res?.content) {
@@ -564,7 +697,7 @@ const ImportOrderDetail = () => {
                     okButtonProps={{ disabled: !cancelImportOrderResponsibilityChecked, danger: true }}
                     maskClosable={false}
                   >
-                    <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
+                    <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>
                       Tôi xác nhận và chịu trách nhiệm về quyết định hủy đơn nhập này.
                     </Checkbox>
                   </Modal>
@@ -620,7 +753,7 @@ const ImportOrderDetail = () => {
               okButtonProps={{ disabled: !confirmCountingResponsibilityChecked, danger: true }}
               maskClosable={false}
             >
-              <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}>
+              <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>
                 Tôi xác nhận những thông tin trên là đúng sự thật.
               </Checkbox>
             </Modal>
@@ -791,6 +924,111 @@ const ImportOrderDetail = () => {
               </div>
             ))
           )}
+        </div>
+      </Modal>
+
+      {/* Modal gia hạn đơn nhập */}
+      <Modal
+        title={
+          <div className="!bg-green-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-green-900">Gia hạn đơn nhập</h3>
+            <p className="text-lg text-green-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+            <p className="text-sm text-gray-700 mt-2 flex items-center">
+              <InfoCircleOutlined className="mr-2 text-green-500" />
+              Thời gian gia hạn phải cách thời điểm hiện tại ít nhất {configuration?.daysToAllowExtend} ngày
+            </p>
+          </div>
+        }
+        open={extendModalVisible}
+        onCancel={handleCloseExtendModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseExtendModal}>
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleExtendSubmit}
+            loading={extending}
+            disabled={!extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()}
+          >
+            Xác nhận gia hạn
+          </Button>,
+        ]}
+        width={600}
+        className="!top-[50px]"
+        maskClosable={false}
+      >
+        <div className="space-y-6 pt-4">
+          {/* Thông tin hiện tại */}
+          <div className="bg-gray-50 p-4 rounded-lg border">
+            <h4 className="text-base font-medium text-gray-700 mb-3">Thông tin hiện tại</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Ngày nhận hiện tại</p>
+                <p className="text-base font-medium">
+                  {importOrder?.dateReceived ? new Date(importOrder.dateReceived).toLocaleDateString("vi-VN") : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Giờ nhận hiện tại</p>
+                <p className="text-base font-medium">
+                  {importOrder?.timeReceived?.split(':').slice(0, 2).join(':') || "-"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Form gia hạn */}
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Ngày nhận mới <span className="text-red-500">*</span>
+              </label>
+              <DatePicker
+                className="w-full"
+                format="DD/MM/YYYY"
+                value={extendFormData.extendedDate ? dayjs(extendFormData.extendedDate) : null}
+                onChange={handleExtendDateChange}
+                disabledDate={(current) => isDateDisabledForAction(current, "extend-import-order", configuration)}
+                showNow={false}
+                placeholder="Chọn ngày nhận mới"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Giờ nhận mới <span className="text-red-500">*</span>
+              </label>
+              <TimePicker
+                className="w-full"
+                value={extendFormData.extendedTime ? dayjs(`1970-01-01 ${extendFormData.extendedTime}`) : null}
+                onChange={handleExtendTimeChange}
+                format="HH:mm"
+                showNow={false}
+                needConfirm={false}
+                placeholder="Chọn giờ nhận mới"
+                disabledTime={() => getDisabledTimeConfigForAction(extendFormData.extendedDate, "extend-import-order", configuration)}
+              />
+            </div>
+
+            <div>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Lý do gia hạn <span className="text-red-500">*</span>
+              </label>
+              <TextArea
+                rows={4}
+                placeholder="Nhập lý do gia hạn đơn nhập..."
+                value={extendFormData.extendedReason}
+                onChange={(e) => setExtendFormData(prev => ({
+                  ...prev,
+                  extendedReason: e.target.value.slice(0, 200)
+                }))}
+                maxLength={200}
+                showCount
+              />
+            </div>
+          </div>
         </div>
       </Modal>
     </div>

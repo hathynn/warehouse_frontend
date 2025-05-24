@@ -12,7 +12,6 @@ export enum ImportStatus {
   CANCELLED = "CANCELLED"
 }
 
-// Interface to match ImportOrderCreateRequest.java
 export interface ImportOrderCreateRequest {
   importRequestId: string | null;
   accountId: number | null;
@@ -21,12 +20,27 @@ export interface ImportOrderCreateRequest {
   note?: string;
 }
 
-// Interface to match ImportOrderResponse.java
+export interface AssignStaffRequest {
+  importOrderId: string;
+  accountId: number;
+}
+
+export interface ExtendImportOrderRequest {
+  importOrderId: string;
+  extendedDate: string;
+  extendedTime: string;
+  extendedReason: string;
+}
+
 export interface ImportOrderResponse {
   importOrderId: string;
   importRequestId: string;
   dateReceived: string;
   timeReceived: string;
+  isExtended: boolean;
+  extendedDate: string;
+  extendedTime: string;
+  extendedReason: string;
   note?: string;
   status: ImportStatus;
   importOrderDetailIds: number[];
@@ -38,17 +52,10 @@ export interface ImportOrderResponse {
   assignedStaffId?: number;
 }
 
-// Interface to match AssignStaffRequest.java
-export interface AssignStaffRequest {
-  importOrderId: string;
-  accountId: number;
-}
-
 const useImportOrderService = () => {
   const { callApi, loading } = useApiService();
   const [importOrderId, setImportOrderId] = useState<string | null>(null);
 
-  // Add new function to get all import orders
   const getAllImportOrders = async (
     page = 1,
     limit = 10
@@ -66,16 +73,13 @@ const useImportOrderService = () => {
     }
   };
 
-  // Get all import orders for a specific import request with pagination
-  const getImportOrdersByRequestId = async (
-    importRequestId: string, 
-    page = 1, 
-    limit = 10
+  const getAllImportOrdersByImportRequestId = async (
+    importRequestId: string
   ): Promise<ResponseDTO<ImportOrderResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
-        `/import-order/page/${importRequestId}?page=${page}&limit=${limit}`
+        `/import-order/import-request/${importRequestId}`
       );
       return response;
     } catch (error) {
@@ -85,7 +89,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // Get import order by ID
   const getImportOrderById = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("get", `/import-order/${importOrderId}`);
@@ -97,7 +100,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // Create a new import order
   const createImportOrder = async (requestData: ImportOrderCreateRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", "/import-order", requestData);
@@ -128,7 +130,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // Complete an import order
   const completeImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/complete/${importOrderId}`);
@@ -143,7 +144,6 @@ const useImportOrderService = () => {
     }
   };
 
-  // Cancel an import order
   const cancelImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/cancel/${importOrderId}`);
@@ -158,16 +158,31 @@ const useImportOrderService = () => {
     }
   };
 
+  const extendImportOrder = async (requestData: ExtendImportOrderRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", "/import-order/extend", requestData);
+      if (response && response.content) {
+        toast.success("Gia hạn đơn nhập thành công");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể gia hạn đơn nhập");
+      console.error("Error extending import order:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     importOrderId,
     getAllImportOrders,
-    getImportOrdersByRequestId,
+    getAllImportOrdersByImportRequestId,
     getImportOrderById,
     createImportOrder,
     assignStaff,
     completeImportOrder,
     cancelImportOrder,
+    extendImportOrder,
   };
 };
 

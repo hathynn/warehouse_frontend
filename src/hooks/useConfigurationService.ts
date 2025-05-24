@@ -10,6 +10,9 @@ export interface ConfigurationDto {
   createRequestTimeAtLeast: string;
   timeToAllowAssign: string;
   timeToAllowConfirm: string;
+  timeToAllowCancel: string;
+  daysToAllowExtend: number;
+  maxAllowedDaysForExtend: number;
 }
 
 const useConfigurationService = () => {

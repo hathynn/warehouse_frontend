@@ -1,19 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Table, Select, Input, Card, TablePaginationConfig } from "antd";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
-
-interface ImportRequestDetailRow {
-  itemId: number;
-  quantity: number;
-  providerId: number;
-  itemName: string;
-  providerName: string;
-  measurementUnit?: string;
-  totalMeasurementValue?: number;
-}
+import { ImportRequestDetailRow } from "@/utils/interfaces";
 
 interface ItemType {
-  id: number;
+  id: string;
   name: string;
   measurementUnit?: string;
   totalMeasurementValue?: number;

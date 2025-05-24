@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Card, Descriptions, theme } from "antd";
+import React from "react";
+import { Card, Descriptions } from "antd";
 
 export interface DetailInfoItem {
   label: React.ReactNode;
@@ -26,7 +26,7 @@ const DetailCard: React.FC<DetailCardProps> = ({
   // Default responsive column settings if not provided
   const defaultColumn = {
     md: 2,  // ≥768px
-    lg: 3,  // ≥992px
+    lg: 2,  // ≥992px
     xl: 3,  // ≥1200px
     xxl: 3, // ≥1600px
   };
@@ -40,6 +40,7 @@ const DetailCard: React.FC<DetailCardProps> = ({
     >
       <Descriptions 
         title={title} 
+        className="[&_.ant-descriptions-view]:!border-gray-200 [&_.ant-descriptions-view_table]:!border-gray-200 [&_.ant-descriptions-view_table_th]:!border-gray-200 [&_.ant-descriptions-view_table_td]:!border-gray-200 [&_.ant-descriptions-row]:!border-gray-200"
         bordered={bordered}
         column={column || defaultColumn}
         layout={'horizontal'}
@@ -51,10 +52,8 @@ const DetailCard: React.FC<DetailCardProps> = ({
           <Descriptions.Item 
             key={idx} 
             label={item.label} 
+            labelStyle={{ fontWeight: "bold" }}
             span={item.span || 1}
-            style={{ 
-              wordBreak: 'break-word' 
-            }}
           >
             {item.value}
           </Descriptions.Item>

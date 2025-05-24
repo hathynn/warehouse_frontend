@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, Spin, TablePaginationConfig, Tooltip, Alert, Space } from "antd";
+import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
@@ -7,14 +7,15 @@ import useImportOrderService, {
   ImportStatus
 } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import { SearchOutlined, ArrowLeftOutlined, EyeOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import { AccountRole, AccountRoleForRequest } from "@/constants/account-roles";
-import { UserState } from "@/redux/features/userSlice";
+import { UserState } from "@/contexts/redux/features/userSlice";
 import { useSelector } from "react-redux";
 import { ResponseDTO } from "@/hooks/useApi";
 import useAccountService, { AccountResponse } from "@/hooks/useAccountService";
 import { LegendItem } from "@/components/commons/LegendItem";
+import { usePusherContext } from "@/contexts/pusher/PusherContext";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
@@ -30,6 +31,7 @@ const ImportOrderList: React.FC = () => {
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
   const navigate = useNavigate();
   const { importRequestId } = useParams<RouteParams>();
+  const { latestNotification } = usePusherContext();
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -40,7 +42,7 @@ const ImportOrderList: React.FC = () => {
   });
 
   const {
-    getImportOrdersByRequestId,
+    getAllImportOrdersByImportRequestId,
     getAllImportOrders,
     loading
   } = useImportOrderService();
@@ -61,6 +63,18 @@ const ImportOrderList: React.FC = () => {
     fetchAccountsByRole();
   }, []);
 
+  useEffect(() => {
+    if (latestNotification) {
+      const isImportOrderEvent = latestNotification.type.includes('import-order');
+      
+      if (isImportOrderEvent) {
+        console.log('Received import-order notification:', latestNotification);
+        fetchImportOrders();
+        fetchAccountsByRole();
+      }
+    }
+  }, [latestNotification]);
+
   const fetchAccountsByRole = async (): Promise<void> => {
     try {
       const response = await getAccountsByRole(AccountRoleForRequest.STAFF);
@@ -75,10 +89,8 @@ const ImportOrderList: React.FC = () => {
       let response: ResponseDTO<ImportOrderResponse[]>;
 
       if (importRequestId) {
-        response = await getImportOrdersByRequestId(
-          importRequestId,
-          pagination.current || 1,
-          pagination.pageSize || 10
+        response = await getAllImportOrdersByImportRequestId(
+          importRequestId
         );
       } else {
         response = await getAllImportOrders(
@@ -156,7 +168,7 @@ const ImportOrderList: React.FC = () => {
 
     return diffInHours > 0 && diffInHours <= 6;
   };
-  
+
   const columns = [
     {
       width: "16%",
@@ -342,17 +354,15 @@ const ImportOrderList: React.FC = () => {
         </Space>
       </div>
 
-      <div className="mb-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <Input
-              placeholder="Tìm kiếm theo mã đơn nhập hoặc mã phiếu nhập"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              prefix={<SearchOutlined />}
-              className="max-w-md"
-            />
-          </div>
+      <div className="mb-4 flex flex-wrap gap-2 items-center">
+        <div className="min-w-[300px]">
+          <Input
+            placeholder="Tìm kiếm theo mã đơn nhập"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            prefix={<SearchOutlined />}
+            className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+          />
         </div>
       </div>
 
@@ -367,9 +377,9 @@ const ImportOrderList: React.FC = () => {
           rowKey="importOrderId"
           rowClassName={(record) => {
             const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
-            return isNearTime ? 'bg-[rgba(220,38,38,0.04)]' : 'no-bg-row';
+            return isNearTime ? 'bg-[rgba(220,38,38,0.05)]' : 'no-bg-row';
           }}
-          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.06)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50': ''}`}
+          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50' : ''}`}
           onChange={handleTableChange}
           pagination={{
             ...pagination,

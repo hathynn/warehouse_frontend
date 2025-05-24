@@ -12,7 +12,7 @@ export enum ItemStatus {
 
 // Interface to match InventoryItemResponse.java
 export interface InventoryItemResponse {
-  id: number;
+  id: string;
   reasonForDisposal?: string;
   quantity: number;
   status: ItemStatus;
@@ -21,7 +21,7 @@ export interface InventoryItemResponse {
   updatedDate: string;
   parentId?: number;
   childrenIds?: number[];
-  itemId: number;
+  itemId: string;
   itemName: string;
   itemCode: string;
   exportRequestDetailId?: number;
@@ -61,7 +61,7 @@ const useInventoryItemService = () => {
   };
 
   // Get inventory item by ID
-  const getInventoryItemById = async (inventoryItemId: number): Promise<ResponseDTO<InventoryItemResponse>> => {
+  const getInventoryItemById = async (inventoryItemId: string): Promise<ResponseDTO<InventoryItemResponse>> => {
     try {
       const response = await callApi("get", `/inventory-item/${inventoryItemId}`);
       return response;
@@ -93,7 +93,7 @@ const useInventoryItemService = () => {
 
   // Get inventory items by export request detail ID
   const getByExportRequestDetailId = async (
-    exportRequestDetailId: number,
+    exportRequestDetailId: string,
     page = 1,
     limit = 10
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
@@ -112,7 +112,7 @@ const useInventoryItemService = () => {
 
   // Get inventory items by stored location ID
   const getByStoredLocationId = async (
-    storedLocationId: number,
+    storedLocationId: string,
     page = 1,
     limit = 10
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
@@ -130,7 +130,7 @@ const useInventoryItemService = () => {
   };
 
   // Get QR codes by inventory item IDs
-  const getListQrCodes = async (inventoryItemIds: number[]): Promise<ResponseDTO<QrCodeResponse[]>> => {
+  const getListQrCodes = async (inventoryItemIds: string[]): Promise<ResponseDTO<QrCodeResponse[]>> => {
     try {
       const response = await callApi("post", "/inventory-item/qr-codes", inventoryItemIds);
       return response;
@@ -142,7 +142,7 @@ const useInventoryItemService = () => {
   };
 
   // Delete inventory item
-  const deleteInventoryItem = async (inventoryItemId: number): Promise<ResponseDTO<null>> => {
+  const deleteInventoryItem = async (inventoryItemId: string): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi("delete", `/inventory-item/${inventoryItemId}`);
       toast.success("Xóa sản phẩm thành công");

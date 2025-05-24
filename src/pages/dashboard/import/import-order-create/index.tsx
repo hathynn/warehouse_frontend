@@ -6,7 +6,7 @@ import useImportOrderService, { ImportOrderCreateRequest } from "@/hooks/useImpo
 import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
 import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
 import { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
-import useConfigurationService from "@/hooks/useConfigurationService";
+import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
@@ -15,6 +15,11 @@ import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/EditableImportOrderTableSection";
 import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirmModal";
+import { 
+  getDefaultAssignedDateTimeForAction, 
+  isDateDisabledForAction, 
+  getDisabledTimeConfigForAction 
+} from "@/utils/helpers";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -44,7 +49,7 @@ const ImportOrderCreate = () => {
   const { importRequestDetails } = useLocation().state as { importRequestDetails: ImportRequestDetailResponse[] } || {};
   const navigate = useNavigate();
   const { getConfiguration } = useConfigurationService();
-  const [configuration, setConfiguration] = useState<{ createRequestTimeAtLeast: string } | null>(null);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [defaultDateTime, setDefaultDateTime] = useState<{ date: string; time: string }>({
     date: "",
     time: ""
@@ -62,14 +67,8 @@ const ImportOrderCreate = () => {
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getDefaultDateTime = useCallback(() => {
-    const now = dayjs();
-    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-    const defaultTime = now.add(hours, 'hour').add(30, 'minute');
-    return {
-      date: defaultTime.format("YYYY-MM-DD"),
-      time: defaultTime.format("HH:mm")
-    };
+  const getDefaultDateTimeForComponent = useCallback(() => {
+    return getDefaultAssignedDateTimeForAction("create-import-order", configuration);
   }, [configuration]);
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
@@ -150,9 +149,9 @@ const ImportOrderCreate = () => {
 
   useEffect(() => {
     if (configuration) {
-      setDefaultDateTime(getDefaultDateTime());
+      setDefaultDateTime(getDefaultDateTimeForComponent());
     }
-  }, [configuration, getDefaultDateTime]);
+  }, [configuration, getDefaultDateTimeForComponent]);
 
   useEffect(() => {
     if (defaultDateTime.date && defaultDateTime.time) {
@@ -219,13 +218,7 @@ const ImportOrderCreate = () => {
     });
   };
 
-  const validateDateTime = (date: string, time: string) => {
-    const selectedDateTime = dayjs(`${date} ${time}`);
-    const now = dayjs();
-    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-    const minDateTime = now.add(hours, 'hour');
-    return selectedDateTime.isAfter(minDateTime);
-  };
+
 
   const handleDateChange = (date: Dayjs | null) => {
     if (!date) return;
@@ -248,11 +241,6 @@ const ImportOrderCreate = () => {
   const handleSubmit = async () => {
     if (!formData.importRequestId) {
       toast.error("Vui lòng chọn phiếu nhập");
-      return;
-    }
-    const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-    if (!validateDateTime(formData.dateReceived, formData.timeReceived)) {
-      toast.error(`Thời gian nhập hàng phải cách thời điểm hiện tại ít nhất ${hours} giờ`);
       return;
     }
     try {
@@ -535,10 +523,7 @@ const ImportOrderCreate = () => {
                     format="DD/MM/YYYY"
                     value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                     onChange={handleDateChange}
-                    disabledDate={(current) => {
-                      const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-                      return current && current.isBefore(dayjs().add(hours, 'hour').startOf('day'));
-                    }}
+                    disabledDate={(current) => isDateDisabledForAction(current, "create-import-order", configuration)}
                     showNow={false}
                   />
                 </div>
@@ -551,28 +536,11 @@ const ImportOrderCreate = () => {
                     format="HH:mm"
                     showNow={false}
                     needConfirm={false}
-                    disabledTime={() => {
-                      const now = dayjs();
-                      const selectedDate = dayjs(formData.dateReceived);
-                      const hours = configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12;
-                      const minDateTime = now.add(hours, 'hour');
-                      if (selectedDate.isSame(minDateTime, 'day')) {
-                        return {
-                          disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
-                          disabledMinutes: () => {
-                            if (minDateTime.hour() === now.hour()) {
-                              return Array.from({ length: minDateTime.minute() }, (_, i) => i);
-                            }
-                            return [];
-                          }
-                        };
-                      }
-                      return {};
-                    }}
+                    disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "create-import-order", configuration)}
                   />
                   <div className="text-sm text-blue-500">
                     <InfoCircleOutlined className="mr-1" />
-                    Giờ nhận phải cách thời điểm hiện tại ít nhất {configuration ? parseInt(configuration.createRequestTimeAtLeast.split(':')[0]) : 12} giờ
+                    Giờ nhận phải cách thời điểm hiện tại ít nhất {parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ
                   </div>
                 </div>
                 <div className="my-2">

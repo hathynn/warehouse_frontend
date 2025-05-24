@@ -3,8 +3,8 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from "axios";
-import { store } from "@/redux/store";
-import { setCredentials, logout } from "@/redux/features/userSlice";
+import { store } from "@/contexts/redux/store";
+import { setCredentials, logout } from "@/contexts/redux/features/userSlice";
 
 // Extend InternalAxiosRequestConfig to include _retry
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {

@@ -1,16 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, notification } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
-
-interface ImportRequestDetailRow {
-  itemId: number;
-  quantity: number;
-  itemName: string;
-  measurementUnit?: string;
-  totalMeasurementValue?: number;
-  providerId: number;
-}
+import { ImportRequestDetailRow } from "@/utils/interfaces";
 
 interface ImportRequestConfirmModalProps {
   open: boolean;
@@ -25,29 +17,34 @@ interface ImportRequestConfirmModalProps {
   providers: Record<number, string>;
 }
 
-// Helper function để group và sort theo providerId, đồng thời tính rowSpan
-function groupAndSortByProvider(details: any[]) {
-  // Sắp xếp theo providerId
-  const sorted = [...details].sort((a, b) => a.providerId - b.providerId);
-
-  // Tính rowSpan cho từng providerId
-  let lastProviderId: number | null = null;
-  let count = 0;
-  const rowSpanMap: Record<number, number> = {};
-  sorted.forEach((row, idx) => {
-    if (row.providerId !== lastProviderId) {
-      // Đếm số dòng cho providerId này
-      count = sorted.filter(r => r.providerId === row.providerId).length;
-      rowSpanMap[idx] = count;
-      lastProviderId = row.providerId;
+// Helper function để tính rowSpan cho data hiện tại trên trang
+function calculateRowSpanForCurrentPage(data: any[]) {
+  if (!data || data.length === 0) return [];
+  
+  // Tính rowSpan cho từng providerId trong trang hiện tại
+  const result = [];
+  let i = 0;
+  
+  while (i < data.length) {
+    const currentProviderId = data[i].providerId;
+    let count = 0;
+    
+    // Đếm số dòng liên tiếp có cùng providerId
+    for (let j = i; j < data.length && data[j].providerId === currentProviderId; j++) {
+      count++;
     }
-  });
-
-  // Gắn rowSpan vào từng dòng
-  return sorted.map((row, idx) => ({
-    ...row,
-    rowSpan: rowSpanMap[idx] || 0,
-  }));
+    
+    // Gán rowSpan cho dòng đầu tiên của nhóm, các dòng khác có rowSpan = 0
+    for (let k = 0; k < count; k++) {
+      result.push({
+        ...data[i + k],
+        rowSpan: k === 0 ? count : 0,
+      });
+    }
+    
+    i += count;
+  }
+  return result;
 }
 
 const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
@@ -65,13 +62,40 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     pageSize: 10,
     total: details.length,
   });
+
+  // Memoize sorted details để tránh re-sort không cần thiết
+  const sortedDetails = useMemo(() => {
+    return [...details].sort((a, b) => a.providerId - b.providerId);
+  }, [details]);
   
   // Use the custom hook for page confirmation gating
   const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
-    details.length,
+    sortedDetails.length,
     pagination.pageSize,
     pagination.current
   );
+
+  // Reset pagination và view tracker khi details thay đổi
+  useEffect(() => {
+    setPagination({
+      current: 1,
+      pageSize: 10,
+      total: sortedDetails.length,
+    });
+    resetViewedPages(1);
+  }, [sortedDetails.length, resetViewedPages]);
+
+  useEffect(() => {
+    if (!open) {
+      setPagination({
+        current: 1,
+        pageSize: 10,
+        total: sortedDetails.length,
+      });
+      setConfirmCreateImportRequestChecked(false);
+      resetViewedPages(1);
+    }
+  }, [open, sortedDetails.length, resetViewedPages]);
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
@@ -86,19 +110,16 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (!open) {
-      setPagination({
-        current: 1,
-        pageSize: 10,
-        total: details.length,
-      });
-      setConfirmCreateImportRequestChecked(false);
-      resetViewedPages(1);
-    }
-  }, [open, details.length, resetViewedPages]);
-
-  const groupedDetails = groupAndSortByProvider(details);
+  // Tính toán data cho trang hiện tại và rowSpan
+  const currentPageData = useMemo(() => {
+    // Lấy data cho trang hiện tại
+    const startIndex = (pagination.current - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    const currentPageData = sortedDetails.slice(startIndex, endIndex);
+    
+    // Tính rowSpan cho data trong trang hiện tại (data đã được sắp xếp)
+    return calculateRowSpanForCurrentPage(currentPageData);
+  }, [sortedDetails, pagination.current, pagination.pageSize]);
 
   const columns = [
     { 
@@ -142,7 +163,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }), 
-      render: (_: any, record: any, index: number) => {
+      render: (_: any, record: any) => {
         if (record.rowSpan > 0) {
           return {
             children: providers[record.providerId] || "-",
@@ -170,7 +191,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       maskClosable={false}
       okButtonProps={{ disabled: !confirmCreateImportRequestChecked, danger: false }}
     >
-        <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }} labelStyle={{ width: "20%", fontWeight: "bold" }}>
+        <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }} labelStyle={{ width: "20%", fontWeight: "bold" }} className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400">
           <Descriptions.Item label="Lý do nhập">
             <div className="max-h-[48px] overflow-y-auto leading-[24px]">
               {formData.importReason}
@@ -183,18 +204,19 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
         <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>
         <Table
           columns={columns}
-          dataSource={groupedDetails}
-          rowKey={(record) => `${record.itemId}`}
+          dataSource={currentPageData}
+          rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
-            total: details.length,
+            total: sortedDetails.length,
             showTotal: (total) => `Tổng ${total} mục`,
           }}
           onChange={handleTableChange}
           size="small"
           bordered
-          style={{ height: "490px", overflowY: "auto" }}
+          className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
+          style={{ height: "540px", overflowY: "auto" }}
         />
         <Checkbox 
           checked={confirmCreateImportRequestChecked} 

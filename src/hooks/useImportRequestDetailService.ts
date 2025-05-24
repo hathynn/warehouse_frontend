@@ -1,5 +1,6 @@
 import useApiService, { ResponseDTO } from "./useApi";
 import { toast } from "react-toastify";
+import { useState } from "react";
 
 // Interface to match ImportRequestDetailResponse.java
 export interface ImportRequestDetailResponse {
@@ -20,10 +21,13 @@ export enum DetailStatus {
 }
 
 // Interface to match ImportRequestDetailRequest.java
-export interface ImportRequestDetailRequest {
-  itemId: number;
+export interface ImportRequestCreateWithDetailRequest {
+  itemId: string;
   quantity: number;
   providerId: number;
+  importReason: string;
+  importType: string;
+  exportRequestId?: number | null;
 }
 
 const useImportRequestDetailService = () => {
@@ -31,14 +35,12 @@ const useImportRequestDetailService = () => {
 
   // Get paginated import request details by import request ID
   const getImportRequestDetails = async (
-    importRequestId: string, 
-    page = 1, 
-    limit = 10
+    importRequestId: string
   ): Promise<ResponseDTO<ImportRequestDetailResponse[]>> => {
     try {
       const response = await callApi(
         "get", 
-        `/import-request-detail/page/${importRequestId}?page=${page}&limit=${limit}`
+        `/import-request-detail/import-request/${importRequestId}`
       );
       return response;
     } catch (error) {
@@ -65,24 +67,22 @@ const useImportRequestDetailService = () => {
     }
   };
 
-  const createImportRequestDetail = async (
-    details: ImportRequestDetailRequest[],
-    importRequestId: string
-  ): Promise<ResponseDTO<null>> => {
+  const createImportRequestDetail = async (details: ImportRequestCreateWithDetailRequest[]): Promise<ResponseDTO<string[]> | null> => {
     try {
       const response = await callApi(
         "post",
-        `/import-request-detail/${importRequestId}`,
+        "/import-request-detail/import-requests-with-import-request-details",
         details
       );
+      if (response && response.content) {
+        toast.success("Tạo phiếu nhập kho thành công!");
+      }
       return response;
     } catch (error) {
-      toast.error("Không thể tạo danh sách sản phẩm");
-      console.error("Error creating import request detail:", error);
+      toast.error("Có lỗi xảy ra khi tạo phiếu nhập kho");
       throw error;
     }
   };
-
 
   return {
     loading,

@@ -35,7 +35,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     total: details.length,
   });
 
-  const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
+  const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
     details.length,
     pagination.pageSize,
     pagination.current
@@ -54,9 +54,15 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
 
   useEffect(() => {
     if (!open) {
+      setPagination({
+        current: 1,
+        pageSize: 5,
+        total: details.length,
+      });
       setConfirmCreateImportOrderChecked(false);
+      resetViewedPages(1);
     }
-  }, [open]);
+  }, [open, details.length, resetViewedPages]);
 
   const columns = [
     { 
@@ -129,7 +135,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       maskClosable={false}
       okButtonProps={{ disabled: !confirmCreateImportOrderChecked, danger: false }}
     >
-      <Descriptions bordered column={2} size="small" labelStyle={{ fontWeight: "bold" }} style={{ marginBottom: 24 }}>
+      <Descriptions bordered column={2} size="small" labelStyle={{ fontWeight: "bold" }} style={{ marginBottom: 24 }} className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400">
         <Descriptions.Item label="Mã phiếu nhập">#{formData.importRequestId}</Descriptions.Item>
         <Descriptions.Item label="Nhà cung cấp (theo phiếu nhập)">{importRequestProvider || "-"}</Descriptions.Item>
         <Descriptions.Item label="Ngày nhận hàng">{formattedDate}</Descriptions.Item>
@@ -150,6 +156,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         onChange={handleTableChange}
         size="small"
         bordered
+        className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
         style={{ height: "350px", overflowY: "auto" }}
       />
       <Checkbox 

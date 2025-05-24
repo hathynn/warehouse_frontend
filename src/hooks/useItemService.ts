@@ -21,7 +21,7 @@ export interface ItemRequest {
 export interface ItemResponse {
   // List of valid provider IDs for this item
   providerIds: number[];
-  id: number;
+  id: string;
   name: string;
   description: string;
   measurementUnit: string;

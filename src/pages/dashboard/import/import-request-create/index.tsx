@@ -5,27 +5,19 @@ import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestCon
 import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
-import useImportRequestDetailService, { ImportRequestDetailRequest } from "@/hooks/useImportRequestDetailService";
+import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/hooks/useImportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
 import { ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { ImportRequestDetailRow } from "@/utils/interfaces";
 
 const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-interface ImportRequestDetailRow {
-  itemId: number;
-  quantity: number;
-  providerId: number;
-  itemName: string;
-  providerName: string;
-  measurementUnit?: string;
-  totalMeasurementValue?: number;
-}
 
 interface FormData {
   importReason: string;
@@ -128,7 +120,7 @@ const ImportRequestCreate: React.FC = () => {
               if (!itemId || !quantity || !providerId) {
                 throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
               }
-              const foundItem = items.find(i => i.id === Number(itemId));
+              const foundItem = items.find(i => i.id === itemId);
               if (!foundItem) {
                 throw new Error(`Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`);
               }
@@ -141,7 +133,7 @@ const ImportRequestCreate: React.FC = () => {
                 throw new Error(`Dòng ${index + 1}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
               }
               return {
-                itemId: Number(itemId),
+                itemId: itemId,
                 quantity: Number(quantity),
                 providerId: Number(providerId),
                 itemName: foundItem.name,
@@ -183,28 +175,28 @@ const ImportRequestCreate: React.FC = () => {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
       return;
     }
+
     try {
-      const createRequest: ImportRequestCreateRequest = {
-        ...formData
-      };
-      const createdRequest = await createImportRequest(createRequest);
-      if (createdRequest?.content?.importRequestId) {
-        const details: ImportRequestDetailRequest[] = data.map(row => ({
-          itemId: row.itemId,
-          quantity: row.quantity,
-          providerId: row.providerId
-        }));
-        await createImportRequestDetail(details, createdRequest.content.importRequestId);
-        navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
-        setFormData({
-          importReason: "",
-          importType: "ORDER",
-          exportRequestId: null,
-        });
-        setFile(null);
-        setFileName("");
-        setData([]);
-      }
+      const details: ImportRequestCreateWithDetailRequest[] = data.map(row => ({
+        itemId: row.itemId,
+        quantity: row.quantity,
+        providerId: row.providerId,
+        importReason: formData.importReason,
+        importType: formData.importType,
+        exportRequestId: formData.exportRequestId
+      }));
+      
+      await createImportRequestDetail(details);
+      
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+      setFormData({
+        importReason: "",
+        importType: "ORDER",
+        exportRequestId: null,
+      });
+      setFile(null);
+      setFileName("");
+      setData([]);
     } catch (error) { }
   };
 

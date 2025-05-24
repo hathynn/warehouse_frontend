@@ -87,7 +87,7 @@ const InventoryItemList: React.FC = () => {
       title: "Mã sản phẩm",
       dataIndex: "id",
       key: "id",
-      render: (id: number) => `#${id}`,
+      render: (id: string) => `#${id}`,
     },
     {
       title: "Tên sản phẩm",
