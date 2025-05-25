@@ -26,7 +26,7 @@ import ExportRequestCreate from '@/pages/dashboard/export/export-request-create'
 import InventoryItemList from '@/pages/dashboard/inventory-item';
 import ConfigurationPage from '@/pages/dashboard/configuration';
 
-export const RootRouter = createBrowserRouter([
+export const Router = createBrowserRouter([
   {
     errorElement: <SomethingWrong />,
     children: [
@@ -138,4 +138,4 @@ export const RootRouter = createBrowserRouter([
   },
 ]);
 
-export default RootRouter;
+export default Router;

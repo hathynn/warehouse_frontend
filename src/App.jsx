@@ -5,7 +5,7 @@ import { persistor, store } from "./contexts/redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 // import "aos/dist/aos.css";
 import "./index.css";
-import { RootRouter } from "@/router/RootRouter";
+import { Router } from "@/router/Router";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { PusherProvider } from "./contexts/pusher/PusherContext";
@@ -15,7 +15,7 @@ function App() {
     <Provider store={store}>
       <PersistGate persistor={persistor}>
         <PusherProvider>
-          <RouterProvider router={RootRouter} />
+          <RouterProvider router={Router} />
           <ToastContainer
             position="top-center"
             autoClose={3000}
