@@ -1,120 +1,198 @@
 import dayjs, { Dayjs } from "dayjs";
 import { ConfigurationDto } from "../hooks/useConfigurationService";
 
-// Define action types for better type safety and maintainability
-export type ActionType = 'create-import-order' | 'assign-staff' | 'confirm-import-order' | 'cancel-import-order' | 'extend-import-order';
+export type ActionType =
+    | 'create-import-order'
+    | 'assign-staff'
+    | 'confirm-import-order'
+    | 'cancel-import-order'
+    | 'extend-import-order'
+    | 'import-request-create';
 
-// Helper to get the appropriate configuration value based on action type
-const getConfigurationValue = (
-    actionType: ActionType,
-    configuration: ConfigurationDto | null
-): { value: string | number; unit: 'hour' | 'day' } => {
-    if (!configuration) {
-        throw new Error('Configuration is required');
-    }
+interface TimeConfig {
+    value: number;
+    unit: 'hour' | 'day';
+}
 
-    switch (actionType) {
-        case 'create-import-order':
-            return { value: configuration.createRequestTimeAtLeast, unit: 'hour' };
-        case 'assign-staff':
-            return { value: configuration.timeToAllowAssign, unit: 'hour' };
-        case 'confirm-import-order':
-            return { value: configuration.timeToAllowConfirm, unit: 'hour' };
-        case 'cancel-import-order':
-            return { value: configuration.timeToAllowCancel, unit: 'hour' };
-        case 'extend-import-order':
-            return { value: configuration.daysToAllowExtend, unit: 'day' };
-        default:
-            throw new Error(`Unsupported action type: ${actionType}`);
-    }
+// Configuration mapping for each action type
+const ACTION_CONFIG_MAP: Record<ActionType, keyof ConfigurationDto> = {
+    'create-import-order': 'createRequestTimeAtLeast',
+    'assign-staff': 'timeToAllowAssign',
+    'confirm-import-order': 'timeToAllowConfirm',
+    'cancel-import-order': 'timeToAllowCancel',
+    'extend-import-order': 'daysToAllowExtend',
+    'import-request-create': 'maxAllowedDaysForImportRequestProcess'
 };
 
-// Helper to get minimum datetime for a specific action
-const getMinimumDateTimeForAction = (
+// Actions that use hours vs days
+const HOUR_BASED_ACTIONS: ActionType[] = [
+    'create-import-order',
+    'assign-staff',
+    'confirm-import-order',
+    'cancel-import-order'
+];
+
+const DAY_BASED_ACTIONS: ActionType[] = [
+    'extend-import-order',
+    'import-request-create'
+];
+
+/**
+ * Get time configuration for an action type
+ */
+function getTimeConfig(actionType: ActionType, configuration: ConfigurationDto): TimeConfig {
+    const configKey = ACTION_CONFIG_MAP[actionType];
+    const value = configuration[configKey];
+
+    if (value === undefined || value === null) {
+        throw new Error(`Configuration value for ${actionType} is missing`);
+    }
+
+    const unit = HOUR_BASED_ACTIONS.includes(actionType) ? 'hour' : 'day';
+
+    // For hour-based actions, extract hours from time string format (e.g., "2:00")
+    if (unit === 'hour' && typeof value === 'string') {
+        const hours = parseInt(value.split(':')[0] || '0');
+        return { value: hours, unit };
+    }
+
+    return { value: Number(value), unit };
+}
+
+/**
+ * Calculate minimum allowed datetime for an action
+ */
+function getMinDateTime(
     actionType: ActionType,
-    configuration: ConfigurationDto | null
-): Dayjs => {
-    const now = dayjs();
-    const { value, unit } = getConfigurationValue(actionType, configuration);
-    
+    configuration: ConfigurationDto,
+    baseDate: Dayjs = dayjs()
+): Dayjs {
+    const { value, unit } = getTimeConfig(actionType, configuration);
+
     if (unit === 'hour') {
-        const hours = parseInt(value.toString().split(':')[0]!);
-        return now.add(hours, 'hour');
-    } else {
-        // For days (extend action)
-        return now.add(Number(value), 'day');
+        return baseDate.add(value, 'hour');
     }
-};
 
-// Helper to validate if selected datetime is valid based on configuration and action type
-export const validateDateTime = (
+    // For day-based actions
+    if (actionType === 'import-request-create') {
+        return baseDate.startOf('day');
+    }
+
+    return baseDate.add(value, 'day');
+}
+
+/**
+ * Calculate maximum allowed datetime for an action (if applicable)
+ */
+function getMaxDateTime(
+    actionType: ActionType,
+    configuration: ConfigurationDto,
+    baseDate: Dayjs = dayjs(),
+    hasStartDate: boolean = false
+): Dayjs | null {
+    if (actionType === 'import-request-create' && hasStartDate) {
+        const { value } = getTimeConfig(actionType, configuration);
+        return baseDate.add(value, 'day').endOf('day');
+    }
+
+    return null;
+}
+
+/**
+ * Validate if selected datetime is within allowed range
+ */
+export function validateDateTime(
     date: string,
     time: string,
     actionType: ActionType,
-    configuration: ConfigurationDto | null
-): boolean => {
+    configuration: ConfigurationDto | null,
+    startDate?: string
+): boolean {
     if (!configuration) return false;
-    
-    const selectedDateTime = dayjs(`${date} ${time}`);
-    const minDateTime = getMinimumDateTimeForAction(actionType, configuration);
-    return selectedDateTime.isAfter(minDateTime);
-};
 
-// Helper to get default datetime based on configuration and action type
-export const getDefaultAssignedDateTimeForAction = (
+    const selectedDateTime = dayjs(`${date} ${time}`);
+    const baseDate = startDate ? dayjs(startDate) : dayjs();
+
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
+    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate);
+
+    const isAfterMin = selectedDateTime.isAfter(minDateTime);
+    const isBeforeMax = maxDateTime ? selectedDateTime.isBefore(maxDateTime) : true;
+
+    return isAfterMin && isBeforeMax;
+}
+
+/**
+ * Get default datetime for an action
+ */
+export function getDefaultAssignedDateTimeForAction(
     actionType: ActionType,
-    configuration: ConfigurationDto | null
-) => {
+    configuration: ConfigurationDto | null,
+    startDate?: string
+) {
     if (!configuration) {
         throw new Error('Configuration is required');
     }
 
-    const now = dayjs();
-    const { value, unit } = getConfigurationValue(actionType, configuration);
-    
-    let defaultTime: Dayjs;
-    
-    if (unit === 'hour') {
-        const hours = parseInt(value.toString().split(':')[0]!);
-        defaultTime = now.add(hours, 'hour').add(30, 'minute');
-    } else {
-        // For days (extend action)
-        defaultTime = now.add(Number(value), 'day');
-    }
-    
-    return {
-        date: defaultTime.format("YYYY-MM-DD"),
-        time: defaultTime.format("HH:mm")
-    };
-};
+    const baseDate = startDate ? dayjs(startDate) : dayjs();
+    const { value, unit } = getTimeConfig(actionType, configuration);
 
-// Helper to determine if a date should be disabled based on action type
-export const isDateDisabledForAction = (
+    let defaultDateTime: Dayjs;
+
+    if (unit === 'hour') {
+        // Add configured hours plus 30 minutes buffer
+        defaultDateTime = baseDate.add(value, 'hour').add(30, 'minute');
+    } else if (actionType === 'import-request-create') {
+        defaultDateTime = baseDate;
+    } else {
+        defaultDateTime = baseDate.add(value, 'day');
+    }
+
+    return {
+        date: defaultDateTime.format("YYYY-MM-DD"),
+        time: defaultDateTime.format("HH:mm")
+    };
+}
+
+/**
+ * Check if a date should be disabled in date picker
+ */
+export function isDateDisabledForAction(
     current: Dayjs,
     actionType: ActionType,
-    configuration: ConfigurationDto | null
-): boolean => {
-    if (!configuration) return true;
-    
-    const minDateTime = getMinimumDateTimeForAction(actionType, configuration);
-    return current && current.isBefore(minDateTime.startOf('day'));
-};
+    configuration: ConfigurationDto | null,
+    startDate?: string
+): boolean {
+    if (!configuration || !current) return true;
 
-// Helper to get disabled time settings for TimePicker based on action type
-export const getDisabledTimeConfigForAction = (
+    const baseDate = startDate ? dayjs(startDate) : dayjs();
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
+    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate);
+
+    const isBeforeMin = current.isBefore(minDateTime.startOf('day'));
+    const isAfterMax = maxDateTime ? current.isAfter(maxDateTime.startOf('day')) : false;
+
+    return isBeforeMin || isAfterMax;
+}
+
+/**
+ * Get disabled time configuration for time picker
+ */
+export function getDisabledTimeConfigForAction(
     selectedDate: string,
     actionType: ActionType,
-    configuration: ConfigurationDto | null
-) => {
+    configuration: ConfigurationDto | null,
+    startDate?: string
+) {
     if (!configuration) return {};
-    
-    const now = dayjs();
-    const selectedDateObj = dayjs(selectedDate);
-    const minDateTime = getMinimumDateTimeForAction(actionType, configuration);
 
-    // Only apply time restrictions for hour-based configurations
-    const { unit } = getConfigurationValue(actionType, configuration);
-    
+    const selectedDateObj = dayjs(selectedDate);
+    const baseDate = startDate ? dayjs(startDate) : dayjs();
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
+
+    // Only apply time restrictions for hour-based actions on the minimum date
+    const { unit } = getTimeConfig(actionType, configuration);
+
     if (unit === 'hour' && selectedDateObj.isSame(minDateTime, 'day')) {
         return {
             disabledHours: () => Array.from({ length: minDateTime.hour() }, (_, i) => i),
@@ -126,6 +204,6 @@ export const getDisabledTimeConfigForAction = (
             }
         };
     }
-    
+
     return {};
-};
+}

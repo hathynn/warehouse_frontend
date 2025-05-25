@@ -119,7 +119,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
   ];
 
   const formattedDate = formData.dateReceived 
-    ? dayjs(formData.dateReceived).format("DD/MM/YYYY") 
+    ? dayjs(formData.dateReceived).format("DD-MM-YYYY") 
     : "-";
 
   return (

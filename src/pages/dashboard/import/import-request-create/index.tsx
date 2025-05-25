@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert, Table } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
-import useImportRequestService, { ImportRequestCreateRequest } from "@/hooks/useImportRequestService";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import useItemService, { ItemResponse } from "@/hooks/useItemService";
 import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/hooks/useImportRequestDetailService";
@@ -11,8 +10,13 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
-import { ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
+import dayjs from "dayjs";
+import "dayjs/locale/vi";
+import locale from "antd/es/date-picker/locale/vi_VN";
+import { isDateDisabledForAction } from "@/utils/helpers";
+import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -23,6 +27,8 @@ interface FormData {
   importReason: string;
   importType: "ORDER" | "RETURN";
   exportRequestId: number | null;
+  startDate: string;
+  endDate: string;
 }
 
 const ImportRequestCreate: React.FC = () => {
@@ -35,9 +41,12 @@ const ImportRequestCreate: React.FC = () => {
     importReason: "",
     importType: "ORDER",
     exportRequestId: null,
+    startDate: dayjs().format("YYYY-MM-DD"),
+    endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
   });
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,12 +68,6 @@ const ImportRequestCreate: React.FC = () => {
     }));
   };
 
-
-  const {
-    loading: importLoading,
-    createImportRequest,
-  } = useImportRequestService();
-
   const {
     loading: importRequestDetailLoading,
     createImportRequestDetail
@@ -79,6 +82,10 @@ const ImportRequestCreate: React.FC = () => {
     loading: itemLoading,
     getItems
   } = useItemService();
+
+  const {
+    getConfiguration
+  } = useConfigurationService();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,6 +107,51 @@ const ImportRequestCreate: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      const configuration = await getConfiguration();
+      setConfiguration(configuration);
+    };
+    fetchConfiguration();
+  }, []);
+
+  // Helper function to validate date range
+  const isEndDateValid = (startDate: string, endDate: string): boolean => {
+    if (!startDate || !endDate) return true;
+    
+    const start = dayjs(startDate);
+    const end = dayjs(endDate);
+    
+    if (end.isBefore(start)) {
+      return false;
+    }
+    
+    if (configuration) {
+      const maxDays = configuration.maxAllowedDaysForImportRequestProcess;
+      const daysDiff = end.diff(start, 'day');
+      
+      if (daysDiff > maxDays) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Handle start date change
+  const handleStartDateChange = (date: dayjs.Dayjs | null) => {
+    const newStartDate = date ? date.format("YYYY-MM-DD") : "";
+    setFormData({ ...formData, startDate: newStartDate });
+    if (newStartDate && formData.endDate && !isEndDateValid(newStartDate, formData.endDate)) {
+      setFormData({ ...formData, startDate: newStartDate, endDate: "" });
+    }
+  };
+
+  // Handle end date change
+  const handleEndDateChange = (date: dayjs.Dayjs | null) => {
+    const newEndDate = date ? date.format("YYYY-MM-DD") : "";
+    setFormData({ ...formData, endDate: newEndDate });
+  };
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
@@ -176,6 +228,11 @@ const ImportRequestCreate: React.FC = () => {
       return;
     }
 
+    if (!formData.startDate || !formData.endDate) {
+      toast.error("Vui lòng nhập đầy đủ ngày bắt đầu và ngày kết thúc");
+      return;
+    }
+
     try {
       const details: ImportRequestCreateWithDetailRequest[] = data.map(row => ({
         itemId: row.itemId,
@@ -183,7 +240,9 @@ const ImportRequestCreate: React.FC = () => {
         providerId: row.providerId,
         importReason: formData.importReason,
         importType: formData.importType,
-        exportRequestId: formData.exportRequestId
+        exportRequestId: formData.exportRequestId,
+        startDate: formData.startDate,
+        endDate: formData.endDate
       }));
       
       await createImportRequestDetail(details);
@@ -193,6 +252,8 @@ const ImportRequestCreate: React.FC = () => {
         importReason: "",
         importType: "ORDER",
         exportRequestId: null,
+        startDate: dayjs().format("YYYY-MM-DD"),
+        endDate: dayjs().format("YYYY-MM-DD"),
       });
       setFile(null);
       setFileName("");
@@ -250,7 +311,7 @@ const ImportRequestCreate: React.FC = () => {
     },
   ];
 
-  const loading = importLoading || providerLoading || itemLoading || importRequestDetailLoading;
+  const loading = providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
     <div className="container mx-auto p-3 pt-0">
@@ -325,7 +386,7 @@ const ImportRequestCreate: React.FC = () => {
             <Card title="Thông tin phiếu nhập" className="w-3/10">
               <Space direction="vertical" className="w-full">
                 <div className="mb-2">
-                  <label className="block mb-1">Lý do nhập kho <span className="text-red-500">*</span></label>
+                  <label className="text-md font-semibold">Lý do nhập kho <span className="text-red-500">*</span></label>
                   <TextArea
                     placeholder="Nhập lý do"
                     rows={4}
@@ -337,7 +398,7 @@ const ImportRequestCreate: React.FC = () => {
                   />
                 </div>
                 <div className="mb-2">
-                  <label className="block mb-1">Loại nhập kho <span className="text-red-500">*</span></label>
+                  <label className="text-md font-semibold">Loại nhập kho <span className="text-red-500">*</span></label>
                   <Select
                     value={formData.importType}
                     onChange={(value) => setFormData({ ...formData, importType: value })}
@@ -346,6 +407,34 @@ const ImportRequestCreate: React.FC = () => {
                     <Option value="ORDER">Nhập theo kế hoạch</Option>
                     <Option value="RETURN">Nhập trả</Option>
                   </Select>
+                </div>
+                <div className="mb-2">
+                  <label className="text-md font-semibold">Ngày phiếu có hiệu lực <span className="text-red-500">*</span></label>
+                  <DatePicker
+                    locale={locale}
+                    format="DD-MM-YYYY"
+                    className="w-full"
+                    value={formData.startDate ? dayjs(formData.startDate) : null}
+                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                    onChange={handleStartDateChange}
+                    placeholder="Chọn ngày phiếu có hiệu lực"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="text-md font-semibold">Ngày phiếu hết hạn <span className="text-red-500">*</span></label>
+                  <DatePicker
+                    locale={locale}
+                    format="DD-MM-YYYY"
+                    className="w-full"
+                    value={formData.endDate ? dayjs(formData.endDate) : null}
+                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                    onChange={handleEndDateChange}
+                    placeholder="Chọn ngày phiếu hết hạn"
+                  />
+                  <div className="text-sm text-red-400 mt-1">
+                    <InfoCircleOutlined className="mr-1" />
+                    Hạn của phiếu nhập không được vượt quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
+                  </div>
                 </div>
                 <Alert
                   message="Lưu ý"
@@ -360,7 +449,7 @@ const ImportRequestCreate: React.FC = () => {
                   loading={loading}
                   className="w-full mt-4"
                   id="btn-detail"
-                  disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason}
+                  disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason || !formData.startDate || !formData.endDate}
                 >
                   Xác nhận thông tin
                 </Button>

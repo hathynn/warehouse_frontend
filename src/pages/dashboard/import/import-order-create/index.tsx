@@ -15,10 +15,10 @@ import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/EditableImportOrderTableSection";
 import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirmModal";
-import { 
-  getDefaultAssignedDateTimeForAction, 
-  isDateDisabledForAction, 
-  getDisabledTimeConfigForAction 
+import {
+  getDefaultAssignedDateTimeForAction,
+  isDateDisabledForAction,
+  getDisabledTimeConfigForAction
 } from "@/utils/helpers";
 
 const { Title } = Typography;
@@ -314,36 +314,36 @@ const ImportOrderCreate = () => {
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          
+
           // Read cells directly for new format
           const getCell = (cell: string) => ws[cell]?.v;
-          
+
           // Get header fields
           const dateReceived = getCell('B1');
           const timeReceived = getCell('B2');
           const note = getCell('B3');
-          
+
           // Validate header fields first
           if (!dateReceived || !timeReceived) {
             toast.error("File Excel phải có đủ thông tin ngày nhận và giờ nhận ở B1, B2");
             return;
           }
-          
+
           // Get the range of the sheet
           if (!ws['!ref']) {
             toast.error("Không tìm thấy dữ liệu bảng trong file Excel (thiếu !ref).");
             return;
           }
-          
+
           const range = XLSX.utils.decode_range(ws['!ref']);
-          
+
           // Find headers in row 5
           const headers = [getCell('A5'), getCell('B5')];
           if (headers[0] !== 'itemId' || headers[1] !== 'quantity') {
             toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity");
             return;
           }
-          
+
           // Parse data from row 6 onwards
           const excelDetails: { itemId: number, quantity: number }[] = [];
           for (let row = 6; row <= range.e.r + 1; row++) {
@@ -356,22 +356,22 @@ const ImportOrderCreate = () => {
               });
             }
           }
-          
+
           if (excelDetails.length === 0) {
             toast.warning("Không có dữ liệu hàng hóa hợp lệ trong file Excel");
             return;
           }
-          
+
           // Only update state if all validations pass
           setFileName(uploadedFile.name);
-          
+
           setFormData(prev => ({
             ...prev,
             dateReceived: typeof dateReceived === 'number' ? excelDateToYMD(dateReceived) : dateReceived,
             timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
             note: note ? note.toString() : prev.note
           }));
-          
+
           // Khi import file Excel, chỉ cập nhật plannedQuantity cho các itemId có trong Excel, giữ nguyên các dòng khác
           const updatedRows = editableRows.map(row => {
             const match = excelDetails.find(d => d.itemId === row.itemId);
@@ -383,7 +383,7 @@ const ImportOrderCreate = () => {
             }
             return row;
           });
-          
+
           setEditableRows(updatedRows);
           setExcelImported(true);
           toast.success(`Đã tải ${excelDetails.length} hàng hóa từ file Excel`);
@@ -455,7 +455,7 @@ const ImportOrderCreate = () => {
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId))}
+          onClick={() => step === 1 ? setStep(0) : navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId))}
           className="mr-4"
         >
           Quay lại
@@ -505,97 +505,89 @@ const ImportOrderCreate = () => {
 
       {/* Step 2: Show current form */}
       {step === 1 && (
-        <div>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => setStep(0)}
-            type="primary"
-          >
-            Quay lại
-          </Button>
-          <div className="mt-4 flex gap-6">
-            <Card title="Thông tin đơn nhập" className="w-3/10">
-              <Space direction="vertical" className="w-full">
-                <div>
-                  <label className="block mb-1">Ngày nhận <span className="text-red-500">*</span></label>
-                  <DatePicker
-                    className="w-full"
-                    format="DD/MM/YYYY"
-                    value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
-                    onChange={handleDateChange}
-                    disabledDate={(current) => isDateDisabledForAction(current, "create-import-order", configuration)}
-                    showNow={false}
-                  />
+        <div className="mt-4 flex gap-6">
+          <Card title="Thông tin đơn nhập" className="w-3/10">
+            <Space direction="vertical" className="w-full">
+              <div className="mb-2">
+                <label className="text-md font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
+                <DatePicker
+                  className="w-full"
+                  format="DD/MM/YYYY"
+                  value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
+                  onChange={handleDateChange}
+                  disabledDate={(current) => isDateDisabledForAction(current, "create-import-order", configuration)}
+                  showNow={false}
+                />
+              </div>
+              <div>
+                <label className="text-md font-semibold">Giờ nhận dự kiến <span className="text-red-500">*</span></label>
+                <TimePicker
+                  className="w-full"
+                  value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
+                  onChange={handleTimeChange}
+                  format="HH:mm"
+                  showNow={false}
+                  needConfirm={false}
+                  disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "create-import-order", configuration)}
+                />
+                <div className="text-sm text-blue-500">
+                  <InfoCircleOutlined className="mr-1" />
+                  Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ</span>
                 </div>
-                <div>
-                  <label className="block mb-1">Giờ nhận <span className="text-red-500">*</span></label>
-                  <TimePicker
-                    className="w-full"
-                    value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
-                    onChange={handleTimeChange}
-                    format="HH:mm"
-                    showNow={false}
-                    needConfirm={false}
-                    disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "create-import-order", configuration)}
-                  />
-                  <div className="text-sm text-blue-500">
-                    <InfoCircleOutlined className="mr-1" />
-                    Giờ nhận phải cách thời điểm hiện tại ít nhất {parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ
-                  </div>
-                </div>
-                <div className="my-2">
-                  <label className="block mb-1">Nhà cung cấp (theo PHIẾU NHẬP)</label>
-                  <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
-                    {importRequest?.providerId
-                      ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
-                      : "Chưa chọn"}
-                  </Typography.Text>
-                </div>
-                <div>
-                  <label className="block mb-1">Ghi chú</label>
-                  <TextArea
-                    placeholder="Nhập ghi chú"
-                    rows={4}
-                    value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value.slice(0, 150) })}
-                    className="w-full"
-                    maxLength={150}
-                    showCount
-                  />
-                </div>
-                <Button
-                  type="primary"
-                  onClick={() => setShowConfirmModal(true)}
+              </div>
+              <div className="my-2">
+                <label className="text-md font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
+                <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
+                  {importRequest?.providerId
+                    ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
+                    : "Chưa chọn"}
+                </Typography.Text>
+              </div>
+              <div>
+                <label className="text-md font-semibold">Ghi chú</label>
+                <TextArea
+                  placeholder="Nhập ghi chú"
+                  rows={4}
+                  value={formData.note}
+                  onChange={(e) => setFormData({ ...formData, note: e.target.value.slice(0, 150) })}
+                  className="w-full"
+                  maxLength={150}
+                  showCount
+                />
+              </div>
+              <Button
+                type="primary"
+                onClick={() => setShowConfirmModal(true)}
+                loading={loading}
+                className="w-full mt-8"
+                id="btn-detail"
+              // disabled={formData.providerId !== importRequest?.providerId}
+              >
+                Xác nhận thông tin
+              </Button>
+            </Space>
+          </Card>
+          <div className="w-7/10">
+            <Card title="Danh sách hàng hóa cần nhập">
+              {editableRows.length > 0 ? (
+                <Table
+                  columns={columns}
+                  dataSource={editableRows}
+                  rowKey="itemId"
                   loading={loading}
-                  className="w-full mt-8"
-                  id="btn-detail"
-                // disabled={formData.providerId !== importRequest?.providerId}
-                >
-                  Xác nhận thông tin
-                </Button>
-              </Space>
+                  pagination={pagination}
+                  onChange={handleTableChange}
+                  className="custom-table"
+                />
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  "Không có dữ liệu"
+                </div>
+              )}
             </Card>
-            <div className="w-7/10">
-              <Card title="Danh sách hàng hóa cần nhập">
-                {editableRows.length > 0 ? (
-                  <Table
-                    columns={columns}
-                    dataSource={editableRows}
-                    rowKey="itemId"
-                    loading={loading}
-                    pagination={pagination}
-                    onChange={handleTableChange}
-                    className="custom-table"
-                  />
-                ) : (
-                  <div className="text-center py-10 text-gray-500">
-                    "Không có dữ liệu"
-                  </div>
-                )}
-              </Card>
-            </div>
           </div>
         </div>
+
       )}
       <ImportOrderConfirmModal
         open={showConfirmModal}

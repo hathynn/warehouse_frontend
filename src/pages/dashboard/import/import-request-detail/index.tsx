@@ -3,12 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
-  Card,
   Spin,
   message
 } from "antd";
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
+import useImportRequestService from "@/hooks/useImportRequestService";
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
@@ -18,6 +17,7 @@ import { ImportRequestData } from "../import-request-list";
 import useProviderService from "@/hooks/useProviderService";
 import useImportOrderService, { ImportOrderResponse } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
+import dayjs from "dayjs";
 
 interface RouteParams extends Record<string, string> {
   importRequestId: string;
@@ -339,11 +339,21 @@ const ImportRequestDetail: React.FC = () => {
   const infoItems = [
     { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
     { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
-    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
     { label: "Nhà cung cấp", value: importRequestData?.providerName },
-    { label: "Người tạo", value: importRequestData?.createdBy },
-    { label: "Ngày tạo", value: importRequestData?.createdDate ? new Date(importRequestData.createdDate).toLocaleDateString("vi-VN") : "-" },
+    { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
+    { 
+      label: "Thời gian hiệu lực", 
+      value: (
+        <span>
+          Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
+          {importRequestData?.endDate ? (
+            <> - Đến <strong>{dayjs(importRequestData.endDate).format("DD-MM-YYYY")}</strong></>
+          ) : null}
+        </span>
+      )
+    },
     importRequestData?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` } : null,
+    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
     { label: "Lý do nhập", value: importRequestData?.importReason, span: 2 },
   ].filter(Boolean) as DetailInfoItem[];
 

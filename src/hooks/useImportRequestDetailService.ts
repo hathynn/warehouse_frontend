@@ -27,6 +27,8 @@ export interface ImportRequestCreateWithDetailRequest {
   providerId: number;
   importReason: string;
   importType: string;
+  startDate: string;
+  endDate: string;
   exportRequestId?: number | null;
 }
 

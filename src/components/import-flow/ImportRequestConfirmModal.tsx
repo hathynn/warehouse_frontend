@@ -3,6 +3,7 @@ import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
+import dayjs from "dayjs";
 
 interface ImportRequestConfirmModalProps {
   open: boolean;
@@ -12,6 +13,8 @@ interface ImportRequestConfirmModalProps {
   formData: {
     importReason: string;
     importType: string;
+    startDate: string;
+    endDate: string;
   };
   details: ImportRequestDetailRow[];
   providers: Record<number, string>;
@@ -191,14 +194,20 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       maskClosable={false}
       okButtonProps={{ disabled: !confirmCreateImportRequestChecked, danger: false }}
     >
-        <Descriptions bordered column={1} size="small" style={{ marginBottom: 24 }} labelStyle={{ width: "20%", fontWeight: "bold" }} className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400">
-          <Descriptions.Item label="Lý do nhập">
+        <Descriptions bordered column={2} size="small" style={{ marginBottom: 24 }} labelStyle={{ width: "20%", fontWeight: "bold" }} className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400">
+          <Descriptions.Item label="Lý do nhập" span={2}>
             <div className="max-h-[48px] overflow-y-auto leading-[24px]">
               {formData.importReason}
             </div>
           </Descriptions.Item>
-          <Descriptions.Item label="Loại nhập">
+          <Descriptions.Item label="Loại nhập" span={2}>
             {formData.importType === "ORDER" ? "Nhập theo đơn" : "Nhập trả hàng"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ngày có hiệu lực">
+            {formData.startDate ? dayjs(formData.startDate).format("DD-MM-YYYY") : "-"}
+          </Descriptions.Item>
+          <Descriptions.Item label="Ngày hết hạn">
+            {formData.endDate ? dayjs(formData.endDate).format("DD-MM-YYYY") : "-"}
           </Descriptions.Item>
         </Descriptions>
         <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>

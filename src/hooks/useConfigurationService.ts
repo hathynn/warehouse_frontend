@@ -13,6 +13,7 @@ export interface ConfigurationDto {
   timeToAllowCancel: string;
   daysToAllowExtend: number;
   maxAllowedDaysForExtend: number;
+  maxAllowedDaysForImportRequestProcess: number;
 }
 
 const useConfigurationService = () => {

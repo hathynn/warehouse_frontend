@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select } from "antd";
+import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select, Tabs } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { UnorderedListOutlined, FileAddOutlined, EyeFilled, EyeOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
@@ -10,6 +10,7 @@ import useProviderService from "@/hooks/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
+import dayjs from "dayjs";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;
@@ -22,8 +23,7 @@ const ImportRequestList: React.FC = () => {
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
-  const [selectedBatch, setSelectedBatch] = useState<string | null>(null);
-  const [selectedImportType, setSelectedImportType] = useState<string[]>([]);
+  const [selectedImportType, setSelectedImportType] = useState<string>("ALL");
   const [selectedProvider, setSelectedProvider] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
@@ -35,6 +35,7 @@ const ImportRequestList: React.FC = () => {
 
   const {
     getImportRequestsByPage,
+    getAllImportRequests,
     loading
   } = useImportRequestService();
 
@@ -48,16 +49,13 @@ const ImportRequestList: React.FC = () => {
 
   useEffect(() => {
     fetchImportRequests();
-  }, [pagination.current, pagination.pageSize]);
+  }, []);
 
   const fetchImportRequests = async (): Promise<void> => {
     try {
       setDetailsLoading(true);
 
-      const { content, metaDataDTO } = await getImportRequestsByPage(
-        pagination.current || 1,
-        pagination.pageSize || 10
-      );
+      const { content } = await getAllImportRequests();
 
       const { content: providerList = [] } = await getAllProviders();
 
@@ -65,9 +63,7 @@ const ImportRequestList: React.FC = () => {
         (content || []).map(async (request) => {
           // Lấy chi tiết của từng phiếu
           const { content: importRequestDetails = [] } = await getImportRequestDetails(
-            request.importRequestId,
-            1,
-            1000
+            request.importRequestId
           );
 
           // Tính tổng bằng reduce
@@ -101,12 +97,6 @@ const ImportRequestList: React.FC = () => {
 
       setImportRequestsData(formattedRequests);
 
-      // cập nhật phân trang
-      setPagination({
-        current: metaDataDTO?.page,
-        pageSize: metaDataDTO?.limit,
-        total: metaDataDTO?.total,
-      });
     } catch (err) {
       console.error("Failed to fetch import requests:", err);
     } finally {
@@ -127,17 +117,16 @@ const ImportRequestList: React.FC = () => {
   };
 
 
-
-  const getImportTypeText = (type: string): string => {
-    switch (type) {
-      case "ORDER":
-        return "Nhập hàng mới";
-      case "RETURN":
-        return "Nhập hàng trả";
-      default:
-        return type;
-    }
-  };
+  // const getImportTypeText = (type: string): string => {
+  //   switch (type) {
+  //     case "ORDER":
+  //       return "Nhập hàng mới";
+  //     case "RETURN":
+  //       return "Nhập hàng trả";
+  //     default:
+  //       return type;
+  //   }
+  // };
 
   // Extract all batch numbers for a given date string (YYYY-MM-DD)
   // const getBatchesForDate = (dateStr: string) => {
@@ -151,7 +140,7 @@ const ImportRequestList: React.FC = () => {
   const filteredItems = importRequestsData.filter((item) => {
     const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
     const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
-    const matchesImportType = selectedImportType.length > 0 ? selectedImportType.includes(item.importType) : true;
+    const matchesImportType = selectedImportType === "ALL" ? true : item.importType === selectedImportType;
     const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
     const matchesStatus = selectedStatus.length > 0 ? selectedStatus.includes(item.status) : true;
 
@@ -168,7 +157,8 @@ const ImportRequestList: React.FC = () => {
     { label: 'Đã kiểm đếm', value: 'COUNTED' },
     { label: 'Đã xác nhận', value: 'CONFIRMED' },
     { label: 'Hoàn tất', value: 'COMPLETED' },
-    { label: 'Đã hủy', value: 'CANCELLED' }
+    { label: 'Đã hủy', value: 'CANCELLED' },
+    { label: 'Đã gia hạn', value: 'EXTENDED' }
   ];
 
   const columns = [
@@ -183,15 +173,59 @@ const ImportRequestList: React.FC = () => {
       render: (id: number) => `#${id}`,
     },
     {
-      title: "Loại nhập",
-      dataIndex: "importType",
-      key: "importType",
-      align: "left" as const,
+      title: "Ngày có hiệu lực",
+      dataIndex: "startDate",
+      key: "startDate",
+      align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (type: string) => getImportTypeText(type),
+      sorter: (a: ImportRequestData, b: ImportRequestData) => {
+        const dateA = dayjs(a.startDate);
+        const dateB = dayjs(b.startDate);
+        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+      },
+      showSorterTooltip: {
+        title: 'Sắp xếp theo ngày có hiệu lực'
+      },
+      render: (startDate: string) => {
+        const formattedStartDate = dayjs(startDate).format("DD-MM-YYYY");
+        return <strong>{formattedStartDate}</strong>;
+      },
     },
+    {
+      title: "Ngày hết hạn",
+      dataIndex: "endDate",
+      key: "endDate",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      sorter: (a: ImportRequestData, b: ImportRequestData) => {
+        if (!a.endDate && !b.endDate) return 0;
+        if (!a.endDate) return 1; // null values go to end
+        if (!b.endDate) return -1;
+        const dateA = dayjs(a.endDate);
+        const dateB = dayjs(b.endDate);
+        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+      },
+      showSorterTooltip: {
+        title: 'Sắp xếp theo ngày hết hạn'
+      },
+      render: (endDate: string) => {
+        return endDate ? <strong>{dayjs(endDate).format("DD-MM-YYYY")}</strong> : <span className="text-gray-400">Không có</span>;
+      },
+    },
+    // {
+    //   title: "Loại nhập",
+    //   dataIndex: "importType",
+    //   key: "importType",
+    //   align: "left" as const,
+    //   onHeaderCell: () => ({
+    //     style: { textAlign: 'center' as const }
+    //   }),
+    //   render: (type: string) => getImportTypeText(type),
+    // },
     // {
     //   title: "Đợt nhập",
     //   dataIndex: "batchCode",
@@ -386,19 +420,6 @@ const ImportRequestList: React.FC = () => {
         <div className="flex gap-2 items-center">
           <Select
             mode="multiple"
-            placeholder="Loại nhập"
-            className="min-w-[150px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
-            value={selectedImportType}
-            onChange={setSelectedImportType}
-            allowClear
-            maxTagCount="responsive"
-            options={[
-              { label: 'Nhập hàng mới', value: 'ORDER' },
-              { label: 'Nhập hàng trả', value: 'RETURN' }
-            ]}
-          />
-          <Select
-            mode="multiple"
             placeholder="Nhà cung cấp"
             className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
             value={selectedProvider}
@@ -420,6 +441,29 @@ const ImportRequestList: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
+        <Tabs
+          activeKey={selectedImportType}
+          onChange={setSelectedImportType}
+          type="card"
+          size="middle"
+          items={[
+            {
+              key: "ORDER",
+              label: "Nhập hàng mới",
+            },
+            {
+              key: "RETURN",
+              label: "Nhập trả",
+            },
+            {
+              key: "ALL",
+              label: "Tất cả",
+            },
+          ]}
+        />
+      </div>
+
       <Table
         columns={columns}
         dataSource={filteredItems}
@@ -427,7 +471,7 @@ const ImportRequestList: React.FC = () => {
         loading={loading || detailsLoading}
         onChange={handleTableChange}
         rowClassName={(_, index) => index % 2 === 1 ? 'bg-[rgba(0,0,0,0.04)]' : 'no-bg-row'}
-        className={`[&_.ant-table-cell]:!p-3 ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50' : ''}`}
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50 [&_.ant-table-tbody_tr:hover_td.ant-table-column-sort]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td.ant-table-column-sort]:!bg-blue-50' : ''}`}
         pagination={{
           ...pagination,
           showSizeChanger: true,
