@@ -175,12 +175,12 @@ const UpdateExportDateTimeModal = ({
 
     setSubmitting(true);
     try {
-      await updateExportDateTime(exportRequest.exportRequestId, {
+      await updateExportDateTime(String(exportRequest.exportRequestId), {
         exportDate: date.format("YYYY-MM-DD"),
         exportTime: time.format("HH:mm:ss"),
       });
       await updateExportRequestStatus(
-        exportRequest.exportRequestId,
+        String(exportRequest.exportRequestId),
         "WAITING_EXPORT"
       );
       message.success("Đã cập nhật ngày khách nhận hàng!");

@@ -106,7 +106,8 @@ const ExportRequestCreate = () => {
 
   function enrichDataWithItemMeta(dataArray, itemsArray) {
     return dataArray.map((row) => {
-      const itemMeta = itemsArray.find((i) => i.id === row.itemId) || {};
+      const itemMeta =
+        itemsArray.find((i) => String(i.id) === String(row.itemId)) || {};
       return {
         ...row,
         itemName: itemMeta.name || "Không xác định",
@@ -176,7 +177,7 @@ const ExportRequestCreate = () => {
               );
             }
             return {
-              itemId: Number(itemId),
+              itemId: String(itemId).trim(),
               quantity: Number(quantity),
               measurementValue: measurementValue.toString(),
             };

@@ -5,9 +5,9 @@ import { toast } from "react-toastify";
 // Interface mô tả dữ liệu chi tiết của export request trả về từ API
 export interface ExportRequestDetailResponse {
   importRequestDetailId: number;
-  exportRequestId: number;
+  exportRequestId: string;
   exportRequestDetailId: number;
-  itemId: number;
+  itemId: string;
   quantity: number;
   status: string;
   itemName: string; // Dùng để hiển thị tên hàng trên UI
@@ -15,13 +15,13 @@ export interface ExportRequestDetailResponse {
 
 // Interface dùng cho payload khi tạo mới export request detail (nếu cần)
 export interface ExportRequestDetailRequest {
-  exportRequestId: number;
-  itemId: number;
+  exportRequestId: string;
+  itemId: string;
   quantity: number;
   status: string;
   itemName: string;
   measurementValue: string;
-  inventoryItemId: number;
+  inventoryItemId: string;
 }
 
 const useExportRequestDetailService = () => {
@@ -38,7 +38,7 @@ const useExportRequestDetailService = () => {
       itemId: number;
       quantity: number;
       measurementValue: number;
-      inventoryItemId: number;
+      inventoryItemId: string;
     }[],
     exportRequestId: number
   ): Promise<ExportRequestDetailResponse[] | undefined> => {

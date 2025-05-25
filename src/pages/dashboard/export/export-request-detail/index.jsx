@@ -10,6 +10,7 @@ import {
   Modal,
   Input,
   Checkbox,
+  Tag,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -27,6 +28,7 @@ import { AccountRole, ExportStatus } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
 import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
+import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
@@ -98,7 +100,7 @@ const ExportRequestDetail = () => {
     const enriched = await Promise.all(
       details.map(async (detail) => {
         try {
-          const res = await getItemById(detail.itemId);
+          const res = await getItemById(String(detail.itemId));
           const itemName =
             res && res.content ? res.content.name : "Không xác định";
           return { ...detail, itemName };
@@ -432,24 +434,55 @@ const ExportRequestDetail = () => {
       });
   };
 
+  const ITEM_STATUS_SHOW_STATUSES = [
+    ExportStatus.COUNT_CONFIRMED,
+    ExportStatus.WAITING_EXPORT,
+    ExportStatus.CONFIRMED,
+    ExportStatus.COMPLETED,
+    ExportStatus.CANCELLED,
+  ];
+
+  const getItemStatus = () => {
+    if (!exportRequestDetails || exportRequestDetails.length === 0) return null;
+    const hasLack = exportRequestDetails.some((d) => d.status === "LACK");
+    return hasLack ? "LACK" : "ENOUGH";
+  };
+
   const renderDescriptionItems = () => {
     if (!exportRequest) return null;
     const items = [
-      // <Descriptions.Item label="Mã phiếu xuất" key="exportId">
-      //   #{exportRequest.exportRequestId}
-      // </Descriptions.Item>,
       <Descriptions.Item label="Trạng thái phiếu" key="status">
         <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
+    ];
+    // Hiển thị Trạng thái hàng với Tag của Ant Design
+    if (ITEM_STATUS_SHOW_STATUSES.includes(exportRequest.status)) {
+      const itemStatus = getItemStatus();
+      if (itemStatus === "LACK") {
+        items.push(
+          <Descriptions.Item label="Trạng thái hàng" key="itemStatus">
+            <Tag color="error">Thiếu</Tag>
+          </Descriptions.Item>
+        );
+      }
+      if (itemStatus === "ENOUGH") {
+        items.push(
+          <Descriptions.Item label="Trạng thái hàng" key="itemStatus">
+            <Tag color="success" style={{ fontSize: 14 }}>
+              Đủ
+            </Tag>
+          </Descriptions.Item>
+        );
+      }
+    }
+
+    items.push(
       <Descriptions.Item label="Ngày xuất" key="exportDate">
         {exportRequest.exportDate
           ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
           : "-"}
-      </Descriptions.Item>,
-      // <Descriptions.Item label="Người lập phiếu" key="createdBy">
-      //   {exportRequest.createdBy || "-"}
-      // </Descriptions.Item>,
-    ];
+      </Descriptions.Item>
+    );
 
     if (exportRequest.type === "PRODUCTION") {
       items.push(
@@ -688,6 +721,7 @@ const ExportRequestDetail = () => {
               type="primary"
               className="ml-4"
               onClick={() => setUpdateDateTimeModalOpen(true)}
+              disabled={getItemStatus() === "LACK"} // Disable nếu thiếu hàng
             >
               Cập nhật ngày khách nhận hàng
             </Button>
@@ -699,8 +733,20 @@ const ExportRequestDetail = () => {
           {renderDescriptionItems()}
         </Descriptions>
       </Card>
+      {}
 
-      <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
+      <ProductDetailTable
+        columns={columns}
+        exportRequestDetails={exportRequestDetails}
+        detailsLoading={detailsLoading}
+        pagination={pagination}
+        handleTableChange={handleTableChange}
+        userRole={userRole}
+        exportRequest={exportRequest}
+        setConfirmModalVisible={setConfirmModalVisible}
+      />
+
+      {/* <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
         <span>Danh sách chi tiết sản phẩm xuất</span>
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
           exportRequest?.status === ExportStatus.COUNTED && (
@@ -724,7 +770,7 @@ const ExportRequestDetail = () => {
           pageSizeOptions: ["10", "50"],
           showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
         }}
-      />
+      /> */}
 
       {/* Modal chọn Warehouse Keeper */}
       <Modal
@@ -1021,8 +1067,7 @@ const ExportRequestDetail = () => {
           onChange={(e) => setConfirmChecked(e.target.checked)}
           style={{ fontWeight: "500" }}
         >
-          Tôi đã đọc và kiểm tra kỹ các thông tin trên. Nếu có sai sót tôi sẽ
-          chịu trách nhiệm hoàn toàn.
+          Tôi đã đọc và kiểm tra kỹ các thông tin về sản phẩm đã được kiểm đếm.
         </Checkbox>
       </Modal>
       <Modal
