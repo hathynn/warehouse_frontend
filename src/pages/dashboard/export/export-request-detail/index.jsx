@@ -40,8 +40,10 @@ const ExportRequestDetail = () => {
     updateExportRequestStatus,
     updateExportDateTime,
     assignConfirmimgStaff,
+    createExportRequestProduction,
   } = useExportRequestService();
-  const { getExportRequestDetails } = useExportRequestDetailService();
+  const { getExportRequestDetails, createExportRequestDetail } =
+    useExportRequestDetailService();
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
@@ -79,6 +81,10 @@ const ExportRequestDetail = () => {
   const [completeChecked, setCompleteChecked] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false); // đặt bên ngoài modal
+
+  const [editMode, setEditMode] = useState(false);
+  const [editedDetails, setEditedDetails] = useState([]); // clone chi tiết khi edit
+  const [creating, setCreating] = useState(false); // loading khi gọi API tạo mới
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -223,6 +229,77 @@ const ExportRequestDetail = () => {
   useEffect(() => {
     fetchAssignedKeeper();
   }, [exportRequest?.assignedWareHouseKeeperId]);
+
+  // Huỷ tạo phiếu
+  const handleCancelCreateExport = () => {
+    setEditMode(false);
+    setEditedDetails([]);
+  };
+
+  // Xác nhận tạo phiếu xuất mới (có gọi cả API chi tiết)
+  const handleConfirmCreateExport = async () => {
+    setCreating(true);
+    try {
+      // Lấy info phiếu xuất gốc
+      const exportRequestInfo = await getExportRequestById(exportRequestId);
+
+      if (exportRequestInfo && exportRequestInfo.type === "PRODUCTION") {
+        // 1. Gọi API tạo phiếu xuất mới
+        const body = {
+          exportReason: exportRequestInfo.exportReason,
+          receiverName: exportRequestInfo.receiverName,
+          receiverPhone: exportRequestInfo.receiverPhone,
+          departmentId: exportRequestInfo.departmentId,
+          receiverAddress: exportRequestInfo.receiverAddress,
+          countingDate: exportRequestInfo.countingDate,
+          countingTime: exportRequestInfo.countingTime,
+          type: exportRequestInfo.type,
+          exportDate: exportRequestInfo.exportDate,
+          exportTime: exportRequestInfo.exportTime,
+        };
+        const createdExportRequest = await createExportRequestProduction(body);
+
+        // 2. Chuẩn bị mảng chi tiết
+        const details = editedDetails.map((d) => ({
+          itemId: d.itemId,
+          quantity: d.quantity,
+          measurementValue: d.measurementValue,
+          inventoryItemId: d.inventoryItemId,
+        }));
+
+        // 3. Gọi API tạo chi tiết
+        if (createdExportRequest?.exportRequestId) {
+          await createExportRequestDetail(
+            details,
+            createdExportRequest.exportRequestId
+          );
+          setEditMode(false);
+          setEditedDetails([]);
+          message.success("Tạo phiếu xuất mới thành công");
+
+          // Gọi lại fetch data nếu muốn
+        } else {
+          message.error("Không lấy được exportRequestId mới");
+        }
+        //luồng hủy
+        await updateExportRequestStatus(
+          exportRequestId,
+          ExportStatus.CANCELLED
+        );
+        message.success("Đã hủy phiếu xuất hiện tại");
+        await fetchExportRequestData();
+        fetchDetails();
+      } else {
+        message.error("Chỉ hỗ trợ tạo phiếu xuất cho loại Production.");
+      }
+    } catch (err) {
+      // message.error đã xử lý ở API
+      message.error("Không thể hủy phiếu xuất");
+      console.error("Failed to create export request:", err);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleOpenAssignModal = async () => {
     setSelectedStaffId(null);
@@ -436,10 +513,10 @@ const ExportRequestDetail = () => {
 
   const ITEM_STATUS_SHOW_STATUSES = [
     ExportStatus.COUNT_CONFIRMED,
-    ExportStatus.WAITING_EXPORT,
-    ExportStatus.CONFIRMED,
-    ExportStatus.COMPLETED,
-    ExportStatus.CANCELLED,
+    // ExportStatus.WAITING_EXPORT,
+    // ExportStatus.CONFIRMED,
+    // ExportStatus.COMPLETED,
+    // ExportStatus.CANCELLED,
   ];
 
   const getItemStatus = () => {
@@ -455,7 +532,7 @@ const ExportRequestDetail = () => {
         <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
     ];
-    // Hiển thị Trạng thái hàng với Tag của Ant Design
+    //Hiển thị Trạng thái hàng với Tag của Ant Design
     if (ITEM_STATUS_SHOW_STATUSES.includes(exportRequest.status)) {
       const itemStatus = getItemStatus();
       if (itemStatus === "LACK") {
@@ -560,18 +637,6 @@ const ExportRequestDetail = () => {
       }
     }
 
-    // Hiển thị thông tin nhân viên kho (nếu có)
-    // items.push(
-    //   <Descriptions.Item label="Người kiểm kho" key="warehouseKeeper">
-    //     {assignedStaff?.fullName || "-"}
-    //   </Descriptions.Item>
-    // );
-
-    // items.push(
-    //   <Descriptions.Item label="Ghi chú" key="note" span={3}>
-    //     {exportRequest.note || "-"}
-    //   </Descriptions.Item>
-    // );
     return items;
   };
 
@@ -609,7 +674,9 @@ const ExportRequestDetail = () => {
       title: "Số lượng cần",
       dataIndex: "quantity",
       key: "quantity",
-      render: (text) => <div className="pl-19">{text}</div>,
+      width: 140,
+      align: "right",
+      render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
     },
     {
       title: "Số lượng đã đóng gói",
@@ -617,7 +684,8 @@ const ExportRequestDetail = () => {
       key: "actualQuantity",
       render: (text, record) => (
         <div
-          className={`pl-32 ${
+          style={{ textAlign: "right" }}
+          className={`${
             text < record.quantity ? "text-red-600 font-semibold" : ""
           }`}
         >
@@ -737,40 +805,21 @@ const ExportRequestDetail = () => {
 
       <ProductDetailTable
         columns={columns}
-        exportRequestDetails={exportRequestDetails}
+        exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
         detailsLoading={detailsLoading}
         pagination={pagination}
         handleTableChange={handleTableChange}
         userRole={userRole}
         exportRequest={exportRequest}
         setConfirmModalVisible={setConfirmModalVisible}
+        editMode={editMode}
+        setEditMode={setEditMode}
+        editedDetails={editedDetails}
+        setEditedDetails={setEditedDetails}
+        creating={creating}
+        onCancelCreateExport={handleCancelCreateExport}
+        onConfirmCreateExport={handleConfirmCreateExport}
       />
-
-      {/* <h2 className="text-lg font-semibold mb-4 mt-[20px] flex items-center justify-between">
-        <span>Danh sách chi tiết sản phẩm xuất</span>
-        {userRole === AccountRole.WAREHOUSE_MANAGER &&
-          exportRequest?.status === ExportStatus.COUNTED && (
-            <Button type="primary" onClick={() => setConfirmModalVisible(true)}>
-              Xác nhận kiểm đếm
-            </Button>
-          )}
-      </h2>
-
-      <Table
-        columns={columns}
-        dataSource={exportRequestDetails}
-        rowKey="id"
-        loading={detailsLoading}
-        onChange={handleTableChange}
-        pagination={{
-          current: pagination.current,
-          pageSize: pagination.pageSize,
-          total: pagination.total,
-          showSizeChanger: true,
-          pageSizeOptions: ["10", "50"],
-          showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
-        }}
-      /> */}
 
       {/* Modal chọn Warehouse Keeper */}
       <Modal

@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Table, Button, Tag } from "antd";
+import { InputNumber, Popconfirm, Tooltip } from "antd";
 import { ExportStatus, AccountRole } from "@/utils/enums";
 import PropTypes from "prop-types";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 
 // Hàm getItemStatus nằm trong component này luôn
 const getItemStatus = (details = []) => {
@@ -19,6 +21,13 @@ const ProductDetailTable = ({
   userRole,
   exportRequest,
   setConfirmModalVisible,
+  editMode,
+  setEditMode,
+  editedDetails,
+  setEditedDetails,
+  creating,
+  onCancelCreateExport,
+  onConfirmCreateExport,
 }) => {
   const itemStatus = getItemStatus(exportRequestDetails);
 
@@ -30,6 +39,60 @@ const ProductDetailTable = ({
     (d) => d.status === "LACK"
   ).length;
 
+  const handleQuantityChange = (value, recordId) => {
+    setEditedDetails((prev) =>
+      prev.map((item) =>
+        item.id === recordId ? { ...item, quantity: value } : item
+      )
+    );
+  };
+
+  const handleDeleteRow = (recordId) => {
+    setEditedDetails((prev) => prev.filter((item) => item.id !== recordId));
+  };
+
+  const actionColumn = {
+    title: "Hành động",
+    key: "action",
+    width: 80,
+    render: (_, record) =>
+      record.status === "LACK" ? (
+        <Popconfirm
+          title="Bạn có chắc muốn xoá dòng này không?"
+          onConfirm={() => handleDeleteRow(record.id)}
+          okText="Xoá"
+          cancelText="Hủy"
+        >
+          <Tooltip title="Xoá dòng">
+            <DeleteOutlined style={{ color: "#ff4d4f", cursor: "pointer" }} />
+          </Tooltip>
+        </Popconfirm>
+      ) : null,
+  };
+
+  const editableColumns = [
+    ...columns.map((col) => {
+      if (editMode && col.dataIndex === "quantity") {
+        return {
+          ...col,
+          render: (text, record) =>
+            record.status === "LACK" ? (
+              <InputNumber
+                min={1}
+                value={record.quantity}
+                onChange={(val) => handleQuantityChange(val, record.id)}
+                style={{ width: 80, textAlign: "right" }}
+              />
+            ) : (
+              <div style={{ textAlign: "right" }}>{text}</div>
+            ),
+        };
+      }
+      return col;
+    }),
+    ...(editMode ? [actionColumn] : []),
+  ];
+
   return (
     <>
       <h2 className="text-lg font-semibold mb-3 mt-[20px] flex items-center">
@@ -40,6 +103,41 @@ const ProductDetailTable = ({
               Xác nhận kiểm đếm
             </Button>
           )}
+
+        {/* Hiện nút "Tạo phiếu xuất mới" nếu có LACK và chưa ở chế độ edit */}
+        {!editMode &&
+          userRole === AccountRole.DEPARTMENT &&
+          exportRequest?.status === ExportStatus.COUNT_CONFIRMED &&
+          exportRequestDetails.some((item) => item.status === "LACK") && (
+            <Button
+              type="primary"
+              onClick={() => {
+                setEditMode(true);
+                setEditedDetails(
+                  exportRequestDetails.map((item) => ({ ...item }))
+                );
+              }}
+            >
+              Tạo phiếu xuất mới
+            </Button>
+          )}
+
+        {/* Khi đang edit thì chỉ hiện 2 nút xác nhận/hủy */}
+        {editMode && (
+          <>
+            <Button
+              type="primary"
+              loading={creating}
+              style={{ marginRight: 8 }}
+              onClick={onConfirmCreateExport}
+            >
+              Xác nhận tạo phiếu
+            </Button>
+            <Button danger onClick={onCancelCreateExport} disabled={creating}>
+              Hủy tạo phiếu
+            </Button>
+          </>
+        )}
       </h2>
       {[
         ExportStatus.COUNTED,
@@ -105,15 +203,14 @@ const ProductDetailTable = ({
       )}
 
       <Table
-        columns={columns}
-        dataSource={
-          // Sắp xếp: Sản phẩm "LACK" lên đầu, sau đó các sản phẩm còn lại
-          [...exportRequestDetails].sort((a, b) => {
+        columns={editMode ? editableColumns : columns}
+        dataSource={(editMode ? editedDetails : exportRequestDetails)
+          .slice()
+          .sort((a, b) => {
             if (a.status === "LACK" && b.status !== "LACK") return -1;
             if (a.status !== "LACK" && b.status === "LACK") return 1;
             return 0;
-          })
-        }
+          })}
         rowKey="id"
         loading={detailsLoading}
         onChange={handleTableChange}
@@ -145,5 +242,13 @@ ProductDetailTable.propTypes = {
     status: PropTypes.string,
   }),
   setConfirmModalVisible: PropTypes.func.isRequired,
+  editMode: PropTypes.bool,
+  setEditMode: PropTypes.func,
+  editedDetails: PropTypes.array,
+  setEditedDetails: PropTypes.func,
+  creating: PropTypes.bool,
+  onCancelCreateExport: PropTypes.func,
+  onConfirmCreateExport: PropTypes.func,
 };
+
 export default ProductDetailTable;
