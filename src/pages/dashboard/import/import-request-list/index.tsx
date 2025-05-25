@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select, Tabs } from "antd";
+import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select, Tabs, Space } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { UnorderedListOutlined, FileAddOutlined, EyeFilled, EyeOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
@@ -11,6 +11,7 @@ import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 import dayjs from "dayjs";
+import { LegendItem } from "@/components/commons/LegendItem";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;
@@ -25,7 +26,7 @@ const ImportRequestList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
   const [selectedImportType, setSelectedImportType] = useState<string>("ORDER");
   const [selectedProvider, setSelectedProvider] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -116,6 +117,37 @@ const ImportRequestList: React.FC = () => {
     });
   };
 
+  const isNearEndDate = (endDate: string): boolean => {
+    if (!endDate) return false;
+
+    const endDateTime = dayjs(endDate);
+    const now = dayjs();
+    const diffInDays = endDateTime.diff(now, 'day');
+
+    return diffInDays >= 0 && diffInDays <= 2; // Gần đến ngày hết hạn trong vòng 3 ngày
+  };
+
+  const handleStatusFilterClick = (filterKey: string): void => {
+    setSelectedStatusFilter(selectedStatusFilter === filterKey ? null : filterKey);
+    // Reset về trang đầu khi filter thay đổi
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  const getStatusRowClass = (status: string): string => {
+    switch (status) {
+      case 'NOT_STARTED':
+        return 'bg-[rgba(107,114,128,0.08)]'; // Gray with opacity
+      case 'IN_PROGRESS':
+        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
+      case 'COMPLETED':
+        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
+      case 'CANCELLED':
+        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
+      default:
+        return 'no-bg-row';
+    }
+  };
+
 
   // const getImportTypeText = (type: string): string => {
   //   switch (type) {
@@ -142,24 +174,36 @@ const ImportRequestList: React.FC = () => {
     const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
     const matchesImportType = selectedImportType === "ALL" ? true : item.importType === selectedImportType;
     const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
-    const matchesStatus = selectedStatus.length > 0 ? selectedStatus.includes(item.status) : true;
 
-    return matchesSearch && matchesDate && matchesImportType && matchesProvider && matchesStatus;
+
+    // Filter logic based on selected status filter
+    let matchesStatusFilter = true;
+    if (selectedStatusFilter) {
+      switch (selectedStatusFilter) {
+        case 'not-started':
+          matchesStatusFilter = item.status === 'NOT_STARTED';
+          break;
+        case 'in-progress':
+          matchesStatusFilter = item.status === 'IN_PROGRESS';
+          break;
+        case 'near-end-date':
+          matchesStatusFilter = isNearEndDate(item.endDate) &&
+            item.status !== 'COMPLETED' &&
+            item.status !== 'CANCELLED';
+          break;
+        case 'completed':
+          matchesStatusFilter = item.status === 'COMPLETED';
+          break;
+        default:
+          matchesStatusFilter = true;
+      }
+    }
+
+    return matchesSearch && matchesDate && matchesImportType && matchesProvider && matchesStatusFilter;
   });
 
   // Get unique providers from data
   const uniqueProviders = Array.from(new Set(importRequestsData.map(item => item.providerName))).filter(Boolean);
-
-  // Get status options
-  const statusOptions = [
-    { label: 'Chưa bắt đầu', value: 'NOT_STARTED' },
-    { label: 'Đang xử lý', value: 'IN_PROGRESS' },
-    { label: 'Đã kiểm đếm', value: 'COUNTED' },
-    { label: 'Đã xác nhận', value: 'CONFIRMED' },
-    { label: 'Hoàn tất', value: 'COMPLETED' },
-    { label: 'Đã hủy', value: 'CANCELLED' },
-    { label: 'Đã gia hạn', value: 'EXTENDED' }
-  ];
 
   const columns = [
     {
@@ -173,7 +217,7 @@ const ImportRequestList: React.FC = () => {
       render: (id: number) => `#${id}`,
     },
     {
-      title: "Ngày có hiệu lực",
+      title: "Ngày bắt đầu",
       dataIndex: "startDate",
       key: "startDate",
       align: "center" as const,
@@ -186,7 +230,7 @@ const ImportRequestList: React.FC = () => {
         return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
       },
       showSorterTooltip: {
-        title: 'Sắp xếp theo ngày có hiệu lực'
+        title: 'Sắp xếp theo ngày bắt đầu'
       },
       render: (startDate: string) => {
         const formattedStartDate = dayjs(startDate).format("DD-MM-YYYY");
@@ -370,7 +414,7 @@ const ImportRequestList: React.FC = () => {
 
   return (
     <div className={`mx-auto ImportRequestList`}>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Danh sách phiếu nhập</h1>
         <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
           <Button
@@ -383,18 +427,19 @@ const ImportRequestList: React.FC = () => {
         </Link>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2 items-center">
-        <div className="min-w-[300px]">
-          <Input
-            placeholder="Tìm theo mã phiếu nhập"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            prefix={<SearchOutlined />}
-            className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
-          />
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="min-w-[300px]">
+            <Input
+              placeholder="Tìm theo mã phiếu nhập"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              prefix={<SearchOutlined />}
+              className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+            />
+          </div>
 
-        {/* <DatePicker
+          {/* <DatePicker
           placeholder="Chọn ngày nhập"
           format="DD-MM-YYYY"
           value={selectedDate}
@@ -406,7 +451,7 @@ const ImportRequestList: React.FC = () => {
           style={{ color: '#111', fontWeight: 600 }}
           allowClear
         /> */}
-        {/* {selectedDate && (
+          {/* {selectedDate && (
           <Select
             allowClear
             placeholder="Chọn đợt nhập"
@@ -417,7 +462,6 @@ const ImportRequestList: React.FC = () => {
             options={getBatchesForDate(selectedDate.format('YYYY-MM-DD')).map(batch => ({ label: `Đợt ${batch}`, value: batch }))}
           />
         )} */}
-        <div className="flex gap-2 items-center">
           <Select
             mode="multiple"
             placeholder="Nhà cung cấp"
@@ -428,18 +472,48 @@ const ImportRequestList: React.FC = () => {
             maxTagCount="responsive"
             options={uniqueProviders.map(provider => ({ label: provider, value: provider }))}
           />
-          <Select
-            mode="multiple"
-            placeholder="Trạng thái"
-            className="min-w-[150px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            allowClear
-            maxTagCount="responsive"
-            options={statusOptions}
-          />
         </div>
+        <Space size="large">
+          <LegendItem
+            color="rgba(220, 38, 38, 0.1)"
+            borderColor="rgba(220, 38, 38, 0.5)"
+            title="Gần đến ngày hết hạn"
+            description="Phiếu nhập sắp hết hạn trong vòng 2 ngày tới"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'near-end-date'}
+            onClick={() => handleStatusFilterClick('near-end-date')}
+          />
+          <LegendItem
+            color="rgba(107, 114, 128, 0.1)"
+            borderColor="rgba(107, 114, 128, 0.5)"
+            title="Chưa bắt đầu"
+            description="Phiếu nhập chưa bắt đầu xử lý"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'not-started'}
+            onClick={() => handleStatusFilterClick('not-started')}
+          />
+          <LegendItem
+            color="rgba(59, 130, 246, 0.1)"
+            borderColor="rgba(59, 130, 246, 0.5)"
+            title="Đang xử lý"
+            description="Phiếu nhập đang trong quá trình xử lý"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'in-progress'}
+            onClick={() => handleStatusFilterClick('in-progress')}
+          />
+          <LegendItem
+            color="rgba(34, 197, 94, 0.1)"
+            borderColor="rgba(34, 197, 94, 0.5)"
+            title="Hoàn tất"
+            description="Phiếu nhập đã hoàn tất"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'completed'}
+            onClick={() => handleStatusFilterClick('completed')}
+          />
+        </Space>
       </div>
+
+
 
       <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
         <Tabs
@@ -470,15 +544,53 @@ const ImportRequestList: React.FC = () => {
         rowKey="importRequestId"
         loading={loading || detailsLoading}
         onChange={handleTableChange}
-        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.06)] [&_.ant-table-tbody_tr:hover_td.ant-table-column-sort]:!bg-[rgba(0,0,0,0.07)]' : ''}`}
+        rowClassName={(record) => {
+          const isNearEnd = isNearEndDate(record.endDate) && 
+                           record.status !== 'COMPLETED' && 
+                           record.status !== 'CANCELLED';
+          const statusClass = getStatusRowClass(record.status);
+          
+          // Priority: COMPLETED and CANCELLED > near end date > other status colors
+          if (record.status === 'COMPLETED') {
+            return `${statusClass} status-green`;
+          }
+          
+          if (record.status === 'CANCELLED') {
+            return `${statusClass} status-gray`;
+          }
+          
+          if (isNearEnd) {
+            return 'bg-[rgba(220,38,38,0.05)]';
+          }
+          
+          // Add status-specific class for hover effects
+          if (statusClass !== 'no-bg-row') {
+            const statusType = record.status === 'NOT_STARTED'
+              ? 'status-gray-light'
+              : record.status === 'IN_PROGRESS'
+              ? 'status-blue'
+              : '';
+            return `${statusClass} ${statusType}`;
+          }
+          
+          return 'no-bg-row';
+        }}
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? 
+          '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
+          '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-gray-light:hover_td]:!bg-[rgba(107,114,128,0.10)] ' +
+          '[&_.ant-table-tbody_tr.status-green:hover_td]:!bg-[rgba(34,197,94,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-gray:hover_td]:!bg-[rgba(107,114,128,0.08)]'
+          : ''}`}
         pagination={{
           ...pagination,
+          total: filteredItems.length,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100'],
           locale: {
             items_per_page: "/ trang"
           },
-          showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập`,
+          showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập${selectedStatusFilter ? ' (đã lọc)' : ''}`,
         }}
       />
     </div>

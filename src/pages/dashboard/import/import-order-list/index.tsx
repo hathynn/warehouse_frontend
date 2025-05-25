@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space } from "antd";
+import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space, Select } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
@@ -35,6 +35,8 @@ const ImportOrderList: React.FC = () => {
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
@@ -154,11 +156,6 @@ const ImportOrderList: React.FC = () => {
     });
   };
 
-  const filteredItems = importOrdersData.filter((importOrder) =>
-    importOrder.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
-    importOrder.importRequestId.toString().includes(searchTerm.toLowerCase())
-  );
-
   const isNearReceivingTime = (dateReceived: string, timeReceived: string): boolean => {
     if (!dateReceived || !timeReceived) return false;
 
@@ -167,6 +164,64 @@ const ImportOrderList: React.FC = () => {
     const diffInHours = (receivingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     return diffInHours > 0 && diffInHours <= 6;
+  };
+
+  const filteredItems = importOrdersData.filter((importOrder) => {
+    const matchesSearch = importOrder.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
+      importOrder.importRequestId.toString().includes(searchTerm.toLowerCase());
+    
+    // Filter by assigned staff
+    const matchesStaff = selectedStaff.length > 0 ? 
+      selectedStaff.includes(importOrder.assignedStaffId?.toString() || '') : true;
+    
+    // Filter by status
+    let matchesStatusFilter = true;
+    if (selectedStatusFilter) {
+      switch (selectedStatusFilter) {
+        case 'near-time':
+          matchesStatusFilter = isNearReceivingTime(importOrder.dateReceived, importOrder.timeReceived) &&
+                 importOrder.status !== ImportStatus.CANCELLED &&
+                 importOrder.status !== ImportStatus.COMPLETED &&
+                 importOrder.status !== ImportStatus.COUNTED;
+          break;
+        case 'in-progress':
+          matchesStatusFilter = importOrder.status === ImportStatus.IN_PROGRESS;
+          break;
+        case 'counted':
+          matchesStatusFilter = importOrder.status === ImportStatus.COUNTED;
+          break;
+        case 'extended':
+          matchesStatusFilter = importOrder.status === ImportStatus.EXTENDED;
+          break;
+        case 'completed':
+          matchesStatusFilter = importOrder.status === ImportStatus.COMPLETED;
+          break;
+        case 'cancelled':
+          matchesStatusFilter = importOrder.status === ImportStatus.CANCELLED;
+          break;
+        default:
+          matchesStatusFilter = true;
+      }
+    }
+    
+    return matchesSearch && matchesStaff && matchesStatusFilter;
+  });
+
+  const getStatusRowClass = (status: ImportStatus): string => {
+    switch (status) {
+      case ImportStatus.IN_PROGRESS:
+        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
+      case ImportStatus.COUNTED:
+        return 'bg-[rgba(59,130,246,0.14)]'; // Blue with opacity
+      case ImportStatus.EXTENDED:
+        return 'bg-[rgba(245,158,11,0.08)]'; // Amber with opacity
+      case ImportStatus.COMPLETED:
+        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
+      case ImportStatus.CANCELLED:
+        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
+      default:
+        return 'no-bg-row';
+    }
   };
 
   const columns = [
@@ -257,6 +312,32 @@ const ImportOrderList: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
+      sorter: (a: ImportOrderData, b: ImportOrderData) => {
+        // Get the actual date and time to use for sorting
+        const getDateTime = (record: ImportOrderData) => {
+          const date = record.isExtended ? record.extendedDate : record.dateReceived;
+          const time = record.isExtended ? record.extendedTime : record.timeReceived;
+          
+          if (!date || !time) return null;
+          
+          // Combine date and time into a single datetime string
+          return dayjs(`${date}T${time}`);
+        };
+
+        const dateTimeA = getDateTime(a);
+        const dateTimeB = getDateTime(b);
+
+        // Handle null values - put them at the end
+        if (!dateTimeA && !dateTimeB) return 0;
+        if (!dateTimeA) return 1;
+        if (!dateTimeB) return -1;
+
+        // Compare datetime objects (early to late)
+        return dateTimeA.isBefore(dateTimeB) ? -1 : dateTimeA.isAfter(dateTimeB) ? 1 : 0;
+      },
+      showSorterTooltip: {
+        title: 'Sắp xếp theo thời điểm nhận hàng'
+      },
       render: (_: any, record: ImportOrderData) => {
         if (record.isExtended) {
           return (
@@ -326,6 +407,12 @@ const ImportOrderList: React.FC = () => {
     }
   };
 
+  const handleStatusFilterClick = (filterKey: string): void => {
+    setSelectedStatusFilter(selectedStatusFilter === filterKey ? null : filterKey);
+    // Reset về trang đầu khi filter thay đổi
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-3">
@@ -353,6 +440,54 @@ const ImportOrderList: React.FC = () => {
             borderColor="rgba(220, 38, 38, 0.5)"
             title="Gần đến giờ nhận hàng"
             description="Đơn nhập có thời điểm nhận hàng trong vòng 6 tiếng tới so với bây giờ"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'near-time'}
+            onClick={() => handleStatusFilterClick('near-time')}
+          />
+          <LegendItem
+            color="rgba(59, 130, 246, 0.1)"
+            borderColor="rgba(59, 130, 246, 0.5)"
+            title="Đang xử lý"
+            description="Đơn nhập đang trong quá trình xử lý"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'in-progress'}
+            onClick={() => handleStatusFilterClick('in-progress')}
+          />
+          <LegendItem
+            color="rgba(59, 130, 246, 0.3)"
+            borderColor="rgba(59, 130, 246, 0.7)"
+            title="Đã kiểm đếm"
+            description="Đơn nhập đã kiểm đếm"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'counted'}
+            onClick={() => handleStatusFilterClick('counted')}
+          />
+          <LegendItem
+            color="rgba(245,158,11,0.1)"
+            borderColor="rgba(245,158,11,0.5)"
+            title="Đã gia hạn"
+            description="Đơn nhập đã gia hạn"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'extended'}
+            onClick={() => handleStatusFilterClick('extended')}
+          />
+          <LegendItem
+            color="rgba(34, 197, 94, 0.1)"
+            borderColor="rgba(34, 197, 94, 0.5)"
+            title="Đã hoàn thành"
+            description="Đơn nhập đã hoàn thành"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'completed'}
+            onClick={() => handleStatusFilterClick('completed')}
+          />
+          <LegendItem
+            color="rgba(107, 114, 128, 0.1)"
+            borderColor="rgba(107, 114, 128, 0.5)"
+            title="Đã hủy"
+            description="Đơn nhập đã bị hủy"
+            clickable={true}
+            isSelected={selectedStatusFilter === 'cancelled'}
+            onClick={() => handleStatusFilterClick('cancelled')}
           />
         </Space>
       </div>
@@ -367,6 +502,19 @@ const ImportOrderList: React.FC = () => {
             className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
           />
         </div>
+        <Select
+          mode="multiple"
+          placeholder="Nhân viên được phân công"
+          className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+          value={selectedStaff}
+          onChange={setSelectedStaff}
+          allowClear
+          maxTagCount="responsive"
+          options={staffs.map(staff => ({ 
+            label: staff.fullName, 
+            value: staff.id.toString() 
+          }))}
+        />
       </div>
 
       {loading ? (
@@ -380,18 +528,51 @@ const ImportOrderList: React.FC = () => {
           rowKey="importOrderId"
           rowClassName={(record) => {
             const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
-            return isNearTime ? 'bg-[rgba(220,38,38,0.05)]' : 'no-bg-row';
+            const statusClass = getStatusRowClass(record.status);
+            
+            // Priority: COMPLETED and CANCELLED > near time > other status colors
+            if (record.status === ImportStatus.COMPLETED) {
+              return `${statusClass} status-green`;
+            }
+            
+            if (record.status === ImportStatus.CANCELLED) {
+              return `${statusClass} status-gray`;
+            }
+            
+            if (isNearTime) {
+              return 'bg-[rgba(220,38,38,0.05)]';
+            }
+            
+            // Add status-specific class for hover effects
+            if (statusClass !== 'no-bg-row') {
+              const statusType = record.status === ImportStatus.IN_PROGRESS
+                ? 'status-blue'
+                : record.status === ImportStatus.COUNTED
+                ? 'status-blue-heavy'
+                : '';
+              return `${statusClass} ${statusType}`;
+            }
+            
+            return 'no-bg-row';
           }}
-          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100' : ''}`}
+          className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importOrdersData.length > 0 ? 
+            '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
+            '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
+            '[&_.ant-table-tbody_tr.status-blue-heavy:hover_td]:!bg-[rgba(59,130,246,0.16)] ' +
+            '[&_.ant-table-tbody_tr.status-green:hover_td]:!bg-[rgba(34,197,94,0.08)] ' +
+            '[&_.ant-table-tbody_tr.status-gray:hover_td]:!bg-[rgba(107,114,128,0.08)] ' +
+            '[&_.ant-table-tbody_tr.status-amber:hover_td]:!bg-[rgba(245,158,11,0.08)]'
+            : ''}`}
           onChange={handleTableChange}
           pagination={{
             ...pagination,
+            total: filteredItems.length,
             showSizeChanger: true,
             pageSizeOptions: ['10', '20', '50', '100'],
             locale: {
               items_per_page: "/ trang"
             },
-            showTotal: (total: number) => `Tổng cộng có ${total} đơn nhập`,
+            showTotal: (total: number) => `Tổng cộng có ${total} đơn nhập${selectedStatusFilter || selectedStaff.length > 0 ? ' (đã lọc)' : ''}`,
           }}
         />
       )}

@@ -1,10 +1,45 @@
 import { Tooltip } from "antd";
 
-export const LegendItem = ({ color, borderColor, title, description }: { color: string; borderColor: string; title: string; description: string }) => (
-    <Tooltip title={description} placement="top">
-      <div className="flex items-center gap-2 cursor-help">
-        <div className="w-5 h-5 rounded-3xl border-1" style={{ backgroundColor: color, borderColor: borderColor }} />
-        <span className="text-sm">{title}</span>
-      </div>
-    </Tooltip>
-  );
+interface LegendItemProps {
+  color: string;
+  borderColor: string;
+  title: string;
+  description: string;
+  isSelected?: boolean;
+  onClick?: () => void;
+  clickable?: boolean;
+}
+
+export const LegendItem = ({ 
+  color, 
+  borderColor, 
+  title, 
+  description, 
+  isSelected = false, 
+  onClick, 
+  clickable = false 
+}: LegendItemProps) => (
+  <Tooltip title={description} placement="top">
+    <div 
+      className={`flex items-center gap-2 transition-all duration-200 ${
+        clickable ? 'cursor-pointer hover:scale-105' : 'cursor-help'
+      }`}
+      onClick={clickable ? onClick : undefined}
+    >
+      <div 
+        className={`rounded-full border-2 transition-all duration-200 ${
+          isSelected ? 'w-6 h-6' : 'w-5 h-5'
+        }`} 
+        style={{ 
+          backgroundColor: isSelected ? borderColor : color, 
+          borderColor: borderColor 
+        }} 
+      />
+      <span className={`text-sm transition-all duration-200 ${
+        isSelected ? 'font-semibold' : ''
+      }`}>
+        {title}
+      </span>
+    </div>
+  </Tooltip>
+);
