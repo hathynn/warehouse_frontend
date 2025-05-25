@@ -5,7 +5,7 @@ import { persistor, store } from "./contexts/redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 // import "aos/dist/aos.css";
 import "./index.css";
-import RootRouter from "./router/RootRouter";
+import {RootRouter} from "./router/RootRouter";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { PusherProvider } from "./contexts/pusher/PusherContext";
