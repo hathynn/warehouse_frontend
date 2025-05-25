@@ -32,18 +32,21 @@ const ExportRequestList = () => {
       );
       if (response && response.content) {
         // Mapping các trường từ API:
-        // Sử dụng item.exportRequestId làm id (do response trả về exportRequestId, không phải item.id)
-        const mappedRequests = response.content.map((item) => ({
-          id: String(item.exportRequestId), // Sử dụng trường exportRequestId từ API
+        let mappedRequests = response.content.map((item) => ({
+          id: String(item.exportRequestId),
           exportDate: item.exportDate,
           createdBy: item.createdBy ? item.createdBy : "anonymousUser",
           receiverName: item.receiverName,
           exportType: item.type,
           status: item.status,
+          createdDate: item.createdDate, // Thêm dòng này
         }));
+        // Sort giảm dần theo exportDate
+        mappedRequests = mappedRequests.sort(
+          (a, b) => new Date(b.createdDate) - new Date(a.createdDate)
+        );
         setExportRequests(mappedRequests);
       }
-      // Cập nhật phân trang theo cấu trúc metaDataDTO (theo mẫu của luồng nhập)
       if (response && response.metaDataDTO) {
         setPagination({
           current: response.metaDataDTO.page,
@@ -55,7 +58,6 @@ const ExportRequestList = () => {
       console.error("Failed to fetch export requests:", error);
     }
   };
-
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
