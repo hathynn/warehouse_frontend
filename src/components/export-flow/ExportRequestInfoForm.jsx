@@ -162,7 +162,10 @@ ExportRequestInfoForm.propTypes = {
     exportDate: PropTypes.string.isRequired,
     exportTime: PropTypes.string.isRequired,
     exportReason: PropTypes.string.isRequired,
-    receivingDepartment: PropTypes.string.isRequired,
+    receivingDepartment: PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      name: PropTypes.string,
+    }).isRequired,
     departmentRepresentative: PropTypes.string,
     departmentRepresentativePhone: PropTypes.string,
   }).isRequired,

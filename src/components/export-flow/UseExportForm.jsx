@@ -53,16 +53,15 @@ const UseExportForm = ({
             Ngày nhận <span className="text-red-500">*</span>
           </label>
           <DatePicker
-            value={
-              formData.exportDate
-                ? moment(formData.exportDate, "YYYY-MM-DD")
-                : null
-            }
-            onChange={(date, dateString) => {
-              setFormData({ ...formData, exportDate: dateString || null }); // Sửa thành null thay vì ""
+            format="DD-MM-YYYY" // vẫn giữ để người dùng thấy định dạng này
+            onChange={(date) => {
+              const newDate = date?.isValid()
+                ? date.format("YYYY-MM-DD")
+                : null; // 👈 đổi chỗ này
+              setFormData({ ...formData, exportDate: newDate });
               setMandatoryError("");
-              if (formData.exportTime) {
-                checkTimeValid(dateString, formData.exportTime);
+              if (newDate && formData.exportTime) {
+                checkTimeValid(newDate, formData.exportTime);
               }
             }}
             className="w-full"
@@ -81,14 +80,12 @@ const UseExportForm = ({
           </label>
           <DatePicker
             picker="time"
-            format="HH:mm:ss"
+            format="HH:mm"
             value={
-              formData.exportTime
-                ? moment(formData.exportTime, "HH:mm:ss")
-                : null
+              formData.exportTime ? moment(formData.exportTime, "HH:mm") : null
             }
             onChange={(time, timeString) => {
-              setFormData({ ...formData, exportTime: timeString || null }); // Sửa thành null thay vì ""
+              setFormData({ ...formData, exportTime: timeString || null });
               setMandatoryError("");
               checkTimeValid(formData.exportDate, timeString);
             }}

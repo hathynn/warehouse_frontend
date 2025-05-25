@@ -34,7 +34,7 @@ const ExportRequestList = () => {
         // Mapping các trường từ API:
         // Sử dụng item.exportRequestId làm id (do response trả về exportRequestId, không phải item.id)
         const mappedRequests = response.content.map((item) => ({
-          id: item.exportRequestId, // Sử dụng trường exportRequestId từ API
+          id: String(item.exportRequestId), // Sử dụng trường exportRequestId từ API
           exportDate: item.exportDate,
           createdBy: item.createdBy ? item.createdBy : "anonymousUser",
           receiverName: item.receiverName,

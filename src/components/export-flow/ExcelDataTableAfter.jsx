@@ -70,7 +70,7 @@ const ExcelDataTableAfter = ({ data }) => {
       <Table
         columns={columns}
         dataSource={data}
-        rowKey={(record, index) => index}
+        rowKey={(record) => String(record.itemId)}
         pagination={{ pageSize: 10 }}
       />
     </>

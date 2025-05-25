@@ -42,7 +42,9 @@ const ExcelDataTable = ({
 
   const handleQuantityChange = (itemId, value) => {
     const updatedData = data.map((item) =>
-      item.itemId === itemId ? { ...item, quantity: value } : item
+      String(item.itemId) === String(itemId)
+        ? { ...item, quantity: value }
+        : item
     );
     onDataChange(updatedData);
   };
