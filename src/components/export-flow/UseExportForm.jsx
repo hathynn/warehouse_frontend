@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Input, DatePicker } from "antd";
 import moment from "moment";
 import PropTypes from "prop-types";
+import useConfigurationService from "@/hooks/useConfigurationService";
 
 const UseExportForm = ({
   formData,
@@ -12,21 +13,46 @@ const UseExportForm = ({
   mandatoryError,
   setMandatoryError,
 }) => {
+  const [config, setConfig] = useState(null);
+  const { getConfiguration } = useConfigurationService();
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const result = await getConfiguration();
+      setConfig(result);
+    };
+    fetchConfig();
+  }, []);
+
   // Kiểm tra giờ nhận
   const checkTimeValid = (dateString, timeString) => {
     if (!dateString || !timeString) {
       setTimeError("");
       return;
     }
+
     const selected = moment(
       `${dateString} ${timeString}`,
       "YYYY-MM-DD HH:mm:ss"
     );
     const now = moment();
+
     const diff = selected.diff(now, "hours", true);
-    if (diff < 6) {
+
+    // Parse số giờ từ config
+    const parseHoursFromTimeString = (timeStr) => {
+      if (!timeStr) return 0;
+      const [h, m, s] = timeStr.split(":").map(Number);
+      return h + m / 60 + s / 3600;
+    };
+
+    const requiredDiff = config
+      ? parseHoursFromTimeString(config.createRequestTimeAtLeast)
+      : 6;
+
+    if (diff < requiredDiff) {
       setTimeError(
-        "Thời gian nhận phải lớn hơn thời điểm hiện tại ít nhất 6 giờ"
+        `Thời gian nhận phải lớn hơn thời điểm hiện tại ít nhất ${requiredDiff} giờ`
       );
     } else {
       setTimeError("");
@@ -42,6 +68,176 @@ const UseExportForm = ({
     }
   };
 
+  const getDisabledDate = (current) => {
+    if (!config) return false;
+
+    // Ngày trong quá khứ thì disable
+    if (current && current < moment().startOf("day")) {
+      return true;
+    }
+
+    // Lấy thời gian cấu hình
+    const workingTimeStart = config.workingTimeStart || "07:00:00";
+    const workingTimeEnd = config.workingTimeEnd || "17:00:00";
+    const createRequestTimeAtLeast =
+      config.createRequestTimeAtLeast || "06:00:00";
+
+    // Thời điểm hiện tại
+    const now = moment();
+
+    // Nếu ngày đang xét là hôm nay
+    if (current && current.isSame(now, "day")) {
+      // Tính thời điểm bắt đầu giờ làm + số giờ tạo request tối thiểu
+      const [startHour, startMin] = workingTimeStart.split(":").map(Number);
+      const [endHour, endMin] = workingTimeEnd.split(":").map(Number);
+
+      // Thời điểm bắt đầu và kết thúc giờ làm việc hôm nay
+      const workStart = moment(current)
+        .hour(startHour)
+        .minute(startMin)
+        .second(0);
+      const workEnd = moment(current).hour(endHour).minute(endMin).second(0);
+
+      // Nếu bây giờ đã qua giờ làm thì disable hôm nay
+      if (now.isAfter(workEnd)) return true;
+
+      // Tính thời gian tối thiểu phải cộng
+      const [minHour, minMin] = createRequestTimeAtLeast.split(":").map(Number);
+      const minRequestMillis = (minHour * 60 + minMin) * 60 * 1000;
+
+      // Nếu thời gian còn lại hôm nay < minRequestMillis => disable hôm nay
+      if (workEnd.diff(now) < minRequestMillis) return true;
+
+      // Nếu vẫn còn thời gian trong giờ làm việc và đủ số giờ thì không disable
+      return false;
+    }
+
+    // Các ngày trước hôm nay đã bị loại ở trên, còn ngày sau hôm nay thì không disable
+    return false;
+  };
+
+  const getDisabledTime = (selectedDate) => {
+    if (!config || !selectedDate) return {};
+
+    const workingTimeStart = config.workingTimeStart || "07:00:00";
+    const workingTimeEnd = config.workingTimeEnd || "17:00:00";
+    const createRequestTimeAtLeast =
+      config.createRequestTimeAtLeast || "06:00:00";
+
+    const [startHour] = workingTimeStart.split(":").map(Number);
+    const [endHour] = workingTimeEnd.split(":").map(Number);
+    const [minHour, minMin] = createRequestTimeAtLeast.split(":").map(Number);
+
+    const now = moment(); // Luôn lấy thời gian thực tế khi render
+    const selectedDay = moment(selectedDate).format("YYYY-MM-DD");
+    const today = now.format("YYYY-MM-DD");
+
+    if (selectedDay === today) {
+      // Tính thời gian earliest: hiện tại + min hour/minute + 5 phút
+      const earliest = now
+        .clone()
+        .add(minHour, "hours")
+        .add(minMin + 5, "minutes");
+
+      const earliestHour = earliest.hour();
+      const earliestMinute = earliest.minute();
+
+      return {
+        disabledHours: () => {
+          let arr = [];
+          for (let h = 0; h < 24; ++h) {
+            if (h < earliestHour || h < startHour || h > endHour) arr.push(h);
+          }
+          return arr;
+        },
+        disabledMinutes: (selectedHour) => {
+          if (selectedHour === earliestHour) {
+            let min = Math.ceil(earliestMinute / 5) * 5; // Làm tròn lên 5 phút
+            return Array.from({ length: 60 }, (_, i) => i).filter(
+              (i) => i < min
+            );
+          }
+          return [];
+        },
+      };
+    } else {
+      // Ngày khác: chỉ disable ngoài giờ làm việc
+      return {
+        disabledHours: () => {
+          let arr = [];
+          for (let h = 0; h < 24; ++h) {
+            if (h < startHour || h > endHour) arr.push(h);
+          }
+          return arr;
+        },
+        disabledMinutes: () => [],
+      };
+    }
+  };
+
+  // const getDisabledTime = (selectedDate) => {
+  //   if (!config) return {};
+
+  //   const workingTimeStart = config.workingTimeStart || "07:00:00";
+  //   const workingTimeEnd = config.workingTimeEnd || "17:00:00";
+  //   const createRequestTimeAtLeast =
+  //     config.createRequestTimeAtLeast || "06:00:00";
+
+  //   const [startHour] = workingTimeStart.split(":").map(Number);
+  //   const [endHour] = workingTimeEnd.split(":").map(Number);
+  //   const [minHour, minMin] = createRequestTimeAtLeast.split(":").map(Number);
+
+  //   // Nếu chưa chọn ngày nhận thì return toàn bộ disable
+  //   if (!selectedDate) return {};
+
+  //   const today = moment().format("YYYY-MM-DD");
+  //   const selected = moment(selectedDate).format("YYYY-MM-DD");
+
+  //   // Sử dụng ref để lưu giờ earliest
+  //   let earliestMoment = moment().add(minHour, "hours").add(minMin, "minutes");
+  //   if (earliestMoment.isBefore(moment().hour(startHour).minute(0))) {
+  //     earliestMoment = moment().hour(startHour).minute(0);
+  //   }
+  //   const currentHour = earliestMoment.hour();
+  //   const currentMinute = earliestMoment.minute();
+
+  //   if (selected === today) {
+  //     return {
+  //       disabledHours: () => {
+  //         // Disable giờ nhỏ hơn giờ earliest, lớn hơn giờ kết thúc
+  //         let arr = [];
+  //         for (let h = 0; h < 24; ++h) {
+  //           if (h < currentHour || h > endHour) arr.push(h);
+  //         }
+  //         return arr;
+  //       },
+  //       disabledMinutes: (selectedHour) => {
+  //         // Nếu chọn đúng giờ earliest => disable phút nhỏ hơn (currentMinute + 5)
+  //         if (selectedHour === currentHour) {
+  //           let min = Math.ceil((currentMinute + 1) / 5) * 5; // làm tròn lên 5 phút
+  //           return Array.from({ length: 60 }, (_, i) => i).filter(
+  //             (i) => i < min
+  //           );
+  //         }
+  //         // Nếu chọn giờ lớn hơn, enable hết phút
+  //         return [];
+  //       },
+  //     };
+  //   } else {
+  //     // Ngày khác: chỉ cho giờ trong working time, enable toàn bộ phút
+  //     return {
+  //       disabledHours: () => {
+  //         let arr = [];
+  //         for (let h = 0; h < 24; ++h) {
+  //           if (h < startHour || h > endHour) arr.push(h);
+  //         }
+  //         return arr;
+  //       },
+  //       disabledMinutes: () => [],
+  //     };
+  //   }
+  // };
+
   return (
     <>
       {/* Ngày nhận và Thời gian nhận */}
@@ -53,20 +249,23 @@ const UseExportForm = ({
             Ngày nhận <span className="text-red-500">*</span>
           </label>
           <DatePicker
-            format="DD-MM-YYYY" // vẫn giữ để người dùng thấy định dạng này
+            format="DD-MM-YYYY"
             onChange={(date) => {
               const newDate = date?.isValid()
                 ? date.format("YYYY-MM-DD")
-                : null; // 👈 đổi chỗ này
-              setFormData({ ...formData, exportDate: newDate });
+                : null;
+              setFormData({
+                ...formData,
+                exportDate: newDate,
+                exportTime: null, // CLEAR GIỜ NHẬN khi đổi ngày!
+              });
               setMandatoryError("");
-              if (newDate && formData.exportTime) {
-                checkTimeValid(newDate, formData.exportTime);
-              }
+              setTimeError(""); // reset luôn lỗi giờ nếu đổi ngày
             }}
             className="w-full"
             allowClear
             placeholder="Chọn ngày nhận"
+            disabledDate={getDisabledDate}
           />
           {!formData.exportDate && (
             <div className="text-red-500 text-xs mt-1">
@@ -92,7 +291,10 @@ const UseExportForm = ({
             className="w-full"
             allowClear
             placeholder="Chọn thời gian nhận"
+            disabled={!formData.exportDate} // disable nếu chưa chọn ngày
+            disabledTime={() => getDisabledTime(formData.exportDate)}
           />
+
           {!formData.exportTime && (
             <div className="text-red-500 text-xs mt-1">
               Vui lòng chọn thời gian nhận.
