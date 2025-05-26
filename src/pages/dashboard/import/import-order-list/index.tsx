@@ -474,8 +474,8 @@ const ImportOrderList: React.FC = () => {
           <LegendItem
             color="rgba(34, 197, 94, 0.1)"
             borderColor="rgba(34, 197, 94, 0.5)"
-            title="Đã hoàn thành"
-            description="Đơn nhập đã hoàn thành"
+            title="Đã hoàn tất"
+            description="Đơn nhập đã hoàn tất"
             clickable={true}
             isSelected={selectedStatusFilter === 'completed'}
             onClick={() => handleStatusFilterClick('completed')}

@@ -504,7 +504,7 @@ const ImportRequestList: React.FC = () => {
           <LegendItem
             color="rgba(34, 197, 94, 0.1)"
             borderColor="rgba(34, 197, 94, 0.5)"
-            title="Hoàn tất"
+            title="Đã hoàn tất"
             description="Phiếu nhập đã hoàn tất"
             clickable={true}
             isSelected={selectedStatusFilter === 'completed'}
