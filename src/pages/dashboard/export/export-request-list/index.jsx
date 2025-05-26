@@ -250,7 +250,8 @@ const ExportRequestList = () => {
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,
-          total: filteredItems.length, // CHỈNH CHỖ NÀY!
+          total: pagination.total,
+          //total: filteredItems.length, // CHỈNH CHỖ NÀY!
           showSizeChanger: true,
           pageSizeOptions: ["10", "50"],
           showTotal: (total) =>
