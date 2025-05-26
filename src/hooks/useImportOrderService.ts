@@ -29,6 +29,8 @@ export interface ImportOrderResponse {
   importRequestId: string;
   dateReceived: string;
   timeReceived: string;
+  actualDateReceived: string;
+  actualTimeReceived: string;
   isExtended: boolean;
   extendedDate: string;
   extendedTime: string;

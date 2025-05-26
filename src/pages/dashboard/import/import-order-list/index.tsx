@@ -15,6 +15,7 @@ import { ResponseDTO } from "@/hooks/useApi";
 import useAccountService, { AccountResponse } from "@/hooks/useAccountService";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
+import dayjs from "dayjs";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
@@ -249,7 +250,7 @@ const ImportOrderList: React.FC = () => {
     //   },
     // },
     {
-      title: "Thời điểm nhận hàng",
+      title: "Thời điểm nhận hàng (dự kiến)",
       key: "receivedDateTime",
       align: "center" as const,
       dataIndex: "dateReceived",
@@ -257,15 +258,18 @@ const ImportOrderList: React.FC = () => {
         style: { textAlign: 'center' as const }
       }),
       render: (_: any, record: ImportOrderData) => {
-        const { dateReceived, timeReceived } = record;
-        if (!dateReceived || !timeReceived) return "-";
-        const [year, month, day] = dateReceived.split("-");
-        const formattedDate = `${day}-${month}-${year}`;
-        const formattedTime = timeReceived.slice(0, 5); // HH:mm
+        if (record.isExtended) {
+          return (
+            <>
+              <div>Ngày <b>{record.extendedDate ? dayjs(record.extendedDate).format("DD-MM-YYYY") : "-"}</b></div>
+              <div>Lúc <b>{record.extendedTime ? record.extendedTime.slice(0, 5) : "-"}</b></div>
+            </>
+          );
+        }
         return (
           <>
-            <div>Ngày <b>{formattedDate}</b></div>
-            <div>Lúc <b>{formattedTime}</b></div>
+            <div>Ngày <b>{record.dateReceived ? dayjs(record.dateReceived).format("DD-MM-YYYY") : "-"}</b></div>
+            <div>Lúc <b>{record.timeReceived ? record.timeReceived.slice(0, 5) : "-"}</b></div>
           </>
         );
       }
@@ -378,7 +382,7 @@ const ImportOrderList: React.FC = () => {
             const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
             return isNearTime ? 'bg-[rgba(220,38,38,0.05)]' : 'no-bg-row';
           }}
-          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50' : ''}`}
+          className={`[&_.ant-table-cell]:!p-3 ${importOrdersData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100' : ''}`}
           onChange={handleTableChange}
           pagination={{
             ...pagination,

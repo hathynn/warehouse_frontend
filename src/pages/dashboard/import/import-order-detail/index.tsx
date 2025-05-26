@@ -37,10 +37,10 @@ dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 import { AccountRole, ImportStatus } from "@/utils/enums";
-import { 
-  getDefaultAssignedDateTimeForAction, 
-  isDateDisabledForAction, 
-  getDisabledTimeConfigForAction 
+import {
+  getDefaultAssignedDateTimeForAction,
+  isDateDisabledForAction,
+  getDisabledTimeConfigForAction
 } from "@/utils/helpers";
 
 const { TextArea } = Input;
@@ -55,6 +55,7 @@ const ImportOrderDetail = () => {
   // Modal gia hạn đơn nhập
   const [extendModalVisible, setExtendModalVisible] = useState(false);
   const [extending, setExtending] = useState(false);
+  const [extendResponsibilityChecked, setExtendResponsibilityChecked] = useState(false);
   const [extendFormData, setExtendFormData] = useState<{
     extendedDate: string;
     extendedTime: string;
@@ -436,6 +437,7 @@ const ImportOrderDetail = () => {
 
   const handleCloseExtendModal = () => {
     setExtendModalVisible(false);
+    setExtendResponsibilityChecked(false);
     setExtendFormData({
       extendedDate: "",
       extendedTime: "",
@@ -464,6 +466,11 @@ const ImportOrderDetail = () => {
   const handleExtendSubmit = async () => {
     if (!importOrderId || !extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()) {
       message.warning("Vui lòng điền đầy đủ thông tin gia hạn");
+      return;
+    }
+
+    if (!extendResponsibilityChecked) {
+      message.warning("Vui lòng xác nhận thông tin gia hạn");
       return;
     }
 
@@ -544,58 +551,72 @@ const ImportOrderDetail = () => {
     }
   ];
 
-    // Chuẩn bị dữ liệu cho DetailCard
+  // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
     { label: "Mã đơn nhập", value: `#${importOrder?.importOrderId}` },
-    { label: "Người tạo", value: importOrder?.createdBy || "-" },
-    { label: "Ngày tạo", value: importOrder?.createdDate ? new Date(importOrder?.createdDate).toLocaleDateString("vi-VN") : "-" },
+    { label: "Ngày tạo", value: importOrder?.createdDate ? dayjs(importOrder?.createdDate).format("DD-MM-YYYY") : "-" },
     { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" /> },
-    { label: "Nhân viên được phân công", value: assignedStaff?.fullName || "-" },
-    { 
-      label: "Thời điểm nhận hàng", 
+    {
+      label: "Thời điểm nhận dự kiến",
       value: (
-        <div className="flex items-center justify-between">
-          <span> Ngày <strong>{importOrder?.dateReceived ? new Date(importOrder.dateReceived).toLocaleDateString("vi-VN") : "-"}</strong>
-            {importOrder?.timeReceived && ` - Lúc `}<strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong>
-          </span>
-          {!importOrder?.isExtended && (importOrder?.status == ImportStatus.NOT_STARTED || importOrder?.status == ImportStatus.IN_PROGRESS) ? (
-            <Button
-              className="[.ant-btn-primary]:!p-2"
-              type="primary"
-              icon={<ClockCircleOutlined />}
-              onClick={handleOpenExtendModal}
-            >
-              Gia hạn
-            </Button>
-          ) : (
-            <Button
-              className="[.ant-btn-primary]:!p-2"
-              type="primary"
-              icon={<ClockCircleOutlined />}
-              disabled
-            >
-              Đã gia hạn
-            </Button>
+        <>
+          {!importOrder?.isExtended ? (
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div> Ngày <strong>{importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div> Lúc {importOrder?.timeReceived ? <strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+              </div>
+              <Button
+                className="[.ant-btn-primary]:!p-2"
+                type="primary"
+                icon={<ClockCircleOutlined />}
+                onClick={handleOpenExtendModal}
+              >
+                Gia hạn
+              </Button>
+            </div>) : (
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+              </div>
+              {(!(importOrder?.status == ImportStatus.CANCELLED) && !(importOrder?.status == ImportStatus.COMPLETED)) ? (
+                <Button
+                  className="[.ant-btn-primary]:!p-2"
+                  type="primary"
+                  icon={<ClockCircleOutlined />}
+                  disabled
+                >
+                  Đã gia hạn
+                </Button>
+              ) : (
+                <></>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )
     },
     ...(importOrder?.isExtended ? [
       {
-        label: "Thời điểm nhận hàng sau gia hạn",
-        value: (
-          <span className="text-orange-600 font-medium">
-            Ngày <strong>{importOrder?.extendedDate ? new Date(importOrder.extendedDate).toLocaleDateString("vi-VN") : "-"}</strong>
-            {importOrder?.extendedTime && ` - Lúc `}<strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong>
-          </span>
-        )
-      },
-      {
-        label: "Lý do gia hạn",
-        value: importOrder?.extendedReason || "-",
-        span: 2
-      }
-    ] : []),
+      label: "Lý do gia hạn",
+      value: importOrder?.extendedReason || "-",
+      span: 2
+    }]:[]),
+    {
+      label: "Thời điểm nhận thực tế",
+      value: (
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-green-600 font-medium"> Ngày <strong>{importOrder?.actualDateReceived ? dayjs(importOrder.actualDateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+            <div className="text-green-600 font-medium"> Lúc {importOrder?.actualTimeReceived ? <strong>{importOrder?.actualTimeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+          </div>
+        </div>
+      )
+    },
+    // { label: "Người tạo", value: importOrder?.createdBy || "-" },
+    { label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 },
+
     { label: "Ghi chú", value: importOrder?.note || "-", span: 3 }
   ];
 
@@ -930,11 +951,11 @@ const ImportOrderDetail = () => {
       {/* Modal gia hạn đơn nhập */}
       <Modal
         title={
-          <div className="!bg-green-50 -mx-6 -mt-4 px-6 py-4 border-b">
-            <h3 className="text-xl font-semibold text-green-900">Gia hạn đơn nhập</h3>
-            <p className="text-lg text-green-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+            <h3 className="text-xl font-semibold text-blue-900">Gia hạn đơn nhập</h3>
+            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
             <p className="text-sm text-gray-700 mt-2 flex items-center">
-              <InfoCircleOutlined className="mr-2 text-green-500" />
+              <InfoCircleOutlined className="mr-2 text-blue-500" />
               Thời gian gia hạn phải cách thời điểm hiện tại ít nhất {configuration?.daysToAllowExtend} ngày
             </p>
           </div>
@@ -950,12 +971,12 @@ const ImportOrderDetail = () => {
             type="primary"
             onClick={handleExtendSubmit}
             loading={extending}
-            disabled={!extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()}
+            disabled={!extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim() || !extendResponsibilityChecked}
           >
             Xác nhận gia hạn
           </Button>,
         ]}
-        width={600}
+        width={540}
         className="!top-[50px]"
         maskClosable={false}
       >
@@ -967,7 +988,7 @@ const ImportOrderDetail = () => {
               <div>
                 <p className="text-sm text-gray-500">Ngày nhận hiện tại</p>
                 <p className="text-base font-medium">
-                  {importOrder?.dateReceived ? new Date(importOrder.dateReceived).toLocaleDateString("vi-VN") : "-"}
+                  {importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}
                 </p>
               </div>
               <div>
@@ -982,12 +1003,12 @@ const ImportOrderDetail = () => {
           {/* Form gia hạn */}
           <div className="space-y-4">
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">
+              <label className="mb-2 text-sm font-medium text-gray-700">
                 Ngày nhận mới <span className="text-red-500">*</span>
               </label>
               <DatePicker
                 className="w-full"
-                format="DD/MM/YYYY"
+                format="DD-MM-YYYY"
                 value={extendFormData.extendedDate ? dayjs(extendFormData.extendedDate) : null}
                 onChange={handleExtendDateChange}
                 disabledDate={(current) => isDateDisabledForAction(current, "extend-import-order", configuration)}
@@ -997,7 +1018,7 @@ const ImportOrderDetail = () => {
             </div>
 
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">
+              <label className="mb-2 text-sm font-medium text-gray-700">
                 Giờ nhận mới <span className="text-red-500">*</span>
               </label>
               <TimePicker
@@ -1013,10 +1034,11 @@ const ImportOrderDetail = () => {
             </div>
 
             <div>
-              <label className="block mb-2 text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700">
                 Lý do gia hạn <span className="text-red-500">*</span>
               </label>
               <TextArea
+                className="!mb-4"
                 rows={4}
                 placeholder="Nhập lý do gia hạn đơn nhập..."
                 value={extendFormData.extendedReason}
@@ -1029,6 +1051,14 @@ const ImportOrderDetail = () => {
               />
             </div>
           </div>
+
+          <Checkbox
+            checked={extendResponsibilityChecked}
+            onChange={e => setExtendResponsibilityChecked(e.target.checked)}
+            style={{ fontSize: 14, fontWeight: "bold" }}
+          >
+            Tôi xác nhận đã điền đúng thông tin và đồng ý gia hạn đơn nhập này.
+          </Checkbox>
         </div>
       </Modal>
     </div>

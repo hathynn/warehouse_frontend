@@ -141,10 +141,16 @@ const ImportRequestCreate: React.FC = () => {
   // Handle start date change
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
     const newStartDate = date ? date.format("YYYY-MM-DD") : "";
-    setFormData({ ...formData, startDate: newStartDate });
-    if (newStartDate && formData.endDate && !isEndDateValid(newStartDate, formData.endDate)) {
-      setFormData({ ...formData, startDate: newStartDate, endDate: "" });
+    // Clear endDate nếu endDate <= newStartDate hoặc không hợp lệ
+    if (newStartDate && formData.endDate) {
+      const endDate = dayjs(formData.endDate);
+      const startDate = dayjs(newStartDate);
+      if (endDate.isSame(startDate, 'day') || endDate.isBefore(startDate, 'day') || !isEndDateValid(newStartDate, formData.endDate)) {
+        setFormData({ ...formData, startDate: newStartDate, endDate: "" });
+        return;
+      }
     }
+    setFormData({ ...formData, startDate: newStartDate });
   };
 
   // Handle end date change
@@ -427,7 +433,12 @@ const ImportRequestCreate: React.FC = () => {
                     format="DD-MM-YYYY"
                     className="w-full"
                     value={formData.endDate ? dayjs(formData.endDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                    disabledDate={(current) => {
+                      if (!current || !formData.startDate) return false;
+                      const startDate = dayjs(formData.startDate);
+                      // Chặn ngày startDate và tất cả ngày trước đó
+                      return current.isSame(startDate, 'day') || current.isBefore(startDate, 'day');
+                    }}
                     onChange={handleEndDateChange}
                     placeholder="Chọn ngày phiếu hết hạn"
                   />

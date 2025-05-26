@@ -17,6 +17,8 @@ import { ImportRequestData } from "../import-request-list";
 import useProviderService from "@/hooks/useProviderService";
 import useImportOrderService, { ImportOrderResponse } from "@/hooks/useImportOrderService";
 import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
+import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
+import { getMinDateTime } from "@/utils/helpers";
 import dayjs from "dayjs";
 
 interface RouteParams extends Record<string, string> {
@@ -39,6 +41,7 @@ const ImportRequestDetail: React.FC = () => {
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [pagination, setPagination] = useState<PaginationType>({
@@ -67,6 +70,10 @@ const ImportRequestDetail: React.FC = () => {
     getProviderById
   } = useProviderService();
 
+  const {
+    getConfiguration
+  } = useConfigurationService();
+
   useEffect(() => {
     if (importRequestId) {
       fetchImportRequestData();
@@ -84,6 +91,20 @@ const ImportRequestDetail: React.FC = () => {
       fetchImportOrders();
     }
   }, [importRequestId]);
+
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      try {
+        const config = await getConfiguration();
+        if (config) {
+          setConfiguration(config);
+        }
+      } catch (error) {
+        console.error("Error fetching configuration:", error);
+      }
+    };
+    fetchConfiguration();
+  }, []);
 
   const {
     totalExpectQuantityInRequest,
@@ -210,13 +231,51 @@ const ImportRequestDetail: React.FC = () => {
   };
 
   const handleCreateImportOrder = (): void => {
-    if (importRequestId) {
+    if (!importRequestId) return;
+
+    // Kiểm tra lại thời gian hết hạn trước khi tạo đơn nhập
+    if (!configuration || !importRequestData?.endDate) {
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId), {
         state: {
           importRequestDetails,
         },
       });
+      return;
     }
+
+    const currentDateTime = dayjs();
+    const importRequestEndDate = dayjs(importRequestData.endDate).endOf('day');
+    
+    // Kiểm tra nếu ngày hiện tại là ngày kết thúc
+    if (currentDateTime.isSame(importRequestEndDate, 'day')) {
+      try {
+        const minDateTime = getMinDateTime(
+          'import-order-create',
+          configuration,
+          currentDateTime,
+          importRequestData
+        );
+        
+        // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
+        if (minDateTime.isAfter(importRequestEndDate)) {
+          message.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
+          // Re-render lại trang để cập nhật trạng thái
+          fetchImportRequestData();
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking import order creation time:", error);
+        message.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
+        return;
+      }
+    }
+
+    // Nếu chưa hết hạn, tiếp tục tạo đơn nhập
+    navigate(ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(importRequestId), {
+      state: {
+        importRequestDetails,
+      },
+    });
   };
 
   const handleViewImportOrders = (): void => {
@@ -225,9 +284,44 @@ const ImportRequestDetail: React.FC = () => {
     }
   };
 
+  const isImportOrderCreationExpired = useMemo(() => {
+    if (!configuration || !importRequestData?.endDate) {
+      return false;
+    }
+
+    const currentDateTime = dayjs();
+    const importRequestEndDate = dayjs(importRequestData.endDate).endOf('day');
+    
+    // Check if current date is the same as end date
+    if (!currentDateTime.isSame(importRequestEndDate, 'day')) {
+      return false;
+    }
+
+    // If it's the end date, check if we have enough time to create import order
+    try {
+      const minDateTime = getMinDateTime(
+        'import-order-create',
+        configuration,
+        currentDateTime,
+        importRequestData
+      );
+      
+      // If minimum required time exceeds the end date, creation is expired
+      return minDateTime.isAfter(importRequestEndDate);
+    } catch (error) {
+      console.error("Error checking import order creation time:", error);
+      return false;
+    }
+  }, [configuration, importRequestData]);
+
   const isAbleToCreateImportOrder = useMemo(() => {
     // Nếu phiếu nhập đã hoàn thành hoặc đã hủy, không hiển thị nút
     if (importRequestData?.status === "COMPLETED" || importRequestData?.status === "CANCELLED") {
+      return false;
+    }
+
+    // Nếu đã hết hạn tạo đơn nhập do thời gian, không cho phép tạo
+    if (isImportOrderCreationExpired) {
       return false;
     }
 
@@ -262,23 +356,24 @@ const ImportRequestDetail: React.FC = () => {
     importOrderDetails,
     totalExpectQuantityInRequest,
     totalActualQuantityInRequest,
-    totalOrderedQuantityInRequest
+    totalOrderedQuantityInRequest,
+    isImportOrderCreationExpired
   ]);
 
   const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
-      width: '10%',
+      width: '15%',
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
       render: (id: number) => `#${id}`,
-      align: "right" as const,
+      align: "left" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
     {
-      width: '30%',
+      width: '25%',
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
@@ -380,13 +475,17 @@ const ImportRequestDetail: React.FC = () => {
               Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
-          {isAbleToCreateImportOrder === true && (
+          {(isAbleToCreateImportOrder === true || isImportOrderCreationExpired) && (
             <Button
               type="primary"
               icon={<FileAddOutlined />}
               onClick={handleCreateImportOrder}
+              disabled={isImportOrderCreationExpired}
             >
-              Tạo đơn nhập cho phiếu #{importRequestData?.importRequestId}
+              {isImportOrderCreationExpired 
+                ? "Đã hết hạn tạo đơn nhập" 
+                : `Tạo đơn nhập cho phiếu #${importRequestData?.importRequestId}`
+              }
             </Button>
           )}
         </div>

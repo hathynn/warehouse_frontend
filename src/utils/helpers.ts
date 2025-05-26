@@ -1,8 +1,9 @@
 import dayjs, { Dayjs } from "dayjs";
 import { ConfigurationDto } from "../hooks/useConfigurationService";
+import { ImportRequestResponse } from "../hooks/useImportRequestService";
 
 export type ActionType =
-    | 'create-import-order'
+    | 'import-order-create'
     | 'assign-staff'
     | 'confirm-import-order'
     | 'cancel-import-order'
@@ -14,9 +15,8 @@ interface TimeConfig {
     unit: 'hour' | 'day';
 }
 
-// Configuration mapping for each action type
-const ACTION_CONFIG_MAP: Record<ActionType, keyof ConfigurationDto> = {
-    'create-import-order': 'createRequestTimeAtLeast',
+// Configuration mapping for simple actions (single config key)
+const SIMPLE_ACTION_CONFIG_MAP: Record<Exclude<ActionType, 'import-order-create'>, keyof ConfigurationDto> = {
     'assign-staff': 'timeToAllowAssign',
     'confirm-import-order': 'timeToAllowConfirm',
     'cancel-import-order': 'timeToAllowCancel',
@@ -24,9 +24,22 @@ const ACTION_CONFIG_MAP: Record<ActionType, keyof ConfigurationDto> = {
     'import-request-create': 'maxAllowedDaysForImportRequestProcess'
 };
 
+// Complex action configuration for import-order-create
+interface ImportOrderCreateConfig {
+    timeConfig: keyof ConfigurationDto;
+    requiresImportRequest: true;
+}
+
+const COMPLEX_ACTION_CONFIG_MAP: Record<'import-order-create', ImportOrderCreateConfig> = {
+    'import-order-create': {
+        timeConfig: 'createRequestTimeAtLeast',
+        requiresImportRequest: true
+    }
+};
+
 // Actions that use hours vs days
 const HOUR_BASED_ACTIONS: ActionType[] = [
-    'create-import-order',
+    'import-order-create',
     'assign-staff',
     'confirm-import-order',
     'cancel-import-order'
@@ -41,7 +54,14 @@ const DAY_BASED_ACTIONS: ActionType[] = [
  * Get time configuration for an action type
  */
 function getTimeConfig(actionType: ActionType, configuration: ConfigurationDto): TimeConfig {
-    const configKey = ACTION_CONFIG_MAP[actionType];
+    let configKey: keyof ConfigurationDto;
+    
+    if (actionType === 'import-order-create') {
+        configKey = COMPLEX_ACTION_CONFIG_MAP[actionType].timeConfig;
+    } else {
+        configKey = SIMPLE_ACTION_CONFIG_MAP[actionType];
+    }
+    
     const value = configuration[configKey];
 
     if (value === undefined || value === null) {
@@ -62,15 +82,24 @@ function getTimeConfig(actionType: ActionType, configuration: ConfigurationDto):
 /**
  * Calculate minimum allowed datetime for an action
  */
-function getMinDateTime(
+export function getMinDateTime(
     actionType: ActionType,
     configuration: ConfigurationDto,
-    baseDate: Dayjs = dayjs()
+    baseDate: Dayjs = dayjs(),
+    importRequest?: ImportRequestResponse
 ): Dayjs {
     const { value, unit } = getTimeConfig(actionType, configuration);
 
     if (unit === 'hour') {
-        return baseDate.add(value, 'hour');
+        let minDateTime = baseDate.add(value, 'hour');
+        
+        // For import-order-create, also consider import request start date
+        if (actionType === 'import-order-create' && importRequest?.startDate) {
+            const importRequestStartDate = dayjs(importRequest.startDate).startOf('day');
+            minDateTime = minDateTime.isAfter(importRequestStartDate) ? minDateTime : importRequestStartDate;
+        }
+        
+        return minDateTime;
     }
 
     // For day-based actions
@@ -88,11 +117,17 @@ function getMaxDateTime(
     actionType: ActionType,
     configuration: ConfigurationDto,
     baseDate: Dayjs = dayjs(),
-    hasStartDate: boolean = false
+    hasStartDate: boolean = false,
+    importRequest?: ImportRequestResponse
 ): Dayjs | null {
-    if (actionType === 'import-request-create' && hasStartDate) {
+    if ((actionType === 'import-request-create') && hasStartDate) {
         const { value } = getTimeConfig(actionType, configuration);
         return baseDate.add(value, 'day').endOf('day');
+    }
+    
+    if (actionType === 'import-order-create' && importRequest?.endDate) {
+        const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
+        return importRequestEndDate;
     }
 
     return null;
@@ -106,15 +141,16 @@ export function validateDateTime(
     time: string,
     actionType: ActionType,
     configuration: ConfigurationDto | null,
-    startDate?: string
+    startDate?: string,
+    importRequest?: ImportRequestResponse
 ): boolean {
     if (!configuration) return false;
 
     const selectedDateTime = dayjs(`${date} ${time}`);
     const baseDate = startDate ? dayjs(startDate) : dayjs();
 
-    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
-    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate);
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate, importRequest);
+    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate, importRequest);
 
     const isAfterMin = selectedDateTime.isAfter(minDateTime);
     const isBeforeMax = maxDateTime ? selectedDateTime.isBefore(maxDateTime) : true;
@@ -128,7 +164,8 @@ export function validateDateTime(
 export function getDefaultAssignedDateTimeForAction(
     actionType: ActionType,
     configuration: ConfigurationDto | null,
-    startDate?: string
+    startDate?: string,
+    importRequest?: ImportRequestResponse
 ) {
     if (!configuration) {
         throw new Error('Configuration is required');
@@ -142,6 +179,14 @@ export function getDefaultAssignedDateTimeForAction(
     if (unit === 'hour') {
         // Add configured hours plus 30 minutes buffer
         defaultDateTime = baseDate.add(value, 'hour').add(30, 'minute');
+        
+        // For import-order-create, ensure it's not before import request start date
+        if (actionType === 'import-order-create' && importRequest?.startDate) {
+            const importRequestStartDate = dayjs(importRequest.startDate).startOf('day');
+            if (defaultDateTime.isBefore(importRequestStartDate)) {
+                defaultDateTime = importRequestStartDate.hour(9).minute(0); // Default to 9:00 AM on start date
+            }
+        }
     } else if (actionType === 'import-request-create') {
         defaultDateTime = baseDate;
     } else {
@@ -161,13 +206,14 @@ export function isDateDisabledForAction(
     current: Dayjs,
     actionType: ActionType,
     configuration: ConfigurationDto | null,
-    startDate?: string
+    startDate?: string,
+    importRequest?: ImportRequestResponse
 ): boolean {
     if (!configuration || !current) return true;
 
     const baseDate = startDate ? dayjs(startDate) : dayjs();
-    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
-    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate);
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate, importRequest);
+    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate, importRequest);
 
     const isBeforeMin = current.isBefore(minDateTime.startOf('day'));
     const isAfterMax = maxDateTime ? current.isAfter(maxDateTime.startOf('day')) : false;
@@ -182,13 +228,15 @@ export function getDisabledTimeConfigForAction(
     selectedDate: string,
     actionType: ActionType,
     configuration: ConfigurationDto | null,
-    startDate?: string
+    startDate?: string,
+    importRequest?: ImportRequestResponse
 ) {
     if (!configuration) return {};
 
     const selectedDateObj = dayjs(selectedDate);
     const baseDate = startDate ? dayjs(startDate) : dayjs();
-    const minDateTime = getMinDateTime(actionType, configuration, baseDate);
+    const minDateTime = getMinDateTime(actionType, configuration, baseDate, importRequest);
+    const maxDateTime = getMaxDateTime(actionType, configuration, baseDate, !!startDate, importRequest);
 
     // Only apply time restrictions for hour-based actions on the minimum date
     const { unit } = getTimeConfig(actionType, configuration);
@@ -199,6 +247,29 @@ export function getDisabledTimeConfigForAction(
             disabledMinutes: (selectedHour: number) => {
                 if (selectedHour === minDateTime.hour()) {
                     return Array.from({ length: minDateTime.minute() }, (_, i) => i);
+                }
+                return [];
+            }
+        };
+    }
+
+    // For import-order-create, also check max date time restrictions
+    if (actionType === 'import-order-create' && maxDateTime && selectedDateObj.isSame(maxDateTime, 'day')) {
+        return {
+            disabledHours: () => {
+                const hours = [];
+                for (let i = maxDateTime.hour() + 1; i < 24; i++) {
+                    hours.push(i);
+                }
+                return hours;
+            },
+            disabledMinutes: (selectedHour: number) => {
+                if (selectedHour === maxDateTime.hour()) {
+                    const minutes = [];
+                    for (let i = maxDateTime.minute() + 1; i < 60; i++) {
+                        minutes.push(i);
+                    }
+                    return minutes;
                 }
                 return [];
             }

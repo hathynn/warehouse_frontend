@@ -23,7 +23,7 @@ const ImportRequestList: React.FC = () => {
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
-  const [selectedImportType, setSelectedImportType] = useState<string>("ALL");
+  const [selectedImportType, setSelectedImportType] = useState<string>("ORDER");
   const [selectedProvider, setSelectedProvider] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
@@ -470,8 +470,7 @@ const ImportRequestList: React.FC = () => {
         rowKey="importRequestId"
         loading={loading || detailsLoading}
         onChange={handleTableChange}
-        rowClassName={(_, index) => index % 2 === 1 ? 'bg-[rgba(0,0,0,0.04)]' : 'no-bg-row'}
-        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-blue-50 [&_.ant-table-tbody_tr:hover_td.ant-table-column-sort]:!bg-[rgba(0,0,0,0.07)] [&_.ant-table-tbody_tr.no-bg-row:hover_td.ant-table-column-sort]:!bg-blue-50' : ''}`}
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(0,0,0,0.06)] [&_.ant-table-tbody_tr:hover_td.ant-table-column-sort]:!bg-[rgba(0,0,0,0.07)]' : ''}`}
         pagination={{
           ...pagination,
           showSizeChanger: true,

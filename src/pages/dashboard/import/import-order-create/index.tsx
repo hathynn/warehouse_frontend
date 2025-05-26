@@ -68,8 +68,8 @@ const ImportOrderCreate = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getDefaultDateTimeForComponent = useCallback(() => {
-    return getDefaultAssignedDateTimeForAction("create-import-order", configuration);
-  }, [configuration]);
+    return getDefaultAssignedDateTimeForAction("import-order-create", configuration, undefined, importRequest || undefined);
+  }, [configuration, importRequest]);
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -243,6 +243,37 @@ const ImportOrderCreate = () => {
       toast.error("Vui lòng chọn phiếu nhập");
       return;
     }
+
+    // Kiểm tra lại thời gian hết hạn trước khi tạo đơn nhập
+    if (configuration && importRequest?.endDate) {
+      const currentDateTime = dayjs();
+      const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
+      
+      // Kiểm tra nếu ngày hiện tại là ngày kết thúc
+      if (currentDateTime.isSame(importRequestEndDate, 'day')) {
+        try {
+          const minDateTime = getDefaultAssignedDateTimeForAction(
+            'import-order-create',
+            configuration,
+            undefined,
+            importRequest
+          );
+          
+          // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
+          if (dayjs(`${minDateTime.date} ${minDateTime.time}`).isAfter(importRequestEndDate)) {
+            toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
+            // Chuyển về trang chi tiết phiếu nhập
+            navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest.importRequestId));
+            return;
+          }
+        } catch (error) {
+          console.error("Error checking import order creation time:", error);
+          message.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
+          return;
+        }
+      }
+    }
+
     try {
       // 1. Tạo đơn nhập
       const createOrderRequest: ImportOrderCreateRequest = {
@@ -512,12 +543,16 @@ const ImportOrderCreate = () => {
                 <label className="text-md font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
                 <DatePicker
                   className="w-full"
-                  format="DD/MM/YYYY"
+                  format="DD-MM-YYYY"
                   value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                   onChange={handleDateChange}
-                  disabledDate={(current) => isDateDisabledForAction(current, "create-import-order", configuration)}
+                  disabledDate={(current) => isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined)}
                   showNow={false}
                 />
+                <div className="text-sm text-red-400 mt-1">
+                  <InfoCircleOutlined className="mr-1" />
+                  LƯU Ý: Phiếu nhập <b>{importRequest?.importRequestId}</b> có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
+                </div>
               </div>
               <div>
                 <label className="text-md font-semibold">Giờ nhận dự kiến <span className="text-red-500">*</span></label>
@@ -528,7 +563,7 @@ const ImportOrderCreate = () => {
                   format="HH:mm"
                   showNow={false}
                   needConfirm={false}
-                  disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "create-import-order", configuration)}
+                  disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration, undefined, importRequest || undefined)}
                 />
                 <div className="text-sm text-blue-500">
                   <InfoCircleOutlined className="mr-1" />
@@ -557,7 +592,38 @@ const ImportOrderCreate = () => {
               </div>
               <Button
                 type="primary"
-                onClick={() => setShowConfirmModal(true)}
+                onClick={() => {
+                  // Kiểm tra thời gian hết hạn trước khi mở modal
+                  if (configuration && importRequest?.endDate) {
+                    const currentDateTime = dayjs();
+                    const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
+                    
+                    // Kiểm tra nếu ngày hiện tại là ngày kết thúc
+                    if (currentDateTime.isSame(importRequestEndDate, 'day')) {
+                      try {
+                        const minDateTime = getDefaultAssignedDateTimeForAction(
+                          'import-order-create',
+                          configuration,
+                          undefined,
+                          importRequest
+                        );
+                        
+                        // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
+                        if (dayjs(`${minDateTime.date} ${minDateTime.time}`).isAfter(importRequestEndDate)) {
+                          toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
+                          // Chuyển về trang chi tiết phiếu nhập
+                          navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest.importRequestId));
+                          return;
+                        }
+                      } catch (error) {
+                        console.error("Error checking import order creation time:", error);
+                        toast.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
+                        return;
+                      }
+                    }
+                  }
+                  setShowConfirmModal(true);
+                }}
                 loading={loading}
                 className="w-full mt-8"
                 id="btn-detail"
