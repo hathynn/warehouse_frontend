@@ -203,7 +203,7 @@ const ExportRequestCreate = () => {
   const countingDateTime = moment(
     `${formData.exportDate} ${formData.exportTime}`,
     "YYYY-MM-DD HH:mm:ss"
-  ).subtract(4, "hours");
+  ).subtract(3, "hours");
 
   const countingDate = countingDateTime.format("YYYY-MM-DD");
   const countingTime = countingDateTime.format("HH:mm:ss");
