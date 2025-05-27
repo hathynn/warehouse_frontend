@@ -29,6 +29,7 @@ import StatusTag from "@/components/commons/StatusTag";
 import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
+import ExportRequestConfirmModal from "@/components/export-flow/ExportRequestConfirmModal";
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
@@ -85,6 +86,9 @@ const ExportRequestDetail = () => {
   const [editMode, setEditMode] = useState(false);
   const [editedDetails, setEditedDetails] = useState([]); // clone chi tiết khi edit
   const [creating, setCreating] = useState(false); // loading khi gọi API tạo mới
+
+  const [confirmCreateExportModalVisible, setConfirmCreateExportModalVisible] =
+    useState(false);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -818,7 +822,8 @@ const ExportRequestDetail = () => {
         setEditedDetails={setEditedDetails}
         creating={creating}
         onCancelCreateExport={handleCancelCreateExport}
-        onConfirmCreateExport={handleConfirmCreateExport}
+        //onConfirmCreateExport={handleConfirmCreateExport}
+        onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
       />
 
       {/* Modal chọn Warehouse Keeper */}
@@ -1169,6 +1174,25 @@ const ExportRequestDetail = () => {
           setUpdateDateTimeModalOpen(false);
           await fetchExportRequestData();
         }}
+      />
+      <ExportRequestConfirmModal
+        open={confirmCreateExportModalVisible}
+        onOk={async () => {
+          await handleConfirmCreateExport();
+          setConfirmCreateExportModalVisible(false);
+        }}
+        onCancel={() => setConfirmCreateExportModalVisible(false)}
+        confirmLoading={creating}
+        formData={{
+          exportReason: exportRequest?.exportReason,
+          exportType: exportRequest?.type,
+          exportDate: exportRequest?.exportDate,
+          exportTime: exportRequest?.exportTime,
+          receivingDepartment: {
+            name: exportRequest?.departmentName, // hoặc exportRequest?.department?.name nếu có
+          },
+        }}
+        details={editedDetails}
       />
     </div>
   );
