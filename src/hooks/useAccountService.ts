@@ -21,6 +21,7 @@ export interface AccountResponse {
 // Interface to match RegisterRequest.java
 export interface RegisterRequest {
   fullName: string;
+  username: string;
   email: string;
   phone: string;
   password: string;
@@ -30,6 +31,7 @@ export interface RegisterRequest {
 // Interface to match RegisterResponse.java
 export interface RegisterResponse {
   id: number;
+  username: string;
   email: string;
   phone: string;
   fullName: string;
@@ -41,7 +43,7 @@ export interface RegisterResponse {
 
 // Interface to match AuthenticationRequest.java
 export interface AuthenticationRequest {
-  email: string;
+  username: string;
   password: string;
 }
 

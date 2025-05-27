@@ -9,6 +9,7 @@ import { jwtDecode } from "jwt-decode";
 // Interface for JWT decoded token
 interface DecodedToken {
   sub: string;
+  username: string;
   email: string;
   role: string;
   full_name: string;
@@ -22,7 +23,7 @@ const Login = () => {
   const { redirectToDefaultRoute } = useAuthRedirect();
   
   const [formData, setFormData] = useState<AuthenticationRequest>({
-    email: "",
+    username: "",
     password: "",
   });
 
@@ -77,18 +78,18 @@ const Login = () => {
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Tên đăng nhập
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
+              id="username"
+              name="username"
+              type="text"
               required
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 
               focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              placeholder="Nhập email của bạn"
-              value={formData.email}
+              placeholder="Nhập tên tài khoản của bạn"
+              value={formData.username}
               onChange={handleChange}
             />
           </div>
