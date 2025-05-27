@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, JSX, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -75,21 +75,64 @@ const ImportRequestDetail: React.FC = () => {
   } = useConfigurationService();
 
   useEffect(() => {
-    if (importRequestId) {
-      fetchImportRequestData();
-    }
+    if (!importRequestId) return;
+    const fetchImportRequestData = async () => {
+      setLoading(true);
+      try {
+        const response = await getImportRequestById(importRequestId);
+        if (response?.content) {
+          const data = response.content;
+          const providerName = data.providerId
+            ? (await getProviderById(data.providerId))?.content?.name
+            : "-";
+          setImportRequestData({ ...data, providerName });
+        }
+      } catch (error) {
+        console.error("Failed to fetch import request:", error);
+        message.error("Không thể tải thông tin phiếu nhập");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchImportRequestData();
   }, [importRequestId]);
 
   useEffect(() => {
-    if (importRequestId) {
-      fetchImportRequestDetails();
-    }
-  }, []);
+    if (!importRequestId) return;
+    const fetchImportRequestDetails = async () => {
+      setDetailsLoading(true);
+      try {
+        const response = await getImportRequestDetails(importRequestId);
+        if (response?.content) {
+          setImportRequestDetails(response.content);
+        }
+      } catch (error) {
+        console.error("Failed to fetch import request details:", error);
+        message.error("Không thể tải danh sách chi tiết phiếu nhập");
+      } finally {
+        setDetailsLoading(false);
+      }
+    };
+    fetchImportRequestDetails();
+  }, [importRequestId]);
 
   useEffect(() => {
-    if (importRequestId) {
-      fetchImportOrders();
-    }
+    if (!importRequestId) return;
+    const fetchImportOrders = async () => {
+      setDetailsLoading(true);
+      try {
+        const response = await getAllImportOrdersByImportRequestId(importRequestId);
+        if (response?.content) {
+          setImportOrders(response.content);
+        }
+      } catch (error) {
+        console.error("Failed to fetch import orders:", error);
+        message.error("Không thể tải danh sách đơn nhập");
+      } finally {
+        setDetailsLoading(false);
+      }
+    };
+    fetchImportOrders();
   }, [importRequestId]);
 
   useEffect(() => {
@@ -106,113 +149,56 @@ const ImportRequestDetail: React.FC = () => {
     fetchConfiguration();
   }, []);
 
-  const {
-    totalExpectQuantityInRequest,
-    totalOrderedQuantityInRequest,
-    totalActualQuantityInRequest,
-  } = useMemo(() => {
-    if (!importRequestDetails || importRequestDetails.length === 0) {
-      return {
-        totalExpectQuantityInRequest: 0,
-        totalOrderedQuantityInRequest: 0,
-        totalActualQuantityInRequest: 0,
-      };
-    }
+  let totalExpectQuantityInRequest = 0;
+  let totalOrderedQuantityInRequest = 0;
+  let totalActualQuantityInRequest = 0;
+  if (importRequestDetails && importRequestDetails.length > 0) {
+    importRequestDetails.forEach(detail => {
+      totalExpectQuantityInRequest += detail.expectQuantity || 0;
+      totalOrderedQuantityInRequest += detail.orderedQuantity || 0;
+      totalActualQuantityInRequest += detail.actualQuantity || 0;
+    });
+  }
 
-    return importRequestDetails.reduce(
-      (totals, detail) => ({
-        totalExpectQuantityInRequest: totals.totalExpectQuantityInRequest + (detail.expectQuantity || 0),
-        totalOrderedQuantityInRequest: totals.totalOrderedQuantityInRequest + (detail.orderedQuantity || 0),
-        totalActualQuantityInRequest: totals.totalActualQuantityInRequest + (detail.actualQuantity || 0),
-      }),
-      {
-        totalExpectQuantityInRequest: 0,
-        totalOrderedQuantityInRequest: 0,
-        totalActualQuantityInRequest: 0,
+  let isImportOrderCreationExpired = false;
+  if (configuration && importRequestData?.endDate) {
+    const currentDateTime = dayjs();
+    const importRequestEndDate = dayjs(importRequestData.endDate).endOf('day');
+    if (currentDateTime.isSame(importRequestEndDate, 'day')) {
+      try {
+        const minDateTime = getMinDateTime(
+          'import-order-create',
+          configuration,
+          currentDateTime,
+          importRequestData
+        );
+        isImportOrderCreationExpired = minDateTime.isAfter(importRequestEndDate);
+      } catch (error) {
+        console.error("Error checking import order creation time:", error);
       }
-    );
-  }, [importRequestDetails]);
-
-  const fetchImportRequestData = useCallback(async () => {
-    if (!importRequestId) return;
-    try {
-      setLoading(true);
-      const response = await getImportRequestById(importRequestId);
-      if (response?.content) {
-        const importRequestData = response.content;
-        const providerName = importRequestData.providerId ? (await getProviderById(importRequestData.providerId))?.content?.name : "-";
-        setImportRequestData({
-          ...importRequestData,
-          providerName
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch import request:", error);
-      message.error("Không thể tải thông tin phiếu nhập");
-    } finally {
-      setLoading(false);
     }
-  }, [importRequestId, getImportRequestById]);
+  }
 
-  const fetchImportRequestDetails = useCallback(async () => {
-    if (!importRequestId) return;
-    try {
-      setDetailsLoading(true);
-      const response = await getImportRequestDetails(
-        importRequestId
-      );
-      if (response?.content) {
-        setImportRequestDetails(response.content);
-      }
-    } catch (error) {
-      console.error("Failed to fetch import request details:", error);
-      message.error("Không thể tải danh sách chi tiết phiếu nhập");
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [importRequestId, getImportRequestDetails]);
-
-  const fetchImportOrders = useCallback(async () => {
-    if (!importRequestId) return;
-    try {
-      setDetailsLoading(true);
-      const response = await getAllImportOrdersByImportRequestId(
-        importRequestId
-      );
-      if (response?.content) {
-        setImportOrders(response.content);
-      }
-    } catch (error) {
-      console.error("Failed to fetch import orders:", error);
-      message.error("Không thể tải danh sách đơn nhập");
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [importRequestId, getAllImportOrdersByImportRequestId]);
-
-  const fetchImportOrderDetails = useCallback(async () => {
-    if (!importRequestId) return;
-    try {
-      setDetailsLoading(true);
-      const response = await getImportOrderDetailsPaginated(
-        importRequestId
-      );
-      if (response?.content) {
-        setImportOrderDetails(response.content);
-      }
-    } catch (error) {
-      console.error("Failed to fetch import order details:", error);
-      message.error("Không thể tải danh sách chi tiết đơn nhập");
-    } finally {
-      setDetailsLoading(false);
-    }
-  }, [importRequestId, getImportOrderDetailsPaginated]);
-
-  useEffect(() => {
-    if (importRequestId) {
-      fetchImportOrderDetails();
-    }
-  }, [importRequestId]);
+  let isAbleToCreateImportOrder = false;
+  if (importRequestData?.status === "COMPLETED" || importRequestData?.status === "CANCELLED") {
+    isAbleToCreateImportOrder = false;
+  } else if (isImportOrderCreationExpired) {
+    isAbleToCreateImportOrder = false;
+  } else if (importOrders.length === 0 || totalActualQuantityInRequest === 0) {
+    isAbleToCreateImportOrder = totalExpectQuantityInRequest > totalOrderedQuantityInRequest;
+  } else if (importOrders.length > 0 && importOrders.every(order => order.status === "COMPLETED")) {
+    isAbleToCreateImportOrder = totalExpectQuantityInRequest > totalActualQuantityInRequest;
+  } else if (totalActualQuantityInRequest > 0) {
+    const totalOrderedQuantityOfIncompleteOrders = importOrders
+      .filter(order => order.status !== "COMPLETED")
+      .reduce((total, order) => {
+        const orderDetails = importOrderDetails.filter(detail => detail.importOrderId === order.importOrderId);
+        return total + orderDetails.reduce((sum, detail) => sum + (detail.expectQuantity || 0), 0);
+      }, 0);
+    isAbleToCreateImportOrder = totalExpectQuantityInRequest > (totalActualQuantityInRequest + totalOrderedQuantityOfIncompleteOrders);
+  } else {
+    isAbleToCreateImportOrder = false;
+  }
 
   const getImportTypeText = (type: ImportType): string => {
     const typeMap: Record<ImportType, string> = {
@@ -259,8 +245,24 @@ const ImportRequestDetail: React.FC = () => {
         // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
         if (minDateTime.isAfter(importRequestEndDate)) {
           message.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
-          // Re-render lại trang để cập nhật trạng thái
-          fetchImportRequestData();
+          // Re-fetch import request data
+          (async () => {
+            setLoading(true);
+            try {
+              const response = await getImportRequestById(importRequestId!);
+              if (response?.content) {
+                const data = response.content;
+                const providerName = data.providerId
+                  ? (await getProviderById(data.providerId))?.content?.name
+                  : "-";
+                setImportRequestData({ ...data, providerName });
+              }
+            } catch (error) {
+              console.error("Failed to refresh import request:", error);
+            } finally {
+              setLoading(false);
+            }
+          })();
           return;
         }
       } catch (error) {
@@ -284,82 +286,7 @@ const ImportRequestDetail: React.FC = () => {
     }
   };
 
-  const isImportOrderCreationExpired = useMemo(() => {
-    if (!configuration || !importRequestData?.endDate) {
-      return false;
-    }
-
-    const currentDateTime = dayjs();
-    const importRequestEndDate = dayjs(importRequestData.endDate).endOf('day');
-    
-    // Check if current date is the same as end date
-    if (!currentDateTime.isSame(importRequestEndDate, 'day')) {
-      return false;
-    }
-
-    // If it's the end date, check if we have enough time to create import order
-    try {
-      const minDateTime = getMinDateTime(
-        'import-order-create',
-        configuration,
-        currentDateTime,
-        importRequestData
-      );
-      
-      // If minimum required time exceeds the end date, creation is expired
-      return minDateTime.isAfter(importRequestEndDate);
-    } catch (error) {
-      console.error("Error checking import order creation time:", error);
-      return false;
-    }
-  }, [configuration, importRequestData]);
-
-  const isAbleToCreateImportOrder = useMemo(() => {
-    // Nếu phiếu nhập đã hoàn thành hoặc đã hủy, không hiển thị nút
-    if (importRequestData?.status === "COMPLETED" || importRequestData?.status === "CANCELLED") {
-      return false;
-    }
-
-    // Nếu đã hết hạn tạo đơn nhập do thời gian, không cho phép tạo
-    if (isImportOrderCreationExpired) {
-      return false;
-    }
-
-    // Nếu không có import order hoặc tổng số lượng đã nhập bằng 0
-    if (importOrders.length === 0 || totalActualQuantityInRequest === 0) {
-      return totalExpectQuantityInRequest > totalOrderedQuantityInRequest;
-    }
-
-    // Kiểm tra nếu tất cả import orders đã completed
-    if (importOrders.length > 0 && importOrders.every(order => order.status === "COMPLETED")) {
-      return totalExpectQuantityInRequest > totalActualQuantityInRequest;
-    }
-
-    // Nếu có ít nhất một order chưa hoàn thành và có sản phẩm đã nhập
-    if (totalActualQuantityInRequest > 0) {
-      // Tính tổng ordered quantity của các order details chưa completed
-      const totalOrderedQuantityOfIncompleteOrders = importOrders
-        .filter(order => order.status !== "COMPLETED")
-        .reduce((total, order) => {
-          const orderDetails = importOrderDetails.filter(detail => detail.importOrderId === order.importOrderId);
-          return total + orderDetails.reduce((sum, detail) => sum + (detail.expectQuantity || 0), 0);
-        }, 0);
-
-      return totalExpectQuantityInRequest > (totalActualQuantityInRequest + totalOrderedQuantityOfIncompleteOrders);
-    }
-
-    // Nếu không có import order hoặc không có sản phẩm đã nhập
-    return false;
-  }, [
-    importRequestData?.status,
-    importOrders,
-    importOrderDetails,
-    totalExpectQuantityInRequest,
-    totalActualQuantityInRequest,
-    totalOrderedQuantityInRequest,
-    isImportOrderCreationExpired
-  ]);
-
+  // Memoize columns to prevent recreation on each render
   const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
       width: '15%',
@@ -430,8 +357,8 @@ const ImportRequestDetail: React.FC = () => {
     );
   }
 
-  // Chuẩn bị dữ liệu cho DetailCard
-  const infoItems = [
+  // Memoize infoItems to avoid recomputing array on each render
+  const infoItems: DetailInfoItem[] = [
     { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
     { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
     { label: "Nhà cung cấp", value: importRequestData?.providerName },

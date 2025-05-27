@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -115,13 +115,13 @@ const ImportOrderDetail = () => {
   const [qrMap, setQrMap] = useState<Record<string, { itemName: string; itemId: string }>>({});
 
   // Fetch configuration
-  const fetchConfiguration = useCallback(async () => {
+  const fetchConfiguration = async () => {
     const config = await getConfiguration();
     setConfiguration(config);
-  }, []);
+  };
 
   // Fetch import order data
-  const fetchImportOrderData = useCallback(async () => {
+  const fetchImportOrderData = async () => {
     if (!importOrderId) return null;
 
     try {
@@ -138,9 +138,9 @@ const ImportOrderDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [importOrderId, getImportOrderById]);
+  };
 
-  const fetchImportOrderDetails = useCallback(async () => {
+  const fetchImportOrderDetails = async () => {
     if (!importOrderId) return;
     try {
       setDetailsLoading(true);
@@ -170,9 +170,9 @@ const ImportOrderDetail = () => {
     } finally {
       setDetailsLoading(false);
     }
-  }, [importOrderId, pagination, getImportOrderDetailsPaginated]);
+  };
 
-  const fetchAssignedStaff = useCallback(async () => {
+  const fetchAssignedStaff = async () => {
     if (!importOrderId) return;
     try {
       const response = await findAccountById(importOrder?.assignedStaffId!);
@@ -181,7 +181,7 @@ const ImportOrderDetail = () => {
       console.error("Failed to fetch assigned staff:", error);
       message.error("Không thể tải thông tin nhân viên đã phân công");
     }
-  }, [importOrder, findAccountById]);
+  };
 
   const fetchActiveStaffs = async () => {
     if (!importOrder?.dateReceived) {
@@ -352,37 +352,31 @@ const ImportOrderDetail = () => {
     setSearchText(value);
   };
 
-  const getFilteredAndSortedStaffs = () => {
-    const defaultWorkingMinutes = getDefaultWorkingMinutes();
-    return staffs
-      .map(staff => ({
-        ...staff,
-        remainingTime: calculateRemainingTime(staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00", defaultWorkingMinutes)
-      }))
-      .filter(staff => {
-        // Filter out already assigned staff
-        if (staff.id === importOrder?.assignedStaffId) {
-          return false;
-        }
-
-        const searchLower = searchText.toLowerCase();
-        return (
-          staff.fullName.toLowerCase().includes(searchLower) ||
-          staff.id.toString().includes(searchLower)
+  const filteredAndSortedStaffs = staffs
+    .map(staff => ({
+      ...staff,
+      remainingTime: calculateRemainingTime(
+        staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
+        getDefaultWorkingMinutes()
+      )
+    }))
+    .filter(staff => {
+      if (staff.id === importOrder?.assignedStaffId) return false;
+      const searchLower = searchText.toLowerCase();
+      return (
+        staff.fullName.toLowerCase().includes(searchLower) ||
+        staff.id.toString().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      const getMinutes = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
+          parseInt(part.replace(' phút', ''), 10)
         );
-      })
-      .sort((a, b) => {
-        // Convert remaining time to minutes for comparison
-        const getMinutes = (timeStr: string) => {
-          const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
-            parseInt(part.replace(' phút', ''))
-          );
-          return (hours * 60) + minutes;
-        };
-
-        return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
-      });
-  };
+        return hours * 60 + minutes;
+      };
+      return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
+    });
 
   // Function to check if reassignment is allowed
   const canReassignStaff = () => {
@@ -419,13 +413,9 @@ const ImportOrderDetail = () => {
   };
 
   // Helper functions for extend functionality
-  const getDefaultExtendDateTime = useCallback(() => {
-    return getDefaultAssignedDateTimeForAction("extend-import-order", configuration);
-  }, [configuration]);
-
   const handleOpenExtendModal = () => {
     if (configuration) {
-      const defaultDateTime = getDefaultExtendDateTime();
+      const defaultDateTime = getDefaultAssignedDateTimeForAction("extend-import-order", configuration);
       setExtendFormData({
         extendedDate: defaultDateTime.date,
         extendedTime: defaultDateTime.time,
@@ -862,7 +852,7 @@ const ImportOrderDetail = () => {
                 />
               </div>
               <Table
-                dataSource={getFilteredAndSortedStaffs()}
+                dataSource={filteredAndSortedStaffs}
                 rowKey="id"
                 pagination={false}
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
 import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal, TablePaginationConfig, Table } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
@@ -67,9 +67,9 @@ const ImportOrderCreate = () => {
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getDefaultDateTimeForComponent = useCallback(() => {
-    return getDefaultAssignedDateTimeForAction("import-order-create", configuration, undefined, importRequest || undefined);
-  }, [configuration, importRequest]);
+  const getDefaultDateTimeForComponent = () => {
+    return getDefaultAssignedDateTimeForAction("import-order-create", configuration!, undefined, importRequest || undefined);
+  };
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -100,23 +100,13 @@ const ImportOrderCreate = () => {
     createImportOrderDetails,
   } = useImportOrderDetailService();
 
-  // Thêm state cho validation step 1
-  const [isImportOrderDataValid, setIsImportOrderDataValid] = useState<boolean>(false);
-
-  // Cập nhật giá trị isStep1Valid khi editableRows thay đổi
-  useEffect(() => {
-    const valid = editableRows.length > 0 && editableRows.every(row => {
-      if (row.actualQuantity === 0) {
-        return row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity) &&
-          row.plannedQuantity > 0
-      }
-      else {
-        return row.plannedQuantity <= (row.expectQuantity - row.actualQuantity) &&
-          row.plannedQuantity > 0
-      }
-    });
-    setIsImportOrderDataValid(valid);
-  }, [editableRows]);
+  // Validation flag for import order data
+  const isImportOrderDataValid = editableRows.length > 0 && editableRows.every(row => {
+    if (row.actualQuantity === 0) {
+      return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
+    }
+    return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
+  });
 
   // Fetch providers on mount
   useEffect(() => {
@@ -151,7 +141,7 @@ const ImportOrderCreate = () => {
     if (configuration) {
       setDefaultDateTime(getDefaultDateTimeForComponent());
     }
-  }, [configuration, getDefaultDateTimeForComponent]);
+  }, [configuration, importRequest]);
 
   useEffect(() => {
     if (defaultDateTime.date && defaultDateTime.time) {
@@ -217,8 +207,6 @@ const ImportOrderCreate = () => {
       pageSize: newPagination.pageSize || 5,
     });
   };
-
-
 
   const handleDateChange = (date: Dayjs | null) => {
     if (!date) return;
@@ -478,7 +466,14 @@ const ImportOrderCreate = () => {
         </span>
       ),
     },
-  ]
+  ];
+
+  // Memoized disabled functions for DatePicker and TimePicker
+  const disabledDate = (current: Dayjs) =>
+    isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined);
+
+  const disabledTime = () =>
+    getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration, undefined, importRequest || undefined);
 
   const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
   return (
@@ -546,7 +541,7 @@ const ImportOrderCreate = () => {
                   format="DD-MM-YYYY"
                   value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                   onChange={handleDateChange}
-                  disabledDate={(current) => isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined)}
+                  disabledDate={disabledDate}
                   showNow={false}
                 />
                 <div className="text-sm text-red-400 mt-1">
@@ -563,7 +558,7 @@ const ImportOrderCreate = () => {
                   format="HH:mm"
                   showNow={false}
                   needConfirm={false}
-                  disabledTime={() => getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration, undefined, importRequest || undefined)}
+                  disabledTime={disabledTime}
                 />
                 <div className="text-sm text-blue-500">
                   <InfoCircleOutlined className="mr-1" />

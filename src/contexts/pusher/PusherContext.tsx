@@ -1,7 +1,6 @@
 import {
   createContext,
   ReactNode,
-  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -37,6 +36,25 @@ interface PusherContextType {
 
 const PusherContext = createContext<PusherContextType | undefined>(undefined);
 
+// Helper to map user roles to Pusher channels without hooks
+function getChannelForRole(userRole: AccountRole): string | null {
+  switch (userRole) {
+    case AccountRole.WAREHOUSE_MANAGER:
+      return PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
+    case AccountRole.DEPARTMENT:
+      return PRIVATE_DEPARTMENT_CHANNEL;
+    case AccountRole.STAFF:
+      return PRIVATE_STAFF_CHANNEL;
+    case AccountRole.ACCOUNTING:
+      return PRIVATE_ACCOUNTING_CHANNEL;
+    case AccountRole.ADMIN:
+      return PRIVATE_ADMIN_CHANNEL;
+    default:
+      console.warn(`No channel defined for role: ${userRole}`);
+      return null;
+  }
+}
+
 export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const [latestNotification, setLatestNotification] = useState<NotificationEvent | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -48,35 +66,11 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
 
-  const getChannelForRole = useCallback((userRole: AccountRole): string | null => {
-    switch (userRole) {
-      case AccountRole.WAREHOUSE_MANAGER:
-        return PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
-      case AccountRole.DEPARTMENT:
-        return PRIVATE_DEPARTMENT_CHANNEL;
-      case AccountRole.STAFF:
-        return PRIVATE_STAFF_CHANNEL;
-      case AccountRole.ACCOUNTING:
-        return PRIVATE_ACCOUNTING_CHANNEL;
-      case AccountRole.ADMIN:
-        return PRIVATE_ADMIN_CHANNEL;
-      default:
-        console.warn(`No channel defined for role: ${userRole}`);
-        return null;
-    }
-  }, []);
-
-  const handleNotificationEvent = useCallback((data: any, eventType: string) => {
+  // Handler for notification events
+  const handleNotificationEvent = (data: any, eventType: string) => {
     console.log(`[Pusher] ${eventType} notification:`, data);
-    
-    const notification: NotificationEvent = {
-      type: eventType,
-      data,
-      timestamp: Date.now(),
-    };
-    
-    setLatestNotification(notification);
-  }, []);
+    setLatestNotification({ type: eventType, data, timestamp: Date.now() });
+  };
 
   useEffect(() => {
     // Only set up Pusher if user is authenticated and has a role
@@ -96,6 +90,7 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Determine Pusher channel for this role
     const channelName = getChannelForRole(role);
     if (!channelName) {
       setConnectionError(`No channel defined for role: ${role}`);
@@ -108,18 +103,18 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
       // Create Pusher instance if it doesn't exist
       if (!pusherRef.current) {
         pusherRef.current = createPusherClient();
-        
+
         pusherRef.current.connection.bind('connected', () => {
           console.log('Pusher connected');
           setIsConnected(true);
           setConnectionError(null);
         });
-        
+
         pusherRef.current.connection.bind('disconnected', () => {
           console.log('Pusher disconnected');
           setIsConnected(false);
         });
-        
+
         pusherRef.current.connection.bind('error', (error: any) => {
           console.error('Pusher connection error:', error);
           setConnectionError(`Connection error: ${error.message || 'Unknown error'}`);
@@ -127,32 +122,20 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      // Subscribe to the channel for this role
+      // Subscribe to the channel and bind events
       const channel = pusherRef.current.subscribe(channelName);
       channelRef.current = channel;
-
       channel.bind('pusher:subscription_succeeded', () => {
         console.log(`Successfully subscribed to ${channelName}`);
         setConnectionError(null);
       });
-
       channel.bind('pusher:subscription_error', (error: any) => {
         console.error(`Error subscribing to ${channelName}:`, error);
         setConnectionError(`Subscription error: ${error.message || 'Unknown error'}`);
       });
-
-      // Bind to notification events
-      channel.bind(IMPORT_ORDER_CREATED_EVENT, (data: any) => {
-        handleNotificationEvent(data, IMPORT_ORDER_CREATED_EVENT);
-      });
-
-      channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => {
-        handleNotificationEvent(data, IMPORT_ORDER_COUNTED_EVENT);
-      });
-
-      channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => {
-        handleNotificationEvent(data, IMPORT_ORDER_CONFIRMED_EVENT);
-      });
+      channel.bind(IMPORT_ORDER_CREATED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_CREATED_EVENT));
+      channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_COUNTED_EVENT));
+      channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_CONFIRMED_EVENT));
 
     } catch (error) {
       console.error('Error setting up Pusher:', error);
@@ -168,7 +151,7 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
         channelRef.current = null;
       }
     };
-  }, [role, accountId, isAuthenticated, getChannelForRole, handleNotificationEvent]);
+  }, [role, accountId, isAuthenticated]);
 
   // Cleanup on unmount
   useEffect(() => {

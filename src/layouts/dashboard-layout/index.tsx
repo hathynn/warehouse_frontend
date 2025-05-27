@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Menu, theme } from "antd";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
@@ -52,7 +52,7 @@ const DashboardLayout: React.FC = () => {
 
   const user = useSelector<RootState, UserState>((state) => state.user);
   const role = user.role || AccountRole.DEPARTMENT;
-  const currentMenuItems = useMemo(() => menuItems[role] || [], [role]);
+  const currentMenuItems = menuItems[role] || [];
 
   // Handle menu item selection and navigation
   useEffect(() => {

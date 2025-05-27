@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, notification } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
@@ -66,10 +66,8 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     total: details.length,
   });
 
-  // Memoize sorted details để tránh re-sort không cần thiết
-  const sortedDetails = useMemo(() => {
-    return [...details].sort((a, b) => a.providerId - b.providerId);
-  }, [details]);
+  // Sort details on each render
+  const sortedDetails = [...details].sort((a, b) => a.providerId - b.providerId);
   
   // Use the custom hook for page confirmation gating
   const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
@@ -113,16 +111,12 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     }
   };
 
-  // Tính toán data cho trang hiện tại và rowSpan
-  const currentPageData = useMemo(() => {
-    // Lấy data cho trang hiện tại
-    const startIndex = (pagination.current - 1) * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    const currentPageData = sortedDetails.slice(startIndex, endIndex);
-    
-    // Tính rowSpan cho data trong trang hiện tại (data đã được sắp xếp)
-    return calculateRowSpanForCurrentPage(currentPageData);
-  }, [sortedDetails, pagination.current, pagination.pageSize]);
+  // Compute data for the current page and rowSpan
+  const startIndex = (pagination.current - 1) * pagination.pageSize;
+  const endIndex = startIndex + pagination.pageSize;
+  const currentPageData = calculateRowSpanForCurrentPage(
+    sortedDetails.slice(startIndex, endIndex)
+  );
 
   const columns = [
     { 
