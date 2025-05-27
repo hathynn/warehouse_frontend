@@ -116,6 +116,47 @@ const UseExportForm = ({
     return false;
   };
 
+  function getEarliestAvailableMoment({
+    now,
+    workingTimeStart,
+    workingTimeEnd,
+    createRequestTimeAtLeast,
+  }) {
+    let [startHour, startMin] = workingTimeStart.split(":").map(Number);
+    let [endHour, endMin] = workingTimeEnd.split(":").map(Number);
+    let [minHour, minMin, minSec] = createRequestTimeAtLeast
+      .split(":")
+      .map(Number);
+
+    let waitingMinutes = minHour * 60 + minMin + Math.ceil(minSec / 60);
+
+    let current = moment(now); // clone để không làm thay đổi "now"
+    while (waitingMinutes > 0) {
+      // Working time block hôm nay
+      let dayStart = current.clone().hour(startHour).minute(startMin).second(0);
+      let dayEnd = current.clone().hour(endHour).minute(endMin).second(0);
+
+      if (current.isBefore(dayStart)) {
+        // Chưa tới giờ làm việc -> nhảy tới đầu giờ làm việc
+        current = dayStart.clone();
+      }
+
+      if (current.isSameOrAfter(dayEnd)) {
+        // Qua giờ làm việc -> sang ngày sau
+        current = dayStart.clone().add(1, "day");
+        continue;
+      }
+
+      // Còn bao nhiêu phút tới hết giờ làm việc
+      let available = dayEnd.diff(current, "minutes");
+      let use = Math.min(waitingMinutes, available);
+      current = current.clone().add(use, "minutes");
+      waitingMinutes -= use;
+    }
+
+    return current;
+  }
+
   const getDisabledTime = (selectedDate) => {
     if (!config || !selectedDate) return {};
 
@@ -124,55 +165,66 @@ const UseExportForm = ({
     const createRequestTimeAtLeast =
       config.createRequestTimeAtLeast || "06:00:00";
 
-    const [startHour] = workingTimeStart.split(":").map(Number);
-    const [endHour] = workingTimeEnd.split(":").map(Number);
-    const [minHour, minMin] = createRequestTimeAtLeast.split(":").map(Number);
+    const now = moment();
 
-    const now = moment(); // Luôn lấy thời gian thực tế khi render
+    // Tính earliestMoment:
+    const earliestMoment = getEarliestAvailableMoment({
+      now,
+      workingTimeStart,
+      workingTimeEnd,
+      createRequestTimeAtLeast,
+    });
+
     const selectedDay = moment(selectedDate).format("YYYY-MM-DD");
-    const today = now.format("YYYY-MM-DD");
+    const earliestDay = earliestMoment.format("YYYY-MM-DD");
 
-    if (selectedDay === today) {
-      // Tính thời gian earliest: hiện tại + min hour/minute + 5 phút
-      const earliest = now
-        .clone()
-        .add(minHour, "hours")
-        .add(minMin + 5, "minutes");
+    let [startHour, startMin] = workingTimeStart.split(":").map(Number);
+    let [endHour, endMin] = workingTimeEnd.split(":").map(Number);
 
-      const earliestHour = earliest.hour();
-      const earliestMinute = earliest.minute();
-
+    if (selectedDay < earliestDay) {
+      // Disable hết
       return {
-        disabledHours: () => {
-          let arr = [];
-          for (let h = 0; h < 24; ++h) {
-            if (h < earliestHour || h < startHour || h > endHour) arr.push(h);
-          }
-          return arr;
-        },
-        disabledMinutes: (selectedHour) => {
-          if (selectedHour === earliestHour) {
-            let min = Math.ceil(earliestMinute / 5) * 5; // Làm tròn lên 5 phút
-            return Array.from({ length: 60 }, (_, i) => i).filter(
-              (i) => i < min
-            );
-          }
-          return [];
-        },
+        disabledHours: () => Array.from({ length: 24 }, (_, i) => i),
+        disabledMinutes: () => Array.from({ length: 60 }, (_, i) => i),
       };
-    } else {
-      // Ngày khác: chỉ disable ngoài giờ làm việc
+    }
+
+    if (selectedDay > earliestDay) {
+      // Chỉ block ngoài working time
       return {
         disabledHours: () => {
           let arr = [];
           for (let h = 0; h < 24; ++h) {
             if (h < startHour || h > endHour) arr.push(h);
+            else if (h === endHour && endMin === 0) arr.push(h); // nếu kết thúc đúng giờ
           }
           return arr;
         },
         disabledMinutes: () => [],
       };
     }
+
+    // Nếu là ngày earliestMoment:
+    const earliestHour = earliestMoment.hour();
+    const earliestMinute = earliestMoment.minute();
+
+    return {
+      disabledHours: () => {
+        let arr = [];
+        for (let h = 0; h < 24; ++h) {
+          if (h < earliestHour || h < startHour || h > endHour) arr.push(h);
+        }
+        return arr;
+      },
+      disabledMinutes: (selectedHour) => {
+        if (selectedHour === earliestHour) {
+          return Array.from({ length: 60 }, (_, i) => i).filter(
+            (i) => i < earliestMinute
+          );
+        }
+        return [];
+      },
+    };
   };
 
   // const getDisabledTime = (selectedDate) => {

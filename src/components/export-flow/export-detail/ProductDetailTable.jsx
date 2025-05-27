@@ -4,7 +4,7 @@ import { InputNumber, Popconfirm, Tooltip } from "antd";
 import { ExportStatus, AccountRole } from "@/utils/enums";
 import PropTypes from "prop-types";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined } from "@ant-design/icons";
 
 // Hàm getItemStatus nằm trong component này luôn
 const getItemStatus = (details = []) => {
@@ -140,6 +140,7 @@ const ProductDetailTable = ({
         )}
       </h2>
       {[
+        ExportStatus.IN_PROGRESS,
         ExportStatus.COUNTED,
         ExportStatus.COUNT_CONFIRMED,
         ExportStatus.WAITING_EXPORT,
@@ -186,18 +187,29 @@ const ProductDetailTable = ({
             )}
 
           <div className="flex gap-8 items-center">
-            <span>
+            <span className="ml-6">
               Tổng số hàng: <span>{exportRequestDetails.length}</span>
             </span>
-            <span>
-              Tổng số hàng đủ: <span>{totalEnough}</span>
-            </span>
-            <span>
-              Tổng số hàng thiếu:{" "}
-              <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
-                {totalLack}
-              </span>
-            </span>
+            {[
+              ExportStatus.COUNTED,
+              ExportStatus.COUNT_CONFIRMED,
+              ExportStatus.WAITING_EXPORT,
+              ExportStatus.CONFIRMED,
+              ExportStatus.COMPLETED,
+              ExportStatus.CANCELLED,
+            ].includes(exportRequest?.status) && (
+              <>
+                <span>
+                  Tổng số hàng đủ: <span>{totalEnough}</span>
+                </span>
+                <span>
+                  Tổng số hàng thiếu:{" "}
+                  <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
+                    {totalLack}
+                  </span>
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
