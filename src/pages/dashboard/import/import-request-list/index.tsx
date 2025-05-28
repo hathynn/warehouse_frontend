@@ -37,7 +37,6 @@ const ImportRequestList: React.FC = () => {
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
 
   const {
-    getImportRequestsByPage,
     getAllImportRequests,
     loading
   } = useImportRequestService();
@@ -388,20 +387,20 @@ const ImportRequestList: React.FC = () => {
           </div>
 
           <DatePicker
-            placeholder="Chọn ngày tạo"
+            placeholder="Tìm theo ngày tạo"
             value={selectedDate}
             onChange={(date) => updateFilter({ 
               selectedDate: date,
               pagination: { ...pagination, current: 1 }
             })}
             format="DD-MM-YYYY"
-            className="min-w-[180px] !border-gray-400 [&_input::placeholder]:!text-gray-400"
+            className="min-w-[160px] !border-gray-400 [&_input::placeholder]:!text-gray-400"
             allowClear
           />
 
           <Select
             mode="multiple"
-            placeholder="Nhà cung cấp"
+            placeholder="Tìm theo nhà cung cấp"
             className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
             value={selectedProvider}
             onChange={(value) => updateFilter({ 

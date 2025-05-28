@@ -551,26 +551,41 @@ const ImportOrderDetail = () => {
       value: (
         <>
           {!importOrder?.isExtended ? (
-            <div className="flex items-center justify-between gap-2">
+            // Đơn chưa gia hạn
+            (importOrder?.status !== ImportStatus.CANCELLED && 
+             importOrder?.status !== ImportStatus.COMPLETED && 
+             importOrder?.status !== ImportStatus.COUNTED) ? (
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div> Ngày <strong>{importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+                  <div> Lúc {importOrder?.timeReceived ? <strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                </div>
+                <Button
+                  className="[.ant-btn-primary]:!p-2"
+                  type="primary"
+                  icon={<ClockCircleOutlined />}
+                  onClick={handleOpenExtendModal}
+                >
+                  Gia hạn
+                </Button>
+              </div>
+            ) : (
+              // Đơn chưa gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
               <div>
                 <div> Ngày <strong>{importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
                 <div> Lúc {importOrder?.timeReceived ? <strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
               </div>
-              <Button
-                className="[.ant-btn-primary]:!p-2"
-                type="primary"
-                icon={<ClockCircleOutlined />}
-                onClick={handleOpenExtendModal}
-              >
-                Gia hạn
-              </Button>
-            </div>) : (
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
-                <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
-              </div>
-              {(!(importOrder?.status == ImportStatus.CANCELLED) && !(importOrder?.status == ImportStatus.COMPLETED)) ? (
+            )
+          ) : (
+            // Đơn đã gia hạn
+            (importOrder?.status !== ImportStatus.CANCELLED && 
+             importOrder?.status !== ImportStatus.COMPLETED && 
+             importOrder?.status !== ImportStatus.COUNTED) ? (
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                  <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                </div>
                 <Button
                   className="[.ant-btn-primary]:!p-2"
                   type="primary"
@@ -579,10 +594,14 @@ const ImportOrderDetail = () => {
                 >
                   Đã gia hạn
                 </Button>
-              ) : (
-                <></>
-              )}
-            </div>
+              </div>
+            ) : (
+              // Đơn đã gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
+              <div>
+                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+              </div>
+            )
           )}
         </>
       )

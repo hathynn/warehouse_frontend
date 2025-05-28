@@ -37,16 +37,16 @@ const ImportRequestCreate: React.FC = () => {
   const [data, setData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [formData, setFormData] = useState<FormData>({
     importReason: "",
     importType: "ORDER",
     exportRequestId: null,
     startDate: dayjs().format("YYYY-MM-DD"),
-    endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
+    endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"), // Temporary default, will be updated when configuration loads
   });
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
-  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +115,17 @@ const ImportRequestCreate: React.FC = () => {
     fetchConfiguration();
   }, []);
 
+  // Update endDate when configuration is loaded
+  useEffect(() => {
+    if (configuration?.maxAllowedDaysForImportRequestProcess) {
+      console.log(configuration.maxAllowedDaysForImportRequestProcess);
+      setFormData(prev => ({
+        ...prev,
+        endDate: dayjs(prev.startDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD")
+      }));
+    }
+  }, [configuration]);
+
   // Helper function to validate date range
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
     if (!startDate || !endDate) return true;
@@ -141,16 +152,23 @@ const ImportRequestCreate: React.FC = () => {
   // Handle start date change
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
     const newStartDate = date ? date.format("YYYY-MM-DD") : "";
-    // Clear endDate nếu endDate <= newStartDate hoặc không hợp lệ
-    if (newStartDate && formData.endDate) {
-      const endDate = dayjs(formData.endDate);
-      const startDate = dayjs(newStartDate);
-      if (endDate.isSame(startDate, 'day') || endDate.isBefore(startDate, 'day') || !isEndDateValid(newStartDate, formData.endDate)) {
+    
+    // Calculate new endDate based on configuration
+    let newEndDate = formData.endDate;
+    if (newStartDate && configuration?.maxAllowedDaysForImportRequestProcess) {
+      newEndDate = dayjs(newStartDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD");
+    }
+    
+    // Check if the calculated endDate is valid
+    if (newStartDate && newEndDate) {
+      if (!isEndDateValid(newStartDate, newEndDate)) {
+        // If not valid, clear endDate
         setFormData({ ...formData, startDate: newStartDate, endDate: "" });
         return;
       }
     }
-    setFormData({ ...formData, startDate: newStartDate });
+    
+    setFormData({ ...formData, startDate: newStartDate, endDate: newEndDate });
   };
 
   // Handle end date change
