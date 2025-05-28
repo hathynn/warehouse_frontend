@@ -211,7 +211,7 @@ const useExportRequestService = () => {
         `/export-request/update-status/${exportRequestId}?status=${status}`
       );
       if (response && response.content) {
-        toast.success("Cập nhật trạng thái phiếu xuất thành công");
+        toast.success("Trạng thái phiếu xuất đã đổi");
         return response.content;
       }
     } catch (error) {
