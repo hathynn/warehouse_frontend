@@ -12,6 +12,7 @@ import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
+import { useImportRequestFilter } from "@/hooks/useImportRequestFilter";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;
@@ -21,18 +22,19 @@ export interface ImportRequestData extends ImportRequestResponse {
 }
 
 const ImportRequestList: React.FC = () => {
+  // Use filter context instead of local state
+  const { filterState, updateFilter } = useImportRequestFilter();
+  const {
+    searchTerm,
+    selectedDate,
+    selectedImportType,
+    selectedProvider,
+    selectedStatusFilter,
+    pagination
+  } = filterState;
+
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<moment.Moment | null>(null);
-  const [selectedImportType, setSelectedImportType] = useState<string>("ORDER");
-  const [selectedProvider, setSelectedProvider] = useState<string[]>([]);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
 
   const {
     getImportRequestsByPage,
@@ -106,14 +108,16 @@ const ImportRequestList: React.FC = () => {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchTerm(e.target.value);
+    updateFilter({ searchTerm: e.target.value });
   };
 
   const handleTableChange = (newPagination: TablePaginationConfig): void => {
-    setPagination({
-      ...newPagination,
-      current: newPagination.current,
-      pageSize: newPagination.pageSize,
+    updateFilter({
+      pagination: {
+        ...newPagination,
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+      }
     });
   };
 
@@ -128,9 +132,11 @@ const ImportRequestList: React.FC = () => {
   };
 
   const handleStatusFilterClick = (filterKey: string): void => {
-    setSelectedStatusFilter(selectedStatusFilter === filterKey ? null : filterKey);
-    // Reset về trang đầu khi filter thay đổi
-    setPagination(prev => ({ ...prev, current: 1 }));
+    const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
+    updateFilter({ 
+      selectedStatusFilter: newStatusFilter,
+      pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
+    });
   };
 
   const getStatusRowClass = (status: string): string => {
@@ -147,26 +153,6 @@ const ImportRequestList: React.FC = () => {
         return 'no-bg-row';
     }
   };
-
-
-  // const getImportTypeText = (type: string): string => {
-  //   switch (type) {
-  //     case "ORDER":
-  //       return "Nhập hàng mới";
-  //     case "RETURN":
-  //       return "Nhập hàng trả";
-  //     default:
-  //       return type;
-  //   }
-  // };
-
-  // Extract all batch numbers for a given date string (YYYY-MM-DD)
-  // const getBatchesForDate = (dateStr: string) => {
-  //   return importRequestsData
-  //     .filter(item => item.batchCode && item.batchCode.startsWith(dateStr))
-  //     .map(item => item.batchCode.split('_')[1])
-  //     .filter((batch, idx, arr) => arr.indexOf(batch) === idx);
-  // };
 
   // Filtered data logic
   const filteredItems = importRequestsData.filter((item) => {
@@ -260,37 +246,6 @@ const ImportRequestList: React.FC = () => {
         return endDate ? <strong>{dayjs(endDate).format("DD-MM-YYYY")}</strong> : <span className="text-gray-400">Không có</span>;
       },
     },
-    // {
-    //   title: "Loại nhập",
-    //   dataIndex: "importType",
-    //   key: "importType",
-    //   align: "left" as const,
-    //   onHeaderCell: () => ({
-    //     style: { textAlign: 'center' as const }
-    //   }),
-    //   render: (type: string) => getImportTypeText(type),
-    // },
-    // {
-    //   title: "Đợt nhập",
-    //   dataIndex: "batchCode",
-    //   key: "batchCode",
-    //   align: "center" as const,
-    //   onHeaderCell: () => ({
-    //     style: { textAlign: 'center' as const }
-    //   }),
-    //   render: (batchCode: string) => {
-    //     // batchCode: "2025-05-03_1"
-    //     if (!batchCode) return '';
-    //     const [dateStr, batchNum] = batchCode.split('_');
-    //     const [year, month, day] = dateStr.split('-');
-    //     return (
-    //       <div className="text-center">
-    //         <div className="font-bold">Đợt {batchNum}</div>
-    //         <div className="">Ngày {day}-{month}-{year}</div>
-    //       </div>
-    //     );
-    //   },
-    // },
     {
       title: "Tổng dự nhập",
       dataIndex: "totalExpectQuantityInRequest",
@@ -400,13 +355,6 @@ const ImportRequestList: React.FC = () => {
               </span>
             </Link>
           </Tooltip>
-          {/* <Tooltip title="Tạo đơn nhập cho phiếu này" placement="top">
-            <Link to={ROUTES.PROTECTED.IMPORT.ORDER.CREATE_FROM_REQUEST(record.importRequestId.toString())}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 30, height: 30 }}>
-                <FileAddOutlined style={{ fontSize: 16, fontWeight: 700 }} />
-              </span>
-            </Link>
-          </Tooltip> */}
         </div>
       ),
     },
@@ -439,35 +387,27 @@ const ImportRequestList: React.FC = () => {
             />
           </div>
 
-          {/* <DatePicker
-          placeholder="Chọn ngày nhập"
-          format="DD-MM-YYYY"
-          value={selectedDate}
-          onChange={(date) => {
-            setSelectedDate(date);
-            setSelectedBatch(null);
-          }}
-          className="ml-2 font-bold text-black"
-          style={{ color: '#111', fontWeight: 600 }}
-          allowClear
-        /> */}
-          {/* {selectedDate && (
-          <Select
+          <DatePicker
+            placeholder="Chọn ngày tạo"
+            value={selectedDate}
+            onChange={(date) => updateFilter({ 
+              selectedDate: date,
+              pagination: { ...pagination, current: 1 }
+            })}
+            format="DD-MM-YYYY"
+            className="min-w-[180px] !border-gray-400 [&_input::placeholder]:!text-gray-400"
             allowClear
-            placeholder="Chọn đợt nhập"
-            className="min-w-[120px] font-bold text-black"
-            style={{ color: '#111', fontWeight: 600 }}
-            value={selectedBatch}
-            onChange={setSelectedBatch}
-            options={getBatchesForDate(selectedDate.format('YYYY-MM-DD')).map(batch => ({ label: `Đợt ${batch}`, value: batch }))}
           />
-        )} */}
+
           <Select
             mode="multiple"
             placeholder="Nhà cung cấp"
             className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
             value={selectedProvider}
-            onChange={setSelectedProvider}
+            onChange={(value) => updateFilter({ 
+              selectedProvider: value,
+              pagination: { ...pagination, current: 1 }
+            })}
             allowClear
             maxTagCount="responsive"
             options={uniqueProviders.map(provider => ({ label: provider, value: provider }))}
@@ -518,7 +458,7 @@ const ImportRequestList: React.FC = () => {
       <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
         <Tabs
           activeKey={selectedImportType}
-          onChange={setSelectedImportType}
+          onChange={(value) => updateFilter({ selectedImportType: value })}
           type="card"
           size="middle"
           items={[

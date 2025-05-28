@@ -15,6 +15,7 @@ import { ResponseDTO } from "@/hooks/useApi";
 import useAccountService, { AccountResponse } from "@/hooks/useAccountService";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
+import { useImportOrderFilter } from "@/hooks/useImportOrderFilter";
 import dayjs from "dayjs";
 
 interface RouteParams extends Record<string, string | undefined> {
@@ -32,16 +33,18 @@ const ImportOrderList: React.FC = () => {
   const navigate = useNavigate();
   const { importRequestId } = useParams<RouteParams>();
   const { latestNotification } = usePusherContext();
+  
+  // Use filter context instead of local state
+  const { filterState, updateFilter } = useImportOrderFilter();
+  const {
+    searchTerm,
+    selectedStatusFilter,
+    selectedStaff,
+    pagination
+  } = filterState;
+
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
-  const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
-  const [pagination, setPagination] = useState<TablePaginationConfig>({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
 
   const {
     getAllImportOrdersByImportRequestId,
@@ -133,10 +136,12 @@ const ImportOrderList: React.FC = () => {
       setImportOrdersData(formatted);
 
       if (response && response.metaDataDTO) {
-        setPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
+        updateFilter({
+          pagination: {
+            current: response.metaDataDTO.page,
+            pageSize: response.metaDataDTO.limit,
+            total: response.metaDataDTO.total,
+          }
         });
       }
     } catch (error) {
@@ -145,14 +150,16 @@ const ImportOrderList: React.FC = () => {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setSearchTerm(e.target.value);
+    updateFilter({ searchTerm: e.target.value });
   };
 
   const handleTableChange = (newPagination: TablePaginationConfig): void => {
-    setPagination({
-      ...newPagination,
-      current: newPagination.current,
-      pageSize: newPagination.pageSize,
+    updateFilter({
+      pagination: {
+        ...newPagination,
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+      }
     });
   };
 
@@ -224,6 +231,14 @@ const ImportOrderList: React.FC = () => {
     }
   };
 
+  const handleStatusFilterClick = (filterKey: string): void => {
+    const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
+    updateFilter({ 
+      selectedStatusFilter: newStatusFilter,
+      pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
+    });
+  };
+
   const columns = [
     {
       width: "16%",
@@ -236,17 +251,6 @@ const ImportOrderList: React.FC = () => {
         style: { textAlign: 'center' as const }
       }),
     },
-    // {
-    //   width: "10%",
-    //   title: "Mã phiếu",
-    //   dataIndex: "importRequestId",
-    //   key: "importRequestId",
-    //   render: (id: number) => `#${id}`,
-    //   align: "right" as const,
-    //   onHeaderCell: () => ({
-    //     style: { textAlign: 'center' as const }
-    //   }),
-    // },
     {
       title: "Số mặt hàng cần nhập",
       dataIndex: "importOrderDetailsCount",
@@ -269,41 +273,6 @@ const ImportOrderList: React.FC = () => {
         )
       ),
     },
-    // {
-    //   title: "Tổng đã lên đơn",
-    //   dataIndex: "totalExpectQuantityInOrder",
-    //   key: "totalExpectQuantityInOrder",
-    //   align: "right" as const,
-    //   render: (expect: number) => (
-    //     <div className="text-right text-lg">{expect}</div>
-    //   ),
-    // },
-    // {
-    //   title: "Tổng đã nhập",
-    //   dataIndex: "totalActualQuantityInOrder",
-    //   key: "totalActualQuantityInOrder",
-    //   align: "right" as const,
-    //   render: (actual: number, record: ImportOrderData) => {
-    //     const expected = record.totalExpectQuantityInOrder || 0;
-    //     const isEnough = actual >= expected;
-    //     return (
-    //       <div className="text-right">
-    //         {actual === 0 ? (
-    //           <span className="font-bold text-gray-600">Chưa nhập</span>
-    //         ) : (
-    //           <>
-    //             <div className="text-lg">{actual}</div>
-    //             {expected > 0 && (
-    //               <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-    //                 {isEnough ? "" : `Thiếu ${expected - actual}`}
-    //               </span>
-    //             )}
-    //           </>
-    //         )}
-    //       </div>
-    //     );
-    //   },
-    // },
     {
       title: "Thời điểm nhận hàng (dự kiến)",
       key: "receivedDateTime",
@@ -407,12 +376,6 @@ const ImportOrderList: React.FC = () => {
     }
   };
 
-  const handleStatusFilterClick = (filterKey: string): void => {
-    setSelectedStatusFilter(selectedStatusFilter === filterKey ? null : filterKey);
-    // Reset về trang đầu khi filter thay đổi
-    setPagination(prev => ({ ...prev, current: 1 }));
-  };
-
   return (
     <div className={`mx-auto`}>
       <div className="flex justify-between items-center mb-3">
@@ -507,7 +470,7 @@ const ImportOrderList: React.FC = () => {
           placeholder="Nhân viên được phân công"
           className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
           value={selectedStaff}
-          onChange={setSelectedStaff}
+          onChange={(value) => updateFilter({ selectedStaff: value })}
           allowClear
           maxTagCount="responsive"
           options={staffs.map(staff => ({ 
