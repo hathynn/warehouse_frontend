@@ -90,6 +90,8 @@ const ExportRequestDetail = () => {
   const [confirmCreateExportModalVisible, setConfirmCreateExportModalVisible] =
     useState(false);
 
+  const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
+
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -130,6 +132,7 @@ const ExportRequestDetail = () => {
     if (!exportRequestId) return;
     try {
       setDetailsLoading(true);
+
       const response = await getExportRequestDetails(
         exportRequestId,
         page,
@@ -145,8 +148,14 @@ const ExportRequestDetail = () => {
           total: meta ? meta.total : 0,
         });
       }
+
+      // Fetch tất cả sản phẩm
+      const allResp = await getExportRequestDetails(exportRequestId, 1, 50); // đảm bảo lấy đủ tất cả
+      if (allResp && allResp.content) {
+        const allEnriched = await enrichDetails(allResp.content);
+        setAllExportRequestDetails(allEnriched);
+      }
     } catch (error) {
-      console.error("Failed to fetch export request details:", error);
       message.error("Không thể tải danh sách chi tiết phiếu xuất");
     } finally {
       setDetailsLoading(false);
@@ -221,10 +230,6 @@ const ExportRequestDetail = () => {
   }, []);
 
   useEffect(() => {
-    fetchDetails();
-  }, []);
-
-  useEffect(() => {
     if (exportRequest?.countingStaffId) {
       fetchAssignedCountingStaff();
     }
@@ -233,6 +238,10 @@ const ExportRequestDetail = () => {
   useEffect(() => {
     fetchAssignedKeeper();
   }, [exportRequest?.assignedWareHouseKeeperId]);
+
+  useEffect(() => {
+    fetchDetails();
+  }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
 
   // Huỷ tạo phiếu
   const handleCancelCreateExport = () => {
@@ -524,8 +533,9 @@ const ExportRequestDetail = () => {
   ];
 
   const getItemStatus = () => {
-    if (!exportRequestDetails || exportRequestDetails.length === 0) return null;
-    const hasLack = exportRequestDetails.some((d) => d.status === "LACK");
+    if (!allExportRequestDetails || allExportRequestDetails.length === 0)
+      return null;
+    const hasLack = allExportRequestDetails.some((d) => d.status === "LACK");
     return hasLack ? "LACK" : "ENOUGH";
   };
 
@@ -717,6 +727,7 @@ const ExportRequestDetail = () => {
       current: pag.current,
       pageSize: pag.pageSize,
     });
+    // Gọi lại fetchDetails và luôn cập nhật allExportRequestDetails!
     fetchDetails(pag.current, pag.pageSize);
   };
 
@@ -810,6 +821,10 @@ const ExportRequestDetail = () => {
       <ProductDetailTable
         columns={columns}
         exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
+        allExportRequestDetails={
+          //editMode ? editedDetails : allExportRequestDetails
+          allExportRequestDetails
+        } // THÊM DÒNG NÀY
         detailsLoading={detailsLoading}
         pagination={pagination}
         handleTableChange={handleTableChange}
@@ -1095,22 +1110,22 @@ const ExportRequestDetail = () => {
         }}
       >
         <div className="mb-4 font-semibold">
-          Tổng sản phẩm kiểm đếm: {exportRequestDetails.length} sản phẩm
+          Tổng sản phẩm kiểm đếm: {allExportRequestDetails.length} sản phẩm
         </div>
 
         <div className="mb-4 font-semibold">
           Tổng số sản phẩm có trạng thái thiếu:{" "}
           <span className="text-red-600">
-            {exportRequestDetails.filter((d) => d.status === "LACK").length}
+            {allExportRequestDetails.filter((d) => d.status === "LACK").length}
           </span>{" "}
           sản phẩm
         </div>
 
-        {exportRequestDetails.some((d) => d.status === "LACK") && (
+        {allExportRequestDetails.some((d) => d.status === "LACK") && (
           <>
             <div className="mb-2 font-semibold">Danh sách sản phẩm thiếu:</div>
             <LackProductTable
-              data={exportRequestDetails.filter((d) => d.status === "LACK")}
+              data={allExportRequestDetails.filter((d) => d.status === "LACK")}
             />
           </>
         )}
