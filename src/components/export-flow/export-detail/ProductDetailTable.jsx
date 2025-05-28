@@ -7,7 +7,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 import { DeleteOutlined } from "@ant-design/icons";
 
 // Hàm getItemStatus nằm trong component này luôn
-const getItemStatus = (details = []) => {
+const getItemStatus = (details) => {
   if (!details || details.length === 0) return null;
   return details.some((d) => d.status === "LACK") ? "LACK" : "ENOUGH";
 };
@@ -15,6 +15,7 @@ const getItemStatus = (details = []) => {
 const ProductDetailTable = ({
   columns,
   exportRequestDetails,
+  allExportRequestDetails,
   detailsLoading,
   pagination,
   handleTableChange,
@@ -29,23 +30,36 @@ const ProductDetailTable = ({
   onCancelCreateExport,
   onConfirmCreateExport,
 }) => {
-  const itemStatus = getItemStatus(exportRequestDetails);
+  const itemStatus = getItemStatus(allExportRequestDetails);
 
-  // Đếm số hàng đủ và thiếu
-  const totalEnough = exportRequestDetails.filter(
+  const totalEnough = allExportRequestDetails.filter(
     (d) => d.status !== "LACK"
   ).length;
-  const totalLack = exportRequestDetails.filter(
+  const totalLack = allExportRequestDetails.filter(
     (d) => d.status === "LACK"
   ).length;
+  const totalItems = allExportRequestDetails.length;
 
   const handleQuantityChange = (value, recordId) => {
     setEditedDetails((prev) =>
-      prev.map((item) =>
-        item.id === recordId ? { ...item, quantity: value } : item
-      )
+      prev.map((item) => {
+        if (item.id === recordId) {
+          let error = "";
+          if (!value || value <= 0) {
+            error = "Không được bỏ trống";
+          } else if (value > item.actualQuantity) {
+            error = "Phải ≤" + item.actualQuantity;
+          }
+          return { ...item, quantity: value, error };
+        }
+        return item;
+      })
     );
   };
+
+  const hasValidationError =
+    editedDetails.length === 0 ||
+    editedDetails.some((item) => item.error && item.status === "LACK");
 
   const handleDeleteRow = (recordId) => {
     setEditedDetails((prev) => prev.filter((item) => item.id !== recordId));
@@ -77,12 +91,25 @@ const ProductDetailTable = ({
           ...col,
           render: (text, record) =>
             record.status === "LACK" ? (
-              <InputNumber
-                min={1}
-                value={record.quantity}
-                onChange={(val) => handleQuantityChange(val, record.id)}
-                style={{ width: 80, textAlign: "right" }}
-              />
+              <div>
+                <InputNumber
+                  min={1}
+                  value={record.quantity}
+                  onChange={(val) => handleQuantityChange(val, record.id)}
+                  style={{ width: 80, textAlign: "right" }}
+                />
+                {record.error && (
+                  <div
+                    style={{
+                      color: "#ff4d4f",
+                      fontSize: 12,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {record.error}
+                  </div>
+                )}
+              </div>
             ) : (
               <div style={{ textAlign: "right" }}>{text}</div>
             ),
@@ -92,6 +119,10 @@ const ProductDetailTable = ({
     }),
     ...(editMode ? [actionColumn] : []),
   ];
+
+  const unexportableItems = allExportRequestDetails.filter(
+    (item) => item.actualQuantity === 0
+  );
 
   return (
     <>
@@ -104,17 +135,26 @@ const ProductDetailTable = ({
             </Button>
           )}
 
-        {/* Hiện nút "Tạo phiếu xuất mới" nếu có LACK và chưa ở chế độ edit */}
         {!editMode &&
           userRole === AccountRole.DEPARTMENT &&
           exportRequest?.status === ExportStatus.COUNT_CONFIRMED &&
-          exportRequestDetails.some((item) => item.status === "LACK") && (
+          allExportRequestDetails.some((item) => item.status === "LACK") && (
             <Button
               type="primary"
               onClick={() => {
                 setEditMode(true);
                 setEditedDetails(
-                  exportRequestDetails.map((item) => ({ ...item }))
+                  allExportRequestDetails
+                    .filter((item) => item.actualQuantity > 0)
+                    .map((item) => {
+                      let error = "";
+                      if (!item.quantity || item.quantity <= 0) {
+                        error = "Không được bỏ trống";
+                      } else if (item.quantity > item.actualQuantity) {
+                        error = "Phải ≤ " + item.actualQuantity;
+                      }
+                      return { ...item, error };
+                    })
                 );
               }}
             >
@@ -122,7 +162,6 @@ const ProductDetailTable = ({
             </Button>
           )}
 
-        {/* Khi đang edit thì chỉ hiện 2 nút xác nhận/hủy */}
         {editMode && (
           <>
             <Button
@@ -130,6 +169,7 @@ const ProductDetailTable = ({
               loading={creating}
               style={{ marginRight: 8 }}
               onClick={onConfirmCreateExport}
+              disabled={hasValidationError}
             >
               Xác nhận tạo phiếu
             </Button>
@@ -139,6 +179,7 @@ const ProductDetailTable = ({
           </>
         )}
       </h2>
+
       {[
         ExportStatus.IN_PROGRESS,
         ExportStatus.COUNTED,
@@ -148,70 +189,76 @@ const ProductDetailTable = ({
         ExportStatus.COMPLETED,
         ExportStatus.CANCELLED,
       ].includes(exportRequest?.status) && (
-        <div
-          className="mb-4"
-          style={{
-            background: "#e6f7ff",
-            border: "1px solid #91d5ff",
-            borderRadius: 8,
-            padding: "16px 24px",
-            marginBottom: 24,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
+        <>
           <div
-            style={{ display: "flex", alignItems: "center", marginBottom: 8 }}
+            className="mb-4"
+            style={{
+              background: "#e6f7ff",
+              border: "1px solid #91d5ff",
+              borderRadius: 8,
+              padding: "16px 24px",
+              marginBottom: 24,
+              display: "flex",
+              flexDirection: "column",
+            }}
           >
-            <InfoCircleOutlined
-              style={{ color: "#1890ff", fontSize: 17, marginRight: 8 }}
-            />
-            <span style={{ fontWeight: 600, fontSize: 15 }}>
-              Thông tin sản phẩm xuất
-            </span>
-          </div>
+            <div
+              style={{ display: "flex", alignItems: "center", marginBottom: 8 }}
+            >
+              <InfoCircleOutlined
+                style={{ color: "#1890ff", fontSize: 17, marginRight: 8 }}
+              />
+              <span style={{ fontWeight: 600, fontSize: 15 }}>
+                Thông tin sản phẩm xuất
+              </span>
+            </div>
 
-          {/* Trạng thái hàng: chỉ hiện với WAREHOUSE_MANAGER ở status COUNTED */}
-          {exportRequest?.status === ExportStatus.COUNTED &&
-            userRole === AccountRole.WAREHOUSE_MANAGER && (
-              <div className="mb-2">
-                <span style={{ fontWeight: 500, marginRight: 8 }}>
-                  Trạng thái hàng:{" "}
-                </span>
-                {itemStatus === "LACK" ? (
-                  <Tag color="error">Thiếu</Tag>
-                ) : itemStatus === "ENOUGH" ? (
-                  <Tag color="success">Đủ</Tag>
-                ) : null}
-              </div>
-            )}
+            {exportRequest?.status === ExportStatus.COUNTED &&
+              userRole === AccountRole.WAREHOUSE_MANAGER && (
+                <div className="mb-2">
+                  <span className="ml-6 font-medium">Trạng thái hàng: </span>
+                  {itemStatus === "LACK" ? (
+                    <Tag color="error">Thiếu</Tag>
+                  ) : itemStatus === "ENOUGH" ? (
+                    <Tag color="success">Đủ</Tag>
+                  ) : null}
+                </div>
+              )}
 
-          <div className="flex gap-8 items-center">
-            <span className="ml-6">
-              Tổng số hàng: <span>{exportRequestDetails.length}</span>
-            </span>
-            {[
-              ExportStatus.COUNTED,
-              ExportStatus.COUNT_CONFIRMED,
-              ExportStatus.WAITING_EXPORT,
-              ExportStatus.CONFIRMED,
-              ExportStatus.COMPLETED,
-              ExportStatus.CANCELLED,
-            ].includes(exportRequest?.status) && (
-              <>
-                <span>
-                  Tổng số hàng đủ: <span>{totalEnough}</span>
-                </span>
-                <span>
-                  Tổng số hàng thiếu:{" "}
-                  <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
-                    {totalLack}
+            <div className="flex gap-8 items-center">
+              <span className="ml-6">
+                Tổng số hàng: <span>{totalItems}</span>
+              </span>
+              {[
+                ExportStatus.COUNTED,
+                ExportStatus.COUNT_CONFIRMED,
+                ExportStatus.WAITING_EXPORT,
+                ExportStatus.CONFIRMED,
+                ExportStatus.COMPLETED,
+                ExportStatus.CANCELLED,
+              ].includes(exportRequest?.status) && (
+                <>
+                  <span>
+                    Tổng số hàng đủ: <span>{totalEnough}</span>
                   </span>
-                </span>
-              </>
-            )}
+                  <span>
+                    Tổng số hàng thiếu:{" "}
+                    <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
+                      {totalLack}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+
+          {unexportableItems.length > 0 && editMode && (
+            <div className="mb-4 text-red-600 font-semibold">
+              Các sản phẩm không thể xuất do không đủ tồn kho:{" "}
+              {unexportableItems.map((item) => `#${item.itemId}`).join(", ")}
+            </div>
+          )}
+        </>
       )}
 
       <Table
@@ -242,6 +289,7 @@ const ProductDetailTable = ({
 ProductDetailTable.propTypes = {
   columns: PropTypes.array.isRequired,
   exportRequestDetails: PropTypes.array.isRequired,
+  allExportRequestDetails: PropTypes.array,
   detailsLoading: PropTypes.bool.isRequired,
   pagination: PropTypes.shape({
     current: PropTypes.number.isRequired,
