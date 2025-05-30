@@ -1,6 +1,6 @@
-import useApiService, { ResponseDTO } from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
-import { useState } from "react";
+import { ResponseDTO } from "@/utils/interfaces";
 
 // Interface to match ImportRequestDetailResponse.java
 export interface ImportRequestDetailResponse {
@@ -33,7 +33,7 @@ export interface ImportRequestCreateWithDetailRequest {
 }
 
 const useImportRequestDetailService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   // Get paginated import request details by import request ID
   const getImportRequestDetails = async (

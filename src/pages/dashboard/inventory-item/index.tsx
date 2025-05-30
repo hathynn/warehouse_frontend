@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Table, Input, Tag, TablePaginationConfig } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import useInventoryItemService, { InventoryItemResponse, ItemStatus } from "@/hooks/useInventoryItemService";
-import useItemService, { ItemResponse } from "@/hooks/useItemService";
-import { toast } from "react-toastify";
+import useInventoryItemService, { InventoryItemResponse, ItemStatus } from "@/services/useInventoryItemService";
+import useItemService, { ItemResponse } from "@/services/useItemService";
 
 const InventoryItemList: React.FC = () => {
   const [inventoryItems, setInventoryItems] = useState<InventoryItemResponse[]>([]);

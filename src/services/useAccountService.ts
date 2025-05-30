@@ -1,5 +1,5 @@
 import { AccountRole, AccountRoleForRequest } from "@/utils/enums";
-import useApiService from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Interface to match AccountResponse.java
@@ -62,7 +62,7 @@ export interface ActiveAccountRequest {
 
 
 const useAccountService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   /**
    * Register a new account

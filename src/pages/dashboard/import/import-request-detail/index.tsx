@@ -7,17 +7,17 @@ import {
   message
 } from "antd";
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
-import useImportRequestService from "@/hooks/useImportRequestService";
-import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
+import useImportRequestService from "@/services/useImportRequestService";
+import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
 import { ROUTES } from "@/constants/routes";
 import DetailCard, { type DetailInfoItem } from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 import { ImportRequestData } from "../import-request-list";
-import useProviderService from "@/hooks/useProviderService";
-import useImportOrderService, { ImportOrderResponse } from "@/hooks/useImportOrderService";
-import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
-import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
+import useProviderService from "@/services/useProviderService";
+import useImportOrderService, { ImportOrderResponse } from "@/services/useImportOrderService";
+import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/services/useImportOrderDetailService";
+import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { getMinDateTime } from "@/utils/helpers";
 import dayjs from "dayjs";
 

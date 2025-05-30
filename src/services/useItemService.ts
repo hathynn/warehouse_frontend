@@ -1,6 +1,7 @@
 import { useState } from "react";
-import useApiService, { ResponseDTO } from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
+import { ResponseDTO } from "@/utils/interfaces";
 
 // Interface to match ItemRequest.java
 export interface ItemRequest {
@@ -39,7 +40,7 @@ export interface ItemResponse {
 }
 
 const useItemService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
   const [itemId, setItemId] = useState<number | null>(null);
 
   // Tạo sản phẩm mới

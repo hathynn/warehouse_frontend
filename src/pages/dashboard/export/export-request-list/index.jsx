@@ -3,7 +3,7 @@ import { Table, Button, Input, Tabs, Select } from "antd";
 import { Link } from "react-router-dom";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import useExportRequestService from "../../../../hooks/useExportRequestService";
+import useExportRequestService from "@/services/useExportRequestService";
 import { useSelector } from "react-redux";
 import StatusTag from "@/components/commons/StatusTag";
 

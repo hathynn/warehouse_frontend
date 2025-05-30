@@ -1,4 +1,4 @@
-import useApiService from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Interface to match ConfigurationDto.java
@@ -17,7 +17,7 @@ export interface ConfigurationDto {
 }
 
 const useConfigurationService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   // Fetch the configuration
   const getConfiguration = async (): Promise<ConfigurationDto | null> => {

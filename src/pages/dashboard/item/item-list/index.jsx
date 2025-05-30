@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Input, message } from "antd";
 import { Link } from "react-router-dom";
-import useItemService from "../../../../hooks/useItemService";
+import useItemService from "@/services/useItemService";
 
 const ItemList = () => {
   const [items, setItems] = useState([]);

@@ -1,5 +1,4 @@
-import { message } from "antd";
-import useApiService from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Interface mô tả dữ liệu chi tiết của export request trả về từ API
@@ -25,7 +24,7 @@ export interface ExportRequestDetailRequest {
 }
 
 const useExportRequestDetailService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   /**
    * Upload file Excel để tạo mới export request detail.

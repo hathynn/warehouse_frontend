@@ -19,20 +19,20 @@ import {
   InfoCircleOutlined,
   ClockCircleOutlined
 } from "@ant-design/icons";
-import useImportOrderService from "@/hooks/useImportOrderService";
-import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import useAccountService from "@/hooks/useAccountService";
-import { ImportOrderResponse, ExtendImportOrderRequest } from "@/hooks/useImportOrderService";
-import { ImportOrderDetailResponse } from "@/hooks/useImportOrderDetailService";
-import { AccountResponse } from "@/hooks/useAccountService";
+import useImportOrderService from "@/services/useImportOrderService";
+import useImportOrderDetailService from "@/services/useImportOrderDetailService";
+import useAccountService from "@/services/useAccountService";
+import { ImportOrderResponse, ExtendImportOrderRequest } from "@/services/useImportOrderService";
+import { ImportOrderDetailResponse } from "@/services/useImportOrderDetailService";
+import { AccountResponse } from "@/services/useAccountService";
 import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
 import { UserState } from "@/contexts/redux/features/userSlice";
-import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
+import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
-import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/hooks/useInventoryItemService";
+import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/services/useInventoryItemService";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";

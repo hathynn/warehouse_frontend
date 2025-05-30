@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import useProviderService, { ProviderResponse } from "@/hooks/useProviderService";
+import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal, TablePaginationConfig, Table } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import useImportOrderService, { ImportOrderCreateRequest } from "@/hooks/useImportOrderService";
-import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
-import useImportOrderDetailService from "@/hooks/useImportOrderDetailService";
-import { ImportRequestDetailResponse } from "@/hooks/useImportRequestDetailService";
-import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
+import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
+import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
+import useImportOrderDetailService from "@/services/useImportOrderDetailService";
+import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
+import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
 import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";

@@ -1,6 +1,7 @@
-import { useState } from "react";
-import useApiService, { ResponseDTO } from "./useApi";
+
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
+import { ResponseDTO } from "@/utils/interfaces";
 
 // Interface to match NotificationResponse.java
 export interface NotificationResponse {
@@ -21,7 +22,7 @@ export interface NotificationRequest {
 }
 
 const useNotificationService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   // Get all notifications for a specific account
   const getAllNotifications = async (

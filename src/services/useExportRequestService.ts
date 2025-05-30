@@ -1,5 +1,5 @@
 import { ExportStatus } from "@/utils/enums";
-import useApiService from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Các trường trong DB export_request:
@@ -46,7 +46,7 @@ export interface ExportRequestRequest {
 }
 
 const useExportRequestService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   // Lấy tất cả phiếu xuất
   const getAllExportRequests = async (): Promise<ExportRequestResponse[]> => {

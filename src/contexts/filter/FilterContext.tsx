@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { TablePaginationConfig } from 'antd';
-import moment from 'moment';
 
 interface BaseFilterState {
   searchTerm: string;

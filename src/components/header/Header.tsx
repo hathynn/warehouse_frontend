@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { ItemType } from 'antd/es/menu/interface';
 import { AccountRole } from '@/utils/enums';
 import { ROUTES } from '@/constants/routes';
-import useNotificationService, { NotificationResponse } from '@/hooks/useNotificationService';
+import useNotificationService, { NotificationResponse } from '@/services/useNotificationService';
 import notificationWav from "@/assets/notification-sound.wav";
 import { usePusherContext } from '@/contexts/pusher/PusherContext';
 

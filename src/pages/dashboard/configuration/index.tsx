@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, Form, InputNumber, TimePicker, Button, Spin, Tooltip } from "antd";
 import { SaveOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import useConfigurationService, { ConfigurationDto } from "@/hooks/useConfigurationService";
+import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import dayjs from "dayjs";
 
 const fieldDescriptions = {

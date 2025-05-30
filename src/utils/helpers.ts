@@ -1,6 +1,6 @@
 import dayjs, { Dayjs } from "dayjs";
-import { ConfigurationDto } from "../hooks/useConfigurationService";
-import { ImportRequestResponse } from "../hooks/useImportRequestService";
+import { ConfigurationDto } from "../services/useConfigurationService";
+import { ImportRequestResponse } from "../services/useImportRequestService";
 
 /**
  * Defines the action types for import and request processing.

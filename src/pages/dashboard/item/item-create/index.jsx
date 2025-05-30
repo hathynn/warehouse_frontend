@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Form, Input, Select, Button, message, InputNumber, Spin } from "antd";
-import useItemService from "../../../../hooks/useItemService";
-import useProviderService from "../../../../hooks/useProviderService";
+import useItemService from "@/services/useItemService";
+import useProviderService from "@/services/useProviderService";
 
 const { Option } = Select;
 const { TextArea } = Input;

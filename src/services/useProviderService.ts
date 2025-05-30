@@ -1,6 +1,7 @@
 import { useState } from "react";
-import useApiService, { ResponseDTO } from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
+import { ResponseDTO } from "@/utils/interfaces";
 
 // Interface to match ProviderRequest.java
 export interface ProviderRequest {
@@ -23,7 +24,7 @@ export interface ProviderResponse {
 }
 
 const useProviderService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
 
   // Lấy danh sách nhà cung cấp

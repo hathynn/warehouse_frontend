@@ -1,4 +1,5 @@
-import useApiService, { ResponseDTO } from "./useApi";
+import { ResponseDTO } from "@/utils/interfaces";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Enum to match ItemStatus.java
@@ -40,7 +41,7 @@ export interface QrCodeResponse {
 }
 
 const useInventoryItemService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
 
   // Get all inventory items with pagination
   const getAllInventoryItems = async (

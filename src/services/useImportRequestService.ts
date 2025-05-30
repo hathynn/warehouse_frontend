@@ -1,5 +1,5 @@
 import { useState } from "react";
-import useApiService, { ResponseDTO } from "./useApi";
+import useApiService, { ResponseDTO } from "../hooks/useApi";
 import { toast } from "react-toastify";
 
 // Interface to match ImportRequestCreateRequest.java

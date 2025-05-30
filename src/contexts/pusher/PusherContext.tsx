@@ -20,7 +20,7 @@ import {
   PRIVATE_ACCOUNTING_CHANNEL,
   PRIVATE_ADMIN_CHANNEL
 } from '@/constants/channels-events';
-import { NotificationResponse } from "@/hooks/useNotificationService";
+import { NotificationResponse } from "@/services/useNotificationService";
 
 export interface NotificationEvent {
   type: string;

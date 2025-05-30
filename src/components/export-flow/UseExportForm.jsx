@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input, DatePicker } from "antd";
 import moment from "moment";
 import PropTypes from "prop-types";
-import useConfigurationService from "@/hooks/useConfigurationService";
+import useConfigurationService from "@/services/useConfigurationService";
 
 const UseExportForm = ({
   formData,

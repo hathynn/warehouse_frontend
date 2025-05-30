@@ -10,7 +10,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import PropTypes from "prop-types";
-import useConfigurationService from "@/hooks/useConfigurationService";
+import useConfigurationService from "@/services/useConfigurationService";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";

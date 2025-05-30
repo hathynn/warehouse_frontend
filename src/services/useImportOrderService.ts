@@ -1,7 +1,8 @@
 import { useState } from "react";
-import useApiService, { ResponseDTO } from "./useApi";
+import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ImportStatus } from "@/utils/enums";
+import { ResponseDTO } from "@/utils/interfaces";
 
 
 export interface ImportOrderCreateRequest {
@@ -47,7 +48,7 @@ export interface ImportOrderResponse {
 }
 
 const useImportOrderService = () => {
-  const { callApi, loading } = useApiService();
+  const { callApi, loading } = useApi();
   const [importOrderId, setImportOrderId] = useState<string | null>(null);
 
   const getAllImportOrders = async (

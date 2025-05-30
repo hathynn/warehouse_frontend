@@ -4,15 +4,15 @@ import StatusTag from "@/components/commons/StatusTag";
 import { UnorderedListOutlined, FileAddOutlined, EyeFilled, EyeOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
-import useImportRequestService, { ImportRequestResponse } from "@/hooks/useImportRequestService";
-import useImportRequestDetailService from "@/hooks/useImportRequestDetailService";
-import useProviderService from "@/hooks/useProviderService";
+import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
+import useImportRequestDetailService from "@/services/useImportRequestDetailService";
+import useProviderService from "@/services/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
-import { useImportRequestFilter } from "@/hooks/useImportRequestFilter";
+import { useImportRequestFilter } from "@/services/useImportRequestFilter";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;

@@ -1,9 +1,8 @@
 import { useState, ChangeEvent, FormEvent } from "react";
 import { useDispatch } from "react-redux";
 import { setCredentials, setUserInfo } from "@/contexts/redux/features/userSlice";
-import useAccountService, { AuthenticationRequest } from "@/hooks/useAccountService";
+import useAccountService, { AuthenticationRequest } from "@/services/useAccountService";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
-import { toast } from "react-toastify";
 import { jwtDecode } from "jwt-decode";
 
 // Interface for JWT decoded token
