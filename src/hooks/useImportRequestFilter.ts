@@ -1,7 +1,11 @@
 import moment from 'moment';
-import { BaseFilterState, createFilterHook, defaultPagination } from '../contexts/filter/FilterContext';
+import { createFilterHook } from '../contexts/filter/createFilterHook';
+import { TablePaginationConfig } from 'antd';
 
-export interface ImportRequestFilterState extends BaseFilterState {
+export interface ImportRequestFilterState {
+    searchTerm: string;
+    pagination: TablePaginationConfig;
+    selectedStatusFilter: string | null;
     selectedDate: moment.Moment | null;
     selectedImportType: string;
     selectedProvider: string[];
@@ -13,7 +17,11 @@ const defaultImportRequestFilterState: ImportRequestFilterState = {
     selectedImportType: 'ORDER',
     selectedProvider: [],
     selectedStatusFilter: null,
-    pagination: defaultPagination,
+    pagination: {   
+        current: 1,
+        pageSize: 10,
+        total: 0
+    }
 };
 
 export const useImportRequestFilter = createFilterHook(

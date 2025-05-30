@@ -11,11 +11,11 @@ import { ROUTES } from "@/constants/routes";
 import { AccountRole, AccountRoleForRequest, ImportStatus } from "@/utils/enums";
 import { UserState } from "@/contexts/redux/features/userSlice";
 import { useSelector } from "react-redux";
-import { ResponseDTO } from "@/hooks/useApi";
+import { ResponseDTO } from "@/utils/interfaces";
 import useAccountService, { AccountResponse } from "@/services/useAccountService";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
-import { useImportOrderFilter } from "@/hooks/useImportOrderFilter";
+import { ImportOrderFilterState, useImportOrderFilter } from "@/hooks/useImportOrderFilter";
 import dayjs from "dayjs";
 
 interface RouteParams extends Record<string, string | undefined> {
@@ -41,7 +41,7 @@ const ImportOrderList: React.FC = () => {
     selectedStatusFilter,
     selectedStaff,
     pagination
-  } = filterState;
+  } = filterState as ImportOrderFilterState;
 
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);

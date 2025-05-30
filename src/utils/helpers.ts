@@ -1,6 +1,14 @@
 import dayjs, { Dayjs } from "dayjs";
 import { ConfigurationDto } from "../services/useConfigurationService";
 import { ImportRequestResponse } from "../services/useImportRequestService";
+import { AccountRole } from '@/utils/enums';
+import {
+    PRIVATE_WAREHOUSE_MANAGER_CHANNEL,
+    PRIVATE_DEPARTMENT_CHANNEL,
+    PRIVATE_STAFF_CHANNEL,
+    PRIVATE_ACCOUNTING_CHANNEL,
+    PRIVATE_ADMIN_CHANNEL
+} from '@/constants/channels-events';
 
 /**
  * Defines the action types for import and request processing.
@@ -337,4 +345,33 @@ export function getDisabledTimeConfigForAction(
         };
     }
     return {};
+}
+
+
+/**
+ * Maps user roles to Pusher channels.
+ *
+ * @param userRole - The user's role.
+ * @returns The corresponding Pusher channel name or null if no mapping exists.
+ *
+ * @example
+ * getChannelForRole(AccountRole.WAREHOUSE_MANAGER);
+ * // returns PRIVATE_WAREHOUSE_MANAGER_CHANNEL
+ */
+export function getChannelForRole(userRole: AccountRole): string | null {
+    switch (userRole) {
+        case AccountRole.WAREHOUSE_MANAGER:
+            return PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
+        case AccountRole.DEPARTMENT:
+            return PRIVATE_DEPARTMENT_CHANNEL;
+        case AccountRole.STAFF:
+            return PRIVATE_STAFF_CHANNEL;
+        case AccountRole.ACCOUNTING:
+            return PRIVATE_ACCOUNTING_CHANNEL;
+        case AccountRole.ADMIN:
+            return PRIVATE_ADMIN_CHANNEL;
+        default:
+            console.warn(`No channel defined for role: ${userRole}`);
+            return null;
+    }
 }

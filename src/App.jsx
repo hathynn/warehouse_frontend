@@ -1,4 +1,3 @@
-import "./App.css";
 import { RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import { persistor, store } from "./contexts/redux/store";
@@ -8,8 +7,8 @@ import "./index.css";
 import { Router } from "@/router/Router";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { PusherProvider } from "./contexts/pusher/PusherContext";
-import { FilterProvider } from "./contexts/filter/FilterContext";
+import { PusherProvider } from "@/contexts/pusher/PusherProvider";
+import { FilterProvider } from "@/contexts/filter/FilterProvider";
 
 function App() {
   return (

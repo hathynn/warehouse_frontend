@@ -1,142 +1,40 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { TablePaginationConfig } from 'antd';
+/**
+ * Centralized filter store allowing each page to get/update its own filter state based on a unique pageKey
+ * -Preserves filter state when navigating between pages
+ * -Each page only needs to use a single custome hook, 
+ * -Support updating filter, resetting for the current page and resetting all pages filters
+ */
 
-interface BaseFilterState {
-  searchTerm: string;
-  pagination: TablePaginationConfig;
-  selectedStatusFilter: string | null;
-}
+import { createContext } from "react";
 
-type FilterStates = Record<string, BaseFilterState>;
+/** Generic Filter States that can be extended by each page type
+ * @property {string} [key] - A unique page identifier (e.g "import-request-list, export-request-list, etc")
+ * @property {Object} [value] - A key-value pair of filter states for that page
+ */
+export type FilterStates = Record<string, Object>;
 
-const defaultPagination: TablePaginationConfig = {
-  current: 1,
-  pageSize: 10,
-  total: 0,
-};
-
-interface FilterContextType {
+/*
+* -filterStates: A record of filter states for each page
+* -updateFilter: Updates the filter state for a specific page
+* -resetFilter: Resets the filter state for a specific page
+* -resetAllFilters: Resets the filter state for all pages
+* -getFilterState: Gets the filter state for a specific page
+* -registerFilter: Registers a new filter state for a page
+* -isRegistered: Checks if a page has a registered filter state
+* Will be implemented in the FilterProvider component
+*/
+export interface FilterContextType {
   filterStates: FilterStates;
-  updateFilter: <T extends BaseFilterState>(
-    pageKey: string,
-    updates: Partial<T>
-  ) => void;
+  defaultFilterStates: FilterStates;
+  updateFilter: (pageKey: string, updateFilterStates: Partial<Object>) => void;
   resetFilter: (pageKey: string) => void;
   resetAllFilters: () => void;
-  getFilterState: <T extends BaseFilterState>(pageKey: string) => T;
-  registerFilter: <T extends BaseFilterState>(pageKey: string, defaultState: T) => void;
+  getFilterStates: (pageKey: string) => Object;
+  registerFilter: (pageKey: string, defaultState: Object) => void;
   isRegistered: (pageKey: string) => boolean;
 }
 
+// Create a context for the filter state
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
-interface FilterProviderProps {
-  children: ReactNode;
-}
-
-export const FilterProvider: React.FC<FilterProviderProps> = ({ children }) => {
-  const [filterStates, setFilterStates] = useState<FilterStates>({});
-  const [defaultStates, setDefaultStates] = useState<FilterStates>({});
-
-  const isRegistered = (pageKey: string): boolean => {
-    return pageKey in defaultStates;
-  };
-
-  const registerFilter = <T extends BaseFilterState>(pageKey: string, defaultState: T) => {
-    if (!isRegistered(pageKey)) {
-      setDefaultStates(prev => ({
-        ...prev,
-        [pageKey]: defaultState,
-      }));
-      
-      setFilterStates(prev => ({
-        ...prev,
-        [pageKey]: defaultState,
-      }));
-    }
-  };
-
-  const updateFilter = <T extends BaseFilterState>(
-    pageKey: string,
-    updates: Partial<T>
-  ) => {
-    setFilterStates(prev => ({
-      ...prev,
-      [pageKey]: {
-        ...prev[pageKey],
-        ...updates,
-      },
-    }));
-  };
-
-  const resetFilter = (pageKey: string) => {
-    const defaultState = defaultStates[pageKey];
-    if (defaultState) {
-      setFilterStates(prev => ({
-        ...prev,
-        [pageKey]: defaultState,
-      }));
-    }
-  };
-
-  const resetAllFilters = () => {
-    setFilterStates({ ...defaultStates });
-  };
-
-  const getFilterState = <T extends BaseFilterState>(pageKey: string): T => {
-    return filterStates[pageKey] as T;
-  };
-
-  const value: FilterContextType = {
-    filterStates,
-    updateFilter,
-    resetFilter,
-    resetAllFilters,
-    getFilterState,
-    registerFilter,
-    isRegistered,
-  };
-
-  return (
-    <FilterContext.Provider value={value}>
-      {children}
-    </FilterContext.Provider>
-  );
-};
-
-const useFilterContext = () => {
-  const context = useContext(FilterContext);
-  if (context === undefined) {
-    throw new Error('useFilterContext must be used within a FilterProvider');
-  }
-  return context;
-};
-
-export const createFilterHook = <T extends BaseFilterState>(
-  pageKey: string,
-  defaultState: T
-) => {
-  return () => {
-    const { getFilterState, updateFilter, resetFilter, registerFilter, isRegistered } = useFilterContext();
-    
-    // Register the filter on first use if not already registered
-    React.useEffect(() => {
-      if (!isRegistered(pageKey)) {
-        registerFilter(pageKey, defaultState);
-      }
-    }, [pageKey]);
-    
-    // Get current state or return default if not yet registered
-    const currentState = isRegistered(pageKey) ? getFilterState<T>(pageKey) : defaultState;
-    
-    return {
-      filterState: currentState,
-      updateFilter: (updates: Partial<T>) => updateFilter(pageKey, updates),
-      resetFilter: () => resetFilter(pageKey),
-    };
-  };
-};
-
-// Export the default pagination for reuse
-export { defaultPagination };
-export type { BaseFilterState }; 
+export default FilterContext;

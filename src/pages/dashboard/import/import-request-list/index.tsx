@@ -12,7 +12,7 @@ import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
-import { useImportRequestFilter } from "@/services/useImportRequestFilter";
+import { ImportRequestFilterState, useImportRequestFilter } from "@/hooks/useImportRequestFilter";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;
@@ -31,7 +31,7 @@ const ImportRequestList: React.FC = () => {
     selectedProvider,
     selectedStatusFilter,
     pagination
-  } = filterState;
+  } = filterState as ImportRequestFilterState;
 
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
@@ -62,7 +62,7 @@ const ImportRequestList: React.FC = () => {
       const { content: providerList = [] } = await getAllProviders();
 
       const formattedRequests: ImportRequestData[] = await Promise.all(
-        (content || []).map(async (request) => {
+        (content || []).map(async (request: { importRequestId: string; providerId: number; }) => {
           // Lấy chi tiết của từng phiếu
           const { content: importRequestDetails = [] } = await getImportRequestDetails(
             request.importRequestId
@@ -132,7 +132,7 @@ const ImportRequestList: React.FC = () => {
 
   const handleStatusFilterClick = (filterKey: string): void => {
     const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
-    updateFilter({ 
+    updateFilter({
       selectedStatusFilter: newStatusFilter,
       pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
     });
@@ -389,7 +389,7 @@ const ImportRequestList: React.FC = () => {
           <DatePicker
             placeholder="Tìm theo ngày tạo"
             value={selectedDate}
-            onChange={(date) => updateFilter({ 
+            onChange={(date) => updateFilter({
               selectedDate: date,
               pagination: { ...pagination, current: 1 }
             })}
@@ -403,7 +403,7 @@ const ImportRequestList: React.FC = () => {
             placeholder="Tìm theo nhà cung cấp"
             className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
             value={selectedProvider}
-            onChange={(value) => updateFilter({ 
+            onChange={(value) => updateFilter({
               selectedProvider: value,
               pagination: { ...pagination, current: 1 }
             })}
@@ -412,69 +412,71 @@ const ImportRequestList: React.FC = () => {
             options={uniqueProviders.map(provider => ({ label: provider, value: provider }))}
           />
         </div>
-        <Space size="large">
-          <LegendItem
-            color="rgba(220, 38, 38, 0.1)"
-            borderColor="rgba(220, 38, 38, 0.5)"
-            title="Gần đến ngày hết hạn"
-            description="Phiếu nhập sắp hết hạn trong vòng 2 ngày tới"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'near-end-date'}
-            onClick={() => handleStatusFilterClick('near-end-date')}
-          />
-          <LegendItem
-            color="rgba(107, 114, 128, 0.1)"
-            borderColor="rgba(107, 114, 128, 0.5)"
-            title="Chưa bắt đầu"
-            description="Phiếu nhập chưa bắt đầu xử lý"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'not-started'}
-            onClick={() => handleStatusFilterClick('not-started')}
-          />
-          <LegendItem
-            color="rgba(59, 130, 246, 0.1)"
-            borderColor="rgba(59, 130, 246, 0.5)"
-            title="Đang xử lý"
-            description="Phiếu nhập đang trong quá trình xử lý"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'in-progress'}
-            onClick={() => handleStatusFilterClick('in-progress')}
-          />
-          <LegendItem
-            color="rgba(34, 197, 94, 0.1)"
-            borderColor="rgba(34, 197, 94, 0.5)"
-            title="Đã hoàn tất"
-            description="Phiếu nhập đã hoàn tất"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'completed'}
-            onClick={() => handleStatusFilterClick('completed')}
-          />
-        </Space>
       </div>
 
-
-
       <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
-        <Tabs
-          activeKey={selectedImportType}
-          onChange={(value) => updateFilter({ selectedImportType: value })}
-          type="card"
-          size="middle"
-          items={[
-            {
-              key: "ORDER",
-              label: "Nhập hàng mới",
-            },
-            {
-              key: "RETURN",
-              label: "Nhập trả",
-            },
-            {
-              key: "ALL",
-              label: "Tất cả",
-            },
-          ]}
-        />
+        <div className="flex justify-between">
+          <Tabs
+            activeKey={selectedImportType}
+            onChange={(value) => updateFilter({ selectedImportType: value })}
+            type="card"
+            size="middle"
+            items={[
+              {
+                key: "ORDER",
+                label: "Nhập hàng mới",
+              },
+              {
+                key: "RETURN",
+                label: "Nhập trả",
+              },
+              {
+                key: "ALL",
+                label: "Tất cả",
+              },
+            ]}
+          />
+          <Space size="large">
+            <LegendItem
+              color="rgba(220, 38, 38, 0.1)"
+              borderColor="rgba(220, 38, 38, 0.5)"
+              title="Gần đến ngày hết hạn"
+              description="Phiếu nhập sắp hết hạn trong vòng 2 ngày tới"
+              clickable={true}
+              isSelected={selectedStatusFilter === 'near-end-date'}
+              onClick={() => handleStatusFilterClick('near-end-date')}
+            />
+            <LegendItem
+              color="rgba(107, 114, 128, 0.1)"
+              borderColor="rgba(107, 114, 128, 0.5)"
+              title="Chưa bắt đầu"
+              description="Phiếu nhập chưa bắt đầu xử lý"
+              clickable={true}
+              isSelected={selectedStatusFilter === 'not-started'}
+              onClick={() => handleStatusFilterClick('not-started')}
+            />
+            <LegendItem
+              color="rgba(59, 130, 246, 0.1)"
+              borderColor="rgba(59, 130, 246, 0.5)"
+              title="Đang xử lý"
+              description="Phiếu nhập đang trong quá trình xử lý"
+              clickable={true}
+              isSelected={selectedStatusFilter === 'in-progress'}
+              onClick={() => handleStatusFilterClick('in-progress')}
+            />
+            <LegendItem
+              color="rgba(34, 197, 94, 0.1)"
+              borderColor="rgba(34, 197, 94, 0.5)"
+              title="Đã hoàn tất"
+              description="Phiếu nhập đã hoàn tất"
+              clickable={true}
+              isSelected={selectedStatusFilter === 'completed'}
+              onClick={() => handleStatusFilterClick('completed')}
+            />
+          </Space>
+        </div>
+
+
       </div>
 
       <Table
@@ -484,37 +486,37 @@ const ImportRequestList: React.FC = () => {
         loading={loading || detailsLoading}
         onChange={handleTableChange}
         rowClassName={(record) => {
-          const isNearEnd = isNearEndDate(record.endDate) && 
-                           record.status !== 'COMPLETED' && 
-                           record.status !== 'CANCELLED';
+          const isNearEnd = isNearEndDate(record.endDate) &&
+            record.status !== 'COMPLETED' &&
+            record.status !== 'CANCELLED';
           const statusClass = getStatusRowClass(record.status);
-          
+
           // Priority: COMPLETED and CANCELLED > near end date > other status colors
           if (record.status === 'COMPLETED') {
             return `${statusClass} status-green`;
           }
-          
+
           if (record.status === 'CANCELLED') {
             return `${statusClass} status-gray`;
           }
-          
+
           if (isNearEnd) {
             return 'bg-[rgba(220,38,38,0.05)]';
           }
-          
+
           // Add status-specific class for hover effects
           if (statusClass !== 'no-bg-row') {
             const statusType = record.status === 'NOT_STARTED'
               ? 'status-gray-light'
               : record.status === 'IN_PROGRESS'
-              ? 'status-blue'
-              : '';
+                ? 'status-blue'
+                : '';
             return `${statusClass} ${statusType}`;
           }
-          
+
           return 'no-bg-row';
         }}
-        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ? 
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importRequestsData.length > 0 ?
           '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
           '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
           '[&_.ant-table-tbody_tr.status-gray-light:hover_td]:!bg-[rgba(107,114,128,0.10)] ' +
