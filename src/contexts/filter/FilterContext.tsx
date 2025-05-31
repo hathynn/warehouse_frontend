@@ -13,16 +13,17 @@ import { createContext } from "react";
  */
 export type FilterStates = Record<string, Object>;
 
-/*
-* -filterStates: A record of filter states for each page
-* -updateFilter: Updates the filter state for a specific page
-* -resetFilter: Resets the filter state for a specific page
-* -resetAllFilters: Resets the filter state for all pages
-* -getFilterState: Gets the filter state for a specific page
-* -registerFilter: Registers a new filter state for a page
-* -isRegistered: Checks if a page has a registered filter state
-* Will be implemented in the FilterProvider component
-*/
+/**
+ * Filter Context Type interface providing filter management functionality
+ * @property {FilterStates} filterStates - A record of filter states for each page
+ * @property {FilterStates} defaultFilterStates - A record of default filter states for each page
+ * @property {function} updateFilter - Updates the filter state for a specific page
+ * @property {function} resetFilter - Resets the filter state for a specific page
+ * @property {function} resetAllFilters - Resets the filter state for all pages
+ * @property {function} getFilterStates - Gets the filter state for a specific page
+ * @property {function} registerFilter - Registers a new filter state for a page
+ * @property {function} isRegistered - Checks if a page has a registered filter state
+ */
 export interface FilterContextType {
   filterStates: FilterStates;
   defaultFilterStates: FilterStates;
@@ -34,7 +35,10 @@ export interface FilterContextType {
   isRegistered: (pageKey: string) => boolean;
 }
 
-// Create a context for the filter state
+/**
+ * React Context for managing filter states across different pages
+ * Provides centralized filter management with page-specific isolation
+ */
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
 export default FilterContext;

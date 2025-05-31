@@ -28,7 +28,7 @@ const useProviderService = () => {
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
 
   // Lấy danh sách nhà cung cấp
-  const getAllProviders = async (page = 1, limit = 10): Promise<ResponseDTO<ProviderResponse[]>> => {
+  const getAllProviders = async (page = 1, limit = 999): Promise<ResponseDTO<ProviderResponse[]>> => {
     try {
       const response = await callApi(
         "get", 

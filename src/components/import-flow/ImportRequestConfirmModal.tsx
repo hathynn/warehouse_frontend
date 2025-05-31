@@ -3,6 +3,7 @@ import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
+import { calculateRowSpanForItemHaveSameCompareValue } from "@/utils/helpers";
 import dayjs from "dayjs";
 
 interface ImportRequestConfirmModalProps {
@@ -18,36 +19,6 @@ interface ImportRequestConfirmModalProps {
   };
   details: ImportRequestDetailRow[];
   providers: Record<number, string>;
-}
-
-// Helper function để tính rowSpan cho data hiện tại trên trang
-function calculateRowSpanForCurrentPage(data: any[]) {
-  if (!data || data.length === 0) return [];
-  
-  // Tính rowSpan cho từng providerId trong trang hiện tại
-  const result = [];
-  let i = 0;
-  
-  while (i < data.length) {
-    const currentProviderId = data[i].providerId;
-    let count = 0;
-    
-    // Đếm số dòng liên tiếp có cùng providerId
-    for (let j = i; j < data.length && data[j].providerId === currentProviderId; j++) {
-      count++;
-    }
-    
-    // Gán rowSpan cho dòng đầu tiên của nhóm, các dòng khác có rowSpan = 0
-    for (let k = 0; k < count; k++) {
-      result.push({
-        ...data[i + k],
-        rowSpan: k === 0 ? count : 0,
-      });
-    }
-    
-    i += count;
-  }
-  return result;
 }
 
 const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
@@ -111,12 +82,10 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     }
   };
 
-  // Compute data for the current page and rowSpan
+  // Get current page data - Không cần calculateRowSpanForCurrentPage nữa!
   const startIndex = (pagination.current - 1) * pagination.pageSize;
   const endIndex = startIndex + pagination.pageSize;
-  const currentPageData = calculateRowSpanForCurrentPage(
-    sortedDetails.slice(startIndex, endIndex)
-  );
+  const currentPageData = sortedDetails.slice(startIndex, endIndex);
 
   const columns = [
     { 
@@ -159,18 +128,24 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       key: "providerId", 
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
-      }), 
-      render: (_: any, record: any) => {
-        if (record.rowSpan > 0) {
-          return {
-            children: providers[record.providerId] || "-",
-            props: { rowSpan: record.rowSpan }
-          };
-        }
+      }),
+      // ✅ Sử dụng onCell pattern
+      onCell: (record: any, index?: number) => {
+        const rowSpan = calculateRowSpanForItemHaveSameCompareValue(currentPageData, 'providerName', index || 0);
         return {
-          children: null,
-          props: { rowSpan: 0 }
+          rowSpan: rowSpan
         };
+      },
+      // ✅ Sử dụng render pattern
+      render: (_: any, record: any, index?: number) => {
+        const rowSpan = calculateRowSpanForItemHaveSameCompareValue(currentPageData, 'providerName', index || 0);
+        
+        // Chỉ hiển thị nội dung cho cell đầu tiên của nhóm
+        if (rowSpan === 0) {
+          return null;
+        }
+        
+        return providers[record.providerId] || "-";
       }
     },
   ];

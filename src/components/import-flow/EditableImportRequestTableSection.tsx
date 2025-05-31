@@ -203,6 +203,9 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
             value={record.providerId}
             onChange={val => handleCellChange(val, record, 'providerId')}
             style={{ width: '100%' }}
+            showSearch
+            optionFilterProp="children"
+            placeholder="Tìm theo nhà cung cấp..."
           >
             {selectableProviders.map(provider => (
               <Select.Option key={provider.id} value={provider.id}>

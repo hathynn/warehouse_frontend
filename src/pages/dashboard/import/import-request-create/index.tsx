@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, ChangeEvent } from "react";
+import { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
@@ -15,7 +15,7 @@ import { ImportRequestDetailRow } from "@/utils/interfaces";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
-import { isDateDisabledForAction } from "@/utils/helpers";
+import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 
 const { Title } = Typography;
@@ -129,36 +129,36 @@ const ImportRequestCreate: React.FC = () => {
   // Helper function to validate date range
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
     if (!startDate || !endDate) return true;
-    
+
     const start = dayjs(startDate);
     const end = dayjs(endDate);
-    
+
     if (end.isBefore(start)) {
       return false;
     }
-    
+
     if (configuration) {
       const maxDays = configuration.maxAllowedDaysForImportRequestProcess;
       const daysDiff = end.diff(start, 'day');
-      
+
       if (daysDiff > maxDays) {
         return false;
       }
     }
-    
+
     return true;
   };
 
   // Handle start date change
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
     const newStartDate = date ? date.format("YYYY-MM-DD") : "";
-    
+
     // Calculate new endDate based on configuration
     let newEndDate = formData.endDate;
     if (newStartDate && configuration?.maxAllowedDaysForImportRequestProcess) {
       newEndDate = dayjs(newStartDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD");
     }
-    
+
     // Check if the calculated endDate is valid
     if (newStartDate && newEndDate) {
       if (!isEndDateValid(newStartDate, newEndDate)) {
@@ -167,7 +167,7 @@ const ImportRequestCreate: React.FC = () => {
         return;
       }
     }
-    
+
     setFormData({ ...formData, startDate: newStartDate, endDate: newEndDate });
   };
 
@@ -246,6 +246,33 @@ const ImportRequestCreate: React.FC = () => {
     XLSX.writeFile(wb, "import_request_template.xlsx");
   };
 
+
+  // Function để gộp data có cùng itemId và providerId
+  const getConsolidatedData = (originalData: ImportRequestDetailRow[]): ImportRequestDetailRow[] => {
+    const groupedData: { [key: string]: ImportRequestDetailRow } = {};
+    
+    originalData.forEach((item) => {
+      const key = `${item.itemId}-${item.providerId}`;
+      
+      if (groupedData[key]) {
+        // Nếu đã tồn tại, cộng thêm số lượng
+        groupedData[key].quantity += item.quantity;
+      } else {
+        // Nếu chưa tồn tại, thêm mới
+        groupedData[key] = { ...item };
+      }
+    });
+
+    return Object.values(groupedData);
+  };
+
+  const sortedData = useMemo(() => {
+    if (step === 1) {
+      return [...getConsolidatedData(data)].sort((a, b) => a.providerId - b.providerId);
+    }
+    return [...data].sort((a, b) => a.providerId - b.providerId);
+  }, [data, step]);
+
   const handleSubmit = async () => {
     if (!file || data.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
@@ -258,7 +285,7 @@ const ImportRequestCreate: React.FC = () => {
     }
 
     try {
-      const details: ImportRequestCreateWithDetailRequest[] = data.map(row => ({
+      const details: ImportRequestCreateWithDetailRequest[] = (sortedData).map(row => ({
         itemId: row.itemId,
         quantity: row.quantity,
         providerId: row.providerId,
@@ -268,9 +295,9 @@ const ImportRequestCreate: React.FC = () => {
         startDate: formData.startDate,
         endDate: formData.endDate
       }));
-      
+
       await createImportRequestDetail(details);
-      
+
       navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
       setFormData({
         importReason: "",
@@ -283,6 +310,14 @@ const ImportRequestCreate: React.FC = () => {
       setFileName("");
       setData([]);
     } catch (error) { }
+  };
+
+  const handleBack = () => {
+    if (step === 0) {
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+    } else {
+      setStep(0);
+    }
   };
 
   const columns = [
@@ -332,6 +367,16 @@ const ImportRequestCreate: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
+      onCell: (record: ImportRequestDetailRow, index?: number) => {
+        const startIndex = (pagination.current - 1) * pagination.pageSize;
+        const endIndex = startIndex + pagination.pageSize;
+        const currentPageData = sortedData.slice(startIndex, endIndex);
+
+        const rowSpan = calculateRowSpanForItemHaveSameCompareValue(currentPageData, "providerName", index || 0)
+        return {
+          rowSpan: rowSpan
+        }
+      }
     },
   ];
 
@@ -342,7 +387,7 @@ const ImportRequestCreate: React.FC = () => {
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST)}
+          onClick={handleBack}
           className="mr-4"
         >
           Quay lại
@@ -362,7 +407,7 @@ const ImportRequestCreate: React.FC = () => {
             />
             <EditableImportRequestTableSection
               setIsAllPagesViewed={setIsAllPagesViewed}
-              data={data}
+              data={data} // Sử dụng data gốc
               setData={setData}
               items={items}
               providers={providers}
@@ -398,126 +443,118 @@ const ImportRequestCreate: React.FC = () => {
         </div>
       )}
       {step === 1 && (
-        <div>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => setStep(0)}
-            type="primary"
-          >
-            Quay lại
-          </Button>
-          <div className="mt-4 flex gap-6">
-            <Card title="Thông tin phiếu nhập" className="w-3/10">
-              <Space direction="vertical" className="w-full">
-                <div className="mb-2">
-                  <label className="text-md font-semibold">Lý do nhập kho <span className="text-red-500">*</span></label>
-                  <TextArea
-                    placeholder="Nhập lý do"
-                    rows={4}
-                    value={formData.importReason}
-                    onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
-                    className="w-full"
-                    maxLength={150}
-                    showCount
-                  />
+        <div className="mt-4 flex gap-6">
+          <Card title="Thông tin phiếu nhập" className="w-3/10">
+            <Space direction="vertical" className="w-full">
+              <div className="mb-2">
+                <label className="text-md font-semibold">Lý do nhập kho <span className="text-red-500">*</span></label>
+                <TextArea
+                  placeholder="Nhập lý do"
+                  rows={4}
+                  value={formData.importReason}
+                  onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
+                  className="w-full"
+                  maxLength={150}
+                  showCount
+                />
+              </div>
+              <div className="mb-2">
+                <label className="text-md font-semibold">Loại nhập kho <span className="text-red-500">*</span></label>
+                <Select
+                  value={formData.importType}
+                  onChange={(value) => setFormData({ ...formData, importType: value })}
+                  className="w-full"
+                >
+                  <Option value="ORDER">Nhập theo kế hoạch</Option>
+                  <Option value="RETURN">Nhập trả</Option>
+                </Select>
+              </div>
+              <div className="mb-2">
+                <label className="text-md font-semibold">Ngày phiếu có hiệu lực <span className="text-red-500">*</span></label>
+                <DatePicker
+                  locale={locale}
+                  format="DD-MM-YYYY"
+                  className="w-full"
+                  value={formData.startDate ? dayjs(formData.startDate) : null}
+                  disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                  onChange={handleStartDateChange}
+                  placeholder="Chọn ngày phiếu có hiệu lực"
+                />
+              </div>
+              <div className="mb-2">
+                <label className="text-md font-semibold">Ngày phiếu hết hạn <span className="text-red-500">*</span></label>
+                <DatePicker
+                  locale={locale}
+                  format="DD-MM-YYYY"
+                  className="w-full"
+                  value={formData.endDate ? dayjs(formData.endDate) : null}
+                  disabledDate={(current) => {
+                    if (!current || !formData.startDate) return false;
+                    const startDate = dayjs(formData.startDate);
+                    // Chặn ngày startDate và tất cả ngày trước đó
+                    return current.isSame(startDate, 'day') || current.isBefore(startDate, 'day');
+                  }}
+                  onChange={handleEndDateChange}
+                  placeholder="Chọn ngày phiếu hết hạn"
+                />
+                <div className="text-sm text-red-400 mt-1">
+                  <InfoCircleOutlined className="mr-1" />
+                  Hạn của phiếu nhập không được vượt quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
                 </div>
-                <div className="mb-2">
-                  <label className="text-md font-semibold">Loại nhập kho <span className="text-red-500">*</span></label>
-                  <Select
-                    value={formData.importType}
-                    onChange={(value) => setFormData({ ...formData, importType: value })}
-                    className="w-full"
-                  >
-                    <Option value="ORDER">Nhập theo kế hoạch</Option>
-                    <Option value="RETURN">Nhập trả</Option>
-                  </Select>
-                </div>
-                <div className="mb-2">
-                  <label className="text-md font-semibold">Ngày phiếu có hiệu lực <span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    className="w-full"
-                    value={formData.startDate ? dayjs(formData.startDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
-                    onChange={handleStartDateChange}
-                    placeholder="Chọn ngày phiếu có hiệu lực"
-                  />
-                </div>
-                <div className="mb-2">
-                  <label className="text-md font-semibold">Ngày phiếu hết hạn <span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    className="w-full"
-                    value={formData.endDate ? dayjs(formData.endDate) : null}
-                    disabledDate={(current) => {
-                      if (!current || !formData.startDate) return false;
-                      const startDate = dayjs(formData.startDate);
-                      // Chặn ngày startDate và tất cả ngày trước đó
-                      return current.isSame(startDate, 'day') || current.isBefore(startDate, 'day');
-                    }}
-                    onChange={handleEndDateChange}
-                    placeholder="Chọn ngày phiếu hết hạn"
-                  />
-                  <div className="text-sm text-red-400 mt-1">
-                    <InfoCircleOutlined className="mr-1" />
-                    Hạn của phiếu nhập không được vượt quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
-                  </div>
-                </div>
+              </div>
+              <Alert
+                message="Lưu ý"
+                description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt từng nhà cung cấp dựa trên dữ liệu từ file Excel."
+                type="info"
+                showIcon
+                className="!p-4"
+              />
+              <Button
+                type="primary"
+                onClick={() => setShowConfirmModal(true)}
+                loading={loading}
+                className="w-full mt-4"
+                id="btn-detail"
+                disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason || !formData.startDate || !formData.endDate}
+              >
+                Xác nhận thông tin
+              </Button>
+            </Space>
+          </Card>
+          <div className="w-7/10">
+            <Card title="Danh sách hàng hóa từ file Excel">
+              {sortedData.length > 0 && (
                 <Alert
-                  message="Lưu ý"
-                  description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt từng nhà cung cấp dựa trên dữ liệu từ file Excel."
+                  message="Thông tin nhập kho"
+                  description={
+                    <>
+                      <p>Số lượng nhà cung cấp: {Array.from(new Set(sortedData.map(item => item.providerId))).length}</p>
+                      <p>Tổng số mặt hàng: {sortedData.length}</p>
+                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
+                      <p className="text-orange-500">* Các mặt hàng có cùng mã và nhà cung cấp đã được gộp số lượng</p>
+                    </>
+                  }
                   type="info"
                   showIcon
-                  className="!p-4"
+                  className="mb-4"
                 />
-                <Button
-                  type="primary"
-                  onClick={() => setShowConfirmModal(true)}
-                  loading={loading}
-                  className="w-full mt-4"
-                  id="btn-detail"
-                  disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason || !formData.startDate || !formData.endDate}
-                >
-                  Xác nhận thông tin
-                </Button>
-              </Space>
+              )}
             </Card>
-            <div className="w-7/10">
-              <Card title="Danh sách hàng hóa từ file Excel">
-                {data.length > 0 && (
-                  <Alert
-                    message="Thông tin nhập kho"
-                    description={
-                      <>
-                        <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
-                        <p>Tổng số mặt hàng: {data.length}</p>
-                        <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
-                      </>
-                    }
-                    type="info"
-                    showIcon
-                    className="mb-4"
-                  />
-                )}
-              </Card>
-              <Table
-                columns={columns}
-                dataSource={data}
-                rowKey={(record, index) => index as number}
-                loading={false}
-                pagination={{
-                  ...pagination,
-                  showTotal: (total: number) => `Tổng ${total} mục`,
-                }}
-                onChange={handleChangePage}
-                locale={{ emptyText: "Không có dữ liệu" }}
-              />
-            </div>
+            <Table
+              className="[&_.ant-table-cell]:!p-3"
+              columns={columns}
+              dataSource={sortedData} // Sử dụng data đã gộp
+              rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
+              loading={false}
+              pagination={{
+                ...pagination,
+                showTotal: (total: number) => `Tổng ${total} mục`,
+              }}
+              onChange={handleChangePage}
+              locale={{ emptyText: "Không có dữ liệu" }}
+            />
           </div>
         </div>
-
       )}
       <ImportRequestConfirmModal
         open={showConfirmModal}
@@ -525,7 +562,7 @@ const ImportRequestCreate: React.FC = () => {
         onCancel={() => setShowConfirmModal(false)}
         confirmLoading={loading}
         formData={formData}
-        details={data}
+        details={getConsolidatedData(data)} // Truyền data đã gộp vào modal
         providers={providers.reduce((providerNameMap, provider) => {
           providerNameMap[provider.id] = provider.name;
           return providerNameMap;

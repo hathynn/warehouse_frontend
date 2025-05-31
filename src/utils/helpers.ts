@@ -375,3 +375,19 @@ export function getChannelForRole(userRole: AccountRole): string | null {
             return null;
     }
 }
+
+
+export function calculateRowSpanForItemHaveSameCompareValue (sortedData: any[], compareValue:any, currentIndex: number):number {
+    // Get the data item of current index
+    const currentDataItemCompareValue = sortedData[currentIndex][compareValue]
+    
+    // Get the first index of the data item that has the same compare value
+    const firstIndex = sortedData.findIndex((dataItem) => dataItem[compareValue] === currentDataItemCompareValue);
+
+    // If the first index is not the current data item index => hide the cell of the current data item => rowspan = 0
+    if (firstIndex != currentIndex) return 0
+
+    // If the current data item is the first row, calculate the rowspan by counting all data items has the same compare value
+    const count = sortedData.filter((dataItem) => dataItem[compareValue] === currentDataItemCompareValue).length
+    return count
+}
