@@ -3,8 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
-  Spin,
-  message
+  Spin
 } from "antd";
 import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import useImportRequestService from "@/services/useImportRequestService";
@@ -20,6 +19,7 @@ import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/servic
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { getMinDateTime } from "@/utils/helpers";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 
 interface RouteParams extends Record<string, string> {
   importRequestId: string;
@@ -34,121 +34,60 @@ interface PaginationType {
 type ImportType = "ORDER" | "RETURN";
 
 const ImportRequestDetail: React.FC = () => {
+  // ========== ROUTER & PARAMS ==========
   const { importRequestId } = useParams<RouteParams>();
   const navigate = useNavigate();
 
+  // ========== DATA STATES ==========
   const [importRequestData, setImportRequestData] = useState<ImportRequestData | null>(null);
   const [importRequestDetails, setImportRequestDetails] = useState<ImportRequestDetailResponse[]>([]);
   const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+
+  // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState<PaginationType>({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
+  // ========== SERVICES ==========
   const {
-    getImportRequestById,
+    loading: importRequestLoading,
+    getImportRequestById
   } = useImportRequestService();
 
   const {
-    getImportRequestDetails,
+    loading: importRequestDetailLoading,
+    getImportRequestDetails
   } = useImportRequestDetailService();
 
   const {
-    getAllImportOrdersByImportRequestId,
+    loading: importOrderLoading,
+    getAllImportOrdersByImportRequestId
   } = useImportOrderService();
 
   const {
-    getImportOrderDetailsPaginated,
-  } = useImportOrderDetailService();
-
-  const {
+    loading: providerLoading,
     getProviderById
   } = useProviderService();
 
   const {
+    loading: configurationLoading,
     getConfiguration
   } = useConfigurationService();
 
-  useEffect(() => {
-    if (!importRequestId) return;
-    const fetchImportRequestData = async () => {
-      setLoading(true);
-      try {
-        const response = await getImportRequestById(importRequestId);
-        if (response?.content) {
-          const data = response.content;
-          const providerName = data.providerId
-            ? (await getProviderById(data.providerId))?.content?.name
-            : "-";
-          setImportRequestData({ ...data, providerName });
-        }
-      } catch (error) {
-        console.error("Failed to fetch import request:", error);
-        message.error("Không thể tải thông tin phiếu nhập");
-      } finally {
-        setLoading(false);
-      }
+  // ========== UTILITY FUNCTIONS ==========
+  const getImportTypeText = (type: ImportType): string => {
+    const typeMap: Record<ImportType, string> = {
+      "ORDER": "Nhập theo kế hoạch",
+      "RETURN": "Nhập trả"
     };
-    fetchImportRequestData();
-  }, [importRequestId]);
+    return typeMap[type] || type;
+  };
 
-  useEffect(() => {
-    if (!importRequestId) return;
-    const fetchImportRequestDetails = async () => {
-      setDetailsLoading(true);
-      try {
-        const response = await getImportRequestDetails(importRequestId);
-        if (response?.content) {
-          setImportRequestDetails(response.content);
-        }
-      } catch (error) {
-        console.error("Failed to fetch import request details:", error);
-        message.error("Không thể tải danh sách chi tiết phiếu nhập");
-      } finally {
-        setDetailsLoading(false);
-      }
-    };
-    fetchImportRequestDetails();
-  }, [importRequestId]);
-
-  useEffect(() => {
-    if (!importRequestId) return;
-    const fetchImportOrders = async () => {
-      setDetailsLoading(true);
-      try {
-        const response = await getAllImportOrdersByImportRequestId(importRequestId);
-        if (response?.content) {
-          setImportOrders(response.content);
-        }
-      } catch (error) {
-        console.error("Failed to fetch import orders:", error);
-        message.error("Không thể tải danh sách đơn nhập");
-      } finally {
-        setDetailsLoading(false);
-      }
-    };
-    fetchImportOrders();
-  }, [importRequestId]);
-
-  useEffect(() => {
-    const fetchConfiguration = async () => {
-      try {
-        const config = await getConfiguration();
-        if (config) {
-          setConfiguration(config);
-        }
-      } catch (error) {
-        console.error("Error fetching configuration:", error);
-      }
-    };
-    fetchConfiguration();
-  }, []);
-
+  // ========== COMPUTED VALUES & CALCULATIONS ==========
   let totalExpectQuantityInRequest = 0;
   let totalOrderedQuantityInRequest = 0;
   let totalActualQuantityInRequest = 0;
@@ -200,14 +139,92 @@ const ImportRequestDetail: React.FC = () => {
     isAbleToCreateImportOrder = false;
   }
 
-  const getImportTypeText = (type: ImportType): string => {
-    const typeMap: Record<ImportType, string> = {
-      "ORDER": "Nhập theo kế hoạch",
-      "RETURN": "Nhập trả"
-    };
-    return typeMap[type] || type;
+  const infoItems: DetailInfoItem[] = [
+    { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
+    { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
+    { label: "Nhà cung cấp", value: importRequestData?.providerName },
+    { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
+    { 
+      label: "Thời gian hiệu lực", 
+      value: (
+        <span>
+          Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
+          {importRequestData?.endDate ? (
+            <> - Đến <strong>{dayjs(importRequestData.endDate).format("DD-MM-YYYY")}</strong></>
+          ) : null}
+        </span>
+      )
+    },
+    importRequestData?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` } : null,
+    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
+    { label: "Lý do nhập", value: importRequestData?.importReason, span: 2 },
+  ].filter(Boolean) as DetailInfoItem[];
+
+  // ========== USE EFFECTS ==========
+  useEffect(() => {
+    if (!importRequestId) return;
+    fetchImportRequestData();
+  }, [importRequestId]);
+
+  useEffect(() => {
+    if (!importRequestId) return;
+    fetchImportRequestDetails();
+  }, [importRequestId]);
+
+  useEffect(() => {
+    if (!importRequestId) return;
+    fetchImportOrders();
+  }, [importRequestId]);
+
+  useEffect(() => {
+    fetchConfiguration();
+  }, []);
+
+  // ========== DATA FETCHING FUNCTIONS ==========
+  const fetchImportRequestData = async () => {
+    if (!importRequestId) return;
+    
+    const response = await getImportRequestById(importRequestId);
+    if (response?.content) {
+      const data = response.content;
+      const providerName = data.providerId
+        ? (await getProviderById(data.providerId))?.content?.name
+        : "-";
+      setImportRequestData({ ...data, providerName });
+    }
   };
 
+  const fetchImportRequestDetails = async () => {
+    if (!importRequestId) return;
+    
+    const response = await getImportRequestDetails(importRequestId);
+    if (response?.content) {
+      setImportRequestDetails(response.content);
+    }
+  };
+
+  const fetchImportOrders = async () => {
+    if (!importRequestId) return;
+    
+    const response = await getAllImportOrdersByImportRequestId(importRequestId);
+    if (response?.content) {
+      setImportOrders(response.content);
+    }
+  };
+
+  const fetchConfiguration = async () => {
+    const config = await getConfiguration();
+    if (config) {
+      setConfiguration(config);
+    }
+  };
+
+  // ========== NAVIGATION HANDLERS ==========
+  const handleBack = () => {
+    navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+  };
+
+  // ========== EVENT HANDLERS ==========
   const handleTableChange = (newPagination: PaginationType): void => {
     setPagination({
       ...newPagination,
@@ -244,30 +261,14 @@ const ImportRequestDetail: React.FC = () => {
         
         // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
         if (minDateTime.isAfter(importRequestEndDate)) {
-          message.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
+          toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
           // Re-fetch import request data
-          (async () => {
-            setLoading(true);
-            try {
-              const response = await getImportRequestById(importRequestId!);
-              if (response?.content) {
-                const data = response.content;
-                const providerName = data.providerId
-                  ? (await getProviderById(data.providerId))?.content?.name
-                  : "-";
-                setImportRequestData({ ...data, providerName });
-              }
-            } catch (error) {
-              console.error("Failed to refresh import request:", error);
-            } finally {
-              setLoading(false);
-            }
-          })();
+          fetchImportRequestData();
           return;
         }
       } catch (error) {
         console.error("Error checking import order creation time:", error);
-        message.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
+        toast.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
         return;
       }
     }
@@ -286,7 +287,7 @@ const ImportRequestDetail: React.FC = () => {
     }
   };
 
-  // Memoize columns to prevent recreation on each render
+  // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns: ColumnsType<ImportRequestDetailResponse> = [
     {
       width: '15%',
@@ -349,7 +350,8 @@ const ImportRequestDetail: React.FC = () => {
     }
   ];
 
-  if (loading && !importRequestData) {
+  // Show loading spinner when initially loading the page
+  if ((importRequestLoading || providerLoading) && !importRequestData) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
@@ -357,34 +359,12 @@ const ImportRequestDetail: React.FC = () => {
     );
   }
 
-  // Memoize infoItems to avoid recomputing array on each render
-  const infoItems: DetailInfoItem[] = [
-    { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
-    { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
-    { label: "Nhà cung cấp", value: importRequestData?.providerName },
-    { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
-    { 
-      label: "Thời gian hiệu lực", 
-      value: (
-        <span>
-          Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
-          {importRequestData?.endDate ? (
-            <> - Đến <strong>{dayjs(importRequestData.endDate).format("DD-MM-YYYY")}</strong></>
-          ) : null}
-        </span>
-      )
-    },
-    importRequestData?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` } : null,
-    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
-    { label: "Lý do nhập", value: importRequestData?.importReason, span: 2 },
-  ].filter(Boolean) as DetailInfoItem[];
-
   return (
     <div className="mx-auto p-3 pt-0">
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST)}
+          onClick={handleBack}
           className="mr-4"
         >
           Quay lại
@@ -428,7 +408,7 @@ const ImportRequestDetail: React.FC = () => {
         columns={columns}
         dataSource={importRequestDetails}
         rowKey="importRequestDetailId"
-        loading={detailsLoading}
+        loading={importRequestDetailLoading}
         onChange={(pagination) => handleTableChange(pagination as PaginationType)}
         pagination={{
           ...pagination,

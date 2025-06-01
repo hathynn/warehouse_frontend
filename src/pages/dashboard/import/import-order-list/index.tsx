@@ -17,10 +17,12 @@ import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
 import { ImportOrderFilterState, useImportOrderFilter } from "@/hooks/useImportOrderFilter";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
 }
+
 interface ImportOrderData extends ImportOrderResponse {
   importOrderDetailsCount: number;
   importOrderDetailsCompletedCount: number;
@@ -29,12 +31,13 @@ interface ImportOrderData extends ImportOrderResponse {
 }
 
 const ImportOrderList: React.FC = () => {
-  const userRole = useSelector((state: { user: UserState }) => state.user.role);
-  const navigate = useNavigate();
+  // ========== ROUTER & PARAMS ==========
   const { importRequestId } = useParams<RouteParams>();
+  const navigate = useNavigate();
+  const userRole = useSelector((state: { user: UserState }) => state.user.role);
   const { latestNotification } = usePusherContext();
-  
-  // Use filter context instead of local state
+
+  // ========== FILTER CONTEXT ==========
   const { filterState, updateFilter } = useImportOrderFilter();
   const {
     searchTerm,
@@ -43,126 +46,31 @@ const ImportOrderList: React.FC = () => {
     pagination
   } = filterState as ImportOrderFilterState;
 
+  // ========== DATA STATES ==========
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [importOrdersData, setImportOrdersData] = useState<ImportOrderData[]>([]);
 
+  // ========== SERVICES ==========
   const {
+    loading: importOrderLoading,
     getAllImportOrdersByImportRequestId,
-    getAllImportOrders,
-    loading
+    getAllImportOrders
   } = useImportOrderService();
 
   const {
+    loading: importOrderDetailLoading,
     getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
 
   const {
+    loading: accountLoading,
     getAccountsByRole
   } = useAccountService();
 
-  useEffect(() => {
-    fetchImportOrders();
-  }, [pagination.current, pagination.pageSize, importRequestId]);
+  // ========== COMPUTED VALUES ==========
+  const loading = importOrderLoading || importOrderDetailLoading || accountLoading;
 
-  useEffect(() => {
-    fetchAccountsByRole();
-  }, []);
-
-  useEffect(() => {
-    if (latestNotification) {
-      const isImportOrderEvent = latestNotification.type.includes('import-order');
-      
-      if (isImportOrderEvent) {
-        console.log('Received import-order notification:', latestNotification);
-        fetchImportOrders();
-        fetchAccountsByRole();
-      }
-    }
-  }, [latestNotification]);
-
-  const fetchAccountsByRole = async (): Promise<void> => {
-    try {
-      const response = await getAccountsByRole(AccountRoleForRequest.STAFF);
-      setStaffs(response || []);
-    } catch (error) {
-      console.error("Failed to fetch accounts:", error);
-    }
-  };
-
-  const fetchImportOrders = async (): Promise<void> => {
-    try {
-      let response: ResponseDTO<ImportOrderResponse[]>;
-
-      if (importRequestId) {
-        response = await getAllImportOrdersByImportRequestId(
-          importRequestId
-        );
-      } else {
-        response = await getAllImportOrders(
-          pagination.current || 1,
-          pagination.pageSize || 10
-        );
-      }
-
-      const formatted: ImportOrderData[] = await Promise.all(
-        (response.content ?? []).map(async (order) => {
-          // "limit = 1000" đủ để ôm hết chi tiết 1 đơn
-          const { content: importOrderDetails = [] } =
-            await getImportOrderDetailsPaginated(order.importOrderId, 1, 1000);
-
-          const totalExpectQuantityInOrder = importOrderDetails.reduce(
-            (sum, d) => sum + d.expectQuantity,
-            0
-          );
-          const totalActualQuantityInOrder = importOrderDetails.reduce(
-            (sum, d) => sum + d.actualQuantity,
-            0
-          );
-          const importOrderDetailsCompletedCount = importOrderDetails.reduce(
-            (sum, d) => sum + (d.actualQuantity > 0 ? 1 : 0),
-            0
-          );
-
-          return {
-            ...order,
-            importOrderDetailsCount: importOrderDetails.length,
-            importOrderDetailsCompletedCount,
-            totalExpectQuantityInOrder,
-            totalActualQuantityInOrder
-          };
-        })
-      );
-
-      setImportOrdersData(formatted);
-
-      if (response && response.metaDataDTO) {
-        updateFilter({
-          pagination: {
-            current: response.metaDataDTO.page,
-            pageSize: response.metaDataDTO.limit,
-            total: response.metaDataDTO.total,
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Failed to fetch import orders:", error);
-    }
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    updateFilter({ searchTerm: e.target.value });
-  };
-
-  const handleTableChange = (newPagination: TablePaginationConfig): void => {
-    updateFilter({
-      pagination: {
-        ...newPagination,
-        current: newPagination.current,
-        pageSize: newPagination.pageSize,
-      }
-    });
-  };
-
+  // ========== UTILITY FUNCTIONS ==========
   const isNearReceivingTime = (dateReceived: string, timeReceived: string): boolean => {
     if (!dateReceived || !timeReceived) return false;
 
@@ -173,23 +81,41 @@ const ImportOrderList: React.FC = () => {
     return diffInHours > 0 && diffInHours <= 6;
   };
 
+  const getStatusRowClass = (status: ImportStatus): string => {
+    switch (status) {
+      case ImportStatus.IN_PROGRESS:
+        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
+      case ImportStatus.COUNTED:
+        return 'bg-[rgba(59,130,246,0.14)]'; // Blue with opacity
+      case ImportStatus.EXTENDED:
+        return 'bg-[rgba(245,158,11,0.08)]'; // Amber with opacity
+      case ImportStatus.COMPLETED:
+        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
+      case ImportStatus.CANCELLED:
+        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
+      default:
+        return 'no-bg-row';
+    }
+  };
+
+  // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importOrdersData.filter((importOrder) => {
     const matchesSearch = importOrder.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
       importOrder.importRequestId.toString().includes(searchTerm.toLowerCase());
-    
+
     // Filter by assigned staff
-    const matchesStaff = selectedStaff.length > 0 ? 
+    const matchesStaff = selectedStaff.length > 0 ?
       selectedStaff.includes(importOrder.assignedStaffId?.toString() || '') : true;
-    
+
     // Filter by status
     let matchesStatusFilter = true;
     if (selectedStatusFilter) {
       switch (selectedStatusFilter) {
         case 'near-time':
           matchesStatusFilter = isNearReceivingTime(importOrder.dateReceived, importOrder.timeReceived) &&
-                 importOrder.status !== ImportStatus.CANCELLED &&
-                 importOrder.status !== ImportStatus.COMPLETED &&
-                 importOrder.status !== ImportStatus.COUNTED;
+            importOrder.status !== ImportStatus.CANCELLED &&
+            importOrder.status !== ImportStatus.COMPLETED &&
+            importOrder.status !== ImportStatus.COUNTED;
           break;
         case 'in-progress':
           matchesStatusFilter = importOrder.status === ImportStatus.IN_PROGRESS;
@@ -210,35 +136,126 @@ const ImportOrderList: React.FC = () => {
           matchesStatusFilter = true;
       }
     }
-    
+
     return matchesSearch && matchesStaff && matchesStatusFilter;
   });
 
-  const getStatusRowClass = (status: ImportStatus): string => {
-    switch (status) {
-      case ImportStatus.IN_PROGRESS:
-        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
-      case ImportStatus.COUNTED:
-        return 'bg-[rgba(59,130,246,0.14)]'; // Blue with opacity
-      case ImportStatus.EXTENDED:
-        return 'bg-[rgba(245,158,11,0.08)]'; // Amber with opacity
-      case ImportStatus.COMPLETED:
-        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
-      case ImportStatus.CANCELLED:
-        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
-      default:
-        return 'no-bg-row';
+  // ========== USE EFFECTS ==========
+  useEffect(() => {
+    fetchImportOrders();
+  }, [pagination.current, pagination.pageSize, importRequestId]);
+
+  useEffect(() => {
+    fetchAccountsByRole();
+  }, []);
+
+  useEffect(() => {
+    if (latestNotification) {
+      const isImportOrderEvent = latestNotification.type.includes('import-order');
+
+      if (isImportOrderEvent) {
+        console.log('Received import-order notification:', latestNotification);
+        fetchImportOrders();
+        fetchAccountsByRole();
+      }
     }
+  }, [latestNotification]);
+
+  // ========== DATA FETCHING FUNCTIONS ==========
+  const fetchAccountsByRole = async (): Promise<void> => {
+    const response = await getAccountsByRole(AccountRoleForRequest.STAFF);
+    setStaffs(response || []);
+  };
+
+  const fetchImportOrders = async (): Promise<void> => {
+    let response: ResponseDTO<ImportOrderResponse[]>;
+
+    if (importRequestId) {
+      response = await getAllImportOrdersByImportRequestId(
+        importRequestId
+      );
+    } else {
+      response = await getAllImportOrders(
+        pagination.current || 1,
+        pagination.pageSize || 10
+      );
+    }
+
+    const formatted: ImportOrderData[] = await Promise.all(
+      (response.content ?? []).map(async (order) => {
+        // "limit = 1000" đủ để ôm hết chi tiết 1 đơn
+        const { content: importOrderDetails = [] } =
+          await getImportOrderDetailsPaginated(order.importOrderId, 1, 1000);
+
+        const totalExpectQuantityInOrder = importOrderDetails.reduce(
+          (sum, d) => sum + d.expectQuantity,
+          0
+        );
+        const totalActualQuantityInOrder = importOrderDetails.reduce(
+          (sum, d) => sum + d.actualQuantity,
+          0
+        );
+        const importOrderDetailsCompletedCount = importOrderDetails.reduce(
+          (sum, d) => sum + (d.actualQuantity > 0 ? 1 : 0),
+          0
+        );
+
+        return {
+          ...order,
+          importOrderDetailsCount: importOrderDetails.length,
+          importOrderDetailsCompletedCount,
+          totalExpectQuantityInOrder,
+          totalActualQuantityInOrder
+        };
+      })
+    );
+
+    setImportOrdersData(formatted);
+
+    if (response && response.metaDataDTO) {
+      updateFilter({
+        pagination: {
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
+        }
+      });
+    }
+  };
+
+  // ========== NAVIGATION HANDLERS ==========
+  const handleBackButton = (): void => {
+    if (importRequestId) {
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequestId));
+    } else {
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+    }
+  };
+
+  // ========== EVENT HANDLERS ==========
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    updateFilter({ searchTerm: e.target.value });
+  };
+
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    updateFilter({
+      pagination: {
+        ...newPagination,
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+      }
+    });
   };
 
   const handleStatusFilterClick = (filterKey: string): void => {
     const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
-    updateFilter({ 
+    updateFilter({
       selectedStatusFilter: newStatusFilter,
       pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
     });
   };
 
+  // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
       width: "16%",
@@ -286,9 +303,9 @@ const ImportOrderList: React.FC = () => {
         const getDateTime = (record: ImportOrderData) => {
           const date = record.isExtended ? record.extendedDate : record.dateReceived;
           const time = record.isExtended ? record.extendedTime : record.timeReceived;
-          
+
           if (!date || !time) return null;
-          
+
           // Combine date and time into a single datetime string
           return dayjs(`${date}T${time}`);
         };
@@ -367,14 +384,6 @@ const ImportOrderList: React.FC = () => {
       ),
     },
   ];
-
-  const handleBackButton = (): void => {
-    if (importRequestId) {
-      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequestId));
-    } else {
-      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
-    }
-  };
 
   return (
     <div className={`mx-auto`}>
@@ -473,9 +482,9 @@ const ImportOrderList: React.FC = () => {
           onChange={(value) => updateFilter({ selectedStaff: value })}
           allowClear
           maxTagCount="responsive"
-          options={staffs.map(staff => ({ 
-            label: staff.fullName, 
-            value: staff.id.toString() 
+          options={staffs.map(staff => ({
+            label: staff.fullName,
+            value: staff.id.toString()
           }))}
         />
       </div>
@@ -492,33 +501,33 @@ const ImportOrderList: React.FC = () => {
           rowClassName={(record) => {
             const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
             const statusClass = getStatusRowClass(record.status);
-            
+
             // Priority: COMPLETED and CANCELLED > near time > other status colors
             if (record.status === ImportStatus.COMPLETED) {
               return `${statusClass} status-green`;
             }
-            
+
             if (record.status === ImportStatus.CANCELLED) {
               return `${statusClass} status-gray`;
             }
-            
+
             if (isNearTime) {
               return 'bg-[rgba(220,38,38,0.05)]';
             }
-            
+
             // Add status-specific class for hover effects
             if (statusClass !== 'no-bg-row') {
               const statusType = record.status === ImportStatus.IN_PROGRESS
                 ? 'status-blue'
                 : record.status === ImportStatus.COUNTED
-                ? 'status-blue-heavy'
-                : '';
+                  ? 'status-blue-heavy'
+                  : '';
               return `${statusClass} ${statusType}`;
             }
-            
+
             return 'no-bg-row';
           }}
-          className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importOrdersData.length > 0 ? 
+          className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importOrdersData.length > 0 ?
             '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
             '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
             '[&_.ant-table-tbody_tr.status-blue-heavy:hover_td]:!bg-[rgba(59,130,246,0.16)] ' +

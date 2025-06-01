@@ -22,7 +22,7 @@ export interface ImportRequestData extends ImportRequestResponse {
 }
 
 const ImportRequestList: React.FC = () => {
-  // Use filter context instead of local state
+  // ========== FILTER CONTEXT ==========
   const { filterState, updateFilter } = useImportRequestFilter();
   const {
     searchTerm,
@@ -33,93 +33,29 @@ const ImportRequestList: React.FC = () => {
     pagination
   } = filterState as ImportRequestFilterState;
 
+  // ========== DATA STATES ==========
   const [importRequestsData, setImportRequestsData] = useState<ImportRequestData[]>([]);
-  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
 
+  // ========== SERVICES ==========
   const {
-    getAllImportRequests,
-    loading
+    loading: importRequestLoading,
+    getAllImportRequests
   } = useImportRequestService();
 
   const {
+    loading: importRequestDetailLoading,
     getImportRequestDetails
   } = useImportRequestDetailService();
 
   const {
+    loading: providerLoading,
     getAllProviders
   } = useProviderService();
 
-  useEffect(() => {
-    fetchImportRequests();
-  }, []);
+  // ========== COMPUTED VALUES ==========
+  const loading = importRequestLoading || importRequestDetailLoading || providerLoading;
 
-  const fetchImportRequests = async (): Promise<void> => {
-    try {
-      setDetailsLoading(true);
-
-      const { content } = await getAllImportRequests();
-
-      const { content: providerList = [] } = await getAllProviders();
-
-      const formattedRequests: ImportRequestData[] = await Promise.all(
-        (content || []).map(async (request: { importRequestId: string; providerId: number; }) => {
-          // Lấy chi tiết của từng phiếu
-          const { content: importRequestDetails = [] } = await getImportRequestDetails(
-            request.importRequestId
-          );
-
-          // Tính tổng bằng reduce
-          const totalExpectQuantityInRequest = importRequestDetails.reduce(
-            (runningTotal, detail) => runningTotal + detail.expectQuantity,
-            0
-          );
-          const totalOrderedQuantityInRequest = importRequestDetails.reduce(
-            (runningTotal, detail) => runningTotal + detail.orderedQuantity,
-            0
-          );
-          const totalActualQuantityInRequest = importRequestDetails.reduce(
-            (runningTotal, detail) => runningTotal + detail.actualQuantity,
-            0
-          );
-
-          // Tìm nhà cung cấp
-          const provider = providerList.find(
-            (provider) => provider.id === request.providerId
-          );
-
-          return {
-            ...request,
-            totalExpectQuantityInRequest,
-            totalOrderedQuantityInRequest,
-            totalActualQuantityInRequest,
-            providerName: provider?.name || "",
-          };
-        })
-      );
-
-      setImportRequestsData(formattedRequests);
-
-    } catch (err) {
-      console.error("Failed to fetch import requests:", err);
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    updateFilter({ searchTerm: e.target.value });
-  };
-
-  const handleTableChange = (newPagination: TablePaginationConfig): void => {
-    updateFilter({
-      pagination: {
-        ...newPagination,
-        current: newPagination.current,
-        pageSize: newPagination.pageSize,
-      }
-    });
-  };
-
+  // ========== UTILITY FUNCTIONS ==========
   const isNearEndDate = (endDate: string): boolean => {
     if (!endDate) return false;
 
@@ -128,14 +64,6 @@ const ImportRequestList: React.FC = () => {
     const diffInDays = endDateTime.diff(now, 'day');
 
     return diffInDays >= 0 && diffInDays <= 2; // Gần đến ngày hết hạn trong vòng 3 ngày
-  };
-
-  const handleStatusFilterClick = (filterKey: string): void => {
-    const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
-    updateFilter({
-      selectedStatusFilter: newStatusFilter,
-      pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
-    });
   };
 
   const getStatusRowClass = (status: string): string => {
@@ -153,13 +81,12 @@ const ImportRequestList: React.FC = () => {
     }
   };
 
-  // Filtered data logic
+  // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importRequestsData.filter((item) => {
     const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
     const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
     const matchesImportType = selectedImportType === "ALL" ? true : item.importType === selectedImportType;
     const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
-
 
     // Filter logic based on selected status filter
     let matchesStatusFilter = true;
@@ -190,6 +117,80 @@ const ImportRequestList: React.FC = () => {
   // Get unique providers from data
   const uniqueProviders = Array.from(new Set(importRequestsData.map(item => item.providerName))).filter(Boolean);
 
+  // ========== USE EFFECTS ==========
+  useEffect(() => {
+    fetchImportRequests();
+  }, []);
+
+  // ========== DATA FETCHING FUNCTIONS ==========
+  const fetchImportRequests = async (): Promise<void> => {
+    const { content } = await getAllImportRequests();
+
+    const { content: providerList = [] } = await getAllProviders();
+
+    const formattedRequests: ImportRequestData[] = await Promise.all(
+      (content || []).map(async (request: { importRequestId: string; providerId: number; }) => {
+        // Lấy chi tiết của từng phiếu
+        const { content: importRequestDetails = [] } = await getImportRequestDetails(
+          request.importRequestId
+        );
+
+        // Tính tổng bằng reduce
+        const totalExpectQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.expectQuantity,
+          0
+        );
+        const totalOrderedQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.orderedQuantity,
+          0
+        );
+        const totalActualQuantityInRequest = importRequestDetails.reduce(
+          (runningTotal, detail) => runningTotal + detail.actualQuantity,
+          0
+        );
+
+        // Tìm nhà cung cấp
+        const provider = providerList.find(
+          (provider) => provider.id === request.providerId
+        );
+
+        return {
+          ...request,
+          totalExpectQuantityInRequest,
+          totalOrderedQuantityInRequest,
+          totalActualQuantityInRequest,
+          providerName: provider?.name || "",
+        };
+      })
+    );
+
+    setImportRequestsData(formattedRequests);
+  };
+
+  // ========== EVENT HANDLERS ==========
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    updateFilter({ searchTerm: e.target.value });
+  };
+
+  const handleTableChange = (newPagination: TablePaginationConfig): void => {
+    updateFilter({
+      pagination: {
+        ...newPagination,
+        current: newPagination.current,
+        pageSize: newPagination.pageSize,
+      }
+    });
+  };
+
+  const handleStatusFilterClick = (filterKey: string): void => {
+    const newStatusFilter = selectedStatusFilter === filterKey ? null : filterKey;
+    updateFilter({
+      selectedStatusFilter: newStatusFilter,
+      pagination: { ...pagination, current: 1 } // Reset về trang đầu khi filter thay đổi
+    });
+  };
+
+  // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
       title: "Mã phiếu nhập",
@@ -475,15 +476,13 @@ const ImportRequestList: React.FC = () => {
             />
           </Space>
         </div>
-
-
       </div>
 
       <Table
         columns={columns}
         dataSource={filteredItems}
         rowKey="importRequestId"
-        loading={loading || detailsLoading}
+        loading={loading}
         onChange={handleTableChange}
         rowClassName={(record) => {
           const isNearEnd = isNearEndDate(record.endDate) &&

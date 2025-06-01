@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, message, Alert, Select, Modal, TablePaginationConfig, Table } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, Alert, Select, Modal, TablePaginationConfig, Table } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -24,6 +24,7 @@ import {
 const { Title } = Typography;
 const { TextArea } = Input;
 
+// ==================== UTILITY FUNCTIONS ====================
 // Convert Excel serial number to YYYY-MM-DD if needed
 function excelDateToYMD(serial: number): string {
   // Excel epoch is 1899-12-30 (UTC)
@@ -42,34 +43,53 @@ function excelTimeToHM(serial: number): string {
 }
 
 const ImportOrderCreate = () => {
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const { getAllProviders } = useProviderService();
-  const [providers, setProviders] = useState<ProviderResponse[]>([]);
+  // ==================== ROUTER & PARAMS ====================
   const { importRequestId: paramImportRequestId } = useParams<{ importRequestId: string }>();
   const { importRequestDetails } = useLocation().state as { importRequestDetails: ImportRequestDetailResponse[] } || {};
   const navigate = useNavigate();
+
+  // ==================== SERVICES ====================
+  const { getAllProviders } = useProviderService();
   const { getConfiguration } = useConfigurationService();
+  const {
+    loading: importRequestLoading,
+    getImportRequestById,
+  } = useImportRequestService();
+  const {
+    loading: importOrderLoading,
+    createImportOrder,
+  } = useImportOrderService();
+  const {
+    loading: importOrderDetailLoading,
+    createImportOrderDetails,
+  } = useImportOrderDetailService();
+
+  // ==================== DATA STATES ====================
+  const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-  const [defaultDateTime, setDefaultDateTime] = useState<{ date: string; time: string }>({
-    date: "",
-    time: ""
-  });
   const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
+  const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]);
 
-  // Step state: 0 = upload/edit, 1 = confirm
-  const [step, setStep] = useState<number>(0);
-  // Remove status from form state, handle only in backend if needed
-
-  // Editable table data for step 1
-  const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]); // No change needed here, still use ImportOrderDetailRow
+  // ==================== UI & FORM STATES ====================
+  const [step, setStep] = useState<number>(0); // 0 = upload/edit, 1 = confirm
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [excelImported, setExcelImported] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const getDefaultDateTimeForComponent = () => {
-    return getDefaultAssignedDateTimeForAction("import-order-create", configuration!, undefined, importRequest || undefined);
-  };
+  const [defaultDateTime, setDefaultDateTime] = useState<{ date: string; time: string }>({
+    date: "",
+    time: ""
+  });
+
+  const [formData, setFormData] = useState<ImportOrderCreateRequest>({
+    importRequestId: null,
+    accountId: null,
+    dateReceived: "",
+    timeReceived: "",
+    note: ""
+  });
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
@@ -77,28 +97,8 @@ const ImportOrderCreate = () => {
     total: importRequestDetails.length,
   });
 
-  const [formData, setFormData] = useState<ImportOrderCreateRequest>({
-    importRequestId: null,
-    accountId: null,
-    dateReceived: defaultDateTime.date,
-    timeReceived: defaultDateTime.time,
-    note: ""
-  });
-
-  const {
-    loading: importRequestLoading,
-    getImportRequestById,
-  } = useImportRequestService();
-
-  const {
-    loading: importOrderLoading,
-    createImportOrder,
-  } = useImportOrderService();
-
-  const {
-    loading: importOrderDetailLoading,
-    createImportOrderDetails,
-  } = useImportOrderDetailService();
+  // ==================== COMPUTED VALUES ====================
+  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
 
   // Validation flag for import order data
   const isImportOrderDataValid = editableRows.length > 0 && editableRows.every(row => {
@@ -108,41 +108,92 @@ const ImportOrderCreate = () => {
     return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
   });
 
-  // Fetch providers on mount
-  useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const response = await getAllProviders(1, 1000);;
-        if (response && response.content) {
-          setProviders(response.content);
+  // ==================== UTILITY FUNCTIONS ====================
+  const getDefaultDateTimeForComponent = () => {
+    return getDefaultAssignedDateTimeForAction("import-order-create", configuration!, undefined, importRequest || undefined);
+  };
+  const disabledDate = (current: Dayjs) =>
+    isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined);
+
+  const disabledTime = () =>
+    getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration, undefined, importRequest || undefined);
+
+  const checkImportOrderExpiry = (): boolean => {
+    if (configuration && importRequest?.endDate) {
+      const currentDateTime = dayjs();
+      const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
+
+      // Kiểm tra nếu ngày hiện tại là ngày kết thúc
+      if (currentDateTime.isSame(importRequestEndDate, 'day')) {
+        const minDateTime = getDefaultAssignedDateTimeForAction(
+          'import-order-create',
+          configuration,
+          undefined,
+          importRequest
+        );
+
+        // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
+        if (dayjs(`${minDateTime.date} ${minDateTime.time}`).isAfter(importRequestEndDate)) {
+          toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
+          return false;
         }
-      } catch (error) {
-        console.error("Error fetching providers:", error);
       }
-    };
+    }
+    return true;
+  };
+
+  // ========== DATA FETCHING FUNCTIONS ==========
+  // Fetch providers data
+  const fetchProviders = async () => {
+    const response = await getAllProviders(1, 1000);;
+    if (response && response.content) {
+      setProviders(response.content);
+    }
+
+  };
+
+  // Fetch configuration data
+  const fetchConfiguration = async () => {
+    const config = await getConfiguration();
+    if (config) {
+      setConfiguration(config);
+    }
+  };
+
+  // Fetch import request data
+  const fetchImportRequest = async () => {
+    const response = await getImportRequestById(paramImportRequestId!);
+    if (response?.content) {
+      setImportRequest(response.content);
+      setFormData(prev => ({
+        ...prev,
+        importRequestId: paramImportRequestId!,
+        providerId: response.content.providerId
+      }))
+    }
+  };
+
+  // ==================== USE EFFECTS ====================
+  useEffect(() => {
     fetchProviders();
   }, []);
 
   useEffect(() => {
-    const fetchConfiguration = async () => {
-      try {
-        const config = await getConfiguration();
-        if (config) {
-          setConfiguration(config);
-        }
-      } catch (error) {
-        console.error("Error fetching configuration:", error);
-      }
-    };
     fetchConfiguration();
   }, []);
 
+  useEffect(() => {
+    fetchImportRequest();
+  }, [paramImportRequestId]);
+
+  // Set default date time when configuration is loaded
   useEffect(() => {
     if (configuration) {
       setDefaultDateTime(getDefaultDateTimeForComponent());
     }
   }, [configuration, importRequest]);
 
+  // Update form data when default date time changes
   useEffect(() => {
     if (defaultDateTime.date && defaultDateTime.time) {
       setFormData(prev => ({
@@ -153,27 +204,7 @@ const ImportOrderCreate = () => {
     }
   }, [defaultDateTime]);
 
-  useEffect(() => {
-    const fetchImportRequest = async () => {
-      try {
-        const response = await getImportRequestById(paramImportRequestId!);
-        if (response?.content) {
-          setImportRequest(response.content);
-          setFormData(prev => ({
-            ...prev,
-            importRequestId: paramImportRequestId!,
-            providerId: response.content.providerId
-          }))
-        }
-      } catch (error) {
-        console.error("Error fetching import requests:", error);
-      }
-    };
-
-    fetchImportRequest();
-  }, [paramImportRequestId]);
-
-  // Khi fetch xong chi tiết phiếu nhập, khởi tạo editableRows nếu chưa import Excel
+  // Initialize editable rows when import request details are loaded
   useEffect(() => {
     if (importRequestDetails.length && !excelImported) {
       setEditableRows(
@@ -200,6 +231,7 @@ const ImportOrderCreate = () => {
     }
   }, [importRequestDetails, importRequest, excelImported]);
 
+  // ==================== EVENT HANDLERS ====================
   const handleTableChange = (newPagination: TablePaginationConfig) => {
     setPagination({
       ...pagination,
@@ -226,6 +258,11 @@ const ImportOrderCreate = () => {
     }));
   };
 
+  const handleConfirmClick = () => {
+    if (!checkImportOrderExpiry()) return;
+    setShowConfirmModal(true);
+  };
+
   const handleSubmit = async () => {
     if (!formData.importRequestId) {
       toast.error("Vui lòng chọn phiếu nhập");
@@ -233,65 +270,37 @@ const ImportOrderCreate = () => {
     }
 
     // Kiểm tra lại thời gian hết hạn trước khi tạo đơn nhập
-    if (configuration && importRequest?.endDate) {
-      const currentDateTime = dayjs();
-      const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
-      
-      // Kiểm tra nếu ngày hiện tại là ngày kết thúc
-      if (currentDateTime.isSame(importRequestEndDate, 'day')) {
-        try {
-          const minDateTime = getDefaultAssignedDateTimeForAction(
-            'import-order-create',
-            configuration,
-            undefined,
-            importRequest
-          );
-          
-          // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
-          if (dayjs(`${minDateTime.date} ${minDateTime.time}`).isAfter(importRequestEndDate)) {
-            toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
-            // Chuyển về trang chi tiết phiếu nhập
-            navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest.importRequestId));
-            return;
-          }
-        } catch (error) {
-          console.error("Error checking import order creation time:", error);
-          message.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
-          return;
-        }
-      }
+    if (!checkImportOrderExpiry()) {
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId!));
+      return;
     }
 
-    try {
-      // 1. Tạo đơn nhập
-      const createOrderRequest: ImportOrderCreateRequest = {
-        importRequestId: formData.importRequestId,
-        accountId: formData.accountId,
-        dateReceived: formData.dateReceived,
-        timeReceived: formData.timeReceived,
-        note: formData.note
-      };
-      const response = await createImportOrder(createOrderRequest);
-      if (response?.content) {
-        // 2. Chỉ gửi các itemId có trong phiếu nhập
-        const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
-        const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
-          itemId: row.itemId,
-          quantity: row.plannedQuantity
-        }));
-        await createImportOrderDetails(
-          { providerId: importRequest?.providerId!, importOrderItems },
-          response.content.importOrderId
-        );
-        // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
-        navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
-      }
-    } catch (error) {
-      toast.error("Đã xảy ra lỗi khi tạo đơn nhập hoặc chi tiết đơn nhập");
-      console.error("Error submitting form:", error);
+    // 1. Tạo đơn nhập
+    const createOrderRequest: ImportOrderCreateRequest = {
+      importRequestId: formData.importRequestId,
+      accountId: formData.accountId,
+      dateReceived: formData.dateReceived,
+      timeReceived: formData.timeReceived,
+      note: formData.note
+    };
+    const response = await createImportOrder(createOrderRequest);
+    if (response?.content) {
+      // 2. Chỉ gửi các itemId có trong phiếu nhập
+      const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
+      const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
+        itemId: row.itemId,
+        quantity: row.plannedQuantity
+      }));
+      await createImportOrderDetails(
+        { providerId: importRequest?.providerId!, importOrderItems },
+        response.content.importOrderId
+      );
+      // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
     }
   };
 
+  // ==================== EXCEL FUNCTIONS ====================
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
 
@@ -414,6 +423,7 @@ const ImportOrderCreate = () => {
     reader.readAsArrayBuffer(uploadedFile);
   };
 
+  // ==================== TABLE CONFIGURATION ====================
   const columns = [
     {
       title: "Mã hàng",
@@ -468,14 +478,8 @@ const ImportOrderCreate = () => {
     },
   ];
 
-  // Memoized disabled functions for DatePicker and TimePicker
-  const disabledDate = (current: Dayjs) =>
-    isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined);
 
-  const disabledTime = () =>
-    getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration, undefined, importRequest || undefined);
-
-  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
+  // ==================== RENDER ====================
   return (
     <div className="container mx-auto p-3 pt-0">
       <div className="flex items-center mb-4">
@@ -587,38 +591,7 @@ const ImportOrderCreate = () => {
               </div>
               <Button
                 type="primary"
-                onClick={() => {
-                  // Kiểm tra thời gian hết hạn trước khi mở modal
-                  if (configuration && importRequest?.endDate) {
-                    const currentDateTime = dayjs();
-                    const importRequestEndDate = dayjs(importRequest.endDate).endOf('day');
-                    
-                    // Kiểm tra nếu ngày hiện tại là ngày kết thúc
-                    if (currentDateTime.isSame(importRequestEndDate, 'day')) {
-                      try {
-                        const minDateTime = getDefaultAssignedDateTimeForAction(
-                          'import-order-create',
-                          configuration,
-                          undefined,
-                          importRequest
-                        );
-                        
-                        // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
-                        if (dayjs(`${minDateTime.date} ${minDateTime.time}`).isAfter(importRequestEndDate)) {
-                          toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
-                          // Chuyển về trang chi tiết phiếu nhập
-                          navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest.importRequestId));
-                          return;
-                        }
-                      } catch (error) {
-                        console.error("Error checking import order creation time:", error);
-                        toast.error("Có lỗi xảy ra khi kiểm tra thời gian tạo đơn nhập!");
-                        return;
-                      }
-                    }
-                  }
-                  setShowConfirmModal(true);
-                }}
+                onClick={handleConfirmClick}
                 loading={loading}
                 className="w-full mt-8"
                 id="btn-detail"

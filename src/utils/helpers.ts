@@ -281,6 +281,32 @@ export function isDateDisabledForAction(
     if (!configuration) {
         return true;
     }
+
+    // Special handling for import-request-create
+    if (actionType === 'import-request-create') {
+        // For startDate picker: only allow today and future dates
+        if (!startDate) {
+            return current.isBefore(dayjs().startOf('day'));
+        }
+        
+        // For endDate picker: disable dates before/equal to startDate and beyond maxAllowedDaysForImportRequestProcess
+        const baseStartDate = dayjs(startDate);
+        
+        // Disable dates before or equal to startDate
+        if (current.isSame(baseStartDate, 'day') || current.isBefore(baseStartDate, 'day')) {
+            return true;
+        }
+        
+        // Disable dates beyond maxAllowedDaysForImportRequestProcess
+        const maxAllowedDate = baseStartDate.add(configuration.maxAllowedDaysForImportRequestProcess, 'day');
+        if (current.isAfter(maxAllowedDate, 'day')) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    // Original logic for other action types
     const base = startDate ? dayjs(startDate) : dayjs();
     const minDay = getMinDateTime(actionType, configuration, base, importRequest).startOf('day');
     const maxDay = getMaxDateTime(actionType, configuration, base, !!startDate, importRequest)?.startOf('day');

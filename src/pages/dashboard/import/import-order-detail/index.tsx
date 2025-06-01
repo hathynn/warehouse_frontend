@@ -4,7 +4,6 @@ import {
   Table,
   Button,
   Spin,
-  message,
   Modal,
   Input,
   Checkbox,
@@ -42,19 +41,37 @@ import {
   isDateDisabledForAction,
   getDisabledTimeConfigForAction
 } from "@/utils/helpers";
+import { toast } from "react-toastify";
 
 const { TextArea } = Input;
 
 const ImportOrderDetail = () => {
-  // Modal xác nhận kiểm đếm
+  // ========== ROUTER & PARAMS ==========
+  const { importOrderId } = useParams<{ importOrderId: string }>();
+  const navigate = useNavigate();
+  const userRole = useSelector((state: { user: UserState }) => state.user.role);
+
+  // ========== DATA STATES ==========
+  const [importOrderData, setImportOrderData] = useState<ImportOrderResponse | null>(null);
+  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
+  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
+  const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
+  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
+  const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
+  const [qrMap, setQrMap] = useState<Record<string, { itemName: string; itemId: string }>>({});
+
+  // ========== MODAL STATES ==========
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [confirmCountingModalVisible, setConfirmCountingModalVisible] = useState(false);
-  const [confirmCountingResponsibilityChecked, setConfirmCountingResponsibilityChecked] = useState(false);
-  // Modal xác nhận hủy đơn nhập
   const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
-  const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
-  // Modal gia hạn đơn nhập
   const [extendModalVisible, setExtendModalVisible] = useState(false);
-  const [extending, setExtending] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+
+  // ========== FORM & UI STATES ==========
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [confirmCountingResponsibilityChecked, setConfirmCountingResponsibilityChecked] = useState(false);
+  const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
   const [extendResponsibilityChecked, setExtendResponsibilityChecked] = useState(false);
   const [extendFormData, setExtendFormData] = useState<{
     extendedDate: string;
@@ -65,150 +82,52 @@ const ImportOrderDetail = () => {
     extendedTime: "",
     extendedReason: ""
   });
-  const { importOrderId } = useParams<{ importOrderId: string }>();
-  const navigate = useNavigate();
 
-  // Modal states
-  const [cancelModalVisible, setCancelModalVisible] = useState(false);
-  const [cancelModalText, setCancelModalText] = useState('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
-
-  // Loading states
-  const [loading, setLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [loadingStaff, setLoadingStaff] = useState(false);
-  const [assigningStaff, setAssigningStaff] = useState(false);
-  const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-
-  // Data states
-  const [importOrder, setImportOrder] = useState<ImportOrderResponse | null>(null);
-  const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
-  const [staffs, setStaffs] = useState<AccountResponse[]>([]);
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
-  const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
-
-  // Pagination state
+  // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  const [searchText, setSearchText] = useState('');
+  // ========== SERVICES ==========
+  const {
+    loading: importOrderLoading,
+    getImportOrderById,
+    assignStaff,
+    cancelImportOrder,
+    completeImportOrder,
+    extendImportOrder
+  } = useImportOrderService();
+  const {
+    loading: importOrderDetailLoading,
+    getImportOrderDetailsPaginated
+  } = useImportOrderDetailService();
+  const {
+    loading: accountLoading,
+    getActiveStaffsInDay,
+    findAccountById
+  } = useAccountService();
+  const {
+    loading: configurationLoading,
+    getConfiguration
+  } = useConfigurationService();
+  const {
+    loading: inventoryItemLoading,
+    getByImportOrderDetailId,
+    getListQrCodes
+  } = useInventoryItemService();
 
-  const { getImportOrderById, assignStaff, cancelImportOrder, completeImportOrder, extendImportOrder } = useImportOrderService();
-  const [completing, setCompleting] = useState(false);
-  const { getImportOrderDetailsPaginated } = useImportOrderDetailService();
-  const { getActiveStaffsInDay, findAccountById } = useAccountService();
+  // ========== COMPUTED VALUES ==========
+  const loading = importOrderLoading || importOrderDetailLoading || accountLoading || configurationLoading || inventoryItemLoading;
 
-  const userRole = useSelector((state: { user: UserState }) => state.user.role);
-
-  const { getConfiguration } = useConfigurationService();
-  const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-
-  const { getByImportOrderDetailId, getListQrCodes } = useInventoryItemService();
-
-  // QR Print Modal state
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
-  const [qrMap, setQrMap] = useState<Record<string, { itemName: string; itemId: string }>>({});
-
-  // Fetch configuration
-  const fetchConfiguration = async () => {
-    const config = await getConfiguration();
-    setConfiguration(config);
-  };
-
-  // Fetch import order data
-  const fetchImportOrderData = async () => {
-    if (!importOrderId) return null;
-
-    try {
-      setLoading(true);
-      const response = await getImportOrderById(importOrderId);
-      if (response?.content) {
-        setImportOrder(response.content);
-      }
-      return response;
-    } catch (error) {
-      console.error("Failed to fetch import order:", error);
-      message.error("Không thể tải thông tin đơn nhập");
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchImportOrderDetails = async () => {
-    if (!importOrderId) return;
-    try {
-      setDetailsLoading(true);
-      const { current, pageSize } = pagination;
-      const response = await getImportOrderDetailsPaginated(
-        importOrderId,
-        current,
-        pageSize
-      );
-
-      if (response?.content) {
-        setImportOrderDetails(response.content);
-
-        if (response.metaDataDTO) {
-          const { page, limit, total } = response.metaDataDTO;
-          setPagination(prev => ({
-            ...prev,
-            current: page,
-            pageSize: limit,
-            total: total,
-          }));
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch import order details:", error);
-      message.error("Không thể tải danh sách chi tiết đơn nhập");
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const fetchAssignedStaff = async () => {
-    if (!importOrderId) return;
-    try {
-      const response = await findAccountById(importOrder?.assignedStaffId!);
-      setAssignedStaff(response);
-    } catch (error) {
-      console.error("Failed to fetch assigned staff:", error);
-      message.error("Không thể tải thông tin nhân viên đã phân công");
-    }
-  };
-
-  const fetchActiveStaffs = async () => {
-    if (!importOrder?.dateReceived) {
-      message.error("Ngày nhận hàng không hợp lệ");
-      return;
-    }
-
-    try {
-      setLoadingStaff(true);
-      // Use new API: pass both date and importOrderId
-      const activeStaffs = await getActiveStaffsInDay({
-        date: importOrder.dateReceived,
-        importOrderId: importOrder.importOrderId,
-      });
-      setStaffs(activeStaffs);
-    } catch (error) {
-      console.error("Failed to fetch warehouse keepers:", error);
-      message.error("Không thể tải danh sách nhân viên kho");
-    } finally {
-      setLoadingStaff(false);
-    }
-  };
-
+  // ========== USE EFFECTS ==========
+  // Initialize configuration on mount
   useEffect(() => {
     fetchConfiguration();
   }, []);
 
+  // Fetch import order data when importOrderId changes
   useEffect(() => {
     if (importOrderId) {
       fetchImportOrderData();
@@ -216,11 +135,12 @@ const ImportOrderDetail = () => {
     }
   }, [importOrderId]);
 
+  // Fetch assigned staff when importOrderData changes
   useEffect(() => {
-    if (importOrder?.assignedStaffId) {
+    if (importOrderData?.assignedStaffId) {
       fetchAssignedStaff();
     }
-  }, [importOrder]);
+  }, [importOrderData]);
 
   // Handle pagination changes
   useEffect(() => {
@@ -229,7 +149,63 @@ const ImportOrderDetail = () => {
     }
   }, [pagination.current, pagination.pageSize]);
 
-  // Helper function to calculate remaining time
+  // ========== DATA FETCHING FUNCTIONS ==========
+  const fetchConfiguration = async () => {
+    const config = await getConfiguration();
+    setConfiguration(config);
+  };
+
+  const fetchImportOrderData = async () => {
+    if (!importOrderId) return null;
+
+    const response = await getImportOrderById(importOrderId);
+    if (response?.content) {
+      setImportOrderData(response.content);
+    }
+    return response;
+  };
+
+  const fetchImportOrderDetails = async () => {
+    if (!importOrderId) return;
+    const { current, pageSize } = pagination;
+    const response = await getImportOrderDetailsPaginated(
+      importOrderId,
+      current,
+      pageSize
+    );
+
+    if (response?.content) {
+      setImportOrderDetails(response.content);
+      if (response.metaDataDTO) {
+        const { page, limit, total } = response.metaDataDTO;
+        setPagination(prev => ({
+          ...prev,
+          current: page,
+          pageSize: limit,
+          total: total,
+        }));
+      }
+    }
+  };
+
+  const fetchAssignedStaff = async () => {
+    if (!importOrderId) return;
+    const response = await findAccountById(importOrderData?.assignedStaffId!);
+    setAssignedStaff(response);
+  };
+
+  const fetchActiveStaffs = async () => {
+    if (!importOrderData?.dateReceived) {
+      return;
+    }
+    const activeStaffs = await getActiveStaffsInDay({
+      date: importOrderData.dateReceived,
+      importOrderId: importOrderData.importOrderId,
+    });
+    setStaffs(activeStaffs);
+  };
+
+  // ========== UTILITY FUNCTIONS ==========
   const calculateRemainingTime = (totalExpectedTime: string, defaultWorkingMinutes: number): string => {
     try {
       const [hours, minutes] = totalExpectedTime.split(':').map(Number);
@@ -251,15 +227,63 @@ const ImportOrderDetail = () => {
     return (endH * 60 + endM) - (startH * 60 + startM);
   };
 
+  const getRemainingAssignTime = () => {
+    if (!importOrderData?.dateReceived || !importOrderData?.timeReceived || !configuration?.timeToAllowAssign) {
+      return null;
+    }
+    const receivedDateTime = new Date(`${importOrderData.dateReceived}T${importOrderData.timeReceived}`);
+    const now = new Date();
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs);
+    const diffMs = deadline.getTime() - now.getTime();
+    if (diffMs <= 0) return "0 tiếng 0 phút";
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+    return `${diffHours} tiếng ${diffMins} phút`;
+  };
+
+  const canReassignStaff = () => {
+    if (!importOrderData?.dateReceived || !importOrderData?.timeReceived || !configuration?.timeToAllowAssign) {
+      return true;
+    }
+
+    const receivedDateTime = new Date(`${importOrderData.dateReceived}T${importOrderData.timeReceived}`);
+    const now = new Date();
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+
+    return (receivedDateTime.getTime() - now.getTime()) >= allowAssignMs;
+  };
+
+  // ========== NAVIGATION HANDLERS ==========
+  const handleBack = () => {
+    if (importOrderData?.importRequestId) {
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrderData?.importRequestId.toString()));
+    } else {
+      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
+    }
+  };
+
+  // ========== EVENT HANDLERS ==========
+  const handleTableChange = (pagination: any) => {
+    setPagination({
+      ...pagination,
+      current: pagination.current,
+      pageSize: pagination.pageSize,
+    });
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+  };
+
+  // ========== ASSIGN STAFF HANDLERS ==========
   const handleOpenAssignModal = async () => {
     setSelectedStaffId(null);
-    // Lấy configuration
-    try {
-      const config = await getConfiguration();
-      setConfiguration(config);
-    } catch (e) {
-      // Có thể toast lỗi ở đây nếu muốn
-    }
+    const config = await getConfiguration();
+    setConfiguration(config);
     fetchActiveStaffs();
     setAssignModalVisible(true);
   };
@@ -275,144 +299,47 @@ const ImportOrderDetail = () => {
 
   const handleAssignStaff = async () => {
     if (!selectedStaffId || !importOrderId) {
-      message.warning("Vui lòng chọn nhân viên để phân công");
+      toast.warning("Vui lòng chọn nhân viên để phân công");
+      handleCloseAssignModal();
       return;
     }
 
-    try {
-      setAssigningStaff(true);
-      await assignStaff({
-        importOrderId: importOrderId,
-        accountId: selectedStaffId!
-      });
-
-      const importOrderResponse = await fetchImportOrderData();
-      if (importOrderResponse?.content?.assignedStaffId) {
-        await findAccountById(importOrderResponse.content.assignedStaffId);
-      }
-      await fetchActiveStaffs();
-
-      message.success("Phân công nhân viên thành công");
-      setSelectedStaffId(null);
-    } catch (error) {
-      console.error("Failed to assign warehouse keeper:", error);
-      message.error("Không thể phân công nhân viên. Vui lòng thử lại");
-    } finally {
-      setAssigningStaff(false);
+    if (getRemainingAssignTime() === "0 tiếng 0 phút") {
+      toast.error("Đã hết thời gian phân công nhân viên");
+      handleCloseAssignModal();
+      return;
     }
-  };
 
-  // Table pagination handler
-  const handleTableChange = (pagination: any) => {
-    setPagination({
-      ...pagination,
-      current: pagination.current,
-      pageSize: pagination.pageSize,
+    const response = await assignStaff({
+      importOrderId: importOrderId,
+      accountId: selectedStaffId!
     });
-  };
 
-  const handleBack = () => {
-    if (importOrder?.importRequestId) {
-      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(importOrder?.importRequestId.toString()));
-    } else {
-      navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
+    if (response.statusCode != 200) {
+      toast.error("Không thể phân công nhân viên");
+      handleCloseAssignModal();
+      return;
     }
+
+    const importOrderResponse = await fetchImportOrderData();
+    if (importOrderResponse?.content?.assignedStaffId) {
+      await findAccountById(importOrderResponse.content.assignedStaffId);
+    }
+    await fetchActiveStaffs();
+    setSelectedStaffId(null);
+
   };
 
-  const handleShowCancelModal = () => {
-    setCancelModalVisible(true);
-  };
+  // ========== CANCEL ORDER HANDLERS ==========
 
   const handleCancelModalOk = async () => {
     if (!importOrderId) return;
-
-    try {
-      setCancelling(true);
-      setCancelModalText('Đang xử lý huỷ đơn nhập...');
-
-      await cancelImportOrder(importOrderId);
-      await fetchImportOrderData();
-
-      message.success('Đã hủy đơn nhập thành công');
-      setCancelModalVisible(false);
-    } catch (error) {
-      console.error("Failed to cancel import order:", error);
-      message.error('Không thể hủy đơn nhập. Vui lòng thử lại');
-    } finally {
-      setCancelling(false);
-      setCancelModalText('Bạn có chắc chắn muốn hủy đơn nhập này không? Hành động này không thể hoàn tác.');
-    }
+    await cancelImportOrder(importOrderId);
+    await fetchImportOrderData();
   };
 
-  const handleCancelModalCancel = () => {
-    setCancelModalVisible(false);
-  };
 
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-  };
-
-  const filteredAndSortedStaffs = staffs
-    .map(staff => ({
-      ...staff,
-      remainingTime: calculateRemainingTime(
-        staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
-        getDefaultWorkingMinutes()
-      )
-    }))
-    .filter(staff => {
-      if (staff.id === importOrder?.assignedStaffId) return false;
-      const searchLower = searchText.toLowerCase();
-      return (
-        staff.fullName.toLowerCase().includes(searchLower) ||
-        staff.id.toString().includes(searchLower)
-      );
-    })
-    .sort((a, b) => {
-      const getMinutes = (timeStr: string) => {
-        const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
-          parseInt(part.replace(' phút', ''), 10)
-        );
-        return hours * 60 + minutes;
-      };
-      return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
-    });
-
-  // Function to check if reassignment is allowed
-  const canReassignStaff = () => {
-    if (!importOrder?.dateReceived || !importOrder?.timeReceived || !configuration?.timeToAllowAssign) {
-      return true;
-    }
-
-    // Combine dateReceived and timeReceived into a Date object
-    const receivedDateTime = new Date(`${importOrder.dateReceived}T${importOrder.timeReceived}`);
-    const now = new Date();
-    // Convert timeToAllowAssign to milliseconds
-    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
-    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
-
-    // If receivedDateTime - now < timeToAllowAssign, don't allow reassignment
-    return (receivedDateTime.getTime() - now.getTime()) >= allowAssignMs;
-  };
-
-  const getRemainingAssignTime = () => {
-    if (!importOrder?.dateReceived || !importOrder?.timeReceived || !configuration?.timeToAllowAssign) {
-      return null;
-    }
-    const receivedDateTime = new Date(`${importOrder.dateReceived}T${importOrder.timeReceived}`);
-    const now = new Date();
-    const [hours, minutes, seconds] = configuration.timeToAllowAssign.split(':').map(Number);
-    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
-    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs);
-    const diffMs = deadline.getTime() - now.getTime();
-    if (diffMs <= 0) return "0 tiếng 0 phút";
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffMins = diffMinutes % 60;
-    return `${diffHours} tiếng ${diffMins} phút`;
-  };
-
-  // Helper functions for extend functionality
+  // ========== EXTEND ORDER HANDLERS ==========
   const handleOpenExtendModal = () => {
     if (configuration) {
       const defaultDateTime = getDefaultAssignedDateTimeForAction("extend-import-order", configuration);
@@ -455,35 +382,81 @@ const ImportOrderDetail = () => {
 
   const handleExtendSubmit = async () => {
     if (!importOrderId || !extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()) {
-      message.warning("Vui lòng điền đầy đủ thông tin gia hạn");
       return;
     }
 
     if (!extendResponsibilityChecked) {
-      message.warning("Vui lòng xác nhận thông tin gia hạn");
       return;
     }
 
-    try {
-      setExtending(true);
-      const extendRequest: ExtendImportOrderRequest = {
-        importOrderId: importOrderId,
-        extendedDate: extendFormData.extendedDate,
-        extendedTime: extendFormData.extendedTime,
-        extendedReason: extendFormData.extendedReason
-      };
-
-      await extendImportOrder(extendRequest);
-      await fetchImportOrderData();
-      handleCloseExtendModal();
-      message.success("Gia hạn đơn nhập thành công");
-    } catch (error) {
-      console.error("Failed to extend import order:", error);
-      message.error("Không thể gia hạn đơn nhập. Vui lòng thử lại");
-    } finally {
-      setExtending(false);
-    }
+    const extendRequest: ExtendImportOrderRequest = {
+      importOrderId: importOrderId,
+      extendedDate: extendFormData.extendedDate,
+      extendedTime: extendFormData.extendedTime,
+      extendedReason: extendFormData.extendedReason
+    };
+    await extendImportOrder(extendRequest);
+    await fetchImportOrderData();
+    handleCloseExtendModal();
   };
+
+  // ========== QR CODE HANDLERS ==========
+  const handleOpenQrModal = async () => {
+    setQrModalVisible(true);
+    const allInventoryItemIds: string[] = [];
+    const itemInfoMap: Record<string, { itemName: string; itemId: string }> = {};
+    for (const detail of importOrderDetails) {
+      const res = await getByImportOrderDetailId(detail.importOrderDetailId, 1, 999);
+      if (res?.content) {
+        for (const item of res.content) {
+          allInventoryItemIds.push(item.id);
+          itemInfoMap[item.id] = { itemName: item.itemName, itemId: item.itemId };
+        }
+      }
+    }
+    if (allInventoryItemIds.length === 0) {
+      toast.warning("Không có sản phẩm nào để in QRCode");
+      setQrList([]);
+      setQrMap({});
+      return;
+    }
+    const qrRes = await getListQrCodes(allInventoryItemIds);
+    setQrList(qrRes?.content || []);
+    setQrMap(itemInfoMap);
+  };
+
+  const handleCloseQrModal = () => {
+    setQrModalVisible(false);
+    setQrList([]);
+    setQrMap({});
+  };
+
+  // ========== COMPUTED VALUES & RENDER LOGIC ==========
+  const filteredAndSortedStaffs = staffs
+    .map(staff => ({
+      ...staff,
+      remainingTime: calculateRemainingTime(
+        staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
+        getDefaultWorkingMinutes()
+      )
+    }))
+    .filter(staff => {
+      if (staff.id === importOrderData?.assignedStaffId) return false;
+      const searchLower = searchText.toLowerCase();
+      return (
+        staff.fullName.toLowerCase().includes(searchLower) ||
+        staff.id.toString().includes(searchLower)
+      );
+    })
+    .sort((a, b) => {
+      const getMinutes = (timeStr: string) => {
+        const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
+          parseInt(part.replace(' phút', ''), 10)
+        );
+        return hours * 60 + minutes;
+      };
+      return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
+    });
 
   // Table columns definition
   const columns = [
@@ -543,22 +516,22 @@ const ImportOrderDetail = () => {
 
   // Chuẩn bị dữ liệu cho DetailCard
   const infoItems = [
-    { label: "Mã đơn nhập", value: `#${importOrder?.importOrderId}` },
-    { label: "Ngày tạo", value: importOrder?.createdDate ? dayjs(importOrder?.createdDate).format("DD-MM-YYYY") : "-" },
-    { label: "Trạng thái", value: importOrder?.status && <StatusTag status={importOrder.status} type="import" /> },
+    { label: "Mã đơn nhập", value: `#${importOrderData?.importOrderId}` },
+    { label: "Ngày tạo", value: importOrderData?.createdDate ? dayjs(importOrderData?.createdDate).format("DD-MM-YYYY") : "-" },
+    { label: "Trạng thái", value: importOrderData?.status && <StatusTag status={importOrderData.status} type="import" /> },
     {
       label: "Thời điểm nhận dự kiến",
       value: (
         <>
-          {!importOrder?.isExtended ? (
+          {!importOrderData?.isExtended ? (
             // Đơn chưa gia hạn
-            (importOrder?.status !== ImportStatus.CANCELLED && 
-             importOrder?.status !== ImportStatus.COMPLETED && 
-             importOrder?.status !== ImportStatus.COUNTED) ? (
+            (importOrderData?.status !== ImportStatus.CANCELLED &&
+              importOrderData?.status !== ImportStatus.COMPLETED &&
+              importOrderData?.status !== ImportStatus.COUNTED) ? (
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div> Ngày <strong>{importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
-                  <div> Lúc {importOrder?.timeReceived ? <strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                  <div> Ngày <strong>{importOrderData?.dateReceived ? dayjs(importOrderData.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+                  <div> Lúc {importOrderData?.timeReceived ? <strong>{importOrderData?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
                 </div>
                 <Button
                   className="[.ant-btn-primary]:!p-2"
@@ -572,19 +545,19 @@ const ImportOrderDetail = () => {
             ) : (
               // Đơn chưa gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
               <div>
-                <div> Ngày <strong>{importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
-                <div> Lúc {importOrder?.timeReceived ? <strong>{importOrder?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                <div> Ngày <strong>{importOrderData?.dateReceived ? dayjs(importOrderData.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div> Lúc {importOrderData?.timeReceived ? <strong>{importOrderData?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
               </div>
             )
           ) : (
             // Đơn đã gia hạn
-            (importOrder?.status !== ImportStatus.CANCELLED && 
-             importOrder?.status !== ImportStatus.COMPLETED && 
-             importOrder?.status !== ImportStatus.COUNTED) ? (
+            (importOrderData?.status !== ImportStatus.CANCELLED &&
+              importOrderData?.status !== ImportStatus.COMPLETED &&
+              importOrderData?.status !== ImportStatus.COUNTED) ? (
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
-                  <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                  <div className="text-orange-600 font-medium"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                  <div className="text-orange-600 font-medium"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
                 </div>
                 <Button
                   className="[.ant-btn-primary]:!p-2"
@@ -598,82 +571,37 @@ const ImportOrderDetail = () => {
             ) : (
               // Đơn đã gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
               <div>
-                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrder?.extendedDate ? dayjs(importOrder.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
-                <div className="text-orange-600 font-medium"> Lúc {importOrder?.extendedTime ? <strong>{importOrder?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div className="text-orange-600 font-medium"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
               </div>
             )
           )}
         </>
       )
     },
-    ...(importOrder?.isExtended ? [
+    ...(importOrderData?.isExtended ? [
       {
-      label: "Lý do gia hạn",
-      value: importOrder?.extendedReason || "-",
-      span: 2
-    }]:[]),
+        label: "Lý do gia hạn",
+        value: importOrderData?.extendedReason || "-",
+        span: 2
+      }] : []),
     {
       label: "Thời điểm nhận thực tế",
       value: (
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-green-600 font-medium"> Ngày <strong>{importOrder?.actualDateReceived ? dayjs(importOrder.actualDateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
-            <div className="text-green-600 font-medium"> Lúc {importOrder?.actualTimeReceived ? <strong>{importOrder?.actualTimeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+            <div className="text-green-600 font-medium"> Ngày <strong>{importOrderData?.actualDateReceived ? dayjs(importOrderData.actualDateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+            <div className="text-green-600 font-medium"> Lúc {importOrderData?.actualTimeReceived ? <strong>{importOrderData?.actualTimeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
           </div>
         </div>
       )
     },
-    // { label: "Người tạo", value: importOrder?.createdBy || "-" },
     { label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 },
-
-    { label: "Ghi chú", value: importOrder?.note || "-", span: 3 }
+    { label: "Ghi chú", value: importOrderData?.note || "-", span: 3 }
   ];
 
-  // Lấy danh sách QRCode khi mở modal
-  const handleOpenQrModal = async () => {
-    setQrModalVisible(true);
-    setQrLoading(true);
-    try {
-      // Lấy tất cả inventoryItemId từ các importOrderDetail
-      const allInventoryItemIds: string[] = [];
-      const itemInfoMap: Record<string, { itemName: string; itemId: string }> = {};
-      for (const detail of importOrderDetails) {
-        const res = await getByImportOrderDetailId(detail.importOrderDetailId, 1, 999);
-        if (res?.content) {
-          for (const item of res.content) {
-            allInventoryItemIds.push(item.id);
-            itemInfoMap[item.id] = { itemName: item.itemName, itemId: item.itemId };
-          }
-        }
-      }
-      if (allInventoryItemIds.length === 0) {
-        message.warning("Không có sản phẩm nào để in QRCode");
-        setQrList([]);
-        setQrMap({});
-        setQrLoading(false);
-        return;
-      }
-      // Lấy danh sách QRCode
-      const qrRes = await getListQrCodes(allInventoryItemIds);
-      setQrList(qrRes?.content || []);
-      setQrMap(itemInfoMap);
-    } catch (e) {
-      message.error("Không thể lấy danh sách QRCode");
-      setQrList([]);
-      setQrMap({});
-    } finally {
-      setQrLoading(false);
-    }
-  };
-
-  const handleCloseQrModal = () => {
-    setQrModalVisible(false);
-    setQrList([]);
-    setQrMap({});
-  };
-
   // Show loading spinner when initially loading the page
-  if (loading && !importOrder) {
+  if (loading && !importOrderData) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
@@ -693,8 +621,8 @@ const ImportOrderDetail = () => {
         </Button>
       </div>
       <div className="flex items-center mb-4">
-        <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrder?.importOrderId}</h1>
-        {importOrder?.status !== ImportStatus.CANCELLED && importOrder?.status !== ImportStatus.COMPLETED && (
+        <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrderData?.importOrderId}</h1>
+        {importOrderData?.status !== ImportStatus.CANCELLED && importOrderData?.status !== ImportStatus.COMPLETED && (
           <>
             {userRole === AccountRole.WAREHOUSE_MANAGER && (
               <Button
@@ -714,13 +642,14 @@ const ImportOrderDetail = () => {
                     danger
                     type="primary"
                     onClick={() => setCancelImportOrderModalVisible(true)}
-                    loading={cancelling}
+                    loading={importOrderLoading}
                   >
                     Hủy đơn nhập
-                  </Button><Modal
+                  </Button>
+                  <Modal
                     title="Xác nhận hủy đơn nhập"
                     open={cancelImportOrderModalVisible}
-                    onOk={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); handleShowCancelModal(); }}
+                    onOk={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); handleCancelModalOk(); }}
                     onCancel={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); }}
                     okText="Tôi xác nhận hủy đơn nhập"
                     cancelText="Hủy"
@@ -728,7 +657,7 @@ const ImportOrderDetail = () => {
                     maskClosable={false}
                   >
                     <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>
-                      Tôi xác nhận và chịu trách nhiệm về quyết định hủy đơn nhập này.
+                      Tôi xác nhận và xin chịu trách nhiệm về quyết định hủy đơn nhập này.
                     </Checkbox>
                   </Modal>
                 </>
@@ -741,7 +670,7 @@ const ImportOrderDetail = () => {
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
       <div className="flex justify-end items-center mt-16 mb-4">
-        {importOrder?.status === ImportStatus.COMPLETED && (
+        {importOrderData?.status === ImportStatus.COMPLETED && (
           <Button
             type="primary"
             icon={<PrinterOutlined />}
@@ -750,12 +679,12 @@ const ImportOrderDetail = () => {
             In QRCode
           </Button>
         )}
-        {importOrder?.status === ImportStatus.COUNTED && (
+        {importOrderData?.status === ImportStatus.COUNTED && (
           <>
             <Button
               danger
               type="primary"
-              loading={completing}
+              loading={importOrderLoading}
               onClick={() => setConfirmCountingModalVisible(true)}
             >
               Xác nhận kiểm đếm
@@ -766,16 +695,9 @@ const ImportOrderDetail = () => {
               onOk={async () => {
                 setConfirmCountingModalVisible(false);
                 setConfirmCountingResponsibilityChecked(false);
-                if (!importOrder?.importOrderId) return;
-                setCompleting(true);
-                try {
-                  await completeImportOrder(importOrder.importOrderId);
-                  await fetchImportOrderData();
-                } catch (error) {
-                  message.error("Không thể xác nhận kiểm đếm");
-                } finally {
-                  setCompleting(false);
-                }
+                if (!importOrderData?.importOrderId) return;
+                await completeImportOrder(importOrderData.importOrderId);
+                await fetchImportOrderData();
               }}
               onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
               okText="Tôi xác nhận kiểm đếm"
@@ -795,22 +717,25 @@ const ImportOrderDetail = () => {
         columns={columns}
         dataSource={importOrderDetails}
         rowKey="importOrderDetailId"
-        loading={detailsLoading}
+        loading={importOrderDetailLoading}
         onChange={handleTableChange}
         pagination={{
           ...pagination,
           showSizeChanger: true,
-          pageSizeOptions: ['10', '50'],
+          pageSizeOptions: ['5', '10', '20', '50'],
           showTotal: (total) => `Tổng cộng ${total} sản phẩm trong đơn nhập`,
+          locale: {
+            items_per_page: '/ trang'
+          }
         }}
       />
 
       {/* Modals */}
       <Modal
         title={
-          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+          <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
             <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
-            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrderData?.importOrderId}</p>
             <p className="text-sm text-gray-700 mt-2 flex items-center">
               <InfoCircleOutlined className="mr-2 text-blue-500" />
               Sau {getRemainingAssignTime() || "..."},
@@ -829,7 +754,7 @@ const ImportOrderDetail = () => {
             type="primary"
             onClick={handleAssignStaff}
             disabled={!selectedStaffId}
-            loading={assigningStaff}
+            loading={importOrderLoading}
           >
             Phân công
           </Button>,
@@ -837,7 +762,7 @@ const ImportOrderDetail = () => {
         width={700}
         className="!top-[50px]"
       >
-        {loadingStaff ? (
+        {accountLoading ? (
           <div className="flex justify-center items-center py-8">
             <Spin size="large" />
           </div>
@@ -901,7 +826,7 @@ const ImportOrderDetail = () => {
                     key: "remainingTime",
                     width: '30%',
                     render: (time, record) => (
-                      <span className={`font-medium ${record.id === importOrder?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
+                      <span className={`font-medium ${record.id === importOrderData?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
                         {time || "8 tiếng 0 phút"}
                       </span>
                     )
@@ -913,18 +838,6 @@ const ImportOrderDetail = () => {
         )}
       </Modal>
 
-      <Modal
-        title="Xác nhận hủy đơn nhập"
-        open={cancelModalVisible}
-        onOk={handleCancelModalOk}
-        confirmLoading={cancelling}
-        onCancel={handleCancelModalCancel}
-        okText="Xác nhận"
-        cancelText="Quay lại"
-        okButtonProps={{ danger: true }}
-      >
-        <p>{cancelModalText}</p>
-      </Modal>
 
       <Modal
         title={<span className="text-lg font-bold">Danh sách QRCode sản phẩm</span>}
@@ -932,13 +845,13 @@ const ImportOrderDetail = () => {
         onCancel={handleCloseQrModal}
         footer={[
           <Button key="close" onClick={handleCloseQrModal}>Đóng</Button>,
-          <Button key="print" type="primary" onClick={() => window.print()} disabled={qrLoading || qrList.length === 0}>In</Button>,
+          <Button key="print" type="primary" onClick={() => window.print()} disabled={inventoryItemLoading || qrList.length === 0}>In</Button>,
         ]}
         width={900}
         className="!top-[50px] print:!block"
       >
         <div id="qr-print-area" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4 print:grid-cols-3 print:gap-4">
-          {qrLoading ? (
+          {inventoryItemLoading ? (
             <div className="col-span-3 flex justify-center items-center py-8">
               <Spin size="large" />
             </div>
@@ -960,9 +873,9 @@ const ImportOrderDetail = () => {
       {/* Modal gia hạn đơn nhập */}
       <Modal
         title={
-          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
+          <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
             <h3 className="text-xl font-semibold text-blue-900">Gia hạn đơn nhập</h3>
-            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrder?.importOrderId}</p>
+            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrderData?.importOrderId}</p>
             <p className="text-sm text-gray-700 mt-2 flex items-center">
               <InfoCircleOutlined className="mr-2 text-blue-500" />
               Thời gian gia hạn phải cách thời điểm hiện tại ít nhất {configuration?.daysToAllowExtend} ngày
@@ -979,7 +892,7 @@ const ImportOrderDetail = () => {
             key="submit"
             type="primary"
             onClick={handleExtendSubmit}
-            loading={extending}
+            loading={importOrderLoading}
             disabled={!extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim() || !extendResponsibilityChecked}
           >
             Xác nhận gia hạn
@@ -997,13 +910,13 @@ const ImportOrderDetail = () => {
               <div>
                 <p className="text-sm text-gray-500">Ngày nhận hiện tại</p>
                 <p className="text-base font-medium">
-                  {importOrder?.dateReceived ? dayjs(importOrder.dateReceived).format("DD-MM-YYYY") : "-"}
+                  {importOrderData?.dateReceived ? dayjs(importOrderData.dateReceived).format("DD-MM-YYYY") : "-"}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Giờ nhận hiện tại</p>
                 <p className="text-base font-medium">
-                  {importOrder?.timeReceived?.split(':').slice(0, 2).join(':') || "-"}
+                  {importOrderData?.timeReceived?.split(':').slice(0, 2).join(':') || "-"}
                 </p>
               </div>
             </div>
@@ -1047,7 +960,7 @@ const ImportOrderDetail = () => {
                 Lý do gia hạn <span className="text-red-500">*</span>
               </label>
               <TextArea
-                className="!mb-4"
+                className="!mb-2"
                 rows={4}
                 placeholder="Nhập lý do gia hạn đơn nhập..."
                 value={extendFormData.extendedReason}
@@ -1066,7 +979,7 @@ const ImportOrderDetail = () => {
             onChange={e => setExtendResponsibilityChecked(e.target.checked)}
             style={{ fontSize: 14, fontWeight: "bold" }}
           >
-            Tôi xác nhận đã điền đúng thông tin và đồng ý gia hạn đơn nhập này.
+            Tôi xác nhận đã điền đúng thông tin và đồng ý gia hạn.
           </Checkbox>
         </div>
       </Modal>

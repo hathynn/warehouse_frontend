@@ -22,7 +22,6 @@ const { Title } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-
 interface FormData {
   importReason: string;
   importType: "ORDER" | "RETURN";
@@ -32,6 +31,10 @@ interface FormData {
 }
 
 const ImportRequestCreate: React.FC = () => {
+  // ========== ROUTER & PARAMS ==========
+  const navigate = useNavigate();
+
+  // ========== DATA STATES ==========
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [step, setStep] = useState<number>(0);
   const [data, setData] = useState<ImportRequestDetailRow[]>([]);
@@ -50,24 +53,15 @@ const ImportRequestCreate: React.FC = () => {
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
 
-  // Pagination state
+  // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
 
-  // Handler for page change
-  const handleChangePage = (paginationObj: any) => {
-    setPagination(prev => ({
-      ...prev,
-      current: paginationObj.current,
-      pageSize: paginationObj.pageSize || prev.pageSize,
-    }));
-  };
-
+  // ========== SERVICES ==========
   const {
     loading: importRequestDetailLoading,
     createImportRequestDetail
@@ -84,49 +78,14 @@ const ImportRequestCreate: React.FC = () => {
   } = useItemService();
 
   const {
+    loading: configurationLoading,
     getConfiguration
   } = useConfigurationService();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [providersResponse, itemsResponse] = await Promise.all([
-          getAllProviders(),
-          getItems()
-        ]);
+  // ========== COMPUTED VALUES ==========
+  const loading = providerLoading || itemLoading || importRequestDetailLoading;
 
-        if (providersResponse?.content && itemsResponse?.content) {
-          setProviders(providersResponse.content);
-          setItems(itemsResponse.content);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    const fetchConfiguration = async () => {
-      const configuration = await getConfiguration();
-      setConfiguration(configuration);
-    };
-    fetchConfiguration();
-  }, []);
-
-  // Update endDate when configuration is loaded
-  useEffect(() => {
-    if (configuration?.maxAllowedDaysForImportRequestProcess) {
-      console.log(configuration.maxAllowedDaysForImportRequestProcess);
-      setFormData(prev => ({
-        ...prev,
-        endDate: dayjs(prev.startDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD")
-      }));
-    }
-  }, [configuration]);
-
-  // Helper function to validate date range
+  // ========== UTILITY FUNCTIONS ==========
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
     if (!startDate || !endDate) return true;
 
@@ -149,7 +108,111 @@ const ImportRequestCreate: React.FC = () => {
     return true;
   };
 
-  // Handle start date change
+  // New validation function to check if form data is valid
+  const isFormDataValid = (): boolean => {
+    if (!formData.importReason || !formData.startDate || !formData.endDate) {
+      return false;
+    }
+    
+    // Check if startDate is today or later
+    const startDate = dayjs(formData.startDate);
+    const today = dayjs().startOf('day');
+    if (startDate.isBefore(today)) {
+      return false;
+    }
+    
+    // Check if endDate is valid
+    if (!isEndDateValid(formData.startDate, formData.endDate)) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        "itemId": "Mã hàng (số)",
+        "quantity": "Số lượng (số)",
+        "providerId": "Mã Nhà cung cấp (số)"
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "import_request_template.xlsx");
+  };
+
+  const getConsolidatedData = (originalData: ImportRequestDetailRow[]): ImportRequestDetailRow[] => {
+    const groupedData: { [key: string]: ImportRequestDetailRow } = {};
+    
+    originalData.forEach((item) => {
+      const key = `${item.itemId}-${item.providerId}`;
+      
+      if (groupedData[key]) {
+        // Nếu đã tồn tại, cộng thêm số lượng
+        groupedData[key].quantity += item.quantity;
+      } else {
+        // Nếu chưa tồn tại, thêm mới
+        groupedData[key] = { ...item };
+      }
+    });
+
+    return Object.values(groupedData);
+  };
+
+  // ========== COMPUTED VALUES & FILTERING ==========
+  const sortedData = useMemo(() => {
+    if (step === 1) {
+      return [...getConsolidatedData(data)].sort((a, b) => a.providerId - b.providerId);
+    }
+    return [...data].sort((a, b) => a.providerId - b.providerId);
+  }, [data, step]);
+
+  // ========== USE EFFECTS ==========
+  useEffect(() => {
+    const fetchData = async () => {
+      const [providersResponse, itemsResponse] = await Promise.all([
+        getAllProviders(),
+        getItems()
+      ]);
+
+      if (providersResponse?.content && itemsResponse?.content) {
+        setProviders(providersResponse.content);
+        setItems(itemsResponse.content);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      const configuration = await getConfiguration();
+      setConfiguration(configuration);
+    };
+    fetchConfiguration();
+  }, []);
+
+  // Update endDate when configuration is loaded
+  useEffect(() => {
+    if (configuration?.maxAllowedDaysForImportRequestProcess) {
+      setFormData(prev => ({
+        ...prev,
+        endDate: dayjs(prev.startDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD")
+      }));
+    }
+  }, [configuration]);
+
+  // ========== EVENT HANDLERS ==========
+  const handleChangePage = (paginationObj: any) => {
+    setPagination(prev => ({
+      ...prev,
+      current: paginationObj.current,
+      pageSize: paginationObj.pageSize || prev.pageSize,
+    }));
+  };
+
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
     const newStartDate = date ? date.format("YYYY-MM-DD") : "";
 
@@ -171,11 +234,11 @@ const ImportRequestCreate: React.FC = () => {
     setFormData({ ...formData, startDate: newStartDate, endDate: newEndDate });
   };
 
-  // Handle end date change
   const handleEndDateChange = (date: dayjs.Dayjs | null) => {
     const newEndDate = date ? date.format("YYYY-MM-DD") : "";
     setFormData({ ...formData, endDate: newEndDate });
   };
+
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
@@ -232,47 +295,6 @@ const ImportRequestCreate: React.FC = () => {
     }
   };
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)",
-        "providerId": "Mã Nhà cung cấp (số)"
-      }
-    ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "import_request_template.xlsx");
-  };
-
-
-  // Function để gộp data có cùng itemId và providerId
-  const getConsolidatedData = (originalData: ImportRequestDetailRow[]): ImportRequestDetailRow[] => {
-    const groupedData: { [key: string]: ImportRequestDetailRow } = {};
-    
-    originalData.forEach((item) => {
-      const key = `${item.itemId}-${item.providerId}`;
-      
-      if (groupedData[key]) {
-        // Nếu đã tồn tại, cộng thêm số lượng
-        groupedData[key].quantity += item.quantity;
-      } else {
-        // Nếu chưa tồn tại, thêm mới
-        groupedData[key] = { ...item };
-      }
-    });
-
-    return Object.values(groupedData);
-  };
-
-  const sortedData = useMemo(() => {
-    if (step === 1) {
-      return [...getConsolidatedData(data)].sort((a, b) => a.providerId - b.providerId);
-    }
-    return [...data].sort((a, b) => a.providerId - b.providerId);
-  }, [data, step]);
-
   const handleSubmit = async () => {
     if (!file || data.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
@@ -284,34 +306,33 @@ const ImportRequestCreate: React.FC = () => {
       return;
     }
 
-    try {
-      const details: ImportRequestCreateWithDetailRequest[] = (sortedData).map(row => ({
-        itemId: row.itemId,
-        quantity: row.quantity,
-        providerId: row.providerId,
-        importReason: formData.importReason,
-        importType: formData.importType,
-        exportRequestId: formData.exportRequestId,
-        startDate: formData.startDate,
-        endDate: formData.endDate
-      }));
+    const details: ImportRequestCreateWithDetailRequest[] = (sortedData).map(row => ({
+      itemId: row.itemId,
+      quantity: row.quantity,
+      providerId: row.providerId,
+      importReason: formData.importReason,
+      importType: formData.importType,
+      exportRequestId: formData.exportRequestId,
+      startDate: formData.startDate,
+      endDate: formData.endDate
+    }));
 
-      await createImportRequestDetail(details);
+    await createImportRequestDetail(details);
 
-      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
-      setFormData({
-        importReason: "",
-        importType: "ORDER",
-        exportRequestId: null,
-        startDate: dayjs().format("YYYY-MM-DD"),
-        endDate: dayjs().format("YYYY-MM-DD"),
-      });
-      setFile(null);
-      setFileName("");
-      setData([]);
-    } catch (error) { }
+    navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+    setFormData({
+      importReason: "",
+      importType: "ORDER",
+      exportRequestId: null,
+      startDate: dayjs().format("YYYY-MM-DD"),
+      endDate: dayjs().format("YYYY-MM-DD"),
+    });
+    setFile(null);
+    setFileName("");
+    setData([]);
   };
 
+  // ========== NAVIGATION HANDLERS ==========
   const handleBack = () => {
     if (step === 0) {
       navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
@@ -320,6 +341,7 @@ const ImportRequestCreate: React.FC = () => {
     }
   };
 
+  // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
       width: "25%",
@@ -379,8 +401,6 @@ const ImportRequestCreate: React.FC = () => {
       }
     },
   ];
-
-  const loading = providerLoading || itemLoading || importRequestDetailLoading;
 
   return (
     <div className="container mx-auto p-3 pt-0">
@@ -488,12 +508,7 @@ const ImportRequestCreate: React.FC = () => {
                   format="DD-MM-YYYY"
                   className="w-full"
                   value={formData.endDate ? dayjs(formData.endDate) : null}
-                  disabledDate={(current) => {
-                    if (!current || !formData.startDate) return false;
-                    const startDate = dayjs(formData.startDate);
-                    // Chặn ngày startDate và tất cả ngày trước đó
-                    return current.isSame(startDate, 'day') || current.isBefore(startDate, 'day');
-                  }}
+                  disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
                   onChange={handleEndDateChange}
                   placeholder="Chọn ngày phiếu hết hạn"
                 />
@@ -515,7 +530,7 @@ const ImportRequestCreate: React.FC = () => {
                 loading={loading}
                 className="w-full mt-4"
                 id="btn-detail"
-                disabled={data.length === 0 || !isImportRequestDataValid || !formData.importReason || !formData.startDate || !formData.endDate}
+                disabled={data.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
               >
                 Xác nhận thông tin
               </Button>
