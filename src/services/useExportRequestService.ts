@@ -106,8 +106,8 @@ const useExportRequestService = () => {
       const response = await callApi("post", "/export-request", requestData);
       if (response && response.content) {
         toast.success("Tạo phiếu xuất thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể tạo phiếu xuất");
       console.error("Error creating export request:", error);
@@ -127,8 +127,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Tạo phiếu xuất mượn thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể tạo phiếu xuất mượn");
       console.error("Error creating export request loan:", error);
@@ -149,8 +149,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Phân công nhân viên kiểm đếm thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể phân công nhân viên kiểm đếm");
       console.error("Error assigning warehouse keeper:", error);
@@ -171,8 +171,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Phân công nhân viên xác nhận hàng thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể phân công nhân viên xác nhận hàng");
       console.error("Error assigning warehouse keeper:", error);
@@ -191,8 +191,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Xác nhận kiểm đếm thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể xác nhận kiểm đếm");
       console.error("Error confirming counted export request:", error);
@@ -212,8 +212,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Trạng thái phiếu xuất đã đổi");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể cập nhật trạng thái phiếu xuất");
       console.error("Error updating export request status:", error);
@@ -234,8 +234,8 @@ const useExportRequestService = () => {
       );
       if (response && response.content) {
         toast.success("Cập nhật ngày giờ xuất thành công");
-        return response.content;
       }
+      return response.content;
     } catch (error) {
       toast.error("Không thể cập nhật ngày giờ xuất");
       console.error("Error updating export date/time:", error);
