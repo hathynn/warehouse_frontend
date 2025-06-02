@@ -8,7 +8,7 @@ import {
     PRIVATE_STAFF_CHANNEL,
     PRIVATE_ACCOUNTING_CHANNEL,
     PRIVATE_ADMIN_CHANNEL
-} from '@/constants/channels-events';
+} from '@/constants/channelsNEvents';
 
 /**
  * Defines the action types for import and request processing.

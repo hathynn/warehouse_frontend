@@ -4,13 +4,13 @@ import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Header from "@/components/header/Header";
-import { pageTitles } from "@/constants/page-titles";
+import { pageTitles } from "@/constants/pageTitles";
 import { RootState } from "@/contexts/redux/store";
 import { UserState } from "@/contexts/redux/features/userSlice";
-import { menuItems } from "@/constants/menu-items";
-import type { MenuItem } from "@/constants/menu-items";
+import { menuItems } from "@/constants/menuItems";
 import { AccountRole } from "@/utils/enums";
 import { ItemType } from "antd/es/menu/interface";
+import { MenuItem } from "@/utils/interfaces";
 
 const { Sider } = Layout;
 const SIDER_WIDTH = 280;

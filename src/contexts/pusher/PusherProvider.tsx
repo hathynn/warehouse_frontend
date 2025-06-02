@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
 import { createPusherClient } from "@/config/pusher";
 import { getChannelForRole } from "@/utils/helpers";
-import { IMPORT_ORDER_CREATED_EVENT, IMPORT_ORDER_COUNTED_EVENT, IMPORT_ORDER_CONFIRMED_EVENT } from "@/constants/channels-events";
+import { IMPORT_ORDER_CREATED_EVENT, IMPORT_ORDER_COUNTED_EVENT, IMPORT_ORDER_CONFIRMED_EVENT } from "@/constants/channelsNEvents";
 
 export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const [latestNotification, setLatestNotification] = useState<NotificationEvent | null>(null);

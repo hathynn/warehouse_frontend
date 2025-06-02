@@ -1,6 +1,5 @@
 import { AccountRole } from "@/utils/enums";
 import { ROUTES } from "./routes";
-import { IconType } from "react-icons";
 import {
   AiOutlineHome,
   AiOutlineImport,
@@ -8,14 +7,7 @@ import {
   AiOutlineInbox,
   AiOutlineSetting
 } from "react-icons/ai";
-
-export interface MenuItem {
-  key: string;
-  icon?: IconType;
-  label: string;
-  path: string;
-  children?: MenuItem[];
-}
+import { MenuItem } from "@/utils/interfaces";
 
 type RoleMenuConfig = {
   [K in AccountRole]?: MenuItem[];

@@ -1,3 +1,5 @@
+import { IconType } from "react-icons";
+
 /**
  * Interface to match MetaDataDTO.java
  */
@@ -17,6 +19,18 @@ export interface ResponseDTO<T> {
     details: string[];
     statusCode: number;
     metaDataDTO?: MetaDataDTO;
+}
+
+
+/**
+ * Interface for rendering menu items
+ */
+export interface MenuItem {
+    key: string;
+    icon?: IconType;
+    label: string;
+    path: string;
+    children?: MenuItem[];
 }
 
 /**
