@@ -42,13 +42,17 @@ const ExportRequestDetail = () => {
     updateExportDateTime,
     assignConfirmimgStaff,
     createExportRequestProduction,
+    loading: exportRequestLoading,
   } = useExportRequestService();
-  const { getExportRequestDetails, createExportRequestDetail } =
-    useExportRequestDetailService();
+  const {
+    getExportRequestDetails,
+    createExportRequestDetail,
+    loading: exportRequestDetailLoading,
+  } = useExportRequestDetailService();
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -61,7 +65,6 @@ const ExportRequestDetail = () => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const { getActiveStaffsInDay, findAccountById } = useAccountService();
   const [staffs, setStaffs] = useState([]);
-  const [assigningStaff, setAssigningStaff] = useState(false);
   const [assignedStaff, setAssignedStaff] = useState(null);
   const [searchText, setSearchText] = useState("");
   const userRole = useSelector((state) => state.user.role);
@@ -72,7 +75,6 @@ const ExportRequestDetail = () => {
 
   const [assignKeeperModalVisible, setAssignKeeperModalVisible] =
     useState(false);
-  const [assigningKeeper, setAssigningKeeper] = useState(false);
   const [selectedKeeperId, setSelectedKeeperId] = useState(null);
   const [assignedKeeper, setAssignedKeeper] = useState(null);
   const [keeperStaffs, setKeeperStaffs] = useState([]);
@@ -80,7 +82,6 @@ const ExportRequestDetail = () => {
 
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
-  const [completing, setCompleting] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false); // đặt bên ngoài modal
 
   const [editMode, setEditMode] = useState(false);
@@ -95,16 +96,8 @@ const ExportRequestDetail = () => {
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
-    try {
-      setLoading(true);
-      const data = await getExportRequestById(exportRequestId);
-      setExportRequest(data);
-    } catch (error) {
-      console.error("Failed to fetch export request:", error);
-      message.error("Không thể tải thông tin phiếu xuất");
-    } finally {
-      setLoading(false);
-    }
+    const data = await getExportRequestById(exportRequestId);
+    setExportRequest(data);
   }, [exportRequestId, getExportRequestById]);
 
   // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
@@ -130,35 +123,28 @@ const ExportRequestDetail = () => {
     pageSize = pagination.pageSize
   ) => {
     if (!exportRequestId) return;
-    try {
-      setDetailsLoading(true);
 
-      const response = await getExportRequestDetails(
-        exportRequestId,
-        page,
-        pageSize
-      );
-      if (response && response.content) {
-        const enriched = await enrichDetails(response.content);
-        setExportRequestDetails(enriched);
-        const meta = response.metaDataDTO;
-        setPagination({
-          current: meta ? meta.page : page,
-          pageSize: meta ? meta.limit : pageSize,
-          total: meta ? meta.total : 0,
-        });
-      }
+    const response = await getExportRequestDetails(
+      exportRequestId,
+      page,
+      pageSize
+    );
+    if (response && response.content) {
+      const enriched = await enrichDetails(response.content);
+      setExportRequestDetails(enriched);
+      const meta = response.metaDataDTO;
+      setPagination({
+        current: meta ? meta.page : page,
+        pageSize: meta ? meta.limit : pageSize,
+        total: meta ? meta.total : 0,
+      });
+    }
 
-      // Fetch tất cả sản phẩm
-      const allResp = await getExportRequestDetails(exportRequestId, 1, 50); // đảm bảo lấy đủ tất cả
-      if (allResp && allResp.content) {
-        const allEnriched = await enrichDetails(allResp.content);
-        setAllExportRequestDetails(allEnriched);
-      }
-    } catch (error) {
-      message.error("Không thể tải danh sách chi tiết phiếu xuất");
-    } finally {
-      setDetailsLoading(false);
+    // Fetch tất cả sản phẩm
+    const allResp = await getExportRequestDetails(exportRequestId, 1, 50); // đảm bảo lấy đủ tất cả
+    if (allResp && allResp.content) {
+      const allEnriched = await enrichDetails(allResp.content);
+      setAllExportRequestDetails(allEnriched);
     }
   };
 
@@ -251,66 +237,54 @@ const ExportRequestDetail = () => {
 
   // Xác nhận tạo phiếu xuất mới (có gọi cả API chi tiết)
   const handleConfirmCreateExport = async () => {
-    setCreating(true);
-    try {
-      // Lấy info phiếu xuất gốc
-      const exportRequestInfo = await getExportRequestById(exportRequestId);
+    // Lấy info phiếu xuất gốc
+    const exportRequestInfo = await getExportRequestById(exportRequestId);
 
-      if (exportRequestInfo && exportRequestInfo.type === "PRODUCTION") {
-        // 1. Gọi API tạo phiếu xuất mới
-        const body = {
-          exportReason: exportRequestInfo.exportReason,
-          receiverName: exportRequestInfo.receiverName,
-          receiverPhone: exportRequestInfo.receiverPhone,
-          departmentId: exportRequestInfo.departmentId,
-          receiverAddress: exportRequestInfo.receiverAddress,
-          countingDate: exportRequestInfo.countingDate,
-          countingTime: exportRequestInfo.countingTime,
-          type: exportRequestInfo.type,
-          exportDate: exportRequestInfo.exportDate,
-          exportTime: exportRequestInfo.exportTime,
-        };
-        const createdExportRequest = await createExportRequestProduction(body);
+    if (exportRequestInfo && exportRequestInfo.type === "PRODUCTION") {
+      // 1. Gọi API tạo phiếu xuất mới
+      const body = {
+        exportReason: exportRequestInfo.exportReason,
+        receiverName: exportRequestInfo.receiverName,
+        receiverPhone: exportRequestInfo.receiverPhone,
+        departmentId: exportRequestInfo.departmentId,
+        receiverAddress: exportRequestInfo.receiverAddress,
+        countingDate: exportRequestInfo.countingDate,
+        countingTime: exportRequestInfo.countingTime,
+        type: exportRequestInfo.type,
+        exportDate: exportRequestInfo.exportDate,
+        exportTime: exportRequestInfo.exportTime,
+      };
+      const createdExportRequest = await createExportRequestProduction(body);
 
-        // 2. Chuẩn bị mảng chi tiết
-        const details = editedDetails.map((d) => ({
-          itemId: d.itemId,
-          quantity: d.quantity,
-          measurementValue: d.measurementValue,
-          inventoryItemId: d.inventoryItemId,
-        }));
+      // 2. Chuẩn bị mảng chi tiết
+      const details = editedDetails.map((d) => ({
+        itemId: d.itemId,
+        quantity: d.quantity,
+        measurementValue: d.measurementValue,
+        inventoryItemId: d.inventoryItemId,
+      }));
 
-        // 3. Gọi API tạo chi tiết
-        if (createdExportRequest?.exportRequestId) {
-          await createExportRequestDetail(
-            details,
-            createdExportRequest.exportRequestId
-          );
-          setEditMode(false);
-          setEditedDetails([]);
-          message.success("Tạo phiếu xuất mới thành công");
-
-          // Gọi lại fetch data nếu muốn
-        } else {
-          message.error("Không lấy được exportRequestId mới");
-        }
-        //luồng hủy
-        await updateExportRequestStatus(
-          exportRequestId,
-          ExportStatus.CANCELLED
+      // 3. Gọi API tạo chi tiết
+      if (createdExportRequest?.exportRequestId) {
+        await createExportRequestDetail(
+          details,
+          createdExportRequest.exportRequestId
         );
-        message.success("Đã hủy phiếu xuất hiện tại");
-        await fetchExportRequestData();
-        fetchDetails();
+        setEditMode(false);
+        setEditedDetails([]);
+        message.success("Tạo phiếu xuất mới thành công");
+
+        // Gọi lại fetch data nếu muốn
       } else {
-        message.error("Chỉ hỗ trợ tạo phiếu xuất cho loại Production.");
+        message.error("Không lấy được exportRequestId mới");
       }
-    } catch (err) {
-      // message.error đã xử lý ở API
-      message.error("Không thể hủy phiếu xuất");
-      console.error("Failed to create export request:", err);
-    } finally {
-      setCreating(false);
+      //luồng hủy
+      await updateExportRequestStatus(exportRequestId, ExportStatus.CANCELLED);
+      message.success("Đã hủy phiếu xuất hiện tại");
+      await fetchExportRequestData();
+      fetchDetails();
+    } else {
+      message.error("Chỉ hỗ trợ tạo phiếu xuất cho loại Production.");
     }
   };
 
@@ -328,19 +302,12 @@ const ExportRequestDetail = () => {
   };
 
   const handleConfirmComplete = async () => {
-    setCompleting(true);
-    try {
-      await updateExportRequestStatus(exportRequestId, ExportStatus.COMPLETED);
-      message.success("Xác nhận hoàn thành phiếu xuất thành công");
-      setCompleteModalVisible(false);
-      setCompleteChecked(false);
-      await fetchExportRequestData();
-      fetchDetails();
-    } catch (err) {
-      message.error("Không thể xác nhận hoàn thành phiếu xuất");
-    } finally {
-      setCompleting(false);
-    }
+    await updateExportRequestStatus(exportRequestId, ExportStatus.COMPLETED);
+    message.success("Xác nhận hoàn thành phiếu xuất thành công");
+    setCompleteModalVisible(false);
+    setCompleteChecked(false);
+    await fetchExportRequestData();
+    fetchDetails();
   };
 
   const handleOpenAssignKeeperModal = async () => {
@@ -363,25 +330,13 @@ const ExportRequestDetail = () => {
       message.warning("Vui lòng chọn nhân viên để phân công");
       return;
     }
-
-    try {
-      setAssigningStaff(true);
-      await assignCountingStaff(exportRequestId, selectedStaffId);
-
-      const exportRequestResponse = await fetchExportRequestData();
-      if (exportRequestResponse?.content?.countingStaffId) {
-        await findAccountById(exportRequestResponse.content.countingStaffId);
-      }
-      await fetchActiveStaffs();
-
-      message.success("Phân công nhân viên thành công");
-      setSelectedStaffId(null);
-    } catch (error) {
-      console.error("Failed to assign warehouse keeper:", error);
-      message.error("Không thể phân công nhân viên. Vui lòng thử lại");
-    } finally {
-      setAssigningStaff(false);
+    await assignCountingStaff(exportRequestId, selectedStaffId);
+    const exportRequestResponse = await fetchExportRequestData();
+    if (exportRequestResponse?.content?.countingStaffId) {
+      await findAccountById(exportRequestResponse.content.countingStaffId);
     }
+    await fetchActiveStaffs();
+    setSelectedStaffId(null);
   };
 
   const getExportTypeText = (type) => {
@@ -478,20 +433,11 @@ const ExportRequestDetail = () => {
       return;
     }
 
-    try {
-      setAssigningKeeper(true);
-      await assignConfirmimgStaff(exportRequestId, selectedKeeperId);
-      await fetchExportRequestData();
-      message.success("Phân công nhân viên xuất hàng thành công");
-      setAssignKeeperModalVisible(false);
-      setSelectedKeeperId(null);
-    } catch (error) {
-      message.error(
-        "Không thể phân công nhân viên xuất hàng. Vui lòng thử lại"
-      );
-    } finally {
-      setAssigningKeeper(false);
-    }
+    await assignConfirmimgStaff(exportRequestId, selectedKeeperId);
+    await fetchExportRequestData();
+    message.success("Phân công nhân viên xuất hàng thành công");
+    setAssignKeeperModalVisible(false);
+    setSelectedKeeperId(null);
   };
 
   const getFilteredAndSortedStaffs = () => {
@@ -869,7 +815,7 @@ const ExportRequestDetail = () => {
             type="primary"
             onClick={handleAssignCountingStaff}
             disabled={!selectedStaffId}
-            loading={assigningStaff}
+            loading={exportRequestLoading}
           >
             Phân công
           </Button>,
@@ -996,7 +942,7 @@ const ExportRequestDetail = () => {
             type="primary"
             onClick={handleAssignKeeper}
             disabled={!selectedKeeperId}
-            loading={assigningKeeper}
+            loading={exportRequestLoading}
           >
             Phân công
           </Button>,
@@ -1147,7 +1093,7 @@ const ExportRequestDetail = () => {
         cancelText="Quay lại"
         okButtonProps={{
           disabled: !completeChecked,
-          loading: completing,
+          loading: exportRequestDetailLoading,
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
@@ -1197,7 +1143,7 @@ const ExportRequestDetail = () => {
           setConfirmCreateExportModalVisible(false);
         }}
         onCancel={() => setConfirmCreateExportModalVisible(false)}
-        confirmLoading={creating}
+        confirmLoading={exportRequestLoading || exportRequestDetailLoading}
         formData={{
           exportReason: exportRequest?.exportReason,
           exportType: exportRequest?.type,
