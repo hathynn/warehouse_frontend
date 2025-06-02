@@ -49,9 +49,8 @@ const useExportRequestDetailService = () => {
       );
       if (response && response.content) {
         toast.success("Tạo chi tiết phiếu xuất thành công");
-        return response.content;
       }
-      console.log("Request data:", details);
+      return response.content;
     } catch (error: any) {
       console.log("Error Request data:", details);
       if (error.message.includes("Inventory items not found for item ID")) {

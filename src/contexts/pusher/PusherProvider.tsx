@@ -38,14 +38,14 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
         pusherRef.current = null;
         setIsConnected(false);
       }
-      return;
+      return undefined;
     }
 
     // Determine Pusher channel for this role
     const channelName = getChannelForRole(role);
     if (!channelName) {
       setConnectionError(`No channel defined for role: ${role}`);
-      return;
+      return undefined;
     }
 
     console.log(`Setting up Pusher for role: ${role}, channel: ${channelName}`);
