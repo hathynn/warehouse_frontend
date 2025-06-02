@@ -298,6 +298,12 @@ const ImportOrderCreate = () => {
       // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
     }
+
+    if (response.statusCode == 444) {
+      toast.error("Phiếu nhập đã hết hạn");
+      navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId!));
+      return;
+    }
   };
 
   // ==================== EXCEL FUNCTIONS ====================
