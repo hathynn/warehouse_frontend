@@ -129,7 +129,7 @@ const ImportRequestList: React.FC = () => {
     const { content: providerList = [] } = await getAllProviders();
 
     const formattedRequests: ImportRequestData[] = await Promise.all(
-      (content || []).map(async (request: { importRequestId: string; providerId: number; }) => {
+      (content || []).map(async (request: ImportRequestResponse) => {
         // Lấy chi tiết của từng phiếu
         const { content: importRequestDetails = [] } = await getImportRequestDetails(
           request.importRequestId

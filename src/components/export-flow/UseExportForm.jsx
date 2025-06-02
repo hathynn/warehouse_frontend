@@ -122,9 +122,9 @@ const UseExportForm = ({
     workingTimeEnd,
     createRequestTimeAtLeast,
   }) {
-    let [startHour, startMin] = workingTimeStart.split(":").map(Number);
-    let [endHour, endMin] = workingTimeEnd.split(":").map(Number);
-    let [minHour, minMin, minSec] = createRequestTimeAtLeast
+    const [startHour, startMin] = workingTimeStart.split(":").map(Number);
+    const [endHour, endMin] = workingTimeEnd.split(":").map(Number);
+    const [minHour, minMin, minSec] = createRequestTimeAtLeast
       .split(":")
       .map(Number);
 
@@ -133,8 +133,8 @@ const UseExportForm = ({
     let current = moment(now); // clone để không làm thay đổi "now"
     while (waitingMinutes > 0) {
       // Working time block hôm nay
-      let dayStart = current.clone().hour(startHour).minute(startMin).second(0);
-      let dayEnd = current.clone().hour(endHour).minute(endMin).second(0);
+      const dayStart = current.clone().hour(startHour).minute(startMin).second(0);
+      const dayEnd = current.clone().hour(endHour).minute(endMin).second(0);
 
       if (current.isBefore(dayStart)) {
         // Chưa tới giờ làm việc -> nhảy tới đầu giờ làm việc
@@ -148,8 +148,8 @@ const UseExportForm = ({
       }
 
       // Còn bao nhiêu phút tới hết giờ làm việc
-      let available = dayEnd.diff(current, "minutes");
-      let use = Math.min(waitingMinutes, available);
+      const available = dayEnd.diff(current, "minutes");
+      const use = Math.min(waitingMinutes, available);
       current = current.clone().add(use, "minutes");
       waitingMinutes -= use;
     }
@@ -178,8 +178,8 @@ const UseExportForm = ({
     const selectedDay = moment(selectedDate).format("YYYY-MM-DD");
     const earliestDay = earliestMoment.format("YYYY-MM-DD");
 
-    let [startHour, startMin] = workingTimeStart.split(":").map(Number);
-    let [endHour, endMin] = workingTimeEnd.split(":").map(Number);
+    const [startHour, startMin] = workingTimeStart.split(":").map(Number);
+    const [endHour, endMin] = workingTimeEnd.split(":").map(Number);
 
     if (selectedDay < earliestDay) {
       // Disable hết
@@ -193,7 +193,7 @@ const UseExportForm = ({
       // Chỉ block ngoài working time
       return {
         disabledHours: () => {
-          let arr = [];
+          const arr = [];
           for (let h = 0; h < 24; ++h) {
             if (h < startHour || h > endHour) arr.push(h);
             else if (h === endHour && endMin === 0) arr.push(h); // nếu kết thúc đúng giờ
@@ -210,7 +210,7 @@ const UseExportForm = ({
 
     return {
       disabledHours: () => {
-        let arr = [];
+        const arr = [];
         for (let h = 0; h < 24; ++h) {
           if (h < earliestHour || h < startHour || h > endHour) arr.push(h);
         }

@@ -1,25 +1,21 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
+    "target": "ESNext",                     // Mục tiêu đầu ra: ESNext
+    "module": "ESNext",                     // Dùng ES Modules
+    "lib": ["DOM","DOM.Iterable","ESNext"], // Gồm thư viện DOM & ESNext
+    "jsx": "react-jsx",                     // Dùng JSX transform mới (React 17+)
+    "strict": true,                         // Bật hết các strict checks
+    "noImplicitReturns": true,              // Error nếu không return đủ mọi nhánh
+    "noFallthroughCasesInSwitch": true,     // Error nếu switch-case bị fallthrough
+    "moduleResolution": "Node",             // Giải quyết imports like Node.js
+    "isolatedModules": true,                // Mã mỗi file phải có thể transpile riêng
+    "esModuleInterop": true,                // Hỗ trợ import/export giữa CJS & ESM
+    "skipLibCheck": true,                   // Bỏ qua type-check trong node_modules
+    "baseUrl": ".",                         // Gốc để resolve non-relative paths
+    "paths": {                              // Alias imports
       "@/*": ["src/*"]
-    },
-    "target": "ESNext",
-    "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["vite/client"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "vite-env.d.ts"],      // Chỉ include thư mục src
+  "exclude": ["node_modules","dist","build"]// Loại trừ các folder này
 }
