@@ -13,7 +13,7 @@
     "@reduxjs/toolkit": "^2.6.0",
     "@tailwindcss/vite": "^4.0.9",
     "antd": "^5.24.2",
-    "axios": "^1.8.1",
+    "axios": "^1.8.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
@@ -29,7 +29,7 @@
     "react-icons": "^5.5.0",
     "react-qr-code": "^2.0.15",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.2.0",
+    "react-router-dom": "^7.6.1",
     "react-toastify": "^11.0.5",
     "redux-persist": "^6.0.0",
     "sheetjs-style": "^0.15.8",
@@ -51,6 +51,6 @@
     "postcss": "^8.5.3",
     "sass-embedded": "^1.85.1",
     "tailwindcss": "^4.0.9",
-    "vite": "^6.2.0"
+    "vite": "^6.3.5"
   }
 }
