@@ -47,7 +47,6 @@ const useImportRequestDetailService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách chi tiết phiếu nhập");
-      console.error("Error fetching import request details:", error);
       throw error;
     }
   };
@@ -64,7 +63,6 @@ const useImportRequestDetailService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin chi tiết phiếu nhập");
-      console.error("Error fetching import request detail:", error);
       throw error;
     }
   };

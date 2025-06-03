@@ -11,7 +11,8 @@ export default defineConfig({
     // checker({                                       // Kích hoạt checker
     //   typescript: true,                             // TypeScript checking
     //   eslint: {                                     // ESLint checking
-    //     lintCommand: 'eslint "src/**/*.{js,jsx,ts,tsx}"', 
+    //     lintCommand: 'eslint "src/**/*.{js,jsx,ts,tsx}"',
+    //     useFlatConfig: true,                        // Use ESLint flat config to avoid invalid options error
     //     dev: { logLevel: ['error','warning'] }      // Hiển thị cả errors & warnings
     //   },
     //   overlay: { position: 'tl' },                  // Overlay ở top-left

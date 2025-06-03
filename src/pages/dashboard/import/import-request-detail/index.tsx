@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -64,7 +64,10 @@ const ImportRequestDetail: React.FC = () => {
   } = useImportRequestDetailService();
 
   const {
-    loading: importOrderLoading,
+    getImportOrderDetailsPaginated
+  } = useImportOrderDetailService();
+
+  const {
     getAllImportOrdersByImportRequestId
   } = useImportOrderService();
 
@@ -74,7 +77,6 @@ const ImportRequestDetail: React.FC = () => {
   } = useProviderService();
 
   const {
-    loading: configurationLoading,
     getConfiguration
   } = useConfigurationService();
 
@@ -144,8 +146,8 @@ const ImportRequestDetail: React.FC = () => {
     { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
     { label: "Nhà cung cấp", value: importRequestData?.providerName },
     { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
-    { 
-      label: "Thời gian hiệu lực", 
+    {
+      label: "Thời gian hiệu lực",
       value: (
         <span>
           Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
@@ -177,13 +179,18 @@ const ImportRequestDetail: React.FC = () => {
   }, [importRequestId]);
 
   useEffect(() => {
+    if (!importRequestId) return;
+    fetchImportOrderDetails();
+  }, [importRequestId]);
+
+  useEffect(() => {
     fetchConfiguration();
   }, []);
 
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportRequestData = async () => {
     if (!importRequestId) return;
-    
+
     const response = await getImportRequestById(importRequestId);
     if (response?.content) {
       const data = response.content;
@@ -196,7 +203,7 @@ const ImportRequestDetail: React.FC = () => {
 
   const fetchImportRequestDetails = async () => {
     if (!importRequestId) return;
-    
+
     const response = await getImportRequestDetails(importRequestId);
     if (response?.content) {
       setImportRequestDetails(response.content);
@@ -205,11 +212,26 @@ const ImportRequestDetail: React.FC = () => {
 
   const fetchImportOrders = async () => {
     if (!importRequestId) return;
-    
+
     const response = await getAllImportOrdersByImportRequestId(importRequestId);
     if (response?.content) {
       setImportOrders(response.content);
     }
+  };
+
+  const fetchImportOrderDetails = async () => {
+    if (!importRequestId || !importOrders.length) return;
+
+    const importOrderDetailsPromises = importOrders.map(order =>
+      getImportOrderDetailsPaginated(order.importOrderId)
+    );
+
+    const responses = await Promise.all(importOrderDetailsPromises);
+    const allImportOrderDetails = responses
+      .filter(response => response?.content)
+      .flatMap(response => response.content);
+
+    setImportOrderDetails(allImportOrderDetails);
   };
 
   const fetchConfiguration = async () => {
@@ -248,7 +270,7 @@ const ImportRequestDetail: React.FC = () => {
 
     const currentDateTime = dayjs();
     const importRequestEndDate = dayjs(importRequestData.endDate).endOf('day');
-    
+
     // Kiểm tra nếu ngày hiện tại là ngày kết thúc
     if (currentDateTime.isSame(importRequestEndDate, 'day')) {
       try {
@@ -258,7 +280,7 @@ const ImportRequestDetail: React.FC = () => {
           currentDateTime,
           importRequestData
         );
-        
+
         // Nếu thời gian tối thiểu vượt quá ngày kết thúc, đã hết hạn
         if (minDateTime.isAfter(importRequestEndDate)) {
           toast.error("Đã hết hạn tạo đơn nhập cho phiếu này!");
@@ -389,8 +411,8 @@ const ImportRequestDetail: React.FC = () => {
               onClick={handleCreateImportOrder}
               disabled={isImportOrderCreationExpired}
             >
-              {isImportOrderCreationExpired 
-                ? "Đã hết hạn tạo đơn nhập" 
+              {isImportOrderCreationExpired
+                ? "Đã hết hạn tạo đơn nhập"
                 : `Tạo đơn nhập cho phiếu #${importRequestData?.importRequestId}`
               }
             </Button>

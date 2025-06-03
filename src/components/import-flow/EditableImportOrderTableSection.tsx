@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Select, InputNumber, Input, Alert, TablePaginationConfig, Card, Table } from "antd";
+import { Input, Alert, TablePaginationConfig, Card, Table } from "antd";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 
 export interface ImportOrderDetailRow {
@@ -43,7 +43,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     total: data.length,
   });
 
-  const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
+  const { allPagesViewed } = usePaginationViewTracker(
     data.length,
     pagination.pageSize,
     pagination.current

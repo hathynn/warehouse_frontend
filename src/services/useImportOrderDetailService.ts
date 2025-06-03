@@ -39,7 +39,6 @@ const useImportOrderDetailService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách chi tiết đơn nhập");
-      console.error("Error fetching import order details:", error);
       throw error;
     }
   };
@@ -56,7 +55,6 @@ const useImportOrderDetailService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin chi tiết đơn nhập");
-      console.error("Error fetching import order detail:", error);
       throw error;
     }
   };
@@ -75,7 +73,6 @@ const useImportOrderDetailService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể tạo danh sách sản phẩm");
-      console.error("Error creating import order detail:", error);
       throw error;
     }
   };

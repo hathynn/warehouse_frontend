@@ -63,7 +63,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách đơn nhập");
-      console.error("Error fetching all import orders:", error);
       throw error;
     }
   };
@@ -79,7 +78,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách đơn nhập");
-      console.error("Error fetching import orders:", error);
       throw error;
     }
   };
@@ -90,7 +88,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin đơn nhập");
-      console.error("Error fetching import order:", error);
       throw error;
     }
   };
@@ -105,7 +102,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể tạo đơn nhập");
-      console.error("Error creating import order:", error);
       throw error;
     }
   };
@@ -120,7 +116,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể phân công nhân viên kho");
-      console.error("Error assigning staff:", error);
       throw error;
     }
   };
@@ -134,7 +129,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể hoàn tất đơn nhập");
-      console.error("Error completing import order:", error);
       throw error;
     }
   };
@@ -148,7 +142,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể hủy đơn nhập");
-      console.error("Error cancelling import order:", error);
       throw error;
     }
   };
@@ -162,7 +155,6 @@ const useImportOrderService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể gia hạn đơn nhập");
-      console.error("Error extending import order:", error);
       throw error;
     }
   };

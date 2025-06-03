@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tag, TablePaginationConfig, DatePicker, Select, Tabs, Space } from "antd";
+import { Table, Button, Input, TablePaginationConfig, DatePicker, Select, Tabs, Space } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
-import { UnorderedListOutlined, FileAddOutlined, EyeFilled, EyeOutlined } from "@ant-design/icons";
+import { UnorderedListOutlined, EyeOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -9,7 +9,6 @@ import useImportRequestDetailService from "@/services/useImportRequestDetailServ
 import useProviderService from "@/services/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
-import moment from "moment";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ImportRequestFilterState, useImportRequestFilter } from "@/hooks/useImportRequestFilter";

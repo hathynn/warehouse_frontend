@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space, Select } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
@@ -17,7 +17,6 @@ import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
 import { ImportOrderFilterState, useImportOrderFilter } from "@/hooks/useImportOrderFilter";
 import dayjs from "dayjs";
-import { toast } from "react-toastify";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
@@ -154,7 +153,6 @@ const ImportOrderList: React.FC = () => {
       const isImportOrderEvent = latestNotification.type.includes('import-order');
 
       if (isImportOrderEvent) {
-        console.log('Received import-order notification:', latestNotification);
         fetchImportOrders();
         fetchAccountsByRole();
       }

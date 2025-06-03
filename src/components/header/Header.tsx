@@ -33,122 +33,84 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [recentNotification, setRecentNotification] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
   const notificationTimerRef = useRef<number | null>(null);
+
+  // Add audio context refs for better audio handling
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const isAudioInitializedRef = useRef<boolean>(false);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { fullName, role, id: accountId } = useSelector((state: RootState) => state.user);
 
-  const { 
-    loading, 
-    getAllNotifications, 
-    deleteNotification, 
-    viewAllNotifications, 
-    clickNotification 
+  const {
+    loading,
+    getAllNotifications,
+    deleteNotification,
+    viewAllNotifications,
+    clickNotification
   } = useNotificationService();
 
   // Use Pusher context for notifications
   const { latestNotification } = usePusherContext();
 
-  const playNotificationSound = async () => {
-    try {
-      const AudioContext = window.AudioContext;
-      const audioContext = new AudioContext();
-      const response = await fetch(notificationWav);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
-      source.start();
-    } catch (error) {
-      console.error('Error playing notification sound:', error);
+  // Initialize audio system
+  const initializeAudio = async () => {
+    if (isAudioInitializedRef.current) return;
+    // Create AudioContext
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    // Resume context if suspended (required for autoplay policy)
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
     }
+    // Load audio buffer
+    const response = await fetch(notificationWav);
+    const arrayBuffer = await response.arrayBuffer();
+    audioBufferRef.current = await audioContextRef.current.decodeAudioData(arrayBuffer);
+    isAudioInitializedRef.current = true;
   };
 
-  const loadNotifications = async () => {
-    if (!accountId) return;
-    
-    try {
-      const response = await getAllNotifications(Number(accountId));
-      if (response && response.content) {
-        setNotifications(response.content);
-        
-        const hasUnread = response.content.some(notif => !notif.isViewed);
-        setHasUnreadNotifications(hasUnread);
-      }
-    } catch (error) {
-      console.error('Error loading notifications:', error);
+  const playNotificationSound = async () => {
+    // Initialize audio if not already done
+    if (!isAudioInitializedRef.current) {
+      await initializeAudio();
     }
+    if (!audioContextRef.current || !audioBufferRef.current) {
+      return;
+    }
+    // Resume context if suspended
+    if (audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
+    // Create and play audio
+    const source = audioContextRef.current.createBufferSource();
+    source.buffer = audioBufferRef.current;
+    source.connect(audioContextRef.current.destination);
+    source.start();
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+    if (!isAudioInitializedRef.current) {
+      initializeAudio();
     }
-    
-    loadNotifications();
-  }, [accountId]);
+  }, []);
 
-  const handleNotificationClick = async (notification: NotificationResponse) => {
-    try {
-      await clickNotification(notification.id);
-      
-      if (notification.objectId) {
-        navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(notification.objectId.toString())}`);
-      }
-      
-      setDropdownVisible(false);
-    } catch (error) {
-      console.error('Error handling notification click:', error);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    if (!accountId) return;
-    
-    try {
-      await viewAllNotifications(Number(accountId));
-      
-      setHasUnreadNotifications(false);
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
-  };
-
-  const handleDeleteNotification = async (notification: NotificationResponse, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    try {
-      await deleteNotification(notification.id);
-      
-      setNotifications(prev => 
-        prev.filter(n => n.id !== notification.id)
-      );
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-    }
-  };
-
-  // Handle notifications from Pusher context
   useEffect(() => {
     if (latestNotification) {
-      console.log('[Header] Received notification from context:', latestNotification);
-      
       // Play notification sound
       playNotificationSound();
-      
+
       // Reload notifications
       loadNotifications();
-      
+
       // Show recent notification popup
       setRecentNotification({ message: 'Có thông báo mới', visible: true });
-      
+
       // Clear existing timer
       if (notificationTimerRef.current !== null) {
         window.clearTimeout(notificationTimerRef.current);
       }
-      
+
       // Set timer to hide notification popup
       notificationTimerRef.current = window.setTimeout(() => {
         setRecentNotification(prev => ({ ...prev, visible: false }));
@@ -156,6 +118,56 @@ function Header({ title = "Dashboard" }: HeaderProps) {
       }, 5000);
     }
   }, [latestNotification]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    loadNotifications();
+  }, [accountId]);
+
+  const loadNotifications = async () => {
+    if (!accountId) return;
+
+    const response = await getAllNotifications(Number(accountId));
+    if (response && response.content) {
+      setNotifications(response.content);
+
+      const hasUnread = response.content.some(notif => !notif.isViewed);
+      setHasUnreadNotifications(hasUnread);
+    }
+  };
+
+  const handleNotificationClick = async (notification: NotificationResponse) => {
+    await clickNotification(notification.id);
+
+    if (notification.objectId) {
+      navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(notification.objectId.toString())}`);
+    }
+
+    setDropdownVisible(false);
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!accountId) return;
+
+    await viewAllNotifications(Number(accountId));
+
+    setHasUnreadNotifications(false);
+  };
+
+  const handleDeleteNotification = async (notification: NotificationResponse, event: React.MouseEvent) => {
+    event.stopPropagation();
+
+    await deleteNotification(notification.id);
+
+    setNotifications(prev =>
+      prev.filter(n => n.id !== notification.id)
+    );
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -211,7 +223,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                 <div className="py-3 px-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                   <span className="font-bold text-base">Thông báo</span>
                 </div>
-                
+
                 {loading ? (
                   <div className="py-10 text-center">
                     <Spin />
@@ -232,7 +244,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                             <span className={`${item.isClicked ? 'font-normal text-gray-800' : 'font-semibold text-indigo-900'}`}>
                               {item.content}
                             </span>
-                            <span 
+                            <span
                               onClick={(e) => handleDeleteNotification(item, e)}
                               className="ml-2 text-xs text-gray-500 cursor-pointer"
                             >
@@ -260,7 +272,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                   <BellOutlined />
                 </span>
               </Badge>
-              
+
               {recentNotification.visible && (
                 <div className="w-32 absolute text-center -top-3 right-[6px] bg-red-500 text-white py-0.5 px-1 rounded-xl text-xs shadow-md z-10">
                   Có thông báo mới
@@ -268,17 +280,17 @@ function Header({ title = "Dashboard" }: HeaderProps) {
               )}
             </div>
           </Dropdown>
-          <Dropdown 
-            menu={{ items: userMenuItems as ItemType[] }} 
-            placement="bottomRight" 
+          <Dropdown
+            menu={{ items: userMenuItems as ItemType[] }}
+            placement="bottomRight"
             trigger={['click']}
             arrow
           >
             <div className="flex items-center gap-3 cursor-pointer bg-white px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all">
-              <Avatar 
-                size={45} 
-                icon={<UserOutlined />} 
-                className="bg-blue-600" 
+              <Avatar
+                size={45}
+                icon={<UserOutlined />}
+                className="bg-blue-600"
               />
               <div className="flex flex-col">
                 <span className="font-medium text-lg text-gray-500">{fullName}</span>

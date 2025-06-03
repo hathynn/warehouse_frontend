@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import useApiService from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ResponseDTO } from "@/utils/interfaces";
@@ -39,7 +39,6 @@ const useImportRequestService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách phiếu nhập");
-      console.error("Error fetching import requests:", error);
       throw error;
     }
   };
@@ -51,7 +50,6 @@ const useImportRequestService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin phiếu nhập");
-      console.error("Error fetching import request:", error);
       throw error;
     }
   };
@@ -69,7 +67,6 @@ const useImportRequestService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách phiếu nhập");
-      console.error("Error fetching import requests:", error);
       throw error;
     }
   };
@@ -86,7 +83,6 @@ const useImportRequestService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể tạo phiếu nhập");
-      console.error("Error creating import request:", error);
       throw error;
     }
   };

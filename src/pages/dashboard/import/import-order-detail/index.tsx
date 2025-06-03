@@ -9,7 +9,6 @@ import {
   Checkbox,
   DatePicker,
   TimePicker,
-  Space
 } from "antd";
 import {
   ArrowLeftOutlined,

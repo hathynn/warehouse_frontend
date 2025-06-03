@@ -15,7 +15,6 @@ const useApi = () => {
         const response = await api[method](url, data);
         return response.data;
       } catch (e: any) {
-        console.error(e);
         // toast.error(e?.response?.data || "Operation failed");
         throw e;
       } finally {

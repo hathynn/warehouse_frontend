@@ -29,7 +29,6 @@ export function createPusherClient() {
             callback(null, { auth: parsedAuth.auth });
           })
           .catch(error => {
-            console.error('Pusher authentication error:', error);
             callback(new Error(`Couldn't authenticate Pusher for ${channel.name}`), { auth: '' });
           });
         }

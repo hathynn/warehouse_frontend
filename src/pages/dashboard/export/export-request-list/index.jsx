@@ -39,7 +39,7 @@ const ExportRequestList = () => {
 
   useEffect(() => {
     fetchExportRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pagination.current, pagination.pageSize]);
 
   const fetchExportRequests = async () => {

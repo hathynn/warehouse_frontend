@@ -65,7 +65,7 @@ const ExportRequestCreate = () => {
       total: mappedData.length,
     }));
     resetViewedPages(1);
-    // eslint-disable-next-line
+     
   }, [mappedData.length]); // mappedData.length thay đổi thì reset lại
 
   // --- Hook tracking xem hết trang chưa ---

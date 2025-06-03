@@ -56,7 +56,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể tạo sản phẩm");
-      console.error("Error creating item:", error);
       throw error;
     }
   };
@@ -71,7 +70,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể cập nhật sản phẩm");
-      console.error("Error updating item:", error);
       throw error;
     }
   };
@@ -89,7 +87,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm");
-      console.error("Error fetching items:", error);
       throw error;
     }
   };
@@ -103,7 +100,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
-      console.error("Error fetching item:", error);
       throw error;
     }
   };
@@ -116,7 +112,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể xóa sản phẩm");
-      console.error("Error deleting item:", error);
       throw error;
     }
   };
@@ -135,7 +130,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo danh mục");
-      console.error("Error fetching items by category:", error);
       throw error;
     }
   };
@@ -154,7 +148,6 @@ const useItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo nhà cung cấp");
-      console.error("Error fetching items by provider:", error);
       throw error;
     }
   };

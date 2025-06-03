@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
@@ -78,7 +78,6 @@ const ImportRequestCreate: React.FC = () => {
   } = useItemService();
 
   const {
-    loading: configurationLoading,
     getConfiguration
   } = useConfigurationService();
 

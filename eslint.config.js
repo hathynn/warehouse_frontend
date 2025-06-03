@@ -58,7 +58,7 @@ export default [
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
       // 3) Hooks rules
-      ...reactHooks.configs.recommended.rules,
+      ...reactHooks.rules['rules-of-hooks'].create,
 
       // ← Tắt rule JS trùng với TS
       'no-unused-vars': 'off',                       

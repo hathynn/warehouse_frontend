@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { ROLE_DEFAULT_ROUTES, ROUTES, ROUTE_PERMISSIONS } from '@/constants/routes';
 import { AccountRole } from '@/utils/enums';
 import { RootState } from '@/contexts/redux/store';
+import React from 'react';
 
 // Helper function to check permission
 const checkRoutePermission = (role: AccountRole, pathname: string): boolean => {

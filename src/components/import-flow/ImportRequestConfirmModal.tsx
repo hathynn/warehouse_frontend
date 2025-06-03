@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, notification } from "antd";
+import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 import { ImportRequestDetailRow } from "@/utils/interfaces";

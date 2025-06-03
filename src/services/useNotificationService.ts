@@ -36,7 +36,6 @@ const useNotificationService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách thông báo");
-      console.error("Error fetching notifications:", error);
       throw error;
     }
   };
@@ -50,7 +49,6 @@ const useNotificationService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể xóa thông báo");
-      console.error("Error deleting notification:", error);
       throw error;
     }
   };
@@ -66,7 +64,7 @@ const useNotificationService = () => {
       );
       return response;
     } catch (error) {
-      console.error("Error marking notifications as viewed:", error);
+      toast.error("Không thể xem tất cả thông báo");
       throw error;
     }
   };
@@ -82,7 +80,7 @@ const useNotificationService = () => {
       );
       return response;
     } catch (error) {
-      console.error("Error marking notification as clicked:", error);
+      toast.error("Không thể nhấn vào thông báo");
       throw error;
     }
   };

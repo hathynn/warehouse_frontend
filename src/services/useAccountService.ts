@@ -81,7 +81,6 @@ const useAccountService = () => {
       throw new Error("Registration failed");
     } catch (error) {
       toast.error("Đăng ký tài khoản thất bại");
-      console.error("Error registering account:", error);
       throw error;
     }
   };
@@ -103,7 +102,6 @@ const useAccountService = () => {
       throw new Error("Authentication failed");
     } catch (error) {
       toast.error("Đăng nhập thất bại");
-      console.error("Error authenticating:", error);
       throw error;
     }
   };
@@ -121,7 +119,6 @@ const useAccountService = () => {
       throw new Error("Token refresh failed");
     } catch (error) {
       toast.error("Làm mới token thất bại");
-      console.error("Error refreshing token:", error);
       throw error;
     }
   };
@@ -142,7 +139,6 @@ const useAccountService = () => {
       return [];
     } catch (error) {
       toast.error("Không thể lấy danh sách tài khoản theo vai trò");
-      console.error("Error fetching accounts by role:", error);
       throw error;
     }
   };
@@ -160,7 +156,6 @@ const useAccountService = () => {
       return [];
     } catch (error) {
       toast.error("Không thể lấy danh sách nhân viên đang hoạt động");
-      console.error("Error fetching active staff:", error);
       throw error;
     }
   };
@@ -187,7 +182,6 @@ const useAccountService = () => {
       toast.error(
         "Không thể lấy danh sách nhân viên đang hoạt động trong ngày"
       );
-      console.error("Error fetching active staff for date:", error);
       throw error;
     }
   };
@@ -208,7 +202,6 @@ const useAccountService = () => {
       throw new Error("Account not found");
     } catch (error) {
       toast.error("Không thể tìm thấy tài khoản");
-      console.error("Error finding account by email:", error);
       throw error;
     }
   };
@@ -227,7 +220,6 @@ const useAccountService = () => {
       throw new Error("Account not found");
     } catch (error) {
       toast.error("Không thể tìm thấy tài khoản");
-      console.error("Error finding account by id:", error);
       throw error;
     }
   };

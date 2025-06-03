@@ -56,7 +56,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm trong kho");
-      console.error("Error fetching inventory items:", error);
       throw error;
     }
   };
@@ -68,7 +67,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
-      console.error("Error fetching inventory item:", error);
       throw error;
     }
   };
@@ -87,7 +85,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
-      console.error("Error fetching inventory items by import order detail:", error);
       throw error;
     }
   };
@@ -106,7 +103,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo yêu cầu xuất");
-      console.error("Error fetching inventory items by export request detail:", error);
       throw error;
     }
   };
@@ -125,7 +121,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo vị trí");
-      console.error("Error fetching inventory items by stored location:", error);
       throw error;
     }
   };
@@ -137,7 +132,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin mã QR");
-      console.error("Error fetching QR codes:", error);
       throw error;
     }
   };
@@ -150,7 +144,6 @@ const useInventoryItemService = () => {
       return response;
     } catch (error) {
       toast.error("Không thể xóa sản phẩm");
-      console.error("Error deleting inventory item:", error);
       throw error;
     }
   };

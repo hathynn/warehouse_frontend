@@ -397,7 +397,6 @@ export function getChannelForRole(userRole: AccountRole): string | null {
         case AccountRole.ADMIN:
             return PRIVATE_ADMIN_CHANNEL;
         default:
-            console.warn(`No channel defined for role: ${userRole}`);
             return null;
     }
 }

@@ -3,9 +3,7 @@ import { useRouteError } from 'react-router-dom';
 
 const SomethingWrong: React.FC = () => {
   const error = useRouteError() as { statusText?: string; message?: string } | unknown;
-  console.error(error);
 
-  // Safely extract error message
   const errorMessage =
     (typeof error === 'object' && error !== null && 'statusText' in error && (error as any).statusText) ||
     (typeof error === 'object' && error !== null && 'message' in error && (error as any).message) ||

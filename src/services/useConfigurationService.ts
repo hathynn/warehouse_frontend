@@ -29,7 +29,6 @@ const useConfigurationService = () => {
       return null;
     } catch (error) {
       toast.error("Không thể lấy cấu hình hệ thống");
-      console.error("Error fetching configuration:", error);
       throw error;
     }
   };
@@ -42,7 +41,6 @@ const useConfigurationService = () => {
       return response.content as ConfigurationDto;
     } catch (error) {
       toast.error("Không thể lưu cấu hình");
-      console.error("Error saving configuration:", error);
       throw error;
     }
   };

@@ -20,7 +20,7 @@ const Login = () => {
   const dispatch = useDispatch();
   const { login, loading } = useAccountService();
   const { redirectToDefaultRoute } = useAuthRedirect();
-  
+
   const [formData, setFormData] = useState<AuthenticationRequest>({
     username: "",
     password: "",
@@ -36,31 +36,27 @@ const Login = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    try {
-      const response = await login(formData);
+    const response = await login(formData);
 
-      // Decode token to get user info
-      const decodedToken = jwtDecode<DecodedToken>(response.access_token);
-      
-      // Dispatch actions to update state
-      dispatch(setCredentials({
-        accessToken: response.access_token,
-        refreshToken: response.refresh_token,
-      }));
+    // Decode token to get user info
+    const decodedToken = jwtDecode<DecodedToken>(response.access_token);
 
-      dispatch(setUserInfo({
-        id: decodedToken.sub,
-        email: decodedToken.email,
-        role: decodedToken.role,
-        fullName: decodedToken.full_name,
-      }));
+    // Dispatch actions to update state
+    dispatch(setCredentials({
+      accessToken: response.access_token,
+      refreshToken: response.refresh_token,
+    }));
 
-      // Redirect to default route based on role
-      
-      redirectToDefaultRoute();
-    } catch (error) {
-      console.error("Error logging in:", error);
-    }
+    dispatch(setUserInfo({
+      id: decodedToken.sub,
+      email: decodedToken.email,
+      role: decodedToken.role,
+      fullName: decodedToken.full_name,
+    }));
+
+    // Redirect to default route based on role
+
+    redirectToDefaultRoute();
   };
 
   return (
@@ -73,7 +69,7 @@ const Login = () => {
           Vui lòng nhập thông tin đăng nhập của bạn
         </p>
       </div>
-      
+
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-4">
           <div>
@@ -92,7 +88,7 @@ const Login = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               Mật khẩu
