@@ -53,7 +53,7 @@ const ExportRequestDetail = () => {
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
   // const [loading, setLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  // const [detailsLoading, setDetailsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -78,7 +78,7 @@ const ExportRequestDetail = () => {
   const [selectedKeeperId, setSelectedKeeperId] = useState(null);
   const [assignedKeeper, setAssignedKeeper] = useState(null);
   const [keeperStaffs, setKeeperStaffs] = useState([]);
-  const [loadingKeeperStaff, setLoadingKeeperStaff] = useState(false);
+  // const [loadingKeeperStaff, setLoadingKeeperStaff] = useState(false);
 
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
@@ -86,7 +86,7 @@ const ExportRequestDetail = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [editedDetails, setEditedDetails] = useState([]); // clone chi tiết khi edit
-  const [creating, setCreating] = useState(false); // loading khi gọi API tạo mới
+  // const [creating, setCreating] = useState(false); // loading khi gọi API tạo mới
 
   const [confirmCreateExportModalVisible, setConfirmCreateExportModalVisible] =
     useState(false);
@@ -174,18 +174,11 @@ const ExportRequestDetail = () => {
       message.error("Ngày nhận hàng không hợp lệ");
       return;
     }
-    try {
-      setLoadingKeeperStaff(true);
-      const activeStaffs = await getActiveStaffsInDay({
-        date: exportRequest.exportDate,
-        exportRequestId: exportRequest.exportRequestId,
-      });
-      setKeeperStaffs(activeStaffs);
-    } catch (error) {
-      message.error("Không thể tải danh sách nhân viên xuất hàng");
-    } finally {
-      setLoadingKeeperStaff(false);
-    }
+    const activeStaffs = await getActiveStaffsInDay({
+      date: exportRequest.exportDate,
+      exportRequestId: exportRequest.exportRequestId,
+    });
+    setKeeperStaffs(activeStaffs);
   };
 
   const fetchAssignedCountingStaff = useCallback(async () => {
@@ -681,7 +674,7 @@ const ExportRequestDetail = () => {
     navigate(-1);
   };
 
-  if (loading && !exportRequest) {
+  if ((exportRequestLoading || exportRequestDetailLoading) && !exportRequest) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
@@ -771,7 +764,7 @@ const ExportRequestDetail = () => {
           //editMode ? editedDetails : allExportRequestDetails
           allExportRequestDetails
         } // THÊM DÒNG NÀY
-        detailsLoading={detailsLoading}
+        detailsLoading={exportRequestDetailLoading}
         pagination={pagination}
         handleTableChange={handleTableChange}
         userRole={userRole}
@@ -781,7 +774,7 @@ const ExportRequestDetail = () => {
         setEditMode={setEditMode}
         editedDetails={editedDetails}
         setEditedDetails={setEditedDetails}
-        creating={creating}
+        creating={exportRequestDetailLoading || exportRequestLoading}
         onCancelCreateExport={handleCancelCreateExport}
         //onConfirmCreateExport={handleConfirmCreateExport}
         onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
@@ -1130,7 +1123,7 @@ const ExportRequestDetail = () => {
         exportRequest={exportRequest || {}}
         updateExportDateTime={updateExportDateTime}
         updateExportRequestStatus={updateExportRequestStatus}
-        loading={loading}
+        loading={exportRequestLoading}
         onSuccess={async () => {
           setUpdateDateTimeModalOpen(false);
           await fetchExportRequestData();
