@@ -16,6 +16,7 @@ import ExportRequestHeader from "@/components/export-flow/ExportRequestHeader";
 import ExportTypeSelector from "@/components/export-flow/ExportTypeSelector";
 import Title from "antd/es/typography/Title";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
+import useDepartmentService from "@/services/useDepartmentService";
 
 const ExportRequestCreate = () => {
   // --- State cho file upload và kiểm tra dữ liệu ---
@@ -27,6 +28,15 @@ const ExportRequestCreate = () => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const [hasTableError, setHasTableError] = useState(false);
+  const {
+    getAllDepartments,
+    getDepartmentById,
+    departments,
+    loading: departmentLoading,
+  } = useDepartmentService();
+  const [departmentPage, setDepartmentPage] = useState(1);
+  const [departmentLimit, setDepartmentLimit] = useState(10);
+  const [departmentTotal, setDepartmentTotal] = useState(0);
 
   // --- Lấy danh sách sản phẩm ---
   const [items, setItems] = useState([]);
@@ -65,7 +75,6 @@ const ExportRequestCreate = () => {
       total: mappedData.length,
     }));
     resetViewedPages(1);
-     
   }, [mappedData.length]); // mappedData.length thay đổi thì reset lại
 
   // --- Hook tracking xem hết trang chưa ---
@@ -97,12 +106,16 @@ const ExportRequestCreate = () => {
   });
 
   // --- Dữ liệu mẫu và state hiển thị modal cho danh sách phòng ban ---
-  const departments = [
-    { id: 1, name: "Bộ phận A" },
-    { id: 2, name: "Phân xưởng B" },
-    { id: 3, name: "Bộ phận C" },
-  ];
   const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      const response = await getAllDepartments(departmentPage, departmentLimit);
+      // Nếu API trả về response.metaDataDTO.total thì lưu lại
+      setDepartmentTotal(response?.metaDataDTO?.total || 0);
+    };
+    fetchDepartments();
+  }, [departmentPage, departmentLimit]);
 
   function enrichDataWithItemMeta(dataArray, itemsArray) {
     return dataArray.map((row) => {
@@ -118,18 +131,18 @@ const ExportRequestCreate = () => {
   }
 
   // --- Fake API: Lấy chi tiết phòng ban (dành cho Production) ---
-  const fakeFetchDepartmentDetails = (department) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const details = {
-          1: { receiverName: "Người đại diện A", receiverPhone: "0123456789" },
-          2: { receiverName: "Người đại diện B", receiverPhone: "0987654321" },
-          3: { receiverName: "Người đại diện C", receiverPhone: "0912345678" },
-        };
-        resolve(details[department.id]);
-      }, 500);
-    });
-  };
+  // const fakeFetchDepartmentDetails = (department) => {
+  //   return new Promise((resolve) => {
+  //     setTimeout(() => {
+  //       const details = {
+  //         1: { receiverName: "Người đại diện A", receiverPhone: "0123456789" },
+  //         2: { receiverName: "Người đại diện B", receiverPhone: "0987654321" },
+  //         3: { receiverName: "Người đại diện C", receiverPhone: "0912345678" },
+  //       };
+  //       resolve(details[department.id]);
+  //     }, 500);
+  //   });
+  // };
 
   // --- Các hàm xử lý file Excel ---
 
@@ -497,9 +510,7 @@ const ExportRequestCreate = () => {
           departmentModalVisible={departmentModalVisible}
           setDepartmentModalVisible={setDepartmentModalVisible}
           departments={departments}
-          fakeFetchDepartmentDetails={fakeFetchDepartmentDetails}
-          //helper
-          //setFileConfirmed={setFileConfirmed}
+          // fakeFetchDepartmentDetails={fakeFetchDepartmentDetails}
           setFileConfirmed={handleBackToFileStep}
           fileName={fileName}
         />
@@ -509,18 +520,34 @@ const ExportRequestCreate = () => {
       <SelectModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
-        data={departments}
+        data={departments.map((d) => ({
+          ...d,
+          name: d.departmentName,
+        }))}
+        pagination={{
+          current: departmentPage,
+          pageSize: departmentLimit,
+          total: departmentTotal,
+          onChange: (page, pageSize) => {
+            setDepartmentPage(page);
+            setDepartmentLimit(pageSize);
+          },
+        }}
         onSelect={async (selectedDepartment) => {
-          const details = await fakeFetchDepartmentDetails(selectedDepartment);
+          const departmentDetail = await getDepartmentById(
+            selectedDepartment.id
+          );
           setFormData({
             ...formData,
             receivingDepartment: selectedDepartment,
-            departmentRepresentative: details?.receiverName || "",
-            departmentRepresentativePhone: details?.receiverPhone || "",
+            departmentRepresentative:
+              departmentDetail.content.departmentResponsible || "",
+            departmentRepresentativePhone: departmentDetail.content.phone || "",
           });
           setDepartmentModalVisible(false);
         }}
         onCancel={() => setDepartmentModalVisible(false)}
+        loading={departmentLoading}
       />
     </div>
   );

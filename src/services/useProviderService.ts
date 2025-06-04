@@ -28,10 +28,13 @@ const useProviderService = () => {
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
 
   // Lấy danh sách nhà cung cấp
-  const getAllProviders = async (page = 1, limit = 999): Promise<ResponseDTO<ProviderResponse[]>> => {
+  const getAllProviders = async (
+    page = 1,
+    limit = 999
+  ): Promise<ResponseDTO<ProviderResponse[]>> => {
     try {
       const response = await callApi(
-        "get", 
+        "get",
         `/provider?page=${page}&limit=${limit}`
       );
       if (response && response.content) {
@@ -45,7 +48,9 @@ const useProviderService = () => {
   };
 
   // Lấy nhà cung cấp theo ID
-  const getProviderById = async (providerId: number): Promise<ResponseDTO<ProviderResponse>> => {
+  const getProviderById = async (
+    providerId: number
+  ): Promise<ResponseDTO<ProviderResponse>> => {
     try {
       const response = await callApi("get", `/provider/${providerId}`);
       return response;
@@ -56,7 +61,9 @@ const useProviderService = () => {
   };
 
   // Tạo nhà cung cấp mới
-  const createProvider = async (requestData: ProviderRequest): Promise<ResponseDTO<ProviderResponse>> => {
+  const createProvider = async (
+    requestData: ProviderRequest
+  ): Promise<ResponseDTO<ProviderResponse>> => {
     try {
       const response = await callApi("post", "/provider", requestData);
       toast.success("Tạo nhà cung cấp thành công");
@@ -69,7 +76,9 @@ const useProviderService = () => {
   };
 
   // Cập nhật nhà cung cấp
-  const updateProvider = async (requestData: ProviderRequest): Promise<ResponseDTO<ProviderResponse>> => {
+  const updateProvider = async (
+    requestData: ProviderRequest
+  ): Promise<ResponseDTO<ProviderResponse>> => {
     try {
       const response = await callApi("put", "/provider", requestData);
       toast.success("Cập nhật nhà cung cấp thành công");
@@ -82,7 +91,9 @@ const useProviderService = () => {
   };
 
   // Xóa nhà cung cấp
-  const deleteProvider = async (providerId: number): Promise<ResponseDTO<null>> => {
+  const deleteProvider = async (
+    providerId: number
+  ): Promise<ResponseDTO<null>> => {
     try {
       const response = await callApi("delete", `/provider/${providerId}`);
       toast.success("Xóa nhà cung cấp thành công");
@@ -101,7 +112,7 @@ const useProviderService = () => {
     getProviderById,
     createProvider,
     updateProvider,
-    deleteProvider
+    deleteProvider,
   };
 };
 
