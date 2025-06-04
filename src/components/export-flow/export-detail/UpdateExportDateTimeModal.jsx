@@ -17,7 +17,6 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
-// Hàm getMinDateTime đã tối ưu như ở trên
 
 function getMinDateTime(now, atLeast, workingTimeStart, workingTimeEnd) {
   const [atHour, atMin, atSec] = atLeast.split(":").map(Number);
@@ -75,7 +74,6 @@ function isTimeInWorkingHours(
   workingTimeEnd
 ) {
   if (!dateObj || !timeObj) return false;
-  // Đúng:
   const pickedTime = dayjs(
     dateObj.format("YYYY-MM-DD") + " " + timeObj.format("HH:mm:ss")
   );
@@ -135,6 +133,112 @@ const UpdateExportDateTimeModal = ({
     );
     setMinDateTime(minDT);
   }, [now, configuration]);
+
+  // Function to disable invalid times
+  const disabledTime = () => {
+    if (!date || !configuration || !minDateTime) return {};
+
+    const workingStart = dayjs(
+      date.format("YYYY-MM-DD") + " " + configuration.workingTimeStart
+    );
+    const workingEnd = dayjs(
+      date.format("YYYY-MM-DD") + " " + configuration.workingTimeEnd
+    );
+
+    const disabledHours = [];
+
+    // Disable hours before working start
+    for (let i = 0; i < workingStart.hour(); i++) {
+      disabledHours.push(i);
+    }
+
+    // Disable hours after working end
+    for (let i = workingEnd.hour() + 1; i < 24; i++) {
+      disabledHours.push(i);
+    }
+
+    // If selected date is same as minDateTime date, disable hours before minDateTime
+    if (date.isSame(minDateTime, "day")) {
+      for (let i = 0; i < minDateTime.hour(); i++) {
+        if (!disabledHours.includes(i)) {
+          disabledHours.push(i);
+        }
+      }
+    }
+
+    return {
+      disabledHours: () => disabledHours,
+      disabledMinutes: (selectedHour) => {
+        const disabled = [];
+
+        // If selected hour is the working start hour, disable minutes before working start
+        if (selectedHour === workingStart.hour()) {
+          for (let i = 0; i < workingStart.minute(); i++) {
+            disabled.push(i);
+          }
+        }
+
+        // If selected hour is the working end hour, disable minutes after working end
+        if (selectedHour === workingEnd.hour()) {
+          for (let i = workingEnd.minute() + 1; i < 60; i++) {
+            disabled.push(i);
+          }
+        }
+
+        // If selected date is same as minDateTime date and hour is same as minDateTime hour
+        if (
+          date.isSame(minDateTime, "day") &&
+          selectedHour === minDateTime.hour()
+        ) {
+          for (let i = 0; i < minDateTime.minute(); i++) {
+            if (!disabled.includes(i)) {
+              disabled.push(i);
+            }
+          }
+        }
+
+        return disabled;
+      },
+      disabledSeconds: (selectedHour, selectedMinute) => {
+        const disabled = [];
+
+        // If selected time is exactly working start time, disable seconds before working start
+        if (
+          selectedHour === workingStart.hour() &&
+          selectedMinute === workingStart.minute()
+        ) {
+          for (let i = 0; i < workingStart.second(); i++) {
+            disabled.push(i);
+          }
+        }
+
+        // If selected time is exactly working end time, disable seconds after working end
+        if (
+          selectedHour === workingEnd.hour() &&
+          selectedMinute === workingEnd.minute()
+        ) {
+          for (let i = workingEnd.second() + 1; i < 60; i++) {
+            disabled.push(i);
+          }
+        }
+
+        // If selected date and time is same as minDateTime, disable seconds before minDateTime
+        if (
+          date.isSame(minDateTime, "day") &&
+          selectedHour === minDateTime.hour() &&
+          selectedMinute === minDateTime.minute()
+        ) {
+          for (let i = 0; i < minDateTime.second(); i++) {
+            if (!disabled.includes(i)) {
+              disabled.push(i);
+            }
+          }
+        }
+
+        return disabled;
+      },
+    };
+  };
 
   const handleOk = async () => {
     if (!date || !time) {
@@ -221,7 +325,7 @@ const UpdateExportDateTimeModal = ({
           <InfoCircleOutlined style={{ fontSize: 16, color: "#1890ff" }} />
           <span>
             Ngày/giờ tối thiểu nhận hàng là:{" "}
-            <b>{minDateTime.format("DD/MM/YYYY HH:mm:ss")}</b> (trong giờ hành
+            <b>{minDateTime.format("DD/MM/YYYY HH:mm")}</b> (trong giờ hành
             chính: {configuration.workingTimeStart} -{" "}
             {configuration.workingTimeEnd})
           </span>
@@ -311,7 +415,7 @@ const UpdateExportDateTimeModal = ({
         ]}
         width={480}
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         {!configuration || !minDateTime ? (
           <div className="flex justify-center items-center py-8">
@@ -354,8 +458,9 @@ const UpdateExportDateTimeModal = ({
                 onChange={setTime}
                 style={{ width: "100%", marginTop: 6 }}
                 placeholder="Chọn giờ"
-                format="HH:mm:ss"
-                minuteStep={5}
+                format="HH:mm"
+                needConfirm={false}
+                disabledTime={disabledTime}
               />
             </div>
             <div style={{ fontSize: 13, marginBottom: 12 }}>
@@ -367,8 +472,8 @@ const UpdateExportDateTimeModal = ({
                 onChange={(e) => setConfirmed(e.target.checked)}
                 disabled={!isValidDateTime()}
               >
-                Tôi đã liên hệ với khách hàng và xác nhận ngày nhận hàng đã nhập
-                là đúng.
+                Tôi đã liên hệ với khách hàng và xác nhận ngày nhận hàng trên là
+                đúng.
               </Checkbox>
             </div>
           </>

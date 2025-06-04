@@ -66,8 +66,6 @@ const ExportRequestDetail = () => {
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
-  // const [loading, setLoading] = useState(false);
-  // const [detailsLoading, setDetailsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -82,35 +80,26 @@ const ExportRequestDetail = () => {
   const [assignedStaff, setAssignedStaff] = useState(null);
   const [searchText, setSearchText] = useState("");
   const userRole = useSelector((state) => state.user.role);
-  //Modal confirm counted
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  //Modal update date time
   const [updateDateTimeModalOpen, setUpdateDateTimeModalOpen] = useState(false);
-
   const [assignKeeperModalVisible, setAssignKeeperModalVisible] =
     useState(false);
   const [selectedKeeperId, setSelectedKeeperId] = useState(null);
   const [assignedKeeper, setAssignedKeeper] = useState(null);
   const [keeperStaffs, setKeeperStaffs] = useState([]);
-  // const [loadingKeeperStaff, setLoadingKeeperStaff] = useState(false);
-
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false); // đặt bên ngoài modal
-
   const [editMode, setEditMode] = useState(false);
   const [editedDetails, setEditedDetails] = useState([]); // clone chi tiết khi edit
-  // const [creating, setCreating] = useState(false); // loading khi gọi API tạo mới
-
   const [confirmCreateExportModalVisible, setConfirmCreateExportModalVisible] =
     useState(false);
-
   const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
   const { getDepartmentById } = useDepartmentService();
   const [departmentInfo, setDepartmentInfo] = useState(null);
-
   const { getItems } = useItemService();
   const [items, setItems] = useState([]);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -777,15 +766,31 @@ const ExportRequestDetail = () => {
               Cập nhật ngày khách nhận hàng
             </Button>
           )}
+        {userRole === AccountRole.DEPARTMENT &&
+          [
+            ExportStatus.IN_PROGRESS,
+            ExportStatus.COUNTED,
+            ExportStatus.COUNT_CONFIRMED,
+            ExportStatus.WAITING_EXPORT,
+            ExportStatus.EXTENDED,
+          ].includes(exportRequest?.status) && (
+            <Button
+              danger
+              className="ml-auto"
+              style={{ minWidth: 120, fontWeight: 600 }}
+              loading={exportRequestLoading}
+              onClick={() => setCancelModalVisible(true)}
+            >
+              Hủy phiếu xuất
+            </Button>
+          )}
       </div>
-
       <Card className="mb-6">
         <Descriptions title="Thông tin phiếu xuất" bordered>
           {renderDescriptionItems()}
         </Descriptions>
       </Card>
       {}
-
       <ProductDetailTable
         columns={columns}
         exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
@@ -808,7 +813,6 @@ const ExportRequestDetail = () => {
         //onConfirmCreateExport={handleConfirmCreateExport}
         onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
       />
-
       {/* Modal chọn Warehouse Keeper */}
       <Modal
         title={
@@ -935,7 +939,6 @@ const ExportRequestDetail = () => {
           </div>
         )}
       </Modal>
-
       <Modal
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
@@ -1056,7 +1059,6 @@ const ExportRequestDetail = () => {
           </div>
         )}
       </Modal>
-
       <Modal
         open={confirmModalVisible}
         onCancel={() => setConfirmModalVisible(false)}
@@ -1146,6 +1148,52 @@ const ExportRequestDetail = () => {
             Tôi xác nhận đã xuất kho xong, tôi xin chịu toàn bộ trách nhiệm sau
             khi chấp nhận.
           </label>
+        </div>
+      </Modal>
+      <Modal
+        open={cancelModalVisible}
+        onCancel={() => setCancelModalVisible(false)}
+        onOk={async () => {
+          try {
+            await updateExportRequestStatus(
+              exportRequestId,
+              ExportStatus.CANCELLED
+            );
+
+            message.success("Đã hủy phiếu xuất thành công");
+            setCancelModalVisible(false);
+
+            // Refresh data
+            await fetchExportRequestData();
+            await fetchDetails();
+          } catch (error) {
+            console.error("Error cancelling export request:", error);
+            message.error("Không thể hủy phiếu xuất. Vui lòng thử lại.");
+          }
+        }}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận hủy phiếu xuất
+          </span>
+        }
+        okText="Hủy phiếu xuất"
+        okType="danger"
+        cancelText="Quay lại"
+        centered
+        confirmLoading={exportRequestLoading}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <ExclamationCircleOutlined
+            style={{ fontSize: 25, color: "#ff4d4f", marginTop: 10 }}
+          />
+          <div>
+            <p style={{ color: "#ff4d4f", fontWeight: "bold", fontSize: 16 }}>
+              Bạn chắc chắn muốn hủy phiếu xuất này?
+            </p>
+            <p style={{ color: "#ff4d4f", fontWeight: 400 }}>
+              Hành động này không thể hoàn tác.
+            </p>
+          </div>
         </div>
       </Modal>
       <UpdateExportDateTimeModal
