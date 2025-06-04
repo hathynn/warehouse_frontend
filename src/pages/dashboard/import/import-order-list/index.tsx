@@ -5,7 +5,6 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
   ImportOrderResponse,
 } from "@/services/useImportOrderService";
-import useImportOrderDetailService from "@/services/useImportOrderDetailService";
 import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import { AccountRole, AccountRoleForRequest, ImportStatus } from "@/utils/enums";
@@ -55,10 +54,6 @@ const ImportOrderList: React.FC = () => {
     getAllImportOrdersByImportRequestId,
     getAllImportOrders
   } = useImportOrderService();
-
-  const {
-    getImportOrderDetailsPaginated
-  } = useImportOrderDetailService();
 
   const {
     loading: accountLoading,
@@ -172,40 +167,33 @@ const ImportOrderList: React.FC = () => {
         importRequestId
       );
     } else {
-      response = await getAllImportOrders(
-        pagination.current || 1,
-        pagination.pageSize || 10
-      );
+      response = await getAllImportOrders();
     }
 
-    const formatted: ImportOrderData[] = await Promise.all(
-      (response.content ?? []).map(async (order) => {
-        // "limit = 1000" đủ để ôm hết chi tiết 1 đơn
-        const { content: importOrderDetails = [] } =
-          await getImportOrderDetailsPaginated(order.importOrderId, 1, 1000);
+    const formatted: ImportOrderData[] = (response.content ?? []).map(order => {
+      const importOrderDetails = order.importOrderDetails || [];
 
-        const totalExpectQuantityInOrder = importOrderDetails.reduce(
-          (sum, d) => sum + d.expectQuantity,
-          0
-        );
-        const totalActualQuantityInOrder = importOrderDetails.reduce(
-          (sum, d) => sum + d.actualQuantity,
-          0
-        );
-        const importOrderDetailsCompletedCount = importOrderDetails.reduce(
-          (sum, d) => sum + (d.actualQuantity > 0 ? 1 : 0),
-          0
-        );
+      const totalExpectQuantityInOrder = importOrderDetails.reduce(
+        (sum, d) => sum + d.expectQuantity,
+        0
+      );
+      const totalActualQuantityInOrder = importOrderDetails.reduce(
+        (sum, d) => sum + d.actualQuantity,
+        0
+      );
+      const importOrderDetailsCompletedCount = importOrderDetails.reduce(
+        (sum, d) => sum + (d.actualQuantity > 0 ? 1 : 0),
+        0
+      );
 
-        return {
-          ...order,
-          importOrderDetailsCount: importOrderDetails.length,
-          importOrderDetailsCompletedCount,
-          totalExpectQuantityInOrder,
-          totalActualQuantityInOrder
-        };
-      })
-    );
+      return {
+        ...order,
+        importOrderDetailsCount: importOrderDetails.length,
+        importOrderDetailsCompletedCount,
+        totalExpectQuantityInOrder,
+        totalActualQuantityInOrder
+      };
+    });
 
     setImportOrdersData(formatted);
 
@@ -486,65 +474,60 @@ const ImportOrderList: React.FC = () => {
         />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Spin size="large" />
-        </div>
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredItems}
-          rowKey="importOrderId"
-          rowClassName={(record) => {
-            const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
-            const statusClass = getStatusRowClass(record.status);
+      <Table
+        columns={columns}
+        loading={loading}
+        dataSource={filteredItems}
+        rowKey="importOrderId"
+        rowClassName={(record) => {
+          const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
+          const statusClass = getStatusRowClass(record.status);
 
-            // Priority: COMPLETED and CANCELLED > near time > other status colors
-            if (record.status === ImportStatus.COMPLETED) {
-              return `${statusClass} status-green`;
-            }
+          // Priority: COMPLETED and CANCELLED > near time > other status colors
+          if (record.status === ImportStatus.COMPLETED) {
+            return `${statusClass} status-green`;
+          }
 
-            if (record.status === ImportStatus.CANCELLED) {
-              return `${statusClass} status-gray`;
-            }
+          if (record.status === ImportStatus.CANCELLED) {
+            return `${statusClass} status-gray`;
+          }
 
-            if (isNearTime) {
-              return 'bg-[rgba(220,38,38,0.05)]';
-            }
+          if (isNearTime) {
+            return 'bg-[rgba(220,38,38,0.05)]';
+          }
 
-            // Add status-specific class for hover effects
-            if (statusClass !== 'no-bg-row') {
-              const statusType = record.status === ImportStatus.IN_PROGRESS
-                ? 'status-blue'
-                : record.status === ImportStatus.COUNTED
-                  ? 'status-blue-heavy'
-                  : '';
-              return `${statusClass} ${statusType}`;
-            }
+          // Add status-specific class for hover effects
+          if (statusClass !== 'no-bg-row') {
+            const statusType = record.status === ImportStatus.IN_PROGRESS
+              ? 'status-blue'
+              : record.status === ImportStatus.COUNTED
+                ? 'status-blue-heavy'
+                : '';
+            return `${statusClass} ${statusType}`;
+          }
 
-            return 'no-bg-row';
-          }}
-          className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importOrdersData.length > 0 ?
-            '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
-            '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
-            '[&_.ant-table-tbody_tr.status-blue-heavy:hover_td]:!bg-[rgba(59,130,246,0.16)] ' +
-            '[&_.ant-table-tbody_tr.status-green:hover_td]:!bg-[rgba(34,197,94,0.08)] ' +
-            '[&_.ant-table-tbody_tr.status-gray:hover_td]:!bg-[rgba(107,114,128,0.08)] ' +
-            '[&_.ant-table-tbody_tr.status-amber:hover_td]:!bg-[rgba(245,158,11,0.08)]'
-            : ''}`}
-          onChange={handleTableChange}
-          pagination={{
-            ...pagination,
-            total: filteredItems.length,
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            locale: {
-              items_per_page: "/ trang"
-            },
-            showTotal: (total: number) => `Tổng cộng có ${total} đơn nhập${selectedStatusFilter || selectedStaff.length > 0 ? ' (đã lọc)' : ''}`,
-          }}
-        />
-      )}
+          return 'no-bg-row';
+        }}
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${importOrdersData.length > 0 ?
+          '[&_.ant-table-tbody_tr:hover_td]:!bg-[rgba(220,38,38,0.08)] [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
+          '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-blue-heavy:hover_td]:!bg-[rgba(59,130,246,0.16)] ' +
+          '[&_.ant-table-tbody_tr.status-green:hover_td]:!bg-[rgba(34,197,94,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-gray:hover_td]:!bg-[rgba(107,114,128,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-amber:hover_td]:!bg-[rgba(245,158,11,0.08)]'
+          : ''}`}
+        onChange={handleTableChange}
+        pagination={{
+          ...pagination,
+          total: filteredItems.length,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          locale: {
+            items_per_page: "/ trang"
+          },
+          showTotal: (total: number) => `Tổng cộng có ${total} đơn nhập${selectedStatusFilter || selectedStaff.length > 0 ? ' (đã lọc)' : ''}`,
+        }}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ImportStatus } from "@/utils/enums";
 import { ResponseDTO } from "@/utils/interfaces";
+import { ImportOrderDetailResponse } from "./useImportOrderDetailService";
 
 
 export interface ImportOrderCreateRequest {
@@ -38,7 +39,7 @@ export interface ImportOrderResponse {
   extendedReason: string;
   note?: string;
   status: ImportStatus;
-  importOrderDetailIds: number[];
+  importOrderDetails: ImportOrderDetailResponse[];
   createdBy: string;
   updatedBy: string;
   createdDate: string;
@@ -51,7 +52,17 @@ const useImportOrderService = () => {
   const { callApi, loading } = useApi();
   const [importOrderId, setImportOrderId] = useState<string | null>(null);
 
-  const getAllImportOrders = async (
+  const getAllImportOrders = async (): Promise<ResponseDTO<ImportOrderResponse[]>> => {
+    try {
+      const response = await callApi("get", "/import-order");
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách tất cả đơn nhập");
+      throw error;
+    }
+  };
+
+  const getImportOrdersByPage = async (
     page = 1,
     limit = 10
   ): Promise<ResponseDTO<ImportOrderResponse[]>> => {
@@ -163,6 +174,7 @@ const useImportOrderService = () => {
     loading,
     importOrderId,
     getAllImportOrders,
+    getImportOrdersByPage,
     getAllImportOrdersByImportRequestId,
     getImportOrderById,
     createImportOrder,

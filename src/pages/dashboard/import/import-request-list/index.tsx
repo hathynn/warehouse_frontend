@@ -5,7 +5,6 @@ import { UnorderedListOutlined, EyeOutlined } from "@ant-design/icons";
 import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
-import useImportRequestDetailService from "@/services/useImportRequestDetailService";
 import useProviderService from "@/services/useProviderService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
@@ -42,17 +41,12 @@ const ImportRequestList: React.FC = () => {
   } = useImportRequestService();
 
   const {
-    loading: importRequestDetailLoading,
-    getImportRequestDetails
-  } = useImportRequestDetailService();
-
-  const {
     loading: providerLoading,
     getAllProviders
   } = useProviderService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = importRequestLoading || importRequestDetailLoading || providerLoading;
+  const loading = importRequestLoading || providerLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isNearEndDate = (endDate: string): boolean => {
@@ -127,41 +121,36 @@ const ImportRequestList: React.FC = () => {
 
     const { content: providerList = [] } = await getAllProviders();
 
-    const formattedRequests: ImportRequestData[] = await Promise.all(
-      (content || []).map(async (request: ImportRequestResponse) => {
-        // Lấy chi tiết của từng phiếu
-        const { content: importRequestDetails = [] } = await getImportRequestDetails(
-          request.importRequestId
-        );
+    const formattedRequests: ImportRequestData[] = (content || []).map(request => {
+      const importRequestDetails = request.importRequestDetails || [];
 
-        // Tính tổng bằng reduce
-        const totalExpectQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.expectQuantity,
-          0
-        );
-        const totalOrderedQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.orderedQuantity,
-          0
-        );
-        const totalActualQuantityInRequest = importRequestDetails.reduce(
-          (runningTotal, detail) => runningTotal + detail.actualQuantity,
-          0
-        );
+      // Tính tổng bằng reduce
+      const totalExpectQuantityInRequest = importRequestDetails.reduce(
+        (runningTotal, detail) => runningTotal + detail.expectQuantity,
+        0
+      );
+      const totalOrderedQuantityInRequest = importRequestDetails.reduce(
+        (runningTotal, detail) => runningTotal + detail.orderedQuantity,
+        0
+      );
+      const totalActualQuantityInRequest = importRequestDetails.reduce(
+        (runningTotal, detail) => runningTotal + detail.actualQuantity,
+        0
+      );
 
-        // Tìm nhà cung cấp
-        const provider = providerList.find(
-          (provider) => provider.id === request.providerId
-        );
+      // Tìm nhà cung cấp
+      const provider = providerList.find(
+        (provider) => provider.id === request.providerId
+      );
 
-        return {
-          ...request,
-          totalExpectQuantityInRequest,
-          totalOrderedQuantityInRequest,
-          totalActualQuantityInRequest,
-          providerName: provider?.name || "",
-        };
-      })
-    );
+      return {
+        ...request,
+        totalExpectQuantityInRequest,
+        totalOrderedQuantityInRequest,
+        totalActualQuantityInRequest,
+        providerName: provider?.name || "",
+      };
+    });
 
     setImportRequestsData(formattedRequests);
   };

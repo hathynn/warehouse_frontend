@@ -1,7 +1,7 @@
-
 import useApiService from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ResponseDTO } from "@/utils/interfaces";
+import { ImportRequestDetailResponse } from "./useImportRequestDetailService";
 
 // Interface to match ImportRequestCreateRequest.java
 export interface ImportRequestCreateRequest {
@@ -18,7 +18,7 @@ export interface ImportRequestResponse {
   status: string;
   providerId: number;
   exportRequestId: number | null;
-  importRequestDetailIds: number[];
+  importRequestDetails: ImportRequestDetailResponse[];
   importOrdersId: number[];
   createdBy: string;
   updatedBy: string;
