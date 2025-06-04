@@ -131,7 +131,7 @@ const ProductDetailTable = ({
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
           exportRequest?.status === ExportStatus.COUNTED && (
             <Button type="primary" onClick={() => setConfirmModalVisible(true)}>
-              Xác nhận kiểm đếm
+              Xác nhận số lượng đã kiểm đếm
             </Button>
           )}
 
@@ -148,12 +148,14 @@ const ProductDetailTable = ({
                     .filter((item) => item.actualQuantity > 0)
                     .map((item) => {
                       let error = "";
-                      if (!item.quantity || item.quantity <= 0) {
+                      // Khi vào edit mode, quantity = actualQuantity
+                      const quantity = item.actualQuantity;
+                      if (!quantity || quantity <= 0) {
                         error = "Không được bỏ trống";
-                      } else if (item.quantity > item.actualQuantity) {
+                      } else if (quantity > item.actualQuantity) {
                         error = "Phải ≤ " + item.actualQuantity;
                       }
-                      return { ...item, error };
+                      return { ...item, quantity, error };
                     })
                 );
               }}

@@ -95,16 +95,18 @@ const ExportRequestConfirmModal = ({
         size="small"
         style={{ marginBottom: 24 }}
       >
+        <Descriptions.Item label="Loại xuất">
+          {formData.exportType === "PRODUCTION" ? "Sản xuất" : "Mượn"}
+        </Descriptions.Item>
         <Descriptions.Item label="Lý do xuất">
           <div className="max-h-[48px] overflow-y-auto leading-[24px]">
             {formData.exportReason}
           </div>
         </Descriptions.Item>
-        <Descriptions.Item label="Loại xuất">
-          {formData.exportType === "PRODUCTION" ? "Sản xuất" : "Mượn"}
-        </Descriptions.Item>
         <Descriptions.Item label="Ngày nhận">
-          {formData.exportDate || "-"}
+          {formData.exportDate
+            ? dayjs(formData.exportDate).format("DD-MM-YYYY")
+            : "-"}
         </Descriptions.Item>
         <Descriptions.Item label="Thời gian nhận">
           {formData.exportTime || "-"}
@@ -139,7 +141,7 @@ const ExportRequestConfirmModal = ({
         disabled={!allPagesViewed}
         style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
       >
-        Tôi xác nhận thông tin phiếu xuất đã đúng và đồng ý tạo phiếu.
+        Tôi xác nhận các thông tin trên phiếu xuất đã đúng.
         {!allPagesViewed && (
           <span style={{ color: "red", marginLeft: 8 }}>
             (Vui lòng xem tất cả các trang)
@@ -151,6 +153,7 @@ const ExportRequestConfirmModal = ({
 };
 
 import PropTypes from "prop-types";
+import dayjs from "dayjs";
 
 ExportRequestConfirmModal.propTypes = {
   open: PropTypes.bool.isRequired,

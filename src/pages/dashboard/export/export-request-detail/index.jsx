@@ -30,6 +30,20 @@ import LackProductTable from "@/components/export-flow/export-detail/LackProduct
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
 import ExportRequestConfirmModal from "@/components/export-flow/ExportRequestConfirmModal";
+import dayjs from "dayjs";
+import useDepartmentService from "@/services/useDepartmentService";
+
+function enrichWithItemMeta(details, items) {
+  return details.map((row) => {
+    const meta = items.find((i) => String(i.id) === String(row.itemId)) || {};
+    return {
+      ...row,
+      totalMeasurementValue: meta.totalMeasurementValue ?? "",
+      measurementUnit: meta.measurementUnit ?? "",
+      itemName: meta.name ?? row.itemName ?? "",
+    };
+  });
+}
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
@@ -92,6 +106,11 @@ const ExportRequestDetail = () => {
     useState(false);
 
   const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
+  const { getDepartmentById } = useDepartmentService();
+  const [departmentInfo, setDepartmentInfo] = useState(null);
+
+  const { getItems } = useItemService();
+  const [items, setItems] = useState([]);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -221,6 +240,19 @@ const ExportRequestDetail = () => {
   useEffect(() => {
     fetchDetails();
   }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
+
+  // Khi đã có exportRequest
+  useEffect(() => {
+    if (exportRequest?.departmentId) {
+      getDepartmentById(exportRequest.departmentId).then((res) => {
+        setDepartmentInfo(res?.content);
+      });
+    }
+  }, [exportRequest?.departmentId]);
+
+  useEffect(() => {
+    getItems().then((res) => setItems(res?.content || []));
+  }, []);
 
   // Huỷ tạo phiếu
   const handleCancelCreateExport = () => {
@@ -463,13 +495,7 @@ const ExportRequestDetail = () => {
       });
   };
 
-  const ITEM_STATUS_SHOW_STATUSES = [
-    ExportStatus.COUNT_CONFIRMED,
-    // ExportStatus.WAITING_EXPORT,
-    // ExportStatus.CONFIRMED,
-    // ExportStatus.COMPLETED,
-    // ExportStatus.CANCELLED,
-  ];
+  const ITEM_STATUS_SHOW_STATUSES = [ExportStatus.COUNT_CONFIRMED];
 
   const getItemStatus = () => {
     if (!allExportRequestDetails || allExportRequestDetails.length === 0)
@@ -511,6 +537,9 @@ const ExportRequestDetail = () => {
         {exportRequest.exportDate
           ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
           : "-"}
+      </Descriptions.Item>,
+      <Descriptions.Item label="Giờ xuất" key="exportTime">
+        {dayjs(`1970-01-01 ${exportRequest.exportTime}`).format("HH:mm")}
       </Descriptions.Item>
     );
 
@@ -534,7 +563,7 @@ const ExportRequestDetail = () => {
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
           {exportRequest.receiverName || "-"}
         </Descriptions.Item>,
-        <Descriptions.Item label="Số điện thoại nhận hàng" key="receiverPhone">
+        <Descriptions.Item label="SĐT người nhận hàng" key="receiverPhone">
           {exportRequest.receiverPhone || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Lý do xuất" key="exportReason">
@@ -1049,11 +1078,11 @@ const ExportRequestDetail = () => {
         }}
       >
         <div className="mb-4 font-semibold">
-          Tổng sản phẩm kiểm đếm: {allExportRequestDetails.length} sản phẩm
+          Tổng đã kiểm đếm: {allExportRequestDetails.length} sản phẩm
         </div>
 
         <div className="mb-4 font-semibold">
-          Tổng số sản phẩm có trạng thái thiếu:{" "}
+          Tổng thiếu:{" "}
           <span className="text-red-600">
             {allExportRequestDetails.filter((d) => d.status === "LACK").length}
           </span>{" "}
@@ -1062,7 +1091,9 @@ const ExportRequestDetail = () => {
 
         {allExportRequestDetails.some((d) => d.status === "LACK") && (
           <>
-            <div className="mb-2 font-semibold">Danh sách sản phẩm thiếu:</div>
+            <div style={{ fontSize: "16px" }} className="mb-2 font-bold ">
+              Danh sách sản phẩm thiếu:
+            </div>
             <LackProductTable
               data={allExportRequestDetails.filter((d) => d.status === "LACK")}
             />
@@ -1143,10 +1174,11 @@ const ExportRequestDetail = () => {
           exportDate: exportRequest?.exportDate,
           exportTime: exportRequest?.exportTime,
           receivingDepartment: {
-            name: exportRequest?.departmentName, // hoặc exportRequest?.department?.name nếu có
+            name: departmentInfo?.departmentName, // đã lấy từ API
           },
         }}
-        details={editedDetails}
+        details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
+        // details={editedDetails}
       />
     </div>
   );

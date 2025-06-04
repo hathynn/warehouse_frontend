@@ -20,13 +20,21 @@ const LackProductTable = ({ data }) => {
       title: "Số lượng cần",
       dataIndex: "quantity",
       key: "quantity",
+      width: 120,
+      render: (text) => (
+        <span className="text-black font-semibold" style={{ float: "right" }}>
+          {text}
+        </span>
+      ),
     },
     {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       render: (text) => (
-        <span className="text-red-600 font-semibold">{text}</span>
+        <span className="text-red-600 font-semibold" style={{ float: "right" }}>
+          {text}
+        </span>
       ),
     },
   ];
