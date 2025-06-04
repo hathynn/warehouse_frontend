@@ -57,7 +57,6 @@ const ImportOrderList: React.FC = () => {
   } = useImportOrderService();
 
   const {
-    loading: importOrderDetailLoading,
     getImportOrderDetailsPaginated
   } = useImportOrderDetailService();
 
@@ -67,7 +66,7 @@ const ImportOrderList: React.FC = () => {
   } = useAccountService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = importOrderLoading || importOrderDetailLoading || accountLoading;
+  const loading = importOrderLoading || accountLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isNearReceivingTime = (dateReceived: string, timeReceived: string): boolean => {

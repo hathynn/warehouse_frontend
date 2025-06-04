@@ -11,6 +11,7 @@ import { ROUTES } from '@/constants/routes';
 import useNotificationService, { NotificationResponse } from '@/services/useNotificationService';
 import notificationWav from "@/assets/notification-sound.wav";
 import { usePusherContext } from '@/contexts/pusher/PusherContext';
+import dayjs from 'dayjs';
 
 interface HeaderProps {
   title?: string;
@@ -235,7 +236,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                     renderItem={item => (
                       <List.Item
                         key={item.id}
-                        className={`cursor-pointer py-3 px-4 border-b border-gray-100 items-start hover:bg-gray-50 ${!item.isClicked ? 'bg-blue-50/50' : ''}`}
+                        className={`cursor-pointer py-3 px-4 border-b border-gray-100 items-start hover:!bg-[rgba(59,130,246,0.14)] ${!item.isClicked ? '!bg-[rgba(59,130,246,0.08)]' : ''}`}
                         onClick={() => handleNotificationClick(item)}
                         style={{ padding: '0.75rem 1rem' }}
                       >
@@ -253,7 +254,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                           </div>
                           {item.createdDate && (
                             <div className="text-xs text-gray-500 mt-1">
-                              {new Date(item.createdDate).toLocaleString('vi-VN')}
+                              Vào lúc {dayjs(item.createdDate).format('DD-MM-YYYY HH:mm')}
                             </div>
                           )}
                         </div>

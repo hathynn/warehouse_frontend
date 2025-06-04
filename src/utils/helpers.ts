@@ -5,7 +5,6 @@ import { AccountRole } from '@/utils/enums';
 import {
     PRIVATE_WAREHOUSE_MANAGER_CHANNEL,
     PRIVATE_DEPARTMENT_CHANNEL,
-    PRIVATE_STAFF_CHANNEL,
     PRIVATE_ACCOUNTING_CHANNEL,
     PRIVATE_ADMIN_CHANNEL
 } from '@/constants/channelsNEvents';
@@ -390,8 +389,6 @@ export function getChannelForRole(userRole: AccountRole): string | null {
             return PRIVATE_WAREHOUSE_MANAGER_CHANNEL;
         case AccountRole.DEPARTMENT:
             return PRIVATE_DEPARTMENT_CHANNEL;
-        case AccountRole.STAFF:
-            return PRIVATE_STAFF_CHANNEL;
         case AccountRole.ACCOUNTING:
             return PRIVATE_ACCOUNTING_CHANNEL;
         case AccountRole.ADMIN:
