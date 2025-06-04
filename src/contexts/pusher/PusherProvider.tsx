@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
 import { createPusherClient } from "@/config/pusher";
 import { getChannelForRole } from "@/utils/helpers";
-import { IMPORT_ORDER_CREATED_EVENT, IMPORT_ORDER_COUNTED_EVENT, IMPORT_ORDER_CONFIRMED_EVENT } from "@/constants/channelsNEvents";
+import { IMPORT_ORDER_CREATED_EVENT, IMPORT_ORDER_COUNTED_EVENT, IMPORT_ORDER_CONFIRMED_EVENT, IMPORT_ORDER_COMPLETED_EVENT, IMPORT_ORDER_EXTENDED_EVENT, IMPORT_ORDER_CANCELLED_EVENT } from "@/constants/channelsNEvents";
 
 export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const [latestNotification, setLatestNotification] = useState<NotificationEvent | null>(null);
@@ -78,6 +78,9 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
       channel.bind(IMPORT_ORDER_CREATED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_CREATED_EVENT));
       channel.bind(IMPORT_ORDER_COUNTED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_COUNTED_EVENT));
       channel.bind(IMPORT_ORDER_CONFIRMED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_CONFIRMED_EVENT));
+      channel.bind(IMPORT_ORDER_CANCELLED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_CANCELLED_EVENT));
+      channel.bind(IMPORT_ORDER_EXTENDED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_EXTENDED_EVENT));
+      channel.bind(IMPORT_ORDER_COMPLETED_EVENT, (data: any) => handleNotificationEvent(data, IMPORT_ORDER_COMPLETED_EVENT));
 
     } catch (error) {
       setConnectionError(`Setup error: ${error instanceof Error ? error.message : 'Unknown error'}`);

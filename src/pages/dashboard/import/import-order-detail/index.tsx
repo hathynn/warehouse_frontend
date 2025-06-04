@@ -117,9 +117,6 @@ const ImportOrderDetail = () => {
     getListQrCodes
   } = useInventoryItemService();
 
-  // ========== COMPUTED VALUES ==========
-  const loading = importOrderLoading || importOrderDetailLoading || accountLoading || configurationLoading || inventoryItemLoading;
-
   // ========== USE EFFECTS ==========
   // Initialize configuration on mount
   useEffect(() => {
@@ -600,7 +597,7 @@ const ImportOrderDetail = () => {
   ];
 
   // Show loading spinner when initially loading the page
-  if (loading && !importOrderData) {
+  if (!importOrderData) {
     return (
       <div className="flex justify-center items-center h-screen">
         <Spin size="large" />
