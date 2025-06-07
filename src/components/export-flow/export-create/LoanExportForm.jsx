@@ -210,20 +210,6 @@ const LoanExportForm = ({ formData, setFormData, openDepartmentModal }) => {
           />
         </Col>
       </Row>
-
-      {/* Row 6: Note
-      <Row gutter={16} className="mb-4">
-        <Col span={24}>
-          <label className="block mb-1">Ghi chú</label>
-          <Input.TextArea
-            rows={3}
-            value={formData.note || ""}
-            placeholder="Nhập ghi chú (nếu có)"
-            onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-            className="w-full"
-          />
-        </Col>
-      </Row> */}
     </>
   );
 };

@@ -29,7 +29,7 @@ import StatusTag from "@/components/commons/StatusTag";
 import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
-import ExportRequestConfirmModal from "@/components/export-flow/ExportRequestConfirmModal";
+import ExportRequestConfirmModal from "@/components/export-flow/export-general/ExportRequestConfirmModal";
 import dayjs from "dayjs";
 import useDepartmentService from "@/services/useDepartmentService";
 
@@ -537,9 +537,6 @@ const ExportRequestDetail = () => {
         <Descriptions.Item label="Loại phiếu xuất" key="exportType">
           {getExportTypeText(exportRequest.type)}
         </Descriptions.Item>,
-        // <Descriptions.Item label="Phòng ban" key="receivingDepartment">
-        //   {exportRequest.departmentId || "-"}
-        // </Descriptions.Item>,
         <Descriptions.Item label="Người kiểm đếm" key="countingStaffId">
           {assignedStaff?.fullName || "-"}
         </Descriptions.Item>,
