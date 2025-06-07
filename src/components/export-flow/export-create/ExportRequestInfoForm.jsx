@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Button, Space, Card, Typography } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import UseExportForm from "@/components/export-flow/UseExportForm";
-import LoanExportForm from "@/components/export-flow/LoanExportForm";
-import SelectModal from "@/components/export-flow/SelectModal";
+import UseExportForm from "@/components/export-flow/export-create/UseExportForm";
+import LoanExportForm from "@/components/export-flow/export-create/LoanExportForm";
 import ExcelDataTableAfter from "./ExcelDataTableAfter";
-import ExportRequestConfirmModal from "./ExportRequestConfirmModal";
 import PropTypes from "prop-types";
+import ExportRequestConfirmModal from "../export-general/ExportRequestConfirmModal";
+import DeparmentModal from "./DeparmentModal";
 
 const { Title } = Typography;
 
@@ -127,7 +127,7 @@ const ExportRequestInfoForm = ({
         </div>
       </div>
 
-      <SelectModal
+      <DeparmentModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
         data={departments}

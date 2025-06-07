@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
+import PropTypes from "prop-types";
+import dayjs from "dayjs";
 
 const { Title } = Typography;
 
@@ -151,9 +153,6 @@ const ExportRequestConfirmModal = ({
     </Modal>
   );
 };
-
-import PropTypes from "prop-types";
-import dayjs from "dayjs";
 
 ExportRequestConfirmModal.propTypes = {
   open: PropTypes.bool.isRequired,

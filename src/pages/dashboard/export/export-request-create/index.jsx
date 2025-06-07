@@ -5,18 +5,19 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import moment from "moment";
-import FileUploadSection from "@/components/export-flow/FileUploadSection";
-import ExcelDataTable from "@/components/export-flow/ExcelDataTable";
-import SelectModal from "@/components/export-flow/SelectModal";
+
+import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTable";
 import useItemService from "@/services/useItemService";
 import useExportRequestService from "@/services/useExportRequestService";
 import useExportRequestDetailService from "@/services/useExportRequestDetailService";
-import ExportRequestInfoForm from "@/components/export-flow/ExportRequestInfoForm";
-import ExportRequestHeader from "@/components/export-flow/ExportRequestHeader";
-import ExportTypeSelector from "@/components/export-flow/ExportTypeSelector";
+import ExportTypeSelector from "@/components/export-flow/export-create/ExportTypeSelector";
 import Title from "antd/es/typography/Title";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 import useDepartmentService from "@/services/useDepartmentService";
+import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
+import FileUploadSection from "@/components/export-flow/export-create/FileUploadSection";
+import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
+import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
 
 const ExportRequestCreate = () => {
   // --- State cho file upload và kiểm tra dữ liệu ---
@@ -129,22 +130,6 @@ const ExportRequestCreate = () => {
       };
     });
   }
-
-  // --- Fake API: Lấy chi tiết phòng ban (dành cho Production) ---
-  // const fakeFetchDepartmentDetails = (department) => {
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => {
-  //       const details = {
-  //         1: { receiverName: "Người đại diện A", receiverPhone: "0123456789" },
-  //         2: { receiverName: "Người đại diện B", receiverPhone: "0987654321" },
-  //         3: { receiverName: "Người đại diện C", receiverPhone: "0912345678" },
-  //       };
-  //       resolve(details[department.id]);
-  //     }, 500);
-  //   });
-  // };
-
-  // --- Các hàm xử lý file Excel ---
 
   const downloadTemplate = () => {
     const template = [
@@ -437,16 +422,6 @@ const ExportRequestCreate = () => {
 
           <Card title="Xem trước dữ liệu Excel" className="mb-4">
             {mappedData.length > 0 ? (
-              // <ExcelDataTable
-              //   data={mappedData}
-              //   items={items.content}
-              //   onDataChange={(updatedData) => {
-              //     setData(enrichDataWithItemMeta(updatedData, items.content));
-              //   }}
-              //   onTableErrorChange={setHasTableError}
-              //   pagination={pagination}
-              //   onPaginationChange={handleTablePageChange}
-              // />
               <ExcelDataTable
                 data={mappedData} // mappedData chỉ dùng để render
                 items={items.content}
@@ -510,14 +485,13 @@ const ExportRequestCreate = () => {
           departmentModalVisible={departmentModalVisible}
           setDepartmentModalVisible={setDepartmentModalVisible}
           departments={departments}
-          // fakeFetchDepartmentDetails={fakeFetchDepartmentDetails}
           setFileConfirmed={handleBackToFileStep}
           fileName={fileName}
         />
       )}
 
       {/* Modal chọn phòng ban */}
-      <SelectModal
+      <DeparmentModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
         data={departments.map((d) => ({
