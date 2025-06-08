@@ -1,29 +1,37 @@
 import { ExportStatus } from "@/utils/enums";
 import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
+import { ResponseDTO } from "@/utils/interfaces";
 
 // Các trường trong DB export_request:
 export interface ExportRequestResponse {
-  id: string;
-  exportDate: string; // export_date
-  exportTime: string; // export_time
-  assignedWarehouseKeeperId?: number; // assigned_warehouse_keeper_id
-  countingStaffId?: number; // counting_staff_id
-  createdDate: string; // created_date
-  updatedDate: string; // updated_date
-  createdBy: string; // created_by
-  updatedBy: string; // updated_by
-  exportReason: string; // export_reason
-  receiverAddress: string; // receiver_address
-  receiverName: string; // receiver_name
-  receiverPhone: string; // receiver_phone
-  status: string; // status
-  type: string; // type
-  countingDate: string; // counting_date
-  countingTime: string; // counting_time
-  paperId: string; // paper_id
+  exportRequestId: string;
+  exportReason: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress: string;
+  departmentId?: number;
+  providerId?: number;
+  status: string;
+  type: string;
+  exportDate: string;
+  exportTime: string;
+  expectedReturnDate?: string;
+  isExtended?: boolean;
+  extendedDate?: string;
+  extendedTime?: string;
+  extendedReason?: string;
+  assignedWarehouseKeeperId?: number;
+  countingDate?: string;
+  countingTime?: string;
+  countingStaffId?: number;
+  paperId?: string;
   importRequestIds: string[];
   exportRequestDetailIds: string[];
+  createdBy: string;
+  updatedBy: string;
+  createdDate: string;
+  updatedDate: string;
 }
 
 // Khi tạo mới, có thể thiếu một số trường như id, createdDate, updatedDate, ...
@@ -49,16 +57,12 @@ const useExportRequestService = () => {
   const { callApi, loading } = useApi();
 
   // Lấy tất cả phiếu xuất
-  const getAllExportRequests = async (): Promise<ExportRequestResponse[]> => {
+  const getAllExportRequests = async (): Promise<ResponseDTO<ExportRequestResponse[]>> => {
     try {
       const response = await callApi("get", "/export-request");
-      if (response && response.content) {
-        return response.content;
-      }
-      return [];
+      return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách phiếu xuất");
-      console.error("Error fetching export requests:", error);
       throw error;
     }
   };

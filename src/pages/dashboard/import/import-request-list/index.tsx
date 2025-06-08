@@ -188,7 +188,7 @@ const ImportRequestList: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (id: number) => `#${id}`,
+      render: (importRequestId: string) => `#${importRequestId}`,
     },
     {
       title: "Ngày bắt đầu",
