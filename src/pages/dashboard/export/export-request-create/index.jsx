@@ -88,9 +88,8 @@ const ExportRequestCreate = () => {
 
   // --- State cho dữ liệu form ---
   const [formData, setFormData] = useState({
-    exportType: "PRODUCTION", // hoặc "LOAN"
+    exportType: "SELLING", // hoặc "LOAN"
     exportDate: null,
-    exportTime: null,
     exportReason: "",
     note: "",
     // Dành cho Production:
@@ -194,8 +193,11 @@ const ExportRequestCreate = () => {
   const triggerFileInput = () => fileInputRef.current.click();
 
   // --- API hooks cho phiếu xuất ---
-  const { createExportRequestProduction, createExportRequestLoan } =
-    useExportRequestService();
+  const {
+    createExportRequestProduction,
+    createExportRequestLoan,
+    createExportRequestSelling,
+  } = useExportRequestService();
   const { createExportRequestDetail } = useExportRequestDetailService();
 
   const countingDateTime = moment(
@@ -208,7 +210,7 @@ const ExportRequestCreate = () => {
 
   // --- Hàm xử lý submit ---
   const handleSubmit = async () => {
-    if (!formData.exportDate || !formData.exportTime) {
+    if (!formData.exportDate) {
       toast.error("Vui lòng điền đầy đủ thông tin chung cho phiếu xuất");
       return;
     }
@@ -237,7 +239,6 @@ const ExportRequestCreate = () => {
         receiverPhone: formData.departmentRepresentativePhone,
         type: "PRODUCTION",
         exportDate: formData.exportDate,
-        exportTime: formData.exportTime,
         countingDate: countingDate,
         countingTime: countingTime,
       };
@@ -308,6 +309,30 @@ const ExportRequestCreate = () => {
         };
       }
       createdExport = await createExportRequestLoan(payload);
+    } // --- XUẤT BÁN ---
+    else if (formData.exportType === "SELLING") {
+      if (
+        !formData.exportDate ||
+        !formData.exportReason ||
+        !formData.receiverName ||
+        !formData.receiverPhone
+      ) {
+        toast.error(
+          "Vui lòng nhập đầy đủ các trường bắt buộc cho phiếu xuất bán"
+        );
+        return;
+      }
+      payload = {
+        countingDate: formData.exportDate,
+        countingTime: "07:00:00",
+        exportDate: formData.exportDate,
+        exportReason: formData.exportReason,
+        receiverName: formData.receiverName,
+        receiverPhone: formData.receiverPhone,
+        receiverAddress: formData.receiverAddress,
+        type: "SELLING",
+      };
+      createdExport = await createExportRequestSelling(payload);
     } else {
       toast.error("Loại phiếu xuất không hợp lệ");
       return;
@@ -343,7 +368,7 @@ const ExportRequestCreate = () => {
 
     // Reset lại trạng thái sau khi submit
     setFormData({
-      exportType: "PRODUCTION",
+      exportType: "SELLING",
       exportDate: null,
       exportTime: null,
       exportReason: "",

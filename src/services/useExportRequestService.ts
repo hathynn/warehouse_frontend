@@ -19,11 +19,9 @@ export interface ExportRequestResponse {
   expectedReturnDate?: string;
   isExtended?: boolean;
   extendedDate?: string;
-  extendedTime?: string;
   extendedReason?: string;
   assignedWarehouseKeeperId?: number;
   countingDate?: string;
-  countingTime?: string;
   countingStaffId?: number;
   paperId?: string;
   importRequestIds: string[];
@@ -38,7 +36,6 @@ export interface ExportRequestResponse {
 // Những trường này sẽ được backend tự động set khi tạo mới.
 export interface ExportRequestRequest {
   exportDate: string;
-  exportTime: string;
   assignedWarehouseKeeperId?: number;
   exportReason: string;
   receiverAddress: string;
@@ -46,18 +43,30 @@ export interface ExportRequestRequest {
   receiverPhone: string;
   status: string;
   type: string;
-  // createdBy và updatedBy có thể do backend tự set hoặc bạn tự set
   createdBy?: string;
   updatedBy?: string;
   countingDate: string; // counting_date
   countingTime: string; // counting_time
 }
 
+export interface ExportRequestRenewItem {
+  itemId: string;
+  quantity: number;
+  measurementValue: number;
+}
+
+export interface ExportRequestRenewRequest {
+  exportRequestId: string;
+  items: ExportRequestRenewItem[];
+}
+
 const useExportRequestService = () => {
   const { callApi, loading } = useApi();
 
   // Lấy tất cả phiếu xuất
-  const getAllExportRequests = async (): Promise<ResponseDTO<ExportRequestResponse[]>> => {
+  const getAllExportRequests = async (): Promise<
+    ResponseDTO<ExportRequestResponse[]>
+  > => {
     try {
       const response = await callApi("get", "/export-request");
       return response;
@@ -247,6 +256,48 @@ const useExportRequestService = () => {
     }
   };
 
+  // Tạo mới phiếu xuất bán (selling)
+  const createExportRequestSelling = async (
+    requestData: ExportRequestRequest
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/export-request/selling",
+        requestData
+      );
+      if (response && response.content) {
+        toast.success("Tạo phiếu xuất bán thành công");
+      }
+      return response.content;
+    } catch (error) {
+      toast.error("Không thể tạo phiếu xuất bán");
+      console.error("Error creating export request selling:", error);
+      throw error;
+    }
+  };
+
+  // Gia hạn phiếu xuất (renew)
+  const renewExportRequest = async (
+    requestData: ExportRequestRenewRequest
+  ): Promise<any> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/export-request/renew",
+        requestData
+      );
+      if (response && response.content) {
+        toast.success("Tạo phiếu xuất mới thành công");
+      }
+      return response.content;
+    } catch (error) {
+      toast.error("Không thể tạo phiếu xuất mới");
+      console.error("Error renewing export request:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -259,6 +310,8 @@ const useExportRequestService = () => {
     confirmCountedExportRequest,
     updateExportRequestStatus,
     updateExportDateTime,
+    createExportRequestSelling,
+    renewExportRequest,
   };
 };
 

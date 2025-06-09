@@ -7,6 +7,7 @@ import ExcelDataTableAfter from "./ExcelDataTableAfter";
 import PropTypes from "prop-types";
 import ExportRequestConfirmModal from "../export-general/ExportRequestConfirmModal";
 import DeparmentModal from "./DeparmentModal";
+import SellingExportForm from "@/components/export-flow/export-create/SellingExportForm";
 
 const { Title } = Typography;
 
@@ -30,10 +31,21 @@ const ExportRequestInfoForm = ({
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   const missingFields =
-    !formData.exportDate ||
-    !formData.exportTime ||
-    !formData.exportReason ||
-    !formData.receivingDepartment;
+    (formData.exportType === "PRODUCTION" &&
+      (!formData.exportDate ||
+        !formData.exportTime ||
+        !formData.exportReason ||
+        !formData.receivingDepartment)) ||
+    (formData.exportType === "BORROWING" &&
+      (!formData.exportDate ||
+        !formData.exportTime ||
+        !formData.exportReason ||
+        !formData.receivingDepartment)) ||
+    (formData.exportType === "SELLING" &&
+      (!formData.exportDate ||
+        !formData.exportReason ||
+        !formData.receiverName ||
+        !formData.receiverPhone));
 
   const onSubmit = () => {
     if (missingFields) {
@@ -89,6 +101,16 @@ const ExportRequestInfoForm = ({
                 formData={formData}
                 setFormData={setFormData}
                 openDepartmentModal={() => setDepartmentModalVisible(true)}
+                timeError={timeError}
+                setTimeError={setTimeError}
+                mandatoryError={mandatoryError}
+                setMandatoryError={setMandatoryError}
+              />
+            )}
+            {formData.exportType === "SELLING" && (
+              <SellingExportForm
+                formData={formData}
+                setFormData={setFormData}
                 timeError={timeError}
                 setTimeError={setTimeError}
                 mandatoryError={mandatoryError}
@@ -168,6 +190,8 @@ ExportRequestInfoForm.propTypes = {
     }).isRequired,
     departmentRepresentative: PropTypes.string,
     departmentRepresentativePhone: PropTypes.string,
+    receiverName: PropTypes.string,
+    receiverPhone: PropTypes.string,
   }).isRequired,
   setFormData: PropTypes.func.isRequired,
   data: PropTypes.array.isRequired,
