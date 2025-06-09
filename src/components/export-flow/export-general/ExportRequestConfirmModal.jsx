@@ -110,11 +110,14 @@ const ExportRequestConfirmModal = ({
             ? dayjs(formData.exportDate).format("DD-MM-YYYY")
             : "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Thời gian nhận">
-          {formData.exportTime || "-"}
+        <Descriptions.Item label="Người nhận">
+          {formData.receiverName || "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Phòng ban">
-          {formData.receivingDepartment?.name || "-"}
+        <Descriptions.Item label="Số điện thoại">
+          {formData.receiverPhone || "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Địa chỉ">
+          {formData.receiverAddress || "-"}
         </Descriptions.Item>
       </Descriptions>
 

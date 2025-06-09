@@ -13,6 +13,7 @@ const ExportTypeSelector = ({ exportType, setExportType }) => (
       onChange={(value) => setExportType(value)}
       style={{ width: 300 }}
     >
+      <Option value="SELLING">Xuất bán</Option>
       <Option value="PRODUCTION">Xuất sản xuất</Option>
       <Option value="BORROWING">Xuất mượn</Option>
       <Option value="RETURN">Xuất trả nhà cung cấp</Option>
