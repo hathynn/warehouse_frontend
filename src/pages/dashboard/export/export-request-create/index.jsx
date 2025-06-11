@@ -130,20 +130,6 @@ const ExportRequestCreate = () => {
     });
   }
 
-  const downloadTemplate = () => {
-    const template = [
-      {
-        itemId: "Mã hàng (số)",
-        quantity: "Số lượng (số)",
-        measurementValue: "Quy cách",
-      },
-    ];
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "export_request_template.xlsx");
-  };
-
   // Khi quay lại từ form nhập thông tin phiếu xuất
   const handleBackToFileStep = () => {
     setFileConfirmed(false);
@@ -408,23 +394,8 @@ const ExportRequestCreate = () => {
             onBack={() => navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST)}
           />
 
-          <div className="flex justify-between items-center mb-4">
-            <Title level={2}>Nhập file excel để tạo phiếu xuất</Title>
-
-            <Space>
-              <FileUploadSection
-                fileName={fileName}
-                onDownloadTemplate={downloadTemplate}
-                onTriggerFileInput={triggerFileInput}
-              />
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept=".xlsx,.xls"
-                onChange={handleFileUpload}
-                style={{ display: "none" }}
-              />
-            </Space>
+          <div className="flex justify-between items-center mb-2">
+            <Title level={3}>Nhập file excel để tạo phiếu xuất</Title>
           </div>
 
           <ExportTypeSelector
@@ -432,6 +403,19 @@ const ExportRequestCreate = () => {
             setExportType={(value) =>
               setFormData({ ...formData, exportType: value })
             }
+          />
+          <FileUploadSection
+            fileName={fileName}
+            //onDownloadTemplate={downloadTemplate}
+            exportType={formData.exportType}
+            onTriggerFileInput={triggerFileInput}
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".xlsx,.xls"
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
           />
 
           {validationError && (

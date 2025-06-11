@@ -55,15 +55,11 @@ const ExportRequestDetail = () => {
     updateExportRequestStatus,
     updateExportDateTime,
     assignConfirmimgStaff,
-    createExportRequestProduction,
     renewExportRequest,
     loading: exportRequestLoading,
   } = useExportRequestService();
-  const {
-    getExportRequestDetails,
-    createExportRequestDetail,
-    loading: exportRequestDetailLoading,
-  } = useExportRequestDetailService();
+  const { getExportRequestDetails, loading: exportRequestDetailLoading } =
+    useExportRequestDetailService();
   const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
@@ -254,43 +250,6 @@ const ExportRequestDetail = () => {
   const handleConfirmCreateExport = async () => {
     // Lấy info phiếu xuất gốc
     const exportRequestInfo = await getExportRequestById(exportRequestId);
-    // // 1. Gọi API tạo phiếu xuất mới
-    // const body = {
-    //   exportReason: exportRequestInfo.exportReason,
-    //   receiverName: exportRequestInfo.receiverName,
-    //   receiverPhone: exportRequestInfo.receiverPhone,
-    //   departmentId: exportRequestInfo.departmentId,
-    //   receiverAddress: exportRequestInfo.receiverAddress,
-    //   countingDate: exportRequestInfo.countingDate,
-    //   countingTime: exportRequestInfo.countingTime,
-    //   type: exportRequestInfo.type,
-    //   exportDate: exportRequestInfo.exportDate,
-    //   exportTime: exportRequestInfo.exportTime,
-    // };
-    // const createdExportRequest = await createExportRequestProduction(body);
-
-    // // 2. Chuẩn bị mảng chi tiết
-    // const details = editedDetails.map((d) => ({
-    //   itemId: d.itemId,
-    //   quantity: d.quantity,
-    //   measurementValue: d.measurementValue,
-    //   inventoryItemId: d.inventoryItemId,
-    // }));
-
-    // // 3. Gọi API tạo chi tiết
-    // if (createdExportRequest?.exportRequestId) {
-    //   await createExportRequestDetail(
-    //     details,
-    //     createdExportRequest.exportRequestId
-    //   );
-    //   setEditMode(false);
-    //   setEditedDetails([]);
-    //   message.success("Tạo phiếu xuất mới thành công");
-
-    //   // Gọi lại fetch data nếu muốn
-    // } else {
-    //   message.error("Không lấy được exportRequestId mới");
-    // }
     if (!exportRequestInfo || !exportRequestId || editedDetails.length === 0) {
       message.error("Thiếu thông tin phiếu xuất hoặc chi tiết");
       return;
