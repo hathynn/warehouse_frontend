@@ -42,6 +42,7 @@ const ExportRequestCreate = () => {
   // --- Lấy danh sách sản phẩm ---
   const [items, setItems] = useState([]);
   const { loading: itemLoading, getItems } = useItemService();
+  const [exportTypeCache, setExportTypeCache] = useState({});
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -385,6 +386,79 @@ const ExportRequestCreate = () => {
     markPageAsViewed(paginationObj.current);
   };
 
+  // Cập nhật hàm handleExportTypeChange để xử lý cache tốt hơn
+  const handleExportTypeChange = (newExportType) => {
+    // Cache lại dữ liệu loại hiện tại
+    setExportTypeCache((prevCache) => ({
+      ...prevCache,
+      [formData.exportType]: {
+        file,
+        fileName,
+        data,
+        validationError,
+      },
+    }));
+
+    // Restore lại cache của loại mới nếu có
+    const cached = exportTypeCache[newExportType] || {
+      file: null,
+      fileName: "",
+      data: [],
+      validationError: "",
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      exportType: newExportType,
+    }));
+
+    setFile(cached.file);
+    setFileName(cached.fileName);
+    setData(cached.data);
+    setValidationError(cached.validationError);
+
+    // Reset file input nếu không có file
+    if (!cached.file && fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Sửa lại hàm handleRemoveFile
+  const handleRemoveFile = () => {
+    // Reset tất cả state liên quan đến file
+    setFile(null);
+    setFileName("");
+    setData([]);
+    setValidationError("");
+    setFileConfirmed(false);
+
+    // Reset input file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    // Xóa cache cho export type hiện tại
+    setExportTypeCache((prevCache) => ({
+      ...prevCache,
+      [formData.exportType]: {
+        file: null,
+        fileName: "",
+        data: [],
+        validationError: "",
+      },
+    }));
+
+    // Reset pagination
+    setPagination((prev) => ({
+      ...prev,
+      current: 1,
+      total: 0,
+    }));
+
+    // Reset viewed pages
+    resetViewedPages(1);
+  };
+
   return (
     <div className="container mx-auto p-5">
       {!fileConfirmed ? (
@@ -400,16 +474,16 @@ const ExportRequestCreate = () => {
 
           <ExportTypeSelector
             exportType={formData.exportType}
-            setExportType={(value) =>
-              setFormData({ ...formData, exportType: value })
-            }
+            setExportType={handleExportTypeChange}
           />
+
           <FileUploadSection
             fileName={fileName}
-            //onDownloadTemplate={downloadTemplate}
             exportType={formData.exportType}
             onTriggerFileInput={triggerFileInput}
+            onRemoveFile={handleRemoveFile} // Truyền hàm đã sửa
           />
+
           <input
             type="file"
             ref={fileInputRef}
@@ -434,24 +508,26 @@ const ExportRequestCreate = () => {
               <ExcelDataTable
                 data={mappedData} // mappedData chỉ dùng để render
                 items={items.content}
-                onDataChange={(updatedData) => {
-                  // Chỉ lấy các trường cần thiết cho raw data
-                  setData(
-                    updatedData.map(
-                      ({
-                        itemId,
-                        quantity,
-                        measurementValue,
-                        inventoryItemId,
-                      }) => ({
-                        itemId,
-                        quantity,
-                        measurementValue,
-                        inventoryItemId,
-                      })
-                    )
-                  );
-                }}
+                exportType={formData.exportType}
+                // onDataChange={(updatedData) => {
+                //   // Chỉ lấy các trường cần thiết cho raw data
+                //   setData(
+                //     updatedData.map(
+                //       ({
+                //         itemId,
+                //         quantity,
+                //         measurementValue,
+                //         inventoryItemId,
+                //       }) => ({
+                //         itemId,
+                //         quantity,
+                //         measurementValue,
+                //         inventoryItemId,
+                //       })
+                //     )
+                //   );
+                // }}
+                onDataChange={(updatedData) => setData(updatedData)}
                 onTableErrorChange={setHasTableError}
                 pagination={pagination}
                 onPaginationChange={handleTablePageChange}
@@ -463,25 +539,26 @@ const ExportRequestCreate = () => {
               </div>
             )}
           </Card>
-
-          <Button
-            type="primary"
-            disabled={
-              data.length === 0 ||
-              !!validationError ||
-              hasTableError ||
-              !allPagesViewed
-            }
-            onClick={() => setFileConfirmed(true)}
-            className="w-full"
-          >
-            Tiếp tục nhập thông tin phiếu xuất
-            {!allPagesViewed && data.length > 0 && (
-              <span style={{ color: "red", marginLeft: 8 }}>
-                (Vui lòng xem tất cả các trang)
-              </span>
-            )}
-          </Button>
+          <div className="flex justify-center mt-4">
+            <Button
+              type="primary"
+              disabled={
+                data.length === 0 ||
+                !!validationError ||
+                hasTableError ||
+                !allPagesViewed
+              }
+              onClick={() => setFileConfirmed(true)}
+              className="w-300"
+            >
+              Tiếp tục nhập thông tin phiếu xuất
+              {!allPagesViewed && data.length > 0 && (
+                <span style={{ color: "red", marginLeft: 8 }}>
+                  (Vui lòng xem tất cả các trang)
+                </span>
+              )}
+            </Button>
+          </div>
         </>
       ) : (
         <ExportRequestInfoForm

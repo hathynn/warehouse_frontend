@@ -12,6 +12,7 @@ const ExcelDataTable = ({
   pagination,
   onPaginationChange,
   setPagination, // <--- thêm prop này
+  exportType, // nhận vào ở đây cho exportType!
 }) => {
   const [fieldErrors, setFieldErrors] = useState({});
   const pendingScrollItemId = useRef(null);
@@ -138,6 +139,54 @@ const ExcelDataTable = ({
     }).isRequired,
   };
 
+  // const columns = [
+  //   {
+  //     title: "Mã hàng",
+  //     dataIndex: "itemId",
+  //     key: "itemId",
+  //     render: (text) => <div>#{text}</div>,
+  //   },
+  //   { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
+  //   {
+  //     title: "Số lượng",
+  //     dataIndex: "quantity",
+  //     key: "quantity",
+  //     width: 140,
+  //     render: (text, record) => <QuantityInput record={record} />,
+  //   },
+  //   {
+  //     title: "Giá trị đo lường",
+  //     dataIndex: "totalMeasurementValue",
+  //     key: "totalMeasurementValue",
+  //     width: 140,
+  //     render: (text) => (
+  //       <div style={{ paddingLeft: 12, textAlign: "right" }}>{text}</div>
+  //     ),
+  //   },
+  //   {
+  //     title: "Đơn vị tính",
+  //     dataIndex: "measurementUnit",
+  //     key: "measurementUnit",
+  //   },
+  //   exportType == "PRODUCTION" ||
+  //   exportType == "BORROWING" ||
+  //   exportType == "LIQUIDATION"
+  //     ? {
+  //         title: "Quy cách",
+  //         dataIndex: "measurementValue",
+  //         key: "measurementValue",
+  //       }
+  //     : {},
+  //   // Nếu loại xuất là RETURN, hiển thị thêm cột Nhà cung cấp
+  //   exportType == "RETURN"
+  //     ? {
+  //         title: "Nhà cung cấp",
+  //         dataIndex: "providerId",
+  //         key: "providerId",
+  //       }
+  //     : {},
+  // ];
+
   const columns = [
     {
       title: "Mã hàng",
@@ -167,12 +216,23 @@ const ExcelDataTable = ({
       dataIndex: "measurementUnit",
       key: "measurementUnit",
     },
-    {
-      title: "Quy cách",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-    },
-  ];
+    // Điều kiện column Quy cách
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+      ? {
+          title: "Quy cách",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
+        }
+      : null,
+    // Điều kiện column Nhà cung cấp
+    exportType === "RETURN"
+      ? {
+          title: "Nhà cung cấp",
+          dataIndex: "providerId",
+          key: "providerId",
+        }
+      : null,
+  ].filter(Boolean);
 
   return (
     <>
@@ -264,6 +324,7 @@ ExcelDataTable.propTypes = {
   pagination: PropTypes.object,
   onPaginationChange: PropTypes.func,
   setPagination: PropTypes.func, // <--- thêm cái này
+  exportType: PropTypes.string.isRequired, // nhận vào ở đây cho exportType!
 };
 
 export default ExcelDataTable;
