@@ -6,6 +6,14 @@ import dayjs from "dayjs";
 
 const { Title } = Typography;
 
+const EXPORT_TYPE_LABELS = {
+  PRODUCTION: "Sản xuất",
+  BORROWING: "Mượn",
+  SELLING: "Bán",
+  RETURN: "Trả nhà cung cấp",
+  LIQUIDATION: "Thanh lý",
+};
+
 const ExportRequestConfirmModal = ({
   open,
   onOk,
@@ -98,7 +106,7 @@ const ExportRequestConfirmModal = ({
         style={{ marginBottom: 24 }}
       >
         <Descriptions.Item label="Loại xuất">
-          {formData.exportType === "PRODUCTION" ? "Sản xuất" : "Mượn"}
+          {EXPORT_TYPE_LABELS[formData.exportType] || formData.exportType}
         </Descriptions.Item>
         <Descriptions.Item label="Lý do xuất">
           <div className="max-h-[48px] overflow-y-auto leading-[24px]">
@@ -167,6 +175,9 @@ ExportRequestConfirmModal.propTypes = {
     exportType: PropTypes.string,
     exportDate: PropTypes.string,
     exportTime: PropTypes.string,
+    receiverName: PropTypes.string,
+    receiverPhone: PropTypes.string,
+    receiverAddress: PropTypes.string,
     receivingDepartment: PropTypes.shape({
       name: PropTypes.string,
     }),
@@ -184,4 +195,5 @@ ExportRequestConfirmModal.propTypes = {
     })
   ).isRequired,
 };
+
 export default ExportRequestConfirmModal;

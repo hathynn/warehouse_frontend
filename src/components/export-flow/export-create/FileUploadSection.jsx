@@ -1,6 +1,10 @@
-import React from "react";
-import { Button } from "antd";
-import { DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import React, { useState } from "react";
+import { Button, Modal } from "antd";
+import {
+  CloseCircleOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import PropTypes from "prop-types";
 
@@ -14,10 +18,11 @@ const EXPORT_TYPE_LABELS = {
 
 const FileUploadSection = ({
   fileName,
-  onDownloadTemplate,
   exportType,
   onTriggerFileInput,
+  onRemoveFile,
 }) => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const handleDownloadTemplate = () => {
     let template = [];
     if (exportType === "SELLING") {
@@ -50,6 +55,21 @@ const FileUploadSection = ({
     XLSX.writeFile(wb, "export_request_template.xlsx");
   };
 
+  const handleRemoveClick = () => {
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmRemove = () => {
+    setShowConfirmModal(false);
+    if (onRemoveFile) {
+      onRemoveFile();
+    }
+  };
+
+  const handleCancelRemove = () => {
+    setShowConfirmModal(false);
+  };
+
   return (
     <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
       <div className="flex flex-col gap-3">
@@ -74,23 +94,51 @@ const FileUploadSection = ({
         </div>
 
         {fileName && (
-          <div className="flex justify-center items-center bg-white px-3 py-2 rounded-md border border-gray-200">
-            <span className="text-gray-600 truncate" title={fileName}>
-              File đã chọn:{" "}
-              <span className="font-medium text-gray-800">{fileName}</span>
-            </span>
+          <div className="flex justify-center">
+            <div className="flex justify-between items-center bg-white px-3 py-2 rounded-md border border-gray-200 w-300">
+              <div className="flex-1 flex justify-center items-center">
+                <span className="text-gray-600 truncate" title={fileName}>
+                  File đã chọn:{" "}
+                  <span className="font-medium text-gray-800">{fileName}</span>
+                </span>
+              </div>
+              <Button
+                type="text"
+                size="large"
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={handleRemoveClick}
+              />
+            </div>
           </div>
         )}
       </div>
+
+      {/* Modal xác nhận xóa file */}
+      <Modal
+        title="Xác nhận xóa file"
+        open={showConfirmModal}
+        onOk={handleConfirmRemove}
+        onCancel={handleCancelRemove}
+        okText="Xóa"
+        cancelText="Hủy"
+        okType="danger"
+      >
+        <p>Bạn có chắc muốn xóa file đã chọn?</p>
+        <p>
+          File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn đối với loại
+          xuất này.
+        </p>
+      </Modal>
     </div>
   );
 };
 
 FileUploadSection.propTypes = {
   fileName: PropTypes.string,
-  onDownloadTemplate: PropTypes.func.isRequired,
   exportType: PropTypes.string,
   onTriggerFileInput: PropTypes.func.isRequired,
+  onRemoveFile: PropTypes.func.isRequired,
 };
 
 export default FileUploadSection;
