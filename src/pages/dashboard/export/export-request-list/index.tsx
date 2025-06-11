@@ -98,7 +98,7 @@ const ExportRequestList = () => {
   };
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
-  const filteredItems = exportRequestsData.filter((item) => {
+  const filteredItems = exportRequestsData?.filter((item) => {
     const idStr = item.exportRequestId ? item.exportRequestId.toString() : "";
     const matchesSearch = idStr
       .toLowerCase()
@@ -294,7 +294,7 @@ const ExportRequestList = () => {
         columns={columns}
         dataSource={filteredItems}
         rowKey="exportRequestId"
-        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${exportRequestsData.length > 0 ?
+        className={`[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent ${exportRequestsData?.length > 0 ?
           '[&_.ant-table-tbody_tr:hover_td]:!bg-gray-100 [&_.ant-table-tbody_tr.no-bg-row:hover_td]:!bg-gray-100 ' +
           '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
           '[&_.ant-table-tbody_tr.status-yellow:hover_td]:!bg-[rgba(251,191,36,0.10)] ' +
@@ -330,7 +330,7 @@ const ExportRequestList = () => {
         }}
         pagination={{
           ...pagination,
-          total: filteredItems.length,
+          total: filteredItems?.length,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100'],
           locale: {

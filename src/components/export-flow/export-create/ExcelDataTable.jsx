@@ -23,7 +23,7 @@ const ExcelDataTable = ({
     if (!/^\d+$/.test(value)) return "Không nhập chữ!";
     const num = Number(value);
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
-    const itemMeta = items.find((item) => String(item.id) === String(itemId));
+    const itemMeta = items?.find((item) => String(item.id) === String(itemId));
     const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
     if (num > maxValue) return `Tối đa còn ${maxValue}!`;
     return "";
@@ -32,7 +32,7 @@ const ExcelDataTable = ({
   useEffect(() => {
     const newErrors = {};
     data.forEach((item) => {
-      const error = validateQuantity(item.quantity?.toString(), item.itemId);
+      const error = validateQuantity(item?.quantity?.toString(), item.itemId);
       if (error) newErrors[item.itemId] = error;
     });
     setFieldErrors(newErrors);
