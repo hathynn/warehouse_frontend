@@ -228,6 +228,10 @@ const ExportRequestList = () => {
             size="middle"
             items={[
               {
+                key: "SELLING",
+                label: "Xuất bán",
+              },
+              {
                 key: "PRODUCTION",
                 label: "Xuất sản xuất",
               },

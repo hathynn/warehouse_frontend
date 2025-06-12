@@ -509,24 +509,6 @@ const ExportRequestCreate = () => {
                 data={mappedData} // mappedData chỉ dùng để render
                 items={items.content}
                 exportType={formData.exportType}
-                // onDataChange={(updatedData) => {
-                //   // Chỉ lấy các trường cần thiết cho raw data
-                //   setData(
-                //     updatedData.map(
-                //       ({
-                //         itemId,
-                //         quantity,
-                //         measurementValue,
-                //         inventoryItemId,
-                //       }) => ({
-                //         itemId,
-                //         quantity,
-                //         measurementValue,
-                //         inventoryItemId,
-                //       })
-                //     )
-                //   );
-                // }}
                 onDataChange={(updatedData) => setData(updatedData)}
                 onTableErrorChange={setHasTableError}
                 pagination={pagination}

@@ -1199,10 +1199,12 @@ const ExportRequestDetail = () => {
           exportReason: exportRequest?.exportReason,
           exportType: exportRequest?.type,
           exportDate: exportRequest?.exportDate,
-          exportTime: exportRequest?.exportTime,
           receivingDepartment: {
             name: departmentInfo?.departmentName, // đã lấy từ API
           },
+          receiverName: exportRequest?.receiverName,
+          receiverPhone: exportRequest?.receiverPhone,
+          receiverAddress: exportRequest?.receiverAddress,
         }}
         details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
         // details={editedDetails}
