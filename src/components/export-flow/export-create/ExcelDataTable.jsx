@@ -25,7 +25,10 @@ const ExcelDataTable = ({
     const num = Number(value);
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
-    const maxValue = itemMeta?.totalMeasurementValue ?? Infinity;
+    console.log("items:", items);
+    const maxValue = itemMeta?.quantity ?? Infinity;
+    console.log("itemMeta:", itemMeta);
+    console.log("quantity" + itemMeta?.quantity);
     if (num > maxValue) return `Tối đa còn ${maxValue}!`;
     return "";
   };

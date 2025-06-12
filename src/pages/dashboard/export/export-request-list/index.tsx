@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Tabs, Select, Tooltip, TablePaginationConfig, Space } from "antd";
+import { Table, Button, Input, Tabs, Tooltip, TablePaginationConfig, Space } from "antd";
 import { Link } from "react-router-dom";
-import { SearchOutlined, PlusOutlined, EyeOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
 import { useSelector } from "react-redux";
@@ -10,14 +10,7 @@ import { RootState } from "@/contexts/redux/store";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ExportRequestFilterState, useExportRequestFilter } from "@/hooks/useExportRequestFilter";
-
-// const tabStatusMap = {
-//   ALL: null,
-//   WAITING_CONFIRM: ["IN_PROGRESS", "COUNTED", "COUNT_CONFIRMED"],
-//   WAITING_DELIVERY: ["WAITING_EXPORT", "EXTENDED"],
-//   COMPLETED: ["COMPLETED"],
-//   CANCELLED: ["CANCELLED"],
-// };
+import { AlignCenter } from "lucide-react";
 
 const ExportRequestList = () => {
   // ========== FILTER STATES ==========
@@ -148,6 +141,12 @@ const ExportRequestList = () => {
       render: (date: string) => dayjs(date).format("DD-MM-YYYY"),
     },
     {
+      title: "Ngày tạo",
+      dataIndex: "createdDate",
+      key: "createdDate",
+      render: (date: string) => dayjs(date).format("DD-MM-YYYY"),
+    },
+    {
       title: "Người lập phiếu",
       dataIndex: "createdBy",
       key: "createdBy",
@@ -161,6 +160,8 @@ const ExportRequestList = () => {
       title: "Trạng thái phiếu",
       dataIndex: "status",
       key: "status",
+      align: "center",
+      width: 200,
       render: (status: string) => <StatusTag status={status} type="export" />,
     },
     {
@@ -247,10 +248,10 @@ const ExportRequestList = () => {
                 key: "LIQUIDATION",
                 label: "Xuất thanh lý",
               },
-              {
-                key: "ALL",
-                label: "Tất cả",
-              }
+              // {
+              //   key: "ALL",
+              //   label: "Tất cả",
+              // }
             ]}
           />
           <Space size="large">

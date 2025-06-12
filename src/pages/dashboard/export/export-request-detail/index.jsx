@@ -505,9 +505,14 @@ const ExportRequestDetail = () => {
     }
 
     items.push(
+      <Descriptions.Item label="Ngày tạo phiếu" key="exportDate">
+        {exportRequest.createdDate
+          ? dayjs(exportRequest.createdDate).format("DD-MM-YYYY")
+          : "-"}
+      </Descriptions.Item>,
       <Descriptions.Item label="Ngày xuất" key="exportDate">
         {exportRequest.exportDate
-          ? new Date(exportRequest.exportDate).toLocaleDateString("vi-VN")
+          ? dayjs(exportRequest.exportDate).format("DD-MM-YYYY")
           : "-"}
       </Descriptions.Item>
     );

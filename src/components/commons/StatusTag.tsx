@@ -22,11 +22,11 @@ const exportStatusMap: Record<ExportStatus, { color: string; text: string }> = {
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
   COUNTED: { color: "processing", text: "Đã kiểm đếm" },
   COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm đếm" },
-  WAITING_EXPORT: { color: "processing", text: "Chờ xuất kho" },
+  WAITING_EXPORT: { color: "warning", text: "Chờ xuất kho" },
   EXTENDED: { color: "warning", text: "Hoãn xuất kho" },
   CONFIRMED: { color: "processing", text: "Đã xuất kho" },
-  COMPLETED: { color: "success", text: "Hoàn tất" },
-  CANCELLED: { color: "error", text: "Đã hủy" },
+  COMPLETED: { color: "green", text: "Hoàn tất" },
+  CANCELLED: { color: "default", text: "Đã hủy" },
 };
 
 const detailStatusMap: Record<DetailStatus, { color: string; text: string }> = {
