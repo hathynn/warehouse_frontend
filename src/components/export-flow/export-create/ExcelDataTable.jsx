@@ -139,54 +139,6 @@ const ExcelDataTable = ({
     }).isRequired,
   };
 
-  // const columns = [
-  //   {
-  //     title: "Mã hàng",
-  //     dataIndex: "itemId",
-  //     key: "itemId",
-  //     render: (text) => <div>#{text}</div>,
-  //   },
-  //   { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
-  //   {
-  //     title: "Số lượng",
-  //     dataIndex: "quantity",
-  //     key: "quantity",
-  //     width: 140,
-  //     render: (text, record) => <QuantityInput record={record} />,
-  //   },
-  //   {
-  //     title: "Giá trị đo lường",
-  //     dataIndex: "totalMeasurementValue",
-  //     key: "totalMeasurementValue",
-  //     width: 140,
-  //     render: (text) => (
-  //       <div style={{ paddingLeft: 12, textAlign: "right" }}>{text}</div>
-  //     ),
-  //   },
-  //   {
-  //     title: "Đơn vị tính",
-  //     dataIndex: "measurementUnit",
-  //     key: "measurementUnit",
-  //   },
-  //   exportType == "PRODUCTION" ||
-  //   exportType == "BORROWING" ||
-  //   exportType == "LIQUIDATION"
-  //     ? {
-  //         title: "Quy cách",
-  //         dataIndex: "measurementValue",
-  //         key: "measurementValue",
-  //       }
-  //     : {},
-  //   // Nếu loại xuất là RETURN, hiển thị thêm cột Nhà cung cấp
-  //   exportType == "RETURN"
-  //     ? {
-  //         title: "Nhà cung cấp",
-  //         dataIndex: "providerId",
-  //         key: "providerId",
-  //       }
-  //     : {},
-  // ];
-
   const columns = [
     {
       title: "Mã hàng",

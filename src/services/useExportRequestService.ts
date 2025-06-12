@@ -237,7 +237,7 @@ const useExportRequestService = () => {
   // Cập nhật ngày và giờ xuất phiếu xuất
   const updateExportDateTime = async (
     exportRequestId: number,
-    data: { exportDate: string; exportTime: string }
+    data: { Date: string }
   ): Promise<ExportRequestResponse | undefined> => {
     try {
       const response = await callApi(
