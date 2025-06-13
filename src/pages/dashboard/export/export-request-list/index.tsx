@@ -10,7 +10,6 @@ import { RootState } from "@/contexts/redux/store";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ExportRequestFilterState, useExportRequestFilter } from "@/hooks/useExportRequestFilter";
-import { AlignCenter } from "lucide-react";
 
 const ExportRequestList = () => {
   // ========== FILTER STATES ==========
@@ -160,7 +159,7 @@ const ExportRequestList = () => {
       title: "Trạng thái phiếu",
       dataIndex: "status",
       key: "status",
-      align: "center",
+      align: "center" as "center",
       width: 200,
       render: (status: string) => <StatusTag status={status} type="export" />,
     },

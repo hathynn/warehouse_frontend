@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Table, Input } from "antd";
+import { Table, Input, Select } from "antd";
 import PropTypes from "prop-types";
 import { InfoCircleFilled } from "@ant-design/icons";
 // Thêm vào đầu file
@@ -13,6 +13,7 @@ const ExcelDataTable = ({
   onPaginationChange,
   setPagination, // <--- thêm prop này
   exportType, // nhận vào ở đây cho exportType!
+  providers,
 }) => {
   const [fieldErrors, setFieldErrors] = useState({});
   const pendingScrollItemId = useRef(null);
@@ -43,6 +44,28 @@ const ExcelDataTable = ({
     if (onTableErrorChange)
       onTableErrorChange(Object.keys(newErrors).length > 0);
   }, [data, items]);
+
+  // Hàm này chỉ xử lý provider
+  const handleCellChange = (value, record, field) => {
+    setData(
+      data.map((row) => {
+        if (row === record && field === "providerId") {
+          const newProvider = providers.find((p) => p.id === value);
+          return {
+            ...row,
+            providerId: value,
+            providerName: newProvider ? newProvider.name : "",
+          };
+        }
+        return row;
+      })
+    );
+  };
+
+  // setData là onDataChange truyền vào prop
+  const setData = (newData) => {
+    onDataChange(newData);
+  };
 
   const handleQuantityChange = (itemId, value) => {
     const updatedData = data.map((item) =>
@@ -144,29 +167,31 @@ const ExcelDataTable = ({
 
   const columns = [
     {
+      width: "10%",
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
       render: (text) => <div>#{text}</div>,
     },
-    { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
+    { width: "18%", title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
     {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
-      width: 140,
+      width: "9%",
       render: (text, record) => <QuantityInput record={record} />,
     },
     {
       title: "Giá trị đo lường",
       dataIndex: "totalMeasurementValue",
       key: "totalMeasurementValue",
-      width: 140,
+      width: "12%",
       render: (text) => (
         <div style={{ paddingLeft: 12, textAlign: "right" }}>{text}</div>
       ),
     },
     {
+      width: "15%",
       title: "Đơn vị tính",
       dataIndex: "measurementUnit",
       key: "measurementUnit",
@@ -182,9 +207,37 @@ const ExcelDataTable = ({
     // Điều kiện column Nhà cung cấp
     exportType === "RETURN"
       ? {
+          width: "35%",
           title: "Nhà cung cấp",
-          dataIndex: "providerId",
-          key: "providerId",
+          dataIndex: "providerName",
+          key: "providerName",
+          render: (_, record) => {
+            const selectedItem = items.find(
+              (i) => String(i.id) === String(record.itemId)
+            );
+            const validProviderIds = selectedItem
+              ? selectedItem.providerIds
+              : [];
+            const selectableProviders = providers.filter((p) =>
+              validProviderIds.includes(p.id)
+            );
+            return (
+              <Select
+                value={record.providerId}
+                onChange={(val) => handleCellChange(val, record, "providerId")}
+                style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="children"
+                placeholder="Tìm theo nhà cung cấp..."
+              >
+                {selectableProviders.map((provider) => (
+                  <Select.Option key={provider.id} value={provider.id}>
+                    {provider.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            );
+          },
         }
       : null,
   ].filter(Boolean);
@@ -280,6 +333,12 @@ ExcelDataTable.propTypes = {
   onPaginationChange: PropTypes.func,
   setPagination: PropTypes.func, // <--- thêm cái này
   exportType: PropTypes.string.isRequired, // nhận vào ở đây cho exportType!
+  providers: PropTypes.array.isRequired,
+  record: PropTypes.shape({
+    quantity: PropTypes.number.isRequired,
+    itemId: PropTypes.string.isRequired,
+    providerId: PropTypes.string,
+  }).isRequired,
 };
 
 export default ExcelDataTable;
