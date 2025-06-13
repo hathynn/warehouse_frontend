@@ -1,49 +1,134 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Button, Card, Alert, Space } from "antd";
+import { Button, Card, Alert } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { ROUTES } from "@/constants/routes";
 import moment from "moment";
 
+// Constants
+import { ROUTES } from "@/constants/routes";
+// Components
 import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTable";
-import useItemService from "@/services/useItemService";
-import useExportRequestService from "@/services/useExportRequestService";
-import useExportRequestDetailService from "@/services/useExportRequestDetailService";
 import ExportTypeSelector from "@/components/export-flow/export-create/ExportTypeSelector";
-import Title from "antd/es/typography/Title";
-import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
-import useDepartmentService from "@/services/useDepartmentService";
 import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
 import FileUploadSection from "@/components/export-flow/export-create/FileUploadSection";
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
 import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
+import Title from "antd/es/typography/Title";
+// Services
+import useItemService from "@/services/useItemService";
+import useExportRequestService from "@/services/useExportRequestService";
+import useExportRequestDetailService from "@/services/useExportRequestDetailService";
+import useDepartmentService from "@/services/useDepartmentService";
+import useProviderService from "@/services/useProviderService";
+// Hooks
+import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
+
+// Initial form data state
+const INITIAL_FORM_DATA = {
+  exportType: "SELLING",
+  exportDate: null,
+  exportTime: null,
+  exportReason: "",
+  note: "",
+  // Production fields
+  receivingDepartment: null,
+  departmentRepresentative: "",
+  departmentRepresentativePhone: "",
+  // Loan fields
+  loanType: "INTERNAL",
+  borrowerName: "",
+  borrowerPhone: "",
+  borrowerAddress: "",
+  returnDate: "",
+  loanReason: "",
+  // Selling fields
+  receiverName: "",
+  receiverPhone: "",
+  receiverAddress: "",
+};
 
 const ExportRequestCreate = () => {
-  // --- State cho file upload và kiểm tra dữ liệu ---
+  // Navigation
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+  // FILE UPLOAD & DATA STATES
   const [data, setData] = useState([]);
   const [fileName, setFileName] = useState("");
   const [file, setFile] = useState(null);
   const [validationError, setValidationError] = useState("");
   const [fileConfirmed, setFileConfirmed] = useState(false);
-  const fileInputRef = useRef(null);
-  const navigate = useNavigate();
   const [hasTableError, setHasTableError] = useState(false);
+  const [exportTypeCache, setExportTypeCache] = useState({});
+  const [providers, setProviders] = useState([]);
+
+  // FORM DATA STATE
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
+
+  // PAGINATION STATES
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  // DEPARTMENT MODAL STATES
+  const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
+  const [departmentPage, setDepartmentPage] = useState(1);
+  const [departmentLimit, setDepartmentLimit] = useState(10);
+  const [departmentTotal, setDepartmentTotal] = useState(0);
+
+  // SERVICE HOOKS
+  const [items, setItems] = useState([]);
+  const { loading: itemLoading, getItems } = useItemService();
+  const { loading: providerLoading, getAllProviders } = useProviderService();
+
+  const {
+    createExportRequestProduction,
+    createExportRequestLoan,
+    createExportRequestSelling,
+  } = useExportRequestService();
+
+  const { createExportRequestDetail } = useExportRequestDetailService();
+
   const {
     getAllDepartments,
     getDepartmentById,
     departments,
     loading: departmentLoading,
   } = useDepartmentService();
-  const [departmentPage, setDepartmentPage] = useState(1);
-  const [departmentLimit, setDepartmentLimit] = useState(10);
-  const [departmentTotal, setDepartmentTotal] = useState(0);
 
-  // --- Lấy danh sách sản phẩm ---
-  const [items, setItems] = useState([]);
-  const { loading: itemLoading, getItems } = useItemService();
-  const [exportTypeCache, setExportTypeCache] = useState({});
+  // =============================================================================
+  // COMPUTED VALUES
+  // =============================================================================
+  const mappedData = React.useMemo(
+    () => enrichDataWithItemMeta(data, items.content || []),
+    [data, items]
+  );
 
+  // Calculate counting date/time (3 hours before export)
+  const countingDateTime = moment(
+    `${formData.exportDate} ${formData.exportTime}`,
+    "YYYY-MM-DD HH:mm:ss"
+  ).subtract(3, "hours");
+
+  const countingDate = countingDateTime.format("YYYY-MM-DD");
+  const countingTime = countingDateTime.format("HH:mm:ss");
+
+  // =============================================================================
+  // PAGINATION VIEW TRACKING
+  // =============================================================================
+  const { allPagesViewed, markPageAsViewed, resetViewedPages, totalPages } =
+    usePaginationViewTracker(
+      mappedData.length,
+      pagination.pageSize,
+      pagination.current
+    );
+
+  // =============================================================================
+  // EFFECTS
+  // =============================================================================
   useEffect(() => {
     const fetchItems = async () => {
       try {
@@ -56,20 +141,9 @@ const ExportRequestCreate = () => {
     fetchItems();
   }, []);
 
-  // enrichDataWithItemMeta KHÔNG cần khai báo trước, khai báo ngay trên chỗ mappedData luôn cũng được!
-  const mappedData = React.useMemo(
-    () => enrichDataWithItemMeta(data, items.content || []),
-    [data, items]
-  );
-
-  // --- Pagination state ---
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-
-  // --- Cập nhật pagination khi mappedData thay đổi ---
+  /**
+   * Reset pagination when mapped data changes
+   */
   useEffect(() => {
     setPagination((prev) => ({
       ...prev,
@@ -77,47 +151,34 @@ const ExportRequestCreate = () => {
       total: mappedData.length,
     }));
     resetViewedPages(1);
-  }, [mappedData.length]); // mappedData.length thay đổi thì reset lại
+  }, [mappedData.length, resetViewedPages]);
 
-  // --- Hook tracking xem hết trang chưa ---
-  const { allPagesViewed, markPageAsViewed, resetViewedPages, totalPages } =
-    usePaginationViewTracker(
-      mappedData.length,
-      pagination.pageSize,
-      pagination.current
-    );
-
-  // --- State cho dữ liệu form ---
-  const [formData, setFormData] = useState({
-    exportType: "SELLING", // hoặc "LOAN"
-    exportDate: null,
-    exportReason: "",
-    note: "",
-    // Dành cho Production:
-    receivingDepartment: null,
-    departmentRepresentative: "",
-    departmentRepresentativePhone: "",
-    // Dành cho LOAN:
-    loanType: "INTERNAL",
-    borrowerName: "",
-    borrowerPhone: "",
-    borrowerAddress: "",
-    returnDate: "",
-    loanReason: "",
-  });
-
-  // --- Dữ liệu mẫu và state hiển thị modal cho danh sách phòng ban ---
-  const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
-
+  /**
+   * Fetch departments when pagination changes
+   */
   useEffect(() => {
     const fetchDepartments = async () => {
       const response = await getAllDepartments(departmentPage, departmentLimit);
-      // Nếu API trả về response.metaDataDTO.total thì lưu lại
       setDepartmentTotal(response?.metaDataDTO?.total || 0);
     };
     fetchDepartments();
   }, [departmentPage, departmentLimit]);
 
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const providersData = await getAllProviders();
+        setProviders(providersData?.content || []);
+      } catch (error) {
+        toast.error("Không thể lấy danh sách nhà cung cấp");
+      }
+    };
+    fetchProviders();
+  }, []);
+
+  // =============================================================================
+  // UTILITY FUNCTIONS
+  // =============================================================================
   function enrichDataWithItemMeta(dataArray, itemsArray) {
     return dataArray.map((row) => {
       const itemMeta =
@@ -131,84 +192,279 @@ const ExportRequestCreate = () => {
     });
   }
 
-  // Khi quay lại từ form nhập thông tin phiếu xuất
-  const handleBackToFileStep = () => {
+  /**
+   * Reset all form and file states to initial values
+   */
+  const resetAllStates = () => {
+    setFormData(INITIAL_FORM_DATA);
+    setFile(null);
+    setFileName("");
+    setData([]);
+    setValidationError("");
     setFileConfirmed(false);
-    setPagination((prev) => ({ ...prev, current: 1 })); // Về trang 1
-    resetViewedPages(1); // Reset lại page đã đọc!
+    setHasTableError(false);
+    setExportTypeCache({});
+    setPagination({ current: 1, pageSize: 10, total: 0 });
+    resetViewedPages(1);
   };
 
+  // =============================================================================
+  // FILE HANDLING FUNCTIONS
+  // =============================================================================
   const handleFileUpload = (e) => {
     const uploadedFile = e.target.files[0];
-    if (uploadedFile) {
-      setFile(uploadedFile);
-      setFileName(uploadedFile.name);
-      const reader = new FileReader();
-      reader.onload = (event) => {
+    if (!uploadedFile) return;
+
+    setFile(uploadedFile);
+    setFileName(uploadedFile.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
         const ab = event.target.result;
         const wb = XLSX.read(ab, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(ws);
-        try {
-          const transformedData = jsonData.map((item, index) => {
-            const itemId = item["itemId"] || item["Mã hàng"];
-            const quantity = item["quantity"] || item["Số lượng"];
-            const measurementValue =
-              item["measurementValue"] || item["Quy cách"] || "";
-            if (!itemId || !quantity) {
+
+        const transformedData = jsonData.map((item, index) => {
+          const itemId = item["itemId"] || item["Mã hàng"];
+          const quantity = item["quantity"] || item["Số lượng"];
+
+          if (!itemId || !quantity) {
+            throw new Error(
+              `Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`
+            );
+          }
+
+          if (formData.exportType === "RETURN") {
+            const providerId = item["providerId"] || item["Mã Nhà cung cấp"];
+            if (!providerId) {
               throw new Error(
-                `Dòng ${index + 1}: Thiếu thông tin itemId hoặc quantity`
+                `Dòng ${index + 1}: Thiếu thông tin Nhà cung cấp`
               );
             }
+
+            const foundItem = items.content.find(
+              (i) => String(i.id) === String(itemId)
+            );
+            if (!foundItem) {
+              throw new Error(
+                `Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`
+              );
+            }
+
+            const foundProvider = providers.find(
+              (p) => p.id === Number(providerId)
+            );
+            if (!foundProvider) {
+              throw new Error(
+                `Dòng ${
+                  index + 1
+                }: Không tìm thấy nhà cung cấp với ID ${providerId}`
+              );
+            }
+
+            // Validate the provider is actually linked to the item
+            if (
+              !Array.isArray(foundItem.providerIds) ||
+              !foundItem.providerIds.includes(Number(providerId))
+            ) {
+              throw new Error(
+                `Dòng ${
+                  index + 1
+                }: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`
+              );
+            }
+
             return {
               itemId: String(itemId).trim(),
               quantity: Number(quantity),
-              measurementValue: measurementValue.toString(),
+              providerId: Number(providerId),
+              itemName: foundItem.name,
+              measurementUnit: foundItem.measurementUnit || "Không xác định",
+              totalMeasurementValue: foundItem.totalMeasurementValue || "",
+              providerName: foundProvider.name,
             };
-          });
-          setData(transformedData);
-          setValidationError("");
-        } catch (error) {
-          setValidationError(error.message);
-          toast.error(error.message);
-        }
-      };
-      reader.readAsArrayBuffer(uploadedFile);
+          }
+
+          // Các loại xuất khác (SELLING, PRODUCTION, LOAN)
+          return {
+            itemId: String(itemId).trim(),
+            quantity: Number(quantity),
+            measurementValue:
+              item["measurementValue"] || item["Quy cách"] || "",
+          };
+        });
+
+        setData(transformedData);
+        setValidationError("");
+      } catch (error) {
+        setValidationError(error.message);
+        toast.error(error.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(uploadedFile);
+  };
+
+  const triggerFileInput = () => fileInputRef.current?.click();
+
+  const handleRemoveFile = () => {
+    // Reset all file-related states
+    setFile(null);
+    setFileName("");
+    setData([]);
+    setValidationError("");
+    setFileConfirmed(false);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    // Clear cache for current export type
+    setExportTypeCache((prevCache) => ({
+      ...prevCache,
+      [formData.exportType]: {
+        file: null,
+        fileName: "",
+        data: [],
+        validationError: "",
+      },
+    }));
+
+    // Reset pagination and view tracking
+    setPagination((prev) => ({ ...prev, current: 1, total: 0 }));
+    resetViewedPages(1);
+  };
+
+  // =============================================================================
+  // EXPORT TYPE HANDLING
+  // =============================================================================
+  const handleExportTypeChange = (newExportType) => {
+    // Cache current data
+    setExportTypeCache((prevCache) => ({
+      ...prevCache,
+      [formData.exportType]: {
+        file,
+        fileName,
+        data,
+        validationError,
+      },
+    }));
+
+    // Restore cached data for new type or use defaults
+    const cached = exportTypeCache[newExportType] || {
+      file: null,
+      fileName: "",
+      data: [],
+      validationError: "",
+    };
+
+    // Update states
+    setFormData((prev) => ({ ...prev, exportType: newExportType }));
+    setFile(cached.file);
+    setFileName(cached.fileName);
+    setData(cached.data);
+    setValidationError(cached.validationError);
+
+    // Reset file input if no cached file
+    if (!cached.file && fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
-  const triggerFileInput = () => fileInputRef.current.click();
+  const handleBackToFileStep = () => {
+    setFileConfirmed(false);
+    setPagination((prev) => ({ ...prev, current: 1 }));
+    resetViewedPages(1);
+  };
 
-  // --- API hooks cho phiếu xuất ---
-  const {
-    createExportRequestProduction,
-    createExportRequestLoan,
-    createExportRequestSelling,
-  } = useExportRequestService();
-  const { createExportRequestDetail } = useExportRequestDetailService();
+  // =============================================================================
+  // PAGINATION HANDLING
+  // =============================================================================
+  const handleTablePageChange = (paginationObj) => {
+    setPagination((prev) => ({
+      ...prev,
+      current: paginationObj.current,
+      pageSize: paginationObj.pageSize || prev.pageSize,
+      total: mappedData.length,
+    }));
+    markPageAsViewed(paginationObj.current);
+  };
 
-  const countingDateTime = moment(
-    `${formData.exportDate} ${formData.exportTime}`,
-    "YYYY-MM-DD HH:mm:ss"
-  ).subtract(3, "hours");
+  // =============================================================================
+  // FORM SUBMISSION
+  // =============================================================================
+  const buildProductionPayload = () => ({
+    exportReason: formData.exportReason,
+    departmentId: formData.receivingDepartment.id,
+    receiverName: formData.departmentRepresentative,
+    receiverPhone: formData.departmentRepresentativePhone,
+    type: "PRODUCTION",
+    exportDate: formData.exportDate,
+    countingDate: countingDate,
+    countingTime: countingTime,
+  });
 
-  const countingDate = countingDateTime.format("YYYY-MM-DD");
-  const countingTime = countingDateTime.format("HH:mm:ss");
+  const buildLoanPayload = () => {
+    const basePayload = {
+      exportDate: formData.exportDate,
+      exportTime: formData.exportTime,
+      expectedReturnDate: formData.returnDate,
+      exportReason: formData.loanReason,
+      type: "BORROWING",
+      countingDate: moment(formData.exportDate, "YYYY-MM-DD")
+        .subtract(1, "day")
+        .format("YYYY-MM-DD"),
+      countingTime: formData.exportTime,
+    };
 
-  // --- Hàm xử lý submit ---
-  const handleSubmit = async () => {
+    if (formData.loanType === "INTERNAL") {
+      return {
+        ...basePayload,
+        receiverName: formData.departmentRepresentative,
+        receiverPhone: formData.departmentRepresentativePhone,
+        departmentId: formData.receivingDepartment.id,
+      };
+    } else {
+      return {
+        ...basePayload,
+        receiverName: formData.borrowerName,
+        receiverPhone: formData.borrowerPhone,
+        receiverAddress: formData.borrowerAddress,
+      };
+    }
+  };
+
+  const buildSellingPayload = () => ({
+    countingDate: formData.exportDate,
+    countingTime: "07:00:00",
+    exportDate: formData.exportDate,
+    exportReason: formData.exportReason,
+    receiverName: formData.receiverName,
+    receiverPhone: formData.receiverPhone,
+    receiverAddress: formData.receiverAddress,
+    type: "SELLING",
+  });
+
+  const validateFormData = () => {
+    // Common validation
     if (!formData.exportDate) {
-      toast.error("Vui lòng điền đầy đủ thông tin chung cho phiếu xuất");
-      return;
+      return {
+        isValid: false,
+        errorMessage: "Vui lòng điền đầy đủ thông tin chung cho phiếu xuất",
+      };
     }
+
     if (!file || data.length === 0) {
-      toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
-      return;
+      return {
+        isValid: false,
+        errorMessage: "Vui lòng tải lên file Excel với dữ liệu hợp lệ",
+      };
     }
 
-    let payload = {};
-    let createdExport;
-
+    // Production validation
     if (formData.exportType === "PRODUCTION") {
       if (
         !formData.exportReason ||
@@ -216,121 +472,106 @@ const ExportRequestCreate = () => {
         !formData.departmentRepresentative ||
         !formData.departmentRepresentativePhone
       ) {
-        toast.error("Vui lòng điền đầy đủ thông tin cho phiếu xuất Production");
-        return;
+        return {
+          isValid: false,
+          errorMessage:
+            "Vui lòng điền đầy đủ thông tin cho phiếu xuất Production",
+        };
       }
-      payload = {
-        exportReason: formData.exportReason,
-        departmentId: formData.receivingDepartment.id,
-        receiverName: formData.departmentRepresentative,
-        receiverPhone: formData.departmentRepresentativePhone,
-        type: "PRODUCTION",
-        exportDate: formData.exportDate,
-        countingDate: countingDate,
-        countingTime: countingTime,
-      };
-      createdExport = await createExportRequestProduction(payload);
-    } else if (formData.exportType === "LOAN") {
+    }
+
+    // Loan validation
+    if (formData.exportType === "LOAN") {
       if (!formData.returnDate || !formData.loanReason) {
-        toast.error("Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn");
-        return;
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn",
+        };
       }
+
       if (
         moment(formData.returnDate, "YYYY-MM-DD").isSameOrBefore(
           moment(),
           "day"
         )
       ) {
-        toast.error("Ngày trả phải lớn hơn ngày hôm nay");
-        return;
+        return {
+          isValid: false,
+          errorMessage: "Ngày trả phải lớn hơn ngày hôm nay",
+        };
       }
+
       if (formData.loanType === "INTERNAL") {
         if (
           !formData.receivingDepartment ||
           !formData.departmentRepresentative ||
           !formData.departmentRepresentativePhone
         ) {
-          toast.error(
-            "Vui lòng chọn phòng ban và thông tin đại diện cho phiếu xuất mượn nội bộ"
-          );
-          return;
+          return {
+            isValid: false,
+            errorMessage:
+              "Vui lòng chọn phòng ban và thông tin đại diện cho phiếu xuất mượn nội bộ",
+          };
         }
-        payload = {
-          exportDate: formData.exportDate,
-          exportTime: formData.exportTime,
-          receiverName: formData.departmentRepresentative,
-          receiverPhone: formData.departmentRepresentativePhone,
-          departmentId: formData.receivingDepartment.id,
-          expectedReturnDate: formData.returnDate,
-          exportReason: formData.loanReason,
-          type: "BORROWING",
-          countingDate: moment(formData.exportDate, "YYYY-MM-DD")
-            .subtract(1, "day")
-            .format("YYYY-MM-DD"),
-          countingTime: formData.exportTime,
-        };
       } else if (formData.loanType === "EXTERNAL") {
         if (
           !formData.borrowerName ||
           !formData.borrowerPhone ||
           !formData.borrowerAddress
         ) {
-          toast.error(
-            "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn bên ngoài"
-          );
-          return;
+          return {
+            isValid: false,
+            errorMessage:
+              "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn bên ngoài",
+          };
         }
-        payload = {
-          exportDate: formData.exportDate,
-          exportTime: formData.exportTime,
-          receiverName: formData.borrowerName,
-          receiverPhone: formData.borrowerPhone,
-          receiverAddress: formData.borrowerAddress,
-          expectedReturnDate: formData.returnDate,
-          exportReason: formData.loanReason,
-          type: "BORROWING",
-          countingDate: moment(formData.exportDate, "YYYY-MM-DD")
-            .subtract(1, "day")
-            .format("YYYY-MM-DD"),
-          countingTime: formData.exportTime,
-        };
       }
-      createdExport = await createExportRequestLoan(payload);
-    } // --- XUẤT BÁN ---
-    else if (formData.exportType === "SELLING") {
+    }
+
+    // Selling validation
+    if (formData.exportType === "SELLING") {
       if (
         !formData.exportDate ||
         !formData.exportReason ||
         !formData.receiverName ||
         !formData.receiverPhone
       ) {
-        toast.error(
-          "Vui lòng nhập đầy đủ các trường bắt buộc cho phiếu xuất bán"
-        );
-        return;
+        return {
+          isValid: false,
+          errorMessage:
+            "Vui lòng nhập đầy đủ các trường bắt buộc cho phiếu xuất bán",
+        };
       }
-      payload = {
-        countingDate: formData.exportDate,
-        countingTime: "07:00:00",
-        exportDate: formData.exportDate,
-        exportReason: formData.exportReason,
-        receiverName: formData.receiverName,
-        receiverPhone: formData.receiverPhone,
-        receiverAddress: formData.receiverAddress,
-        type: "SELLING",
-      };
-      createdExport = await createExportRequestSelling(payload);
-    } else {
-      toast.error("Loại phiếu xuất không hợp lệ");
-      return;
     }
 
-    if (!createdExport) {
-      toast.error("Không tạo được phiếu xuất");
-      return;
-    }
-    navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+    return { isValid: true, errorMessage: "" };
+  };
 
+  const createExportRequest = async (exportType) => {
+    let payload;
+    let createdExport;
+
+    switch (exportType) {
+      case "PRODUCTION":
+        payload = buildProductionPayload();
+        createdExport = await createExportRequestProduction(payload);
+        break;
+      case "LOAN":
+        payload = buildLoanPayload();
+        createdExport = await createExportRequestLoan(payload);
+        break;
+      case "SELLING":
+        payload = buildSellingPayload();
+        createdExport = await createExportRequestSelling(payload);
+        break;
+      default:
+        throw new Error("Loại phiếu xuất không hợp lệ");
+    }
+
+    return createdExport;
+  };
+
+  const createExportDetails = async (exportRequestId) => {
     const exportDetailsPayload = data.map(
       ({ itemId, quantity, measurementValue, inventoryItemId }) => {
         const detail = { itemId, quantity };
@@ -342,126 +583,63 @@ const ExportRequestCreate = () => {
       }
     );
 
+    await createExportRequestDetail(exportDetailsPayload, exportRequestId);
+  };
+
+  /**
+   * Handle form submission
+   */
+  const handleSubmit = async () => {
     try {
-      await createExportRequestDetail(
-        exportDetailsPayload,
-        createdExport.exportRequestId
-      );
+      // Validate form data
+      const validation = validateFormData();
+      if (!validation.isValid) {
+        toast.error(validation.errorMessage);
+        return;
+      }
+
+      // Create export request
+      const createdExport = await createExportRequest(formData.exportType);
+      if (!createdExport) {
+        toast.error("Không tạo được phiếu xuất");
+        return;
+      }
+
+      // Create export request details
+      await createExportDetails(createdExport.exportRequestId);
+
+      // Success feedback and navigation
       toast.success("Đã gửi chi tiết phiếu xuất thành công");
       navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+
+      // Reset states after successful submission
+      resetAllStates();
     } catch (error) {
       toast.error("Lỗi khi gửi chi tiết phiếu xuất");
-    }
-
-    // Reset lại trạng thái sau khi submit
-    setFormData({
-      exportType: "SELLING",
-      exportDate: null,
-      exportTime: null,
-      exportReason: "",
-      note: "",
-      receivingDepartment: null,
-      departmentRepresentative: "",
-      departmentRepresentativePhone: "",
-      loanType: "INTERNAL",
-      borrowerName: "",
-      borrowerPhone: "",
-      borrowerAddress: "",
-      returnDate: "",
-      loanReason: "",
-    });
-    setFile(null);
-    setFileName("");
-    setData([]);
-  };
-
-  // Table AntD gọi hàm này khi đổi trang hoặc pageSize
-  const handleTablePageChange = (paginationObj) => {
-    setPagination((prev) => ({
-      ...prev,
-      current: paginationObj.current,
-      pageSize: paginationObj.pageSize || prev.pageSize,
-      total: mappedData.length,
-    }));
-    markPageAsViewed(paginationObj.current);
-  };
-
-  // Cập nhật hàm handleExportTypeChange để xử lý cache tốt hơn
-  const handleExportTypeChange = (newExportType) => {
-    // Cache lại dữ liệu loại hiện tại
-    setExportTypeCache((prevCache) => ({
-      ...prevCache,
-      [formData.exportType]: {
-        file,
-        fileName,
-        data,
-        validationError,
-      },
-    }));
-
-    // Restore lại cache của loại mới nếu có
-    const cached = exportTypeCache[newExportType] || {
-      file: null,
-      fileName: "",
-      data: [],
-      validationError: "",
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      exportType: newExportType,
-    }));
-
-    setFile(cached.file);
-    setFileName(cached.fileName);
-    setData(cached.data);
-    setValidationError(cached.validationError);
-
-    // Reset file input nếu không có file
-    if (!cached.file && fileInputRef.current) {
-      fileInputRef.current.value = "";
+      console.error("Export submission error:", error);
     }
   };
 
-  // Sửa lại hàm handleRemoveFile
-  const handleRemoveFile = () => {
-    // Reset tất cả state liên quan đến file
-    setFile(null);
-    setFileName("");
-    setData([]);
-    setValidationError("");
-    setFileConfirmed(false);
-
-    // Reset input file
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handleDepartmentSelect = async (selectedDepartment) => {
+    try {
+      const departmentDetail = await getDepartmentById(selectedDepartment.id);
+      setFormData({
+        ...formData,
+        receivingDepartment: selectedDepartment,
+        departmentRepresentative:
+          departmentDetail.content.departmentResponsible || "",
+        departmentRepresentativePhone: departmentDetail.content.phone || "",
+      });
+      setDepartmentModalVisible(false);
+    } catch (error) {
+      toast.error("Không thể lấy thông tin chi tiết phòng ban");
     }
-
-    // Xóa cache cho export type hiện tại
-    setExportTypeCache((prevCache) => ({
-      ...prevCache,
-      [formData.exportType]: {
-        file: null,
-        fileName: "",
-        data: [],
-        validationError: "",
-      },
-    }));
-
-    // Reset pagination
-    setPagination((prev) => ({
-      ...prev,
-      current: 1,
-      total: 0,
-    }));
-
-    // Reset viewed pages
-    resetViewedPages(1);
   };
 
   return (
     <div className="container mx-auto p-5">
       {!fileConfirmed ? (
+        // File Upload Step
         <>
           <ExportRequestHeader
             title=""
@@ -481,7 +659,7 @@ const ExportRequestCreate = () => {
             fileName={fileName}
             exportType={formData.exportType}
             onTriggerFileInput={triggerFileInput}
-            onRemoveFile={handleRemoveFile} // Truyền hàm đã sửa
+            onRemoveFile={handleRemoveFile}
           />
 
           <input
@@ -499,6 +677,7 @@ const ExportRequestCreate = () => {
               type="error"
               showIcon
               className="mb-4"
+              style={{ marginTop: "10px", marginBottom: "10px" }}
               closable
             />
           )}
@@ -506,10 +685,11 @@ const ExportRequestCreate = () => {
           <Card title="Xem trước dữ liệu Excel" className="mb-4">
             {mappedData.length > 0 ? (
               <ExcelDataTable
-                data={mappedData} // mappedData chỉ dùng để render
+                data={mappedData}
                 items={items.content}
+                providers={providers}
                 exportType={formData.exportType}
-                onDataChange={(updatedData) => setData(updatedData)}
+                onDataChange={setData}
                 onTableErrorChange={setHasTableError}
                 pagination={pagination}
                 onPaginationChange={handleTablePageChange}
@@ -521,6 +701,7 @@ const ExportRequestCreate = () => {
               </div>
             )}
           </Card>
+
           <div className="flex justify-center mt-4">
             <Button
               type="primary"
@@ -543,6 +724,7 @@ const ExportRequestCreate = () => {
           </div>
         </>
       ) : (
+        // Form Input Step
         <ExportRequestInfoForm
           formData={formData}
           setFormData={setFormData}
@@ -558,7 +740,7 @@ const ExportRequestCreate = () => {
         />
       )}
 
-      {/* Modal chọn phòng ban */}
+      {/* Department Selection Modal */}
       <DeparmentModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
@@ -575,19 +757,7 @@ const ExportRequestCreate = () => {
             setDepartmentLimit(pageSize);
           },
         }}
-        onSelect={async (selectedDepartment) => {
-          const departmentDetail = await getDepartmentById(
-            selectedDepartment.id
-          );
-          setFormData({
-            ...formData,
-            receivingDepartment: selectedDepartment,
-            departmentRepresentative:
-              departmentDetail.content.departmentResponsible || "",
-            departmentRepresentativePhone: departmentDetail.content.phone || "",
-          });
-          setDepartmentModalVisible(false);
-        }}
+        onSelect={handleDepartmentSelect}
         onCancel={() => setDepartmentModalVisible(false)}
         loading={departmentLoading}
       />
