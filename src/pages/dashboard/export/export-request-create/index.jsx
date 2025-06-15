@@ -737,6 +737,10 @@ const ExportRequestCreate = () => {
           departments={departments}
           setFileConfirmed={handleBackToFileStep}
           fileName={fileName}
+          exportType={formData.exportType} // <--- thêm dòng này
+          items={items.content || []} // <--- thêm dòng này
+          providers={providers} // <--- thêm dòng này
+          pagination={pagination} // <--- thêm dòng này (nếu muốn phân trang trong bảng kết quả)
         />
       )}
 

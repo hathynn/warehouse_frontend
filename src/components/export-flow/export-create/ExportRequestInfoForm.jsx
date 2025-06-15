@@ -24,6 +24,11 @@ const ExportRequestInfoForm = ({
   fakeFetchDepartmentDetails,
   setFileConfirmed,
   fileName,
+  // ---- thêm các prop này nếu cần
+  exportType, // NEW
+  items, // NEW
+  providers, // NEW
+  pagination, // NEW (optional)
 }) => {
   const [timeError, setTimeError] = useState("");
   const [mandatoryError, setMandatoryError] = useState("");
@@ -139,7 +144,13 @@ const ExportRequestInfoForm = ({
         <div className="w-2/3">
           <Card title="Chi tiết hàng hóa từ file Excel">
             {mappedData.length > 0 ? (
-              <ExcelDataTableAfter data={mappedData} />
+              <ExcelDataTableAfter
+                data={mappedData}
+                exportType={formData.exportType} // truyền exportType
+                items={items} // truyền items nếu cần
+                providers={providers} // truyền providers nếu cần
+                pagination={pagination} // truyền pagination nếu dùng phân trang
+              />
             ) : (
               <div className="text-center py-10 text-gray-500">
                 Vui lòng tải lên file Excel để xem chi tiết hàng hóa
