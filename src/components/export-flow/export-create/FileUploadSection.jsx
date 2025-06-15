@@ -28,23 +28,23 @@ const FileUploadSection = ({
     if (exportType === "SELLING") {
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
+          itemId: "Mã hàng",
+          quantity: "Số lượng",
         },
       ];
     } else if (exportType === "RETURN") {
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
-          providerId: "Mã Nhà cung cấp (số)",
+          itemId: "Mã hàng",
+          quantity: "Số lượng",
+          providerId: "Mã Nhà cung cấp",
         },
       ];
     } else {
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
+          itemId: "Mã hàng",
+          quantity: "Số lượng",
         },
       ];
     }
@@ -52,7 +52,21 @@ const FileUploadSection = ({
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "export_request_template.xlsx");
+
+    //Download export request template based on type of the request
+    if (exportType === "RETURN") {
+      XLSX.writeFile(wb, "export_return_template.xlsx");
+    } else if (exportType === "SELLING") {
+      XLSX.writeFile(wb, "export_selling_template.xlsx");
+    } else if (exportType === "PRODUCTION") {
+      XLSX.writeFile(wb, "export_production_template.xlsx");
+    } else if (exportType === "BORROWING") {
+      XLSX.writeFile(wb, "export_borrowing_template.xlsx");
+    } else if (exportType === "LIQUIDATION") {
+      XLSX.writeFile(wb, "export_liquidation_template.xlsx");
+    } else {
+      XLSX.writeFile(wb, "export_request_template.xlsx");
+    }
   };
 
   const handleRemoveClick = () => {
