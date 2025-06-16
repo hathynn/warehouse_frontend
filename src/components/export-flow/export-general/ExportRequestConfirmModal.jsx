@@ -14,6 +14,41 @@ const EXPORT_TYPE_LABELS = {
   LIQUIDATION: "Thanh lý",
 };
 
+// Group data theo itemId + providerId
+function getConsolidatedData(data = []) {
+  const grouped = {};
+  data.forEach((row) => {
+    const key = row.providerId
+      ? `${row.itemId}-${row.providerId}`
+      : `${row.itemId}`;
+    if (grouped[key]) {
+      grouped[key] = {
+        ...grouped[key],
+        quantity:
+          Number(grouped[key].quantity || 0) + Number(row.quantity || 0),
+      };
+    } else {
+      grouped[key] = { ...row };
+    }
+  });
+  return Object.values(grouped);
+}
+
+// Tính rowSpan cho cell gộp (theo field, idx)
+function calculateRowSpanForItemHaveSameCompareValue(data, field, idx) {
+  if (!Array.isArray(data) || data.length === 0) return 1;
+  const curValue = data[idx]?.[field];
+  // Nếu không phải dòng đầu tiên của nhóm => rowSpan = 0 (ẩn)
+  if (idx > 0 && data[idx - 1]?.[field] === curValue) return 0;
+  // Đếm số dòng liên tiếp cùng value
+  let rowSpan = 1;
+  for (let i = idx + 1; i < data.length; ++i) {
+    if (data[i][field] === curValue) rowSpan++;
+    else break;
+  }
+  return rowSpan;
+}
+
 const ExportRequestConfirmModal = ({
   open,
   onOk,
@@ -21,6 +56,7 @@ const ExportRequestConfirmModal = ({
   confirmLoading,
   formData,
   details,
+  providers,
 }) => {
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [pagination, setPagination] = useState({
@@ -53,14 +89,41 @@ const ExportRequestConfirmModal = ({
     }
   }, [open, details.length, resetViewedPages]);
 
+  // Hàm lấy tên nhà cung cấp
+  const getProviderName = (record, providers) => {
+    if (!record.providerId) return "";
+    const foundProvider = (providers || []).find(
+      (p) => String(p.id) === String(record.providerId)
+    );
+    return foundProvider?.name || record.providerName || "";
+  };
+
+  let dataSource = details;
+
+  // Nếu loại RETURN thì sort và group trước
+  if (formData.exportType === "RETURN") {
+    dataSource = [...details];
+    dataSource.sort((a, b) => {
+      const pa = getProviderName(a, providers) || "";
+      const pb = getProviderName(b, providers) || "";
+      if (pa < pb) return -1;
+      if (pa > pb) return 1;
+      // Bạn có thể sort thêm theo tên hàng nếu muốn:
+      const ia = a.itemName || "";
+      const ib = b.itemName || "";
+      return ia.localeCompare(ib);
+    });
+    dataSource = getConsolidatedData(dataSource);
+  }
+
   const columns = [
     {
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
-      render: (text) => <div>#{text}</div>,
+      render: (text) => <div>{text}</div>,
     },
-    { title: "Tên hàng hóa", dataIndex: "itemName", key: "itemName" },
+    { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
     {
       title: "Số lượng",
       dataIndex: "quantity",
@@ -78,12 +141,33 @@ const ExportRequestConfirmModal = ({
       dataIndex: "measurementUnit",
       key: "measurementUnit",
     },
-    {
-      title: "Quy cách",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-    },
-  ];
+    // Quy cách
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+      ? {
+          title: "Quy cách",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
+        }
+      : null,
+    // Nhà cung cấp cho RETURN (group + rowSpan)
+    formData?.exportType === "RETURN"
+      ? {
+          title: "Nhà cung cấp",
+          dataIndex: "providerName",
+          key: "providerName",
+          render: (_, record) => (
+            <span>{getProviderName(record, providers)}</span>
+          ),
+          onCell: (record, idx) => ({
+            rowSpan: calculateRowSpanForItemHaveSameCompareValue(
+              dataSource,
+              "providerName",
+              idx
+            ),
+          }),
+        }
+      : null,
+  ].filter(Boolean);
 
   return (
     <Modal
@@ -104,6 +188,7 @@ const ExportRequestConfirmModal = ({
         column={3}
         size="small"
         style={{ marginBottom: 24 }}
+        className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400"
       >
         <Descriptions.Item label="Loại xuất">
           {EXPORT_TYPE_LABELS[formData.exportType] || formData.exportType}
@@ -118,15 +203,21 @@ const ExportRequestConfirmModal = ({
             ? dayjs(formData.exportDate).format("DD-MM-YYYY")
             : "-"}
         </Descriptions.Item>
-        <Descriptions.Item label="Người nhận">
-          {formData.receiverName || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Số điện thoại">
-          {formData.receiverPhone || "-"}
-        </Descriptions.Item>
-        <Descriptions.Item label="Địa chỉ">
-          {formData.receiverAddress || "-"}
-        </Descriptions.Item>
+        {["SELLING", "PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+          formData.exportType
+        ) && (
+          <>
+            <Descriptions.Item label="Người nhận">
+              {formData.receiverName || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">
+              {formData.receiverPhone || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Địa chỉ">
+              {formData.receiverAddress || "-"}
+            </Descriptions.Item>
+          </>
+        )}
       </Descriptions>
 
       <Title level={5} style={{ marginBottom: 12 }}>
@@ -134,18 +225,23 @@ const ExportRequestConfirmModal = ({
       </Title>
       <Table
         columns={columns}
-        dataSource={details}
-        rowKey={(record) => `${record.itemId}`}
+        dataSource={dataSource}
+        rowKey={(record, idx) =>
+          formData.exportType === "RETURN"
+            ? `${record.itemId}-${record.providerId}-${idx}`
+            : String(record.itemId)
+        }
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,
-          total: details.length,
+          total: dataSource.length,
           showTotal: (total) => `Tổng ${total} mục`,
         }}
         onChange={handleTableChange}
         size="small"
         bordered
         style={{ height: "490px", overflowY: "auto" }}
+        className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
       />
 
       <Checkbox
@@ -194,6 +290,7 @@ ExportRequestConfirmModal.propTypes = {
       measurementUnit: PropTypes.string,
     })
   ).isRequired,
+  providers: PropTypes.array,
 };
 
 export default ExportRequestConfirmModal;

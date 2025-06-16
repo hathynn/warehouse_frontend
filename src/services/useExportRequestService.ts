@@ -38,15 +38,17 @@ export interface ExportRequestRequest {
   exportDate: string;
   assignedWarehouseKeeperId?: number;
   exportReason: string;
-  receiverAddress: string;
-  receiverName: string;
-  receiverPhone: string;
-  status: string;
+  receiverAddress?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  status?: string;
   type: string;
   createdBy?: string;
   updatedBy?: string;
   countingDate: string; // counting_date
   countingTime: string; // counting_time
+  importRequestIds?: string[]; // THÊM field này, optional
+  providerId?: number; // THÊM field này, optional
 }
 
 export interface ExportRequestRenewItem {
@@ -298,6 +300,27 @@ const useExportRequestService = () => {
     }
   };
 
+  // Tạo mới phiếu xuất trả về nhà cung cấp (Return)
+  const createExportRequestReturn = async (
+    requestData: ExportRequestRequest
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/export-request/return",
+        requestData
+      );
+      if (response && response.content) {
+        toast.success("Tạo phiếu xuất trả hàng thành công");
+      }
+      return response.content;
+    } catch (error) {
+      toast.error("Không thể tạo phiếu xuất trả hàng");
+      console.error("Error creating export request return:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -312,6 +335,7 @@ const useExportRequestService = () => {
     updateExportDateTime,
     createExportRequestSelling,
     renewExportRequest,
+    createExportRequestReturn,
   };
 };
 

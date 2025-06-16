@@ -10,6 +10,7 @@ import { RootState } from "@/contexts/redux/store";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ExportRequestFilterState, useExportRequestFilter } from "@/hooks/useExportRequestFilter";
+import useProviderService from "@/services/useProviderService";
 
 const ExportRequestList = () => {
   // ========== FILTER STATES ==========
@@ -23,10 +24,11 @@ const ExportRequestList = () => {
 
   // ========== DATA STATES ==========
   const [exportRequestsData, setExportRequestsData] = useState<ExportRequestResponse[]>([]);
+  const [providerNames, setProviderNames] = useState({}); // { providerId: providerName }
 
   // ========== SERVICES ==========
   const { getAllExportRequests, loading } = useExportRequestService();
-
+  const { getProviderById } = useProviderService();
 
   // ========== UTILITY FUNCTIONS ==========
   const user = useSelector((state: RootState) => state.user);
@@ -54,10 +56,34 @@ const ExportRequestList = () => {
     fetchExportRequests();
   }, []);
 
+  useEffect(() => {
+    // Lấy các providerId khác null/undefined
+    const providerIds = Array.from(new Set(exportRequestsData.map(r => r.providerId).filter(Boolean)));
+
+    const fetchProviderNames = async () => {
+      const result = {};
+      for (const id of providerIds) {
+        try {
+          const res = await getProviderById(id);
+          result[id] = res.content?.name || "Không xác định";
+        } catch {
+          result[id] = "Không xác định";
+        }
+      }
+      setProviderNames(result);
+    };
+
+    if (providerIds.length) {
+      fetchProviderNames();
+    }
+  }, [exportRequestsData]);
+
   const fetchExportRequests = async (): Promise<void> => {
     const response = await getAllExportRequests();
     setExportRequestsData(response.content);
   };
+
+
 
 
   // ========== EVENT HANDLERS ==========
@@ -150,10 +176,15 @@ const ExportRequestList = () => {
       dataIndex: "createdBy",
       key: "createdBy",
     },
+
     {
       title: "Người nhận hàng",
       dataIndex: "receiverName",
-      key: "receiverName",
+      key: "receiver",
+      render: (receiverName, record) => {
+        // Ưu tiên receiverName, nếu không có thì dùng provider name
+        return receiverName || providerNames[record.providerId] || "—";
+      }
     },
     {
       title: "Trạng thái phiếu",
@@ -232,16 +263,16 @@ const ExportRequestList = () => {
                 label: "Xuất bán",
               },
               {
+                key: "RETURN",
+                label: "Xuất trả nhà cung cấp",
+              },
+              {
                 key: "PRODUCTION",
                 label: "Xuất sản xuất",
               },
               {
                 key: "BORROWING",
                 label: "Xuất mượn",
-              },
-              {
-                key: "RETURN",
-                label: "Xuất trả nhà cung cấp",
               },
               {
                 key: "LIQUIDATION",
