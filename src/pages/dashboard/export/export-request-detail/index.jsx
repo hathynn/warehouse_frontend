@@ -11,10 +11,12 @@ import {
   Input,
   Checkbox,
   Tag,
+  Tooltip,
 } from "antd";
 import {
   ArrowLeftOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
   InfoCircleOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
@@ -32,6 +34,8 @@ import ProductDetailTable from "@/components/export-flow/export-detail/ProductDe
 import ExportRequestConfirmModal from "@/components/export-flow/export-general/ExportRequestConfirmModal";
 import dayjs from "dayjs";
 import useDepartmentService from "@/services/useDepartmentService";
+import useInventoryItemService from "@/services/useInventoryItemService";
+import useProviderService from "@/services/useProviderService";
 
 function enrichWithItemMeta(details, items) {
   return details.map((row) => {
@@ -97,7 +101,20 @@ const ExportRequestDetail = () => {
   const { getItems } = useItemService();
   const [items, setItems] = useState([]);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [inventoryPagination, setInventoryPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
+    useState(null);
+  const { getByExportRequestDetailId, loading: inventoryLoading } =
+    useInventoryItemService();
 
+  const [providerInfo, setProviderInfo] = useState(null);
+  const { loading: providerLoading, getProviderById } = useProviderService();
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -150,6 +167,30 @@ const ExportRequestDetail = () => {
     if (allResp && allResp.content) {
       const allEnriched = await enrichDetails(allResp.content);
       setAllExportRequestDetails(allEnriched);
+    }
+  };
+
+  const fetchInventoryItems = async (
+    exportRequestDetailId,
+    page = 1,
+    pageSize = 10
+  ) => {
+    try {
+      const response = await getByExportRequestDetailId(
+        exportRequestDetailId,
+        page,
+        pageSize
+      );
+      setInventoryItems(response.content || []);
+      if (response.metaDataDTO) {
+        setInventoryPagination({
+          current: response.metaDataDTO.page,
+          pageSize: response.metaDataDTO.limit,
+          total: response.metaDataDTO.total,
+        });
+      }
+    } catch (error) {
+      setInventoryItems([]);
     }
   };
 
@@ -226,6 +267,15 @@ const ExportRequestDetail = () => {
   useEffect(() => {
     fetchDetails();
   }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
+
+  useEffect(() => {
+    // Nếu có exportRequest.type === "RETURN" và có providerId thì mới lấy
+    if (exportRequest?.type === "RETURN" && exportRequest.providerId) {
+      getProviderById(exportRequest.providerId)
+        .then((res) => setProviderInfo(res?.content))
+        .catch(() => setProviderInfo(null));
+    }
+  }, [exportRequest]);
 
   // Khi đã có exportRequest
   useEffect(() => {
@@ -338,6 +388,7 @@ const ExportRequestDetail = () => {
   const getExportTypeText = (type) => {
     if (type === "PRODUCTION") return "Xuất sản xuất";
     else if (type === "SELLING") return "Xuất bán";
+    else if (type === "RETURN") return "Xuất trả nhà cung cấp";
     return "";
   };
 
@@ -592,6 +643,32 @@ const ExportRequestDetail = () => {
         );
       }
     }
+    if (exportRequest.type === "RETURN") {
+      items.push(
+        <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+          {getExportTypeText(exportRequest.type)}
+        </Descriptions.Item>,
+        <Descriptions.Item label="Người kiểm đếm" key="countingStaffId">
+          {assignedStaff?.fullName || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item
+          label="Người xuất hàng"
+          key="assignedWareHouseKeeperId"
+        >
+          {assignedKeeper?.fullName || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item label="Nhà cung cấp" key="receiverName">
+          {providerInfo?.name || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item label="SĐT Nhà cung cấp" key="receiverPhone">
+          {providerInfo?.phone || "-"}
+        </Descriptions.Item>,
+        <Descriptions.Item label="Lý do xuất" key="exportReason">
+          {exportRequest.exportReason || "-"}
+        </Descriptions.Item>
+      );
+    }
+
     return items;
   };
 
@@ -617,7 +694,7 @@ const ExportRequestDetail = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      render: (id) => `#${id}`,
+      render: (id) => `${id}`,
     },
     {
       title: "Tên sản phẩm",
@@ -629,14 +706,14 @@ const ExportRequestDetail = () => {
       title: "Số lượng cần",
       dataIndex: "quantity",
       key: "quantity",
-      width: 140,
-      align: "right",
+      width: 180,
       render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
     },
     {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
+      width: 230,
       render: (text, record) => (
         <div
           style={{ textAlign: "right" }}
@@ -648,11 +725,16 @@ const ExportRequestDetail = () => {
         </div>
       ),
     },
-    {
-      title: "Quy cách",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-    },
+    // Điều kiện column Quy cách
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+      exportRequest?.exportType
+    )
+      ? {
+          title: "Quy cách",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
+        }
+      : null,
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -660,7 +742,29 @@ const ExportRequestDetail = () => {
       render: (status) =>
         status ? <StatusTag status={status} type="detail" /> : "-", // Use StatusTag component with 'detail' type
     },
-  ];
+    {
+      title: "Chi tiết",
+      key: "detail",
+      width: 200,
+      render: (text, record) => (
+        <div className="flex gap-3 justify-center">
+          <Tooltip title="Xem chi tiết phiếu xuất" placement="top">
+            <span
+              className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
+              style={{ width: 32, height: 32 }}
+              onClick={() => {
+                setSelectedExportRequestDetail(record); // lưu lại chi tiết đang chọn
+                setDetailModalVisible(true);
+                fetchInventoryItems(record.id, 1, 10); // record.id là exportRequestDetailId
+              }}
+            >
+              <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+            </span>
+          </Tooltip>
+        </div>
+      ),
+    },
+  ].filter(Boolean);
 
   const handleTableChange = (pag) => {
     setPagination({
@@ -1210,12 +1314,56 @@ const ExportRequestDetail = () => {
           receiverName: exportRequest?.receiverName,
           receiverPhone: exportRequest?.receiverPhone,
           receiverAddress: exportRequest?.receiverAddress,
+          providerName: providerInfo?.name,
         }}
         details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
         // details={editedDetails}
       />
+      <Modal
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Danh sách sản phẩm tồn kho (Mã hàng #
+            {selectedExportRequestDetail?.itemId})
+          </span>
+        }
+        footer={null}
+        width={600}
+      >
+        <Table
+          className="mt-5"
+          loading={inventoryLoading}
+          rowKey="id"
+          dataSource={inventoryItems}
+          pagination={{
+            current: inventoryPagination.current,
+            pageSize: inventoryPagination.pageSize,
+            total: inventoryPagination.total,
+            onChange: (page, pageSize) => {
+              fetchInventoryItems(
+                selectedExportRequestDetail.id,
+                page,
+                pageSize
+              );
+            },
+            showSizeChanger: false, // chỉ cho phép pageSize=10
+          }}
+          columns={[
+            {
+              title: "Mã sản phẩm tồn kho",
+              dataIndex: "id",
+              key: "id",
+            },
+            // Sau này bạn chỉ cần thêm các cột khác vào đây
+          ]}
+          size="small"
+        />
+      </Modal>
     </div>
   );
 };
 
 export default ExportRequestDetail;
+
+//hahaha

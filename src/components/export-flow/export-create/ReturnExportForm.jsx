@@ -1,98 +1,89 @@
 import React from "react";
 import { Input, DatePicker } from "antd";
-import moment from "moment";
+import PropTypes from "prop-types";
+import dayjs from "dayjs";
 
 const ReturnExportForm = ({
   formData,
   setFormData,
-  openSupplierModal,
-  openReturnManagerModal,
-  openImportReferenceModal,
+  mandatoryError,
+  setMandatoryError,
 }) => {
+  // Chặn nhập quá 150 ký tự cho lí do xuất
+  const handleReasonChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= 150) {
+      setFormData({ ...formData, exportReason: value });
+      setMandatoryError?.("");
+    }
+  };
+
+  // Disable các ngày trong quá khứ
+  const getDisabledDate = (current) => {
+    return current && current.isBefore(dayjs().startOf("day"));
+  };
+
   return (
     <>
-      <div>
+      {/* Ngày xuất */}
+      <div className="mb-4">
         <label className="block mb-1">
-          Ngày dự xuất <span className="text-red-500">*</span>
+          Ngày nhận <span className="text-red-500">*</span>
         </label>
         <DatePicker
-          value={formData.exportDate ? moment(formData.exportDate) : null}
-          onChange={(date, dateString) =>
-            setFormData({ ...formData, exportDate: dateString })
-          }
+          format="DD-MM-YYYY"
+          value={formData.exportDate ? dayjs(formData.exportDate) : null}
+          onChange={(date) => {
+            const newDate = date?.isValid() ? date.format("YYYY-MM-DD") : null;
+            setFormData({
+              ...formData,
+              exportDate: newDate,
+            });
+            setMandatoryError?.("");
+          }}
           className="w-full"
+          allowClear
+          placeholder="Chọn ngày xuất"
+          disabledDate={getDisabledDate}
         />
+        {!formData.exportDate && (
+          <div className="text-red-500 text-xs mt-1">
+            Vui lòng chọn ngày xuất.
+          </div>
+        )}
       </div>
-      <div>
+      {/* Lí do xuất */}
+      <div className="mb-4">
         <label className="block mb-1">
-          Nhà cung cấp nhận hàng trả về <span className="text-red-500">*</span>
+          Lí do xuất trả <span className="text-red-500">*</span>
         </label>
-        <Input
-          readOnly
-          value={
-            formData.supplierReceiver ? formData.supplierReceiver.name : ""
-          }
-          placeholder="Chọn nhà cung cấp"
-          onClick={openSupplierModal}
-          className="w-full"
-        />
-      </div>
-      <div>
-        <label className="block mb-1">
-          Người phụ trách việc trả hàng <span className="text-red-500">*</span>
-        </label>
-        <Input
-          readOnly
-          value={formData.returnManager ? formData.returnManager.name : ""}
-          placeholder="Chọn người phụ trách"
-          onClick={openReturnManagerModal}
-          className="w-full"
-        />
-      </div>
-      <div>
-        <label className="block mb-1">
-          Phiếu nhập tham chiếu <span className="text-red-500">*</span>
-        </label>
-        <Input
-          readOnly
-          value={formData.importReference ? formData.importReference.name : ""}
-          placeholder="Chọn phiếu nhập"
-          onClick={openImportReferenceModal}
-          className="w-full"
-        />
-      </div>
-      <div>
-        <label className="block mb-1">
-          Lý do trả hàng <span className="text-red-500">*</span>
-        </label>
-        <Input
-          value={formData.returnReason}
-          onChange={(e) =>
-            setFormData({ ...formData, returnReason: e.target.value })
-          }
-          className="w-full"
-        />
-      </div>
-      <div>
-        <label className="block mb-1">Ghi chú</label>
         <Input.TextArea
-          rows={3}
-          value={formData.note}
-          onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+          value={formData.exportReason || ""}
+          placeholder="Nhập lí do xuất (tối đa 150 ký tự)"
+          maxLength={150}
+          rows={2}
+          onChange={handleReasonChange}
           className="w-full"
+          showCount
         />
+        {!formData.exportReason && (
+          <div className="text-red-500 text-xs mt-1">
+            Vui lòng nhập lí do xuất.
+          </div>
+        )}
       </div>
     </>
   );
 };
 
-import PropTypes from "prop-types";
-
 ReturnExportForm.propTypes = {
-  formData: PropTypes.object.isRequired,
+  formData: PropTypes.shape({
+    exportDate: PropTypes.string,
+    exportReason: PropTypes.string,
+  }).isRequired,
   setFormData: PropTypes.func.isRequired,
-  openSupplierModal: PropTypes.func.isRequired,
-  openReturnManagerModal: PropTypes.func.isRequired,
-  openImportReferenceModal: PropTypes.func.isRequired,
+  mandatoryError: PropTypes.string,
+  setMandatoryError: PropTypes.func,
 };
+
 export default ReturnExportForm;

@@ -8,6 +8,7 @@ import PropTypes from "prop-types";
 import ExportRequestConfirmModal from "../export-general/ExportRequestConfirmModal";
 import DeparmentModal from "./DeparmentModal";
 import SellingExportForm from "@/components/export-flow/export-create/SellingExportForm";
+import ReturnExportForm from "./ReturnExportForm";
 
 const { Title } = Typography;
 
@@ -24,11 +25,9 @@ const ExportRequestInfoForm = ({
   fakeFetchDepartmentDetails,
   setFileConfirmed,
   fileName,
-  // ---- thêm các prop này nếu cần
-  exportType, // NEW
-  items, // NEW
-  providers, // NEW
-  pagination, // NEW (optional)
+  items,
+  providers,
+  pagination,
 }) => {
   const [timeError, setTimeError] = useState("");
   const [mandatoryError, setMandatoryError] = useState("");
@@ -50,7 +49,9 @@ const ExportRequestInfoForm = ({
       (!formData.exportDate ||
         !formData.exportReason ||
         !formData.receiverName ||
-        !formData.receiverPhone));
+        !formData.receiverPhone)) ||
+    (formData.exportType === "RETURN" &&
+      (!formData.exportDate || !formData.exportReason));
 
   const onSubmit = () => {
     if (missingFields) {
@@ -112,6 +113,16 @@ const ExportRequestInfoForm = ({
                 setMandatoryError={setMandatoryError}
               />
             )}
+            {formData.exportType === "RETURN" && (
+              <ReturnExportForm
+                formData={formData}
+                setFormData={setFormData}
+                timeError={timeError}
+                setTimeError={setTimeError}
+                mandatoryError={mandatoryError}
+                setMandatoryError={setMandatoryError}
+              />
+            )}
             {formData.exportType === "SELLING" && (
               <SellingExportForm
                 formData={formData}
@@ -146,10 +157,10 @@ const ExportRequestInfoForm = ({
             {mappedData.length > 0 ? (
               <ExcelDataTableAfter
                 data={mappedData}
-                exportType={formData.exportType} // truyền exportType
-                items={items} // truyền items nếu cần
-                providers={providers} // truyền providers nếu cần
-                pagination={pagination} // truyền pagination nếu dùng phân trang
+                exportType={formData.exportType}
+                items={items}
+                providers={providers}
+                pagination={pagination}
               />
             ) : (
               <div className="text-center py-10 text-gray-500">
@@ -184,6 +195,7 @@ const ExportRequestInfoForm = ({
         confirmLoading={confirmLoading}
         formData={formData}
         details={mappedData}
+        providers={providers} // <-- thêm dòng này
       />
     </div>
   );
@@ -215,6 +227,9 @@ ExportRequestInfoForm.propTypes = {
   fakeFetchDepartmentDetails: PropTypes.func.isRequired,
   setFileConfirmed: PropTypes.func.isRequired,
   fileName: PropTypes.string.isRequired,
+  items: PropTypes.array,
+  providers: PropTypes.array,
+  pagination: PropTypes.object,
 };
 
 export default ExportRequestInfoForm;

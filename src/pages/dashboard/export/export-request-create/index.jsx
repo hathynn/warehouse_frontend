@@ -88,6 +88,7 @@ const ExportRequestCreate = () => {
     createExportRequestProduction,
     createExportRequestLoan,
     createExportRequestSelling,
+    createExportRequestReturn,
   } = useExportRequestService();
 
   const { createExportRequestDetail } = useExportRequestDetailService();
@@ -396,6 +397,23 @@ const ExportRequestCreate = () => {
   // =============================================================================
   // FORM SUBMISSION
   // =============================================================================
+  const buildReturnPayload = () => {
+    let providerId = null;
+    // Nếu data tồn tại, lấy providerId của dòng đầu tiên (sau này handle multi-provider sau)
+    if (Array.isArray(data) && data.length > 0) {
+      providerId = data[0].providerId;
+    }
+
+    return {
+      countingDate: formData.exportDate,
+      countingTime: "07:00:00",
+      exportDate: formData.exportDate,
+      exportReason: formData.exportReason,
+      providerId: providerId,
+      type: "RETURN",
+    };
+  };
+
   const buildProductionPayload = () => ({
     exportReason: formData.exportReason,
     departmentId: formData.receivingDepartment.id,
@@ -544,6 +562,21 @@ const ExportRequestCreate = () => {
       }
     }
 
+    if (formData.exportType === "RETURN") {
+      if (!formData.exportDate || !formData.exportReason) {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập đầy đủ ngày nhận và lý do xuất trả.",
+        };
+      }
+      if (!data || !data[0] || !data[0].providerId) {
+        return {
+          isValid: false,
+          errorMessage: "File Excel phải có cột Nhà cung cấp.",
+        };
+      }
+    }
+
     return { isValid: true, errorMessage: "" };
   };
 
@@ -563,6 +596,10 @@ const ExportRequestCreate = () => {
       case "SELLING":
         payload = buildSellingPayload();
         createdExport = await createExportRequestSelling(payload);
+        break;
+      case "RETURN":
+        payload = buildReturnPayload();
+        createdExport = await createExportRequestReturn(payload);
         break;
       default:
         throw new Error("Loại phiếu xuất không hợp lệ");
