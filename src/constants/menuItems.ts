@@ -5,7 +5,8 @@ import {
   AiOutlineImport,
   AiOutlineExport,
   AiOutlineInbox,
-  AiOutlineSetting
+  AiOutlineSetting,
+  AiOutlineHistory
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -88,6 +89,28 @@ const configurationMenuItems: MenuItem[] = [
   },
 ];
 
+// Transaction Log menu items
+const transactionLogMenuItems: MenuItem[] = [
+  {
+    key: "transaction-logs",
+    icon: AiOutlineHistory,
+    label: "Quản lý lịch sử xuất nhập",
+    path: "",
+    children: [
+      {
+        key: "import-history",
+        label: "Lịch sử phiếu nhập",
+        path: ROUTES.PROTECTED.TRANSACTION_LOGS.IMPORT,
+      },
+      {
+        key: "export-history",
+        label: "Lịch sử phiếu xuất",
+        path: ROUTES.PROTECTED.TRANSACTION_LOGS.EXPORT,
+      },
+    ],
+  },
+];
+
 
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
@@ -96,6 +119,7 @@ export const menuItems: RoleMenuConfig = {
     ...baseMenuItems,
     ...importMenuItems,
     ...exportMenuItems,
+    ...transactionLogMenuItems,
     {
       key: "inventory-items",
       icon: AiOutlineInbox,
@@ -138,6 +162,6 @@ export const menuItems: RoleMenuConfig = {
 
   [AccountRole.ADMIN]: [
     ...baseMenuItems,
-    ...configurationMenuItems,
+    ...configurationMenuItems
   ],
 };

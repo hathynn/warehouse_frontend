@@ -71,28 +71,11 @@ const useImportRequestService = () => {
     }
   };
 
-  // Create a new import request
-  const createImportRequest = async (
-    requestData: ImportRequestCreateRequest
-  ): Promise<ResponseDTO<ImportRequestResponse>> => {
-    try {
-      const response = await callApi("post", "/import-request", requestData);
-      if (response && response.content) {
-        toast.success("Tạo phiếu nhập thành công");
-      }
-      return response;
-    } catch (error) {
-      toast.error("Không thể tạo phiếu nhập");
-      throw error;
-    }
-  };
-
   return {
     loading,
     getAllImportRequests,
     getImportRequestsByPage,
-    getImportRequestById,
-    createImportRequest,
+    getImportRequestById
   };
 };
 

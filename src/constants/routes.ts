@@ -40,6 +40,10 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     "/item/list",
     "/item/detail/:id",
     "/item/create",
+
+    // Transaction log routes
+    "/transaction-logs/import",
+    "/transaction-logs/export",
   ],
   [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
@@ -59,7 +63,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   ],
   [AccountRole.ADMIN]: [
     // Add admin specific routes here
-    "/configuration/list",
+    "/configuration/list"
   ],
 }
 
@@ -114,6 +118,12 @@ export const ROUTES = {
 
     CONFIGURATION: {
       LIST: "/configuration/list",
+    },
+
+    // Transaction Log routes
+    TRANSACTION_LOGS: {
+      IMPORT: "/transaction-logs/import",
+      EXPORT: "/transaction-logs/export",
     },
   },
 } as const; 

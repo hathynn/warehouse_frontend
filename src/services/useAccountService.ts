@@ -207,6 +207,23 @@ const useAccountService = () => {
   };
 
   /**
+   * Find account by username
+   * @param username - The username to search for
+   * @returns Promise resolving to AccountResponse
+   */
+  const findAccountByUsername = async (username: string): Promise<AccountResponse> => {
+    try {
+      const response = await callApi("get", `/account/by-username?username=${username}`);
+      if (response && response.content) {
+        return response.content;
+      }
+      throw new Error("Account not found");
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  /**
    * Find account by id
    * @param id - The id to search for
    * @returns Promise resolving to AccountResponse
@@ -233,6 +250,7 @@ const useAccountService = () => {
     getActiveStaff,
     getActiveStaffsInDay,
     findAccountByEmail,
+    findAccountByUsername,
     findAccountById,
   };
 };

@@ -27,6 +27,10 @@ export const pageTitles: PageTitlesType = {
   
   // Default pages
   [ROUTES.PROTECTED.OVERVIEW]: "Tổng quan",
+
+  // Transaction Log pages
+  [ROUTES.PROTECTED.TRANSACTION_LOGS.IMPORT]: "Lịch sử phiếu nhập",
+  [ROUTES.PROTECTED.TRANSACTION_LOGS.EXPORT]: "Lịch sử phiếu xuất",
   
   // Public pages
   [ROUTES.PUBLIC.LOGIN]: "Đăng nhập",

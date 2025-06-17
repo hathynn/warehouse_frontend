@@ -25,6 +25,7 @@ import ExportRequestDetail from '@/pages/dashboard/export/export-request-detail'
 import ExportRequestCreate from '@/pages/dashboard/export/export-request-create';
 import InventoryItemList from '@/pages/dashboard/inventory-item';
 import ConfigurationPage from '@/pages/dashboard/configuration';
+import ImportTransactionHistory from '@/pages/dashboard/transaction/import';
 
 export const Router = createBrowserRouter([
   {
@@ -131,6 +132,12 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.CONFIGURATION.LIST,
             element: <ConfigurationPage />,
+          },
+
+          // Transaction Log routes
+          {
+            path: ROUTES.PROTECTED.TRANSACTION_LOGS.IMPORT,
+            element: <ImportTransactionHistory />,
           },
         ],
       },
