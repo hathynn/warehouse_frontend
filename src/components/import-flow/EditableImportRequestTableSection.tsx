@@ -7,7 +7,7 @@ interface ItemType {
   id: string;
   name: string;
   measurementUnit?: string;
-  totalMeasurementValue?: number;
+  measurementValue?: number;
   providerIds: number[];
 }
 
@@ -86,7 +86,7 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
               itemId: selectedItem.id,
               itemName: selectedItem.name,
               measurementUnit: selectedItem.measurementUnit,
-              totalMeasurementValue: selectedItem.totalMeasurementValue,
+              measurementValue: selectedItem.measurementValue,
               providerId: newProviderId,
               providerName: newProvider ? newProvider.name : '',
             };
@@ -170,8 +170,8 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
     {
       width: "15%",
       title: <span className="font-semibold">Giá trị đo lường</span>,
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }

@@ -27,6 +27,7 @@ export interface ItemResponse {
   name: string;
   description: string;
   measurementUnit: string;
+  measurementValue: number;
   totalMeasurementValue: number;
   unitType: string;
   daysUntilDue: number;

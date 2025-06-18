@@ -107,8 +107,8 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
     },
     { 
       title: "Giá trị đo lường", 
-      dataIndex: "totalMeasurementValue", 
-      key: "totalMeasurementValue", 
+      dataIndex: "measurementValue", 
+      key: "measurementValue", 
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }

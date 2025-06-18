@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Table, TablePaginationConfig, Tag, Space } from "antd";
 import { ClockCircleOutlined, UserOutlined, FileTextOutlined } from "@ant-design/icons";
-import useTransactionLogService, { TransactionLogResponse } from "@/services/useTransactionLogService";
+import useTransactionLogService from "@/services/useTransactionLogService";
+import { ImportRequestTransactionLog, TransactionLogResponse } from "@/utils/interfaces";
 import dayjs from "dayjs";
-import useAccountService from "@/services/useAccountService";
-
-interface TransactionLogData extends TransactionLogResponse {
-  parsedResponseData?: any;
-}
 
 const ImportTransactionHistory: React.FC = () => {
   // ========== DATA STATES ==========
-  const [transactionLogsData, setTransactionLogsData] = useState<TransactionLogData[]>([]);
+  const [transactionLogsData, setTransactionLogsData] = useState<ImportRequestTransactionLog[]>([]);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 20,
@@ -20,14 +16,6 @@ const ImportTransactionHistory: React.FC = () => {
 
   // ========== SERVICES ==========
   const { loading, getAllTransactionLogs } = useTransactionLogService();
-  // ========== UTILITY FUNCTIONS ==========
-  const parseResponseData = (responseData: string) => {
-    try {
-      return JSON.parse(responseData);
-    } catch (error) {
-      return null;
-    }
-  };
 
   const getActionColor = (action: string): string => {
     switch (action) {
@@ -51,12 +39,6 @@ const ImportTransactionHistory: React.FC = () => {
     }
   };
 
-
-  // ========== COMPUTED VALUES & FILTERING ==========
-  const filteredItems = transactionLogsData.filter(item => 
-    item.type === 'IMPORT_REQUEST'
-  );
-
   // ========== USE EFFECTS ==========
   useEffect(() => {
     fetchTransactionLogs();
@@ -67,16 +49,13 @@ const ImportTransactionHistory: React.FC = () => {
     try {
       const response = await getAllTransactionLogs();
       
-      const formattedLogs: TransactionLogData[] = (response.content || []).map(log => ({
-        ...log,
-        parsedResponseData: parseResponseData(log.responseData)
-      }));
+      const formattedLogs = response.content as ImportRequestTransactionLog[];
 
       setTransactionLogsData(formattedLogs);
       
       setPagination(prev => ({
         ...prev,
-        total: formattedLogs.filter(item => item.type === 'IMPORT_REQUEST').length
+        total: formattedLogs.length
       }));
     } catch (error) {
       console.error('Error fetching transaction logs:', error);
@@ -103,7 +82,7 @@ const ImportTransactionHistory: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      sorter: (a: TransactionLogData, b: TransactionLogData) => {
+      sorter: (a: ImportRequestTransactionLog, b: ImportRequestTransactionLog) => {
         const dateA = dayjs(a.createdDate);
         const dateB = dayjs(b.createdDate);
         return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
@@ -124,14 +103,14 @@ const ImportTransactionHistory: React.FC = () => {
     },
     {
       title: "Người thực hiện",
-      dataIndex: "username",
-      key: "username",
+      dataIndex: "executorFullName",
+      key: "executorFullName",
       width: "15%",
       align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (executorUsername: string, record: TransactionLogData) => (
+      render: (executorFullName: string, record: ImportRequestTransactionLog) => (
         <div className="flex items-center justify-center gap-2">
           <UserOutlined className="!text-2xl" />
           <span className="text-lg font-medium">{record.executorFullName}</span>
@@ -147,12 +126,32 @@ const ImportTransactionHistory: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (action: string, record: TransactionLogData) => (
+      render: (action: string, record: ImportRequestTransactionLog) => (
         <Space direction="vertical" size="small" className="w-full">
           <Tag color={getActionColor(record.action)} className="mx-auto !text-lg">
             {getActionText(record.action)}
           </Tag>
         </Space>
+      ),
+    },
+    {
+      title: "Chi tiết phiếu nhập",
+      dataIndex: "responseContent",
+      key: "responseContent",
+      width: "30%",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (responseContent: any, record: ImportRequestTransactionLog) => (
+        // ✅ Bây giờ có full autocomplete cho responseContent
+        <div className="text-left">
+          <div><strong>ID:</strong> {record.responseContent.importRequestId}</div>
+          <div><strong>Lý do:</strong> {record.responseContent.importReason}</div>
+          <div><strong>Loại:</strong> {record.responseContent.importType}</div>
+          <div><strong>Trạng thái:</strong> {record.responseContent.status}</div>
+          <div><strong>Batch:</strong> {record.responseContent.batchCode}</div>
+        </div>
       ),
     },
   ];
@@ -185,14 +184,14 @@ const ImportTransactionHistory: React.FC = () => {
 
       <Table
         columns={columns}
-        dataSource={filteredItems}
+        dataSource={transactionLogsData}
         rowKey="id"
         loading={loading}
         onChange={handleTableChange}
         className="[&_.ant-table-cell]:!p-3 [&_.ant-table-thead_th.ant-table-column-has-sorters:hover]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters:active]:!bg-transparent [&_.ant-table-thead_th.ant-table-column-has-sorters]:!transition-none [&_.ant-table-tbody_td.ant-table-column-sort]:!bg-transparent [&_.ant-table-tbody_tr:hover_td]:!bg-blue-50"
         pagination={{
           ...pagination,
-          total: filteredItems.length,
+          total: transactionLogsData.length,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100'],
           locale: {

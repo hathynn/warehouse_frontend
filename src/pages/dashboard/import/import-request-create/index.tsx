@@ -17,14 +17,14 @@ import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
 import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
+import RequestTypeSelector, { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 
 const { Title } = Typography;
-const { Option } = Select;
 const { TextArea } = Input;
 
 interface FormData {
   importReason: string;
-  importType: "ORDER" | "RETURN";
+  importType: ImportRequestType;
   exportRequestId: number | null;
   startDate: string;
   endDate: string;
@@ -46,7 +46,7 @@ const ImportRequestCreate: React.FC = () => {
     importType: "ORDER",
     exportRequestId: null,
     startDate: dayjs().format("YYYY-MM-DD"),
-    endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"), // Temporary default, will be updated when configuration loads
+    endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
   });
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
@@ -112,19 +112,19 @@ const ImportRequestCreate: React.FC = () => {
     if (!formData.importReason || !formData.startDate || !formData.endDate) {
       return false;
     }
-    
+
     // Check if startDate is today or later
     const startDate = dayjs(formData.startDate);
     const today = dayjs().startOf('day');
     if (startDate.isBefore(today)) {
       return false;
     }
-    
+
     // Check if endDate is valid
     if (!isEndDateValid(formData.startDate, formData.endDate)) {
       return false;
     }
-    
+
     return true;
   };
 
@@ -144,10 +144,10 @@ const ImportRequestCreate: React.FC = () => {
 
   const getConsolidatedData = (originalData: ImportRequestDetailRow[]): ImportRequestDetailRow[] => {
     const groupedData: { [key: string]: ImportRequestDetailRow } = {};
-    
+
     originalData.forEach((item) => {
       const key = `${item.itemId}-${item.providerId}`;
-      
+
       if (groupedData[key]) {
         // Nếu đã tồn tại, cộng thêm số lượng
         groupedData[key].quantity += item.quantity;
@@ -276,7 +276,7 @@ const ImportRequestCreate: React.FC = () => {
                 providerId: Number(providerId),
                 itemName: foundItem.name,
                 measurementUnit: foundItem.measurementUnit || "Unknown",
-                totalMeasurementValue: foundItem.totalMeasurementValue || 0,
+                measurementValue: foundItem.measurementValue || 0,
                 providerName: foundProvider.name
               };
             });
@@ -291,6 +291,18 @@ const ImportRequestCreate: React.FC = () => {
         }
       };
       reader.readAsArrayBuffer(uploadedFile);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileName("");
+    setData([]);
+    setIsImportRequestDataValid(false);
+    setIsAllPagesViewed(false);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -364,8 +376,8 @@ const ImportRequestCreate: React.FC = () => {
     {
       width: "15%",
       title: <span className="font-semibold">Giá trị đo lường</span>,
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
@@ -415,51 +427,59 @@ const ImportRequestCreate: React.FC = () => {
       <Title level={2}>Tạo phiếu nhập kho</Title>
 
       {step === 0 && (
-        <div className="mt-4 flex flex-col items-center gap-6">
-          <div className="w-full">
-            <ExcelUploadSection
-              fileName={fileName}
-              onFileChange={handleFileUpload}
-              onDownloadTemplate={downloadTemplate}
-              fileInputRef={fileInputRef}
-              buttonLabel="Tải lên file Excel"
-            />
-            <EditableImportRequestTableSection
-              setIsAllPagesViewed={setIsAllPagesViewed}
-              data={data} // Sử dụng data gốc
-              setData={setData}
-              items={items}
-              providers={providers}
-              loading={false}
-              alertNode={data.length > 0 ? (
-                <Alert
-                  message="Thông tin nhập kho"
-                  description={
-                    <>
-                      <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
-                      <p>Tổng số mặt hàng: {data.length}</p>
-                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
-                    </>
-                  }
-                  type="info"
-                  showIcon
-                  className="mb-4"
-                />
-              ) : null}
-              emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
-              title="Danh sách hàng hóa từ file Excel"
-            />
+        <>
+          <RequestTypeSelector
+            requestType={formData.importType}
+            setRequestType={(value: ImportRequestType) => setFormData({ ...formData, importType: value })}
+            mode="import"
+          />
+          <div className="mt-2 flex flex-col items-center gap-6">
+            <div className="w-full">
+              <ExcelUploadSection
+                fileName={fileName}
+                onFileChange={handleFileUpload}
+                onDownloadTemplate={downloadTemplate}
+                onRemoveFile={handleRemoveFile}
+                fileInputRef={fileInputRef}
+                buttonLabel="Tải lên file Excel"
+              />
+              <EditableImportRequestTableSection
+                setIsAllPagesViewed={setIsAllPagesViewed}
+                data={data} // Sử dụng data gốc
+                setData={setData}
+                items={items}
+                providers={providers}
+                loading={false}
+                alertNode={data.length > 0 ? (
+                  <Alert
+                    message="Thông tin nhập kho"
+                    description={
+                      <>
+                        <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
+                        <p>Tổng số mặt hàng: {data.length}</p>
+                        <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
+                      </>
+                    }
+                    type="info"
+                    showIcon
+                    className="mb-4"
+                  />
+                ) : null}
+                emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+                title="Danh sách hàng hóa từ file Excel"
+              />
+            </div>
+            <Button
+              type="primary"
+              onClick={() => setStep(1)}
+              disabled={data.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
+            >
+              Tiếp tục nhập thông tin phiếu nhập
+              <ArrowRightOutlined />
+              {!isAllPagesViewed && isImportRequestDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
+            </Button>
           </div>
-          <Button
-            type="primary"
-            onClick={() => setStep(1)}
-            disabled={data.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
-          >
-            Tiếp tục nhập thông tin phiếu nhập
-            <ArrowRightOutlined />
-            {!isAllPagesViewed && isImportRequestDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
-          </Button>
-        </div>
+        </>
       )}
       {step === 1 && (
         <div className="mt-4 flex gap-6">
@@ -476,17 +496,6 @@ const ImportRequestCreate: React.FC = () => {
                   maxLength={150}
                   showCount
                 />
-              </div>
-              <div className="mb-2">
-                <label className="text-md font-semibold">Loại nhập kho <span className="text-red-500">*</span></label>
-                <Select
-                  value={formData.importType}
-                  onChange={(value) => setFormData({ ...formData, importType: value })}
-                  className="w-full"
-                >
-                  <Option value="ORDER">Nhập theo kế hoạch</Option>
-                  <Option value="RETURN">Nhập trả</Option>
-                </Select>
               </div>
               <div className="mb-2">
                 <label className="text-md font-semibold">Ngày phiếu có hiệu lực <span className="text-red-500">*</span></label>

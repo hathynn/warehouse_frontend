@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ImportStatus } from "@/utils/enums";
@@ -50,7 +50,6 @@ export interface ImportOrderResponse {
 
 const useImportOrderService = () => {
   const { callApi, loading } = useApi();
-  const [importOrderId, setImportOrderId] = useState<string | null>(null);
 
   const getAllImportOrders = async (): Promise<ResponseDTO<ImportOrderResponse[]>> => {
     try {
@@ -107,7 +106,6 @@ const useImportOrderService = () => {
     try {
       const response = await callApi("post", "/import-order", requestData);
       if (response && response.content) {
-        setImportOrderId(response.content.importOrderId);
         toast.success("Tạo đơn nhập thành công");
       }
       return response;
@@ -172,7 +170,6 @@ const useImportOrderService = () => {
 
   return {
     loading,
-    importOrderId,
     getAllImportOrders,
     getImportOrdersByPage,
     getAllImportOrdersByImportRequestId,

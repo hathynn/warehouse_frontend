@@ -429,6 +429,46 @@ const ImportOrderCreate = () => {
     reader.readAsArrayBuffer(uploadedFile);
   };
 
+  const handleRemoveFile = () => {
+    setFileName("");
+    setExcelImported(false);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    // Reset form data to default values
+    setFormData(prev => ({
+      ...prev,
+      dateReceived: defaultDateTime.date,
+      timeReceived: defaultDateTime.time,
+      note: ""
+    }));
+    // Reset editable rows to original data
+    if (importRequestDetails.length) {
+      setEditableRows(
+        importRequestDetails
+          .filter(row => {
+            if (row.actualQuantity === 0) {
+              return row.expectQuantity !== row.orderedQuantity;
+            } else {
+              return row.expectQuantity !== row.actualQuantity;
+            }
+          })
+          .map(row => ({
+            itemId: row.itemId,
+            itemName: row.itemName,
+            expectQuantity: row.expectQuantity,
+            orderedQuantity: row.orderedQuantity,
+            plannedQuantity: row.actualQuantity === 0
+              ? row.expectQuantity - row.orderedQuantity
+              : row.expectQuantity - row.actualQuantity,
+            actualQuantity: row.actualQuantity,
+            importRequestProviderId: importRequest?.providerId || 0,
+          }))
+      );
+    }
+  };
+
   // ==================== TABLE CONFIGURATION ====================
   const columns = [
     {
@@ -512,6 +552,7 @@ const ImportOrderCreate = () => {
               fileName={fileName}
               onFileChange={handleExcelUpload}
               onDownloadTemplate={downloadTemplate}
+              onRemoveFile={handleRemoveFile}
               fileInputRef={fileInputRef}
               buttonLabel="Tải lên file Excel"
             />

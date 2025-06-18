@@ -15,6 +15,7 @@ import FileUploadSection from "@/components/export-flow/export-create/FileUpload
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
 import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
 import Title from "antd/es/typography/Title";
+import RequestTypeSelector from "@/components/commons/RequestTypeSelector";
 // Services
 import useItemService from "@/services/useItemService";
 import useExportRequestService from "@/services/useExportRequestService";
@@ -674,7 +675,7 @@ const ExportRequestCreate = () => {
   };
 
   return (
-    <div className="container mx-auto p-5">
+    <div className="container mx-auto p-3 pt-0">
       {!fileConfirmed ? (
         // File Upload Step
         <>
@@ -683,13 +684,12 @@ const ExportRequestCreate = () => {
             onBack={() => navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST)}
           />
 
-          <div className="flex justify-between items-center mb-2">
-            <Title level={3}>Nhập file excel để tạo phiếu xuất</Title>
-          </div>
+          <Title level={2}>Tạo phiếu xuất</Title>
 
-          <ExportTypeSelector
-            exportType={formData.exportType}
-            setExportType={handleExportTypeChange}
+          <RequestTypeSelector
+            requestType={formData.exportType}
+            setRequestType={handleExportTypeChange}
+            mode="export"
           />
 
           <FileUploadSection
@@ -774,10 +774,10 @@ const ExportRequestCreate = () => {
           departments={departments}
           setFileConfirmed={handleBackToFileStep}
           fileName={fileName}
-          exportType={formData.exportType} // <--- thêm dòng này
-          items={items.content || []} // <--- thêm dòng này
-          providers={providers} // <--- thêm dòng này
-          pagination={pagination} // <--- thêm dòng này (nếu muốn phân trang trong bảng kết quả)
+          exportType={formData.exportType}
+          items={items.content || []}
+          providers={providers}
+          pagination={pagination}
         />
       )}
 
@@ -807,3 +807,4 @@ const ExportRequestCreate = () => {
 };
 
 export default ExportRequestCreate;
+

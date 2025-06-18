@@ -78,7 +78,7 @@ const ImportRequestList: React.FC = () => {
   const filteredItems = importRequestsData.filter((item) => {
     const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
     const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
-    const matchesImportType = selectedImportType === "ALL" ? true : item.importType === selectedImportType;
+    const matchesImportType = item.importType === selectedImportType;
     const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
 
     // Filter logic based on selected status filter
@@ -418,11 +418,7 @@ const ImportRequestList: React.FC = () => {
               {
                 key: "RETURN",
                 label: "Nhập trả",
-              },
-              {
-                key: "ALL",
-                label: "Tất cả",
-              },
+              }
             ]}
           />
           <Space size="large">
