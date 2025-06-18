@@ -334,12 +334,7 @@ const ImportTransactionHistory: React.FC = () => {
       align: "center" as const,
       render: (importType: string) => (
         importType ? (
-          <Tag
-            color={importType === 'ORDER' ? 'blue' : 'orange'}
-            className="!text-sm !px-2 !py-1"
-          >
-            {getImportTypeText(importType)}
-          </Tag>
+          <span className="text-sm font-bold">{getImportTypeText(importType)}</span>
         ) : (
           <span className="text-gray-500">-</span>
         )
@@ -480,12 +475,7 @@ const ImportTransactionHistory: React.FC = () => {
                           {detail.importType && (
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-gray-600">Loại nhập:</span>
-                              <Tag
-                                color={detail.importType === 'ORDER' ? 'blue' : 'orange'}
-                                className="!text-sm !px-2 !py-1"
-                              >
-                                {getImportTypeText(detail.importType)}
-                              </Tag>
+                              <span className="text-sm font-bold text-blue-600">{getImportTypeText(detail.importType)}</span>
                             </div>
                           )}
                         </div>

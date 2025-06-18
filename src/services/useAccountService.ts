@@ -96,7 +96,6 @@ const useAccountService = () => {
     try {
       const response = await callApi("post", "/account/login", request);
       if (response && response.content) {
-        toast.success("Đăng nhập thành công");
         return response.content;
       }
       throw new Error("Authentication failed");

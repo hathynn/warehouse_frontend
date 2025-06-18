@@ -74,9 +74,6 @@ const useImportRequestDetailService = () => {
         "/import-request-detail/import-requests-with-import-request-details",
         details
       );
-      if (response && response.content) {
-        toast.success("Tạo phiếu nhập kho thành công!");
-      }
       return response;
     } catch (error) {
       toast.error("Có lỗi xảy ra khi tạo phiếu nhập kho");

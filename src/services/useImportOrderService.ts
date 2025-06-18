@@ -105,9 +105,6 @@ const useImportOrderService = () => {
   const createImportOrder = async (requestData: ImportOrderCreateRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", "/import-order", requestData);
-      if (response && response.content) {
-        toast.success("Tạo đơn nhập thành công");
-      }
       return response;
     } catch (error) {
       toast.error("Không thể tạo đơn nhập");
@@ -119,9 +116,6 @@ const useImportOrderService = () => {
   const assignStaff = async (requestData: AssignStaffRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", "/import-order/assign-staff", requestData);
-      if (response && response.content) {
-        toast.success("Phân công nhân viên kho thành công");
-      }
       return response;
     } catch (error) {
       toast.error("Không thể phân công nhân viên kho");
@@ -132,9 +126,6 @@ const useImportOrderService = () => {
   const completeImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/complete/${importOrderId}`);
-      if (response && response.content) {
-        toast.success("Hoàn tất đơn nhập thành công");
-      }
       return response;
     } catch (error) {
       toast.error("Không thể hoàn tất đơn nhập");
@@ -145,9 +136,6 @@ const useImportOrderService = () => {
   const cancelImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/cancel/${importOrderId}`);
-      if (response && response.content) {
-        toast.success("Hủy đơn nhập thành công");
-      }
       return response;
     } catch (error) {
       toast.error("Không thể hủy đơn nhập");
@@ -158,9 +146,6 @@ const useImportOrderService = () => {
   const extendImportOrder = async (requestData: ExtendImportOrderRequest): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", "/import-order/extend", requestData);
-      if (response && response.content) {
-        toast.success("Gia hạn đơn nhập thành công");
-      }
       return response;
     } catch (error) {
       toast.error("Không thể gia hạn đơn nhập");
