@@ -37,7 +37,7 @@ const ImportRequestCreate: React.FC = () => {
   // ========== DATA STATES ==========
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [step, setStep] = useState<number>(0);
-  const [data, setData] = useState<ImportRequestDetailRow[]>([]);
+  const [importedData, setImportedData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
@@ -129,14 +129,18 @@ const ImportRequestCreate: React.FC = () => {
   };
 
   const downloadTemplate = () => {
-    const template = [
-      {
-        "itemId": "Mã hàng (số)",
-        "quantity": "Số lượng (số)",
-        "providerId": "Mã Nhà cung cấp (số)"
-      }
-    ];
-    const ws = XLSX.utils.json_to_sheet(template);
+    // Tạo worksheet rỗng
+    const ws = XLSX.utils.aoa_to_sheet([]);
+    
+    // Thêm thông tin header
+    XLSX.utils.sheet_add_aoa(ws, [
+      ["importType", "ORDER"],
+      ["importReason", "Nhập hàng từ nhà cung cấp"],
+      [], // Dòng trống để tách biệt
+      ["itemId", "quantity", "providerId"], // Header cho dữ liệu
+      ["{Mã hàng}", "{Số lượng - Ví dụ: 10}", "{Mã Nhà cung cấp}"] // Dữ liệu mẫu
+    ], { origin: "A1" });
+    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "import_request_template.xlsx");
@@ -163,10 +167,10 @@ const ImportRequestCreate: React.FC = () => {
   // ========== COMPUTED VALUES & FILTERING ==========
   const sortedData = useMemo(() => {
     if (step === 1) {
-      return [...getConsolidatedData(data)].sort((a, b) => a.providerId - b.providerId);
+      return [...getConsolidatedData(importedData)].sort((a, b) => a.providerId - b.providerId);
     }
-    return [...data].sort((a, b) => a.providerId - b.providerId);
-  }, [data, step]);
+    return [...importedData].sort((a, b) => a.providerId - b.providerId);
+  }, [importedData, step]);
 
   // ========== USE EFFECTS ==========
   useEffect(() => {
@@ -249,27 +253,66 @@ const ImportRequestCreate: React.FC = () => {
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: "array" });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(ws);
+          
           try {
-            const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
-              const itemId = item["itemId"] || item["Mã hàng"];
-              const quantity = item["quantity"] || item["Số lượng"];
-              const providerId = item["providerId"] || item["Nhà cung cấp"];
-              if (!itemId || !quantity || !providerId) {
-                throw new Error(`Dòng ${index + 1}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
+            // Đọc importType từ B1
+            const importTypeCell = ws['B1'];
+            const importType = importTypeCell ? importTypeCell.v : null;
+            
+            // Đọc importReason từ B2
+            const importReasonCell = ws['B2'];
+            const importReason = importReasonCell ? importReasonCell.v : "";
+            
+            // Cập nhật formData nếu có dữ liệu từ file
+            if (importType && (importType === "ORDER" || importType === "RETURN")) {
+              setFormData(prev => ({
+                ...prev,
+                importType: importType as ImportRequestType,
+                importReason: importReason || prev.importReason
+              }));
+            }
+            // Đọc dữ liệu từ dòng 5 trở đi (bỏ qua header ở dòng 1,2,3,4)
+            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+            const jsonData = [];
+            
+            for (let rowNum = 4; rowNum <= range.e.r; rowNum++) { // Bắt đầu từ dòng 5 (index 4)
+              const row: any = {};
+              const itemIdCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 0})]; // Column A
+              const quantityCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 1})]; // Column B
+              const providerIdCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 2})]; // Column C
+              
+              if (itemIdCell && quantityCell && providerIdCell) {
+                row.itemId = itemIdCell.v;
+                row.quantity = quantityCell.v;
+                row.providerId = providerIdCell.v;
+                jsonData.push(row);
               }
+            }
+            
+            const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
+              const itemId = item.itemId;
+              const quantity = item.quantity;
+              const providerId = item.providerId;
+              
+              if (!itemId || !quantity || !providerId) {
+                throw new Error(`Dòng ${index + 5}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
+              }
+              
               const foundItem = items.find(i => i.id === itemId);
               if (!foundItem) {
-                throw new Error(`Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`);
+                throw new Error(`Dòng ${index + 5}: Không tìm thấy mặt hàng với mã ${itemId}`);
               }
+              
               const foundProvider = providers.find(p => p.id === Number(providerId));
               if (!foundProvider) {
-                throw new Error(`Dòng ${index + 1}: Không tìm thấy nhà cung cấp với ID ${providerId}`);
+                throw new Error(`Dòng ${index + 5}: Không tìm thấy nhà cung cấp với ID ${providerId}`);
               }
+              
               // Validate the provider is actually linked to the item
               if (!Array.isArray(foundItem.providerIds) || !foundItem.providerIds.includes(Number(providerId))) {
-                throw new Error(`Dòng ${index + 1}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
+                throw new Error(`Dòng ${index + 5}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
               }
+              
               return {
                 itemId: itemId,
                 quantity: Number(quantity),
@@ -280,8 +323,10 @@ const ImportRequestCreate: React.FC = () => {
                 providerName: foundProvider.name
               };
             });
-            setData(transformedData);
+            
+            setImportedData(transformedData);
             setIsImportRequestDataValid(true);
+            
           } catch (error) {
             if (error instanceof Error) {
               setIsImportRequestDataValid(false);
@@ -297,7 +342,7 @@ const ImportRequestCreate: React.FC = () => {
   const handleRemoveFile = () => {
     setFile(null);
     setFileName("");
-    setData([]);
+    setImportedData([]);
     setIsImportRequestDataValid(false);
     setIsAllPagesViewed(false);
     // Reset file input
@@ -306,8 +351,13 @@ const ImportRequestCreate: React.FC = () => {
     }
   };
 
+  const handleRequestTypeChange = (value: ImportRequestType) => {
+    handleRemoveFile();
+    setFormData({ ...formData, importType: value });
+  };
+
   const handleSubmit = async () => {
-    if (!file || data.length === 0) {
+    if (!file || importedData.length === 0) {
       toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
       return;
     }
@@ -340,7 +390,7 @@ const ImportRequestCreate: React.FC = () => {
     });
     setFile(null);
     setFileName("");
-    setData([]);
+    setImportedData([]);
   };
 
   // ========== NAVIGATION HANDLERS ==========
@@ -424,13 +474,13 @@ const ImportRequestCreate: React.FC = () => {
           Quay lại
         </Button>
       </div>
-      <Title level={2}>Tạo phiếu nhập kho</Title>
+      <Title level={2}>Tạo phiếu nhập</Title>
 
       {step === 0 && (
         <>
           <RequestTypeSelector
             requestType={formData.importType}
-            setRequestType={(value: ImportRequestType) => setFormData({ ...formData, importType: value })}
+            setRequestType={handleRequestTypeChange}
             mode="import"
           />
           <div className="mt-2 flex flex-col items-center gap-6">
@@ -445,18 +495,18 @@ const ImportRequestCreate: React.FC = () => {
               />
               <EditableImportRequestTableSection
                 setIsAllPagesViewed={setIsAllPagesViewed}
-                data={data} // Sử dụng data gốc
-                setData={setData}
+                data={importedData} // Sử dụng data gốc
+                setData={setImportedData}
                 items={items}
                 providers={providers}
                 loading={false}
-                alertNode={data.length > 0 ? (
+                alertNode={importedData.length > 0 ? (
                   <Alert
                     message="Thông tin nhập kho"
                     description={
                       <>
-                        <p>Số lượng nhà cung cấp: {Array.from(new Set(data.map(item => item.providerId))).length}</p>
-                        <p>Tổng số mặt hàng: {data.length}</p>
+                        <p>Số lượng nhà cung cấp: {Array.from(new Set(importedData.map(item => item.providerId))).length}</p>
+                        <p>Tổng số mặt hàng: {importedData.length}</p>
                         <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
                       </>
                     }
@@ -472,7 +522,7 @@ const ImportRequestCreate: React.FC = () => {
             <Button
               type="primary"
               onClick={() => setStep(1)}
-              disabled={data.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
+              disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
             >
               Tiếp tục nhập thông tin phiếu nhập
               <ArrowRightOutlined />
@@ -538,7 +588,7 @@ const ImportRequestCreate: React.FC = () => {
                 loading={loading}
                 className="w-full mt-4"
                 id="btn-detail"
-                disabled={data.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
+                disabled={importedData.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
               >
                 Xác nhận thông tin
               </Button>
@@ -585,7 +635,7 @@ const ImportRequestCreate: React.FC = () => {
         onCancel={() => setShowConfirmModal(false)}
         confirmLoading={loading}
         formData={formData}
-        details={getConsolidatedData(data)} // Truyền data đã gộp vào modal
+        details={getConsolidatedData(importedData)} // Truyền data đã gộp vào modal
         providers={providers.reduce((providerNameMap, provider) => {
           providerNameMap[provider.id] = provider.name;
           return providerNameMap;

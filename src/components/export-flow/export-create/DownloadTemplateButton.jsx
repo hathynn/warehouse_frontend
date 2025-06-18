@@ -9,24 +9,24 @@ const DownloadTemplateButton = ({ exportType }) => {
     if (exportType === "SELLING") {
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
+          itemId: "{Mã hàng}",
+          quantity: "{Số lượng - Ví dụ: 10}",
         },
       ];
     } else if (exportType === "RETURN") {
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
-          providerId: "Mã Nhà cung cấp (số)",
+          itemId: "{Mã hàng}",
+          quantity: "{Số lượng - Ví dụ: 10}",
+          providerId: "{Mã Nhà cung cấp}",
         },
       ];
     } else {
       // Các loại khác để sau, hiện tại default theo SELLING
       template = [
         {
-          itemId: "Mã hàng (số)",
-          quantity: "Số lượng (số)",
+          itemId: "{Mã hàng}",
+          quantity: "{Số lượng - Ví dụ: 10}",
         },
       ];
     }
