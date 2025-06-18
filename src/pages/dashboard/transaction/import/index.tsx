@@ -261,11 +261,11 @@ const ImportTransactionHistory: React.FC = () => {
       }
     });
 
-    // Sort by creation date
+    // Sort by creation date - từ mới nhất đến cũ nhất
     relatedTransactions.sort((a, b) => {
       const dateA = dayjs(a.createdDate);
       const dateB = dayjs(b.createdDate);
-      return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+      return dateB.isBefore(dateA) ? -1 : dateB.isAfter(dateA) ? 1 : 0;
     });
 
     setTransactionDetails(relatedTransactions);
