@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Table, TablePaginationConfig, Tag, Space, Drawer, Descriptions, Timeline } from "antd";
-import { ClockCircleOutlined, UserOutlined, FileTextOutlined, EyeOutlined } from "@ant-design/icons";
+import { Table, TablePaginationConfig, Tag, Space, Drawer, Descriptions, Timeline, Input, DatePicker, Select } from "antd";
+import { ClockCircleOutlined, UserOutlined, FileTextOutlined, EyeOutlined, SearchOutlined } from "@ant-design/icons";
 import useTransactionLogService from "@/services/useTransactionLogService";
+import useAccountService, { AccountResponse } from "@/services/useAccountService";
+import { AccountRoleForRequest } from "@/utils/enums";
 import { ImportRequestTransactionLog, ImportOrderTransactionLog, TransactionLogResponse } from "@/utils/interfaces";
 import { ImportOrderResponse } from "@/services/useImportOrderService";
 import { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -31,17 +33,25 @@ interface TransactionDetail {
   importOrderId?: string;
   status?: string;
   note?: string;
+  assignedStaffId?: number;
+  assignedStaffName?: string;
 }
 
 const ImportTransactionHistory: React.FC = () => {
   // ========== DATA STATES ==========
   const [importRequestSummaries, setImportRequestSummaries] = useState<ImportRequestSummary[]>([]);
   const [allTransactionLogs, setAllTransactionLogs] = useState<TransactionLogResponse[]>([]);
+  const [staffList, setStaffList] = useState<AccountResponse[]>([]);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 20,
     total: 0,
   });
+
+  // ========== FILTER STATES ==========
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
+  const [selectedCreator, setSelectedCreator] = useState<string[]>([]);
 
   // ========== DRAWER STATES ==========
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -49,12 +59,23 @@ const ImportTransactionHistory: React.FC = () => {
   const [transactionDetails, setTransactionDetails] = useState<TransactionDetail[]>([]);
 
   // ========== SERVICES ==========
-  const { loading, getAllTransactionLogs } = useTransactionLogService();
+  const { loading: transactionLoading, getAllTransactionLogs } = useTransactionLogService();
+  const { loading: accountLoading, getAccountsByRole } = useAccountService();
+
+  const loading = transactionLoading || accountLoading;
+
+  // ========== UTILITY FUNCTIONS ==========
+  const getStaffNameById = (staffId: number): string => {
+    const staff = staffList.find(s => s.id === staffId);
+    return staff ? staff.fullName : `Nhân viên ID: ${staffId}`;
+  };
 
   const getActionColor = (action: string): string => {
     switch (action) {
       case 'CREATE':
         return 'green';
+      case 'ASSIGN_STAFF':
+        return 'blue';
       case 'EXTEND':
         return 'orange';
       case 'COMPLETE':
@@ -70,6 +91,8 @@ const ImportTransactionHistory: React.FC = () => {
     switch (action) {
       case 'CREATE':
         return 'Tạo mới';
+      case 'ASSIGN_STAFF':
+        return 'Phân công';
       case 'EXTEND':
         return 'Gia hạn';
       case 'COMPLETE':
@@ -92,12 +115,43 @@ const ImportTransactionHistory: React.FC = () => {
     }
   };
 
+  // ========== COMPUTED VALUES & FILTERING ==========
+  const filteredItems = importRequestSummaries.filter((item) => {
+    const matchesSearch = item.importRequestId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
+    const matchesCreator = selectedCreator.length > 0 ? selectedCreator.includes(item.executorFullName) : true;
+
+    return matchesSearch && matchesDate && matchesCreator;
+  });
+
+  // Get unique creators from data
+  const uniqueCreators = Array.from(new Set(importRequestSummaries.map(item => item.executorFullName))).filter(Boolean);
+
   // ========== USE EFFECTS ==========
   useEffect(() => {
     fetchTransactionLogs();
+    fetchStaffList();
   }, []);
 
+  // Update pagination total when filtered items change
+  useEffect(() => {
+    setPagination(prev => ({
+      ...prev,
+      total: filteredItems.length,
+      current: 1 // Reset to first page when filter changes
+    }));
+  }, [filteredItems.length]);
+
   // ========== DATA FETCHING FUNCTIONS ==========
+  const fetchStaffList = async (): Promise<void> => {
+    try {
+      const response = await getAccountsByRole(AccountRoleForRequest.STAFF);
+      setStaffList(response || []);
+    } catch (error) {
+      console.error('Error fetching staff list:', error);
+    }
+  };
+
   const fetchTransactionLogs = async (): Promise<void> => {
     try {
       const response = await getAllTransactionLogs();
@@ -157,6 +211,18 @@ const ImportTransactionHistory: React.FC = () => {
   };
 
   // ========== EVENT HANDLERS ==========
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleDateChange = (date: dayjs.Dayjs | null): void => {
+    setSelectedDate(date);
+  };
+
+  const handleCreatorChange = (value: string[]): void => {
+    setSelectedCreator(value);
+  };
+
   const handleTableChange = (newPagination: TablePaginationConfig): void => {
     setPagination({
       ...newPagination,
@@ -221,6 +287,8 @@ const ImportTransactionHistory: React.FC = () => {
             importRequestId: importOrder.importRequestId,
             status: importOrder.status,
             note: importOrder.note,
+            assignedStaffId: importOrder.assignedStaffId,
+            assignedStaffName: importOrder.assignedStaffId ? getStaffNameById(importOrder.assignedStaffId) : undefined,
           });
         }
       }
@@ -328,10 +396,45 @@ const ImportTransactionHistory: React.FC = () => {
   return (
     <div className="mx-auto TransactionHistory">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Lịch sử giao dịch - Phiếu nhập</h1>
+        <h1 className="text-2xl font-bold">Lịch sử của phiếu nhập</h1>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <ClockCircleOutlined />
           <span>Cập nhật: {dayjs().format("DD-MM-YYYY HH:mm")}</span>
+        </div>
+      </div>
+
+      {/* Filter Section */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="min-w-[300px]">
+            <Input
+              placeholder="Tìm theo mã phiếu nhập"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              prefix={<SearchOutlined />}
+              className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+            />
+          </div>
+
+          <DatePicker
+            placeholder="Tìm theo ngày tạo"
+            value={selectedDate}
+            onChange={handleDateChange}
+            format="DD-MM-YYYY"
+            className="min-w-[160px] !border-gray-400 [&_input::placeholder]:!text-gray-400"
+            allowClear
+          />
+
+          <Select
+            mode="multiple"
+            placeholder="Tìm theo tên người tạo"
+            className="min-w-[240px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+            value={selectedCreator}
+            onChange={handleCreatorChange}
+            allowClear
+            maxTagCount="responsive"
+            options={uniqueCreators.map(creator => ({ label: creator, value: creator }))}
+          />
         </div>
       </div>
 
@@ -350,19 +453,20 @@ const ImportTransactionHistory: React.FC = () => {
 
       <Table
         columns={columns}
-        dataSource={importRequestSummaries}
+        dataSource={filteredItems}
         rowKey="key"
         loading={loading}
         onChange={handleTableChange}
         className="[&_.ant-table-cell]:!p-4 [&_.ant-table-thead_th]:!bg-gray-50 [&_.ant-table-thead_th]:!font-semibold [&_.ant-table-tbody_tr:hover_td]:!bg-blue-50"
         pagination={{
           ...pagination,
+          total: filteredItems.length,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100'],
           locale: {
             items_per_page: "/ trang"
           },
-          showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập`,
+          showTotal: (total: number) => `Tổng cộng có ${total} phiếu nhập${(searchTerm || selectedDate || selectedCreator.length > 0) ? ' (đã lọc)' : ''}`,
         }}
       />
 
@@ -423,9 +527,19 @@ const ImportTransactionHistory: React.FC = () => {
                           <span className="text-base font-medium text-gray-800">{detail.executorFullName}</span>
                         </div>
                         <div className="w-px h-5 bg-gray-300"></div>
-                        <Tag color={getActionColor(detail.action)} className="!text-sm !px-3 !py-1 !font-medium">
+                        <Tag color={getActionColor(detail.action)} className="!text-sm !px-3 !py-1 !font-medium !m-0">
                           {getActionText(detail.action)}
                         </Tag>
+                        {detail.action === 'ASSIGN_STAFF' && detail.assignedStaffName && (
+                          <>
+                            <div className="w-px h-5 bg-gray-300"></div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-600">cho</span>
+                              <UserOutlined className="!text-blue-500" />
+                              <span className="text-base text-blue-600">{detail.assignedStaffName}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       {/* Chi tiết theo loại */}
@@ -445,7 +559,7 @@ const ImportTransactionHistory: React.FC = () => {
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-2 bg-purple-50 p-3 rounded-lg">
+                        <div className="space-y-2 bg-blue-50 p-3 rounded-lg">
                           <div className="flex items-start gap-2">
                             <span className="text-sm font-medium text-gray-600 min-w-fit">Thuộc phiếu nhập:</span>
                             <span className="text-sm font-bold text-blue-600">#{detail.importRequestId}</span>
