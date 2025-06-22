@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -37,9 +37,19 @@ import useDepartmentService from "@/services/useDepartmentService";
 import useInventoryItemService from "@/services/useInventoryItemService";
 import useProviderService from "@/services/useProviderService";
 
-function enrichWithItemMeta(details, items) {
+// Constants
+const ITEM_STATUS_SHOW_STATUSES = [ExportStatus.COUNT_CONFIRMED];
+const EXPORT_TYPE_MAP = {
+  PRODUCTION: "Xuất sản xuất",
+  SELLING: "Xuất bán",
+  RETURN: "Xuất trả nhà cung cấp",
+};
+
+// Helper functions
+const enrichWithItemMeta = (details, items) => {
+  const itemMap = new Map(items.map((i) => [String(i.id), i]));
   return details.map((row) => {
-    const meta = items.find((i) => String(i.id) === String(row.itemId)) || {};
+    const meta = itemMap.get(String(row.itemId)) || {};
     return {
       ...row,
       totalMeasurementValue: meta.totalMeasurementValue ?? "",
@@ -47,12 +57,21 @@ function enrichWithItemMeta(details, items) {
       itemName: meta.name ?? row.itemName ?? "",
     };
   });
-}
+};
+
+const getMinutesFromTimeString = (timeStr) => {
+  const [hours, minutes] = timeStr
+    .split(" tiếng ")
+    .map((part) => parseInt(part.replace(" phút", "")));
+  return hours * 60 + minutes;
+};
 
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
-  const [configuration, setConfiguration] = useState(null);
   const navigate = useNavigate();
+  const userRole = useSelector((state) => state.user.role);
+
+  // Services
   const {
     getExportRequestById,
     assignCountingStaff,
@@ -64,137 +83,152 @@ const ExportRequestDetail = () => {
   } = useExportRequestService();
   const { getExportRequestDetails, loading: exportRequestDetailLoading } =
     useExportRequestDetailService();
-  const { getItemById } = useItemService();
+  const { getItemById, getItems } = useItemService();
+  const { getConfiguration } = useConfigurationService();
+  const { getActiveStaffsInDay, findAccountById } = useAccountService();
+  const { getDepartmentById } = useDepartmentService();
+  const { getByExportRequestDetailId, loading: inventoryLoading } =
+    useInventoryItemService();
+  const { loading: providerLoading, getProviderById } = useProviderService();
+
+  // State
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
+  const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
+  const [configuration, setConfiguration] = useState(null);
+  const [assignedStaff, setAssignedStaff] = useState(null);
+  const [assignedKeeper, setAssignedKeeper] = useState(null);
+  const [staffs, setStaffs] = useState([]);
+  const [keeperStaffs, setKeeperStaffs] = useState([]);
+  const [departmentInfo, setDepartmentInfo] = useState(null);
+  const [providerInfo, setProviderInfo] = useState(null);
+  const [items, setItems] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
+    useState(null);
+
+  // Pagination
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
-  const [selectedStaffId, setSelectedStaffId] = useState(null);
-  const [assignModalVisible, setAssignModalVisible] = useState(false);
-  const { getConfiguration } = useConfigurationService();
-  const [loadingStaff, setLoadingStaff] = useState(false);
-  const { getActiveStaffsInDay, findAccountById } = useAccountService();
-  const [staffs, setStaffs] = useState([]);
-  const [assignedStaff, setAssignedStaff] = useState(null);
-  const [searchText, setSearchText] = useState("");
-  const userRole = useSelector((state) => state.user.role);
-  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  const [updateDateTimeModalOpen, setUpdateDateTimeModalOpen] = useState(false);
-  const [assignKeeperModalVisible, setAssignKeeperModalVisible] =
-    useState(false);
-  const [selectedKeeperId, setSelectedKeeperId] = useState(null);
-  const [assignedKeeper, setAssignedKeeper] = useState(null);
-  const [keeperStaffs, setKeeperStaffs] = useState([]);
-  const [completeModalVisible, setCompleteModalVisible] = useState(false);
-  const [completeChecked, setCompleteChecked] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false); // đặt bên ngoài modal
-  const [editMode, setEditMode] = useState(false);
-  const [editedDetails, setEditedDetails] = useState([]); // clone chi tiết khi edit
-  const [confirmCreateExportModalVisible, setConfirmCreateExportModalVisible] =
-    useState(false);
-  const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
-  const { getDepartmentById } = useDepartmentService();
-  const [departmentInfo, setDepartmentInfo] = useState(null);
-  const { getItems } = useItemService();
-  const [items, setItems] = useState([]);
-  const [cancelModalVisible, setCancelModalVisible] = useState(false);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [inventoryItems, setInventoryItems] = useState([]);
   const [inventoryPagination, setInventoryPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
   });
-  const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
-    useState(null);
-  const { getByExportRequestDetailId, loading: inventoryLoading } =
-    useInventoryItemService();
 
-  const [providerInfo, setProviderInfo] = useState(null);
-  const { loading: providerLoading, getProviderById } = useProviderService();
-  // Hàm lấy thông tin phiếu xuất
+  // Modal states
+  const [modals, setModals] = useState({
+    assign: false,
+    assignKeeper: false,
+    confirm: false,
+    complete: false,
+    updateDateTime: false,
+    confirmCreateExport: false,
+    cancel: false,
+    detail: false,
+  });
+
+  // Form states
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [selectedKeeperId, setSelectedKeeperId] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [completeChecked, setCompleteChecked] = useState(false);
+  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedDetails, setEditedDetails] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
+  // Modal helpers
+  const updateModal = useCallback((modalName, value) => {
+    setModals((prev) => ({ ...prev, [modalName]: value }));
+  }, []);
+
+  // Fetch functions
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
     const data = await getExportRequestById(exportRequestId);
     setExportRequest(data);
+    return data;
   }, [exportRequestId, getExportRequestById]);
 
-  // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
-  const enrichDetails = async (details) => {
-    const enriched = await Promise.all(
-      details.map(async (detail) => {
+  const enrichDetails = useCallback(
+    async (details) => {
+      const enrichmentPromises = details.map(async (detail) => {
         try {
           const res = await getItemById(String(detail.itemId));
-          const itemName =
-            res && res.content ? res.content.name : "Không xác định";
+          const itemName = res?.content?.name || "Không xác định";
           return { ...detail, itemName };
         } catch (error) {
           console.error(`Error fetching item with id ${detail.itemId}:`, error);
           return { ...detail, itemName: "Không xác định" };
         }
-      })
-    );
-    return enriched;
-  };
-
-  const fetchDetails = async (
-    page = pagination.current,
-    pageSize = pagination.pageSize
-  ) => {
-    if (!exportRequestId) return;
-
-    const response = await getExportRequestDetails(
-      exportRequestId,
-      page,
-      pageSize
-    );
-    if (response && response.content) {
-      const enriched = await enrichDetails(response.content);
-      setExportRequestDetails(enriched);
-      const meta = response.metaDataDTO;
-      setPagination({
-        current: meta ? meta.page : page,
-        pageSize: meta ? meta.limit : pageSize,
-        total: meta ? meta.total : 0,
       });
-    }
+      return Promise.all(enrichmentPromises);
+    },
+    [getItemById]
+  );
 
-    // Fetch tất cả sản phẩm
-    const allResp = await getExportRequestDetails(exportRequestId, 1, 50); // đảm bảo lấy đủ tất cả
-    if (allResp && allResp.content) {
-      const allEnriched = await enrichDetails(allResp.content);
-      setAllExportRequestDetails(allEnriched);
-    }
-  };
+  const fetchDetails = useCallback(
+    async (page = pagination.current, pageSize = pagination.pageSize) => {
+      if (!exportRequestId) return;
 
-  const fetchInventoryItems = async (
-    exportRequestDetailId,
-    page = 1,
-    pageSize = 10
-  ) => {
-    try {
-      const response = await getByExportRequestDetailId(
-        exportRequestDetailId,
-        page,
-        pageSize
-      );
-      setInventoryItems(response.content || []);
-      if (response.metaDataDTO) {
-        setInventoryPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
+      const [response, allResp] = await Promise.all([
+        getExportRequestDetails(exportRequestId, page, pageSize),
+        getExportRequestDetails(exportRequestId, 1, 50),
+      ]);
+
+      if (response?.content) {
+        const enriched = await enrichDetails(response.content);
+        setExportRequestDetails(enriched);
+        const meta = response.metaDataDTO;
+        setPagination({
+          current: meta?.page || page,
+          pageSize: meta?.limit || pageSize,
+          total: meta?.total || 0,
         });
       }
-    } catch (error) {
-      setInventoryItems([]);
-    }
-  };
 
-  const fetchActiveStaffs = async () => {
+      if (allResp?.content) {
+        const allEnriched = await enrichDetails(allResp.content);
+        setAllExportRequestDetails(allEnriched);
+      }
+    },
+    [
+      exportRequestId,
+      getExportRequestDetails,
+      enrichDetails,
+      pagination.current,
+      pagination.pageSize,
+    ]
+  );
+
+  const fetchInventoryItems = useCallback(
+    async (exportRequestDetailId, page = 1, pageSize = 10) => {
+      try {
+        const response = await getByExportRequestDetailId(
+          exportRequestDetailId,
+          page,
+          pageSize
+        );
+        setInventoryItems(response.content || []);
+        if (response.metaDataDTO) {
+          setInventoryPagination({
+            current: response.metaDataDTO.page,
+            pageSize: response.metaDataDTO.limit,
+            total: response.metaDataDTO.total,
+          });
+        }
+      } catch (error) {
+        setInventoryItems([]);
+      }
+    },
+    [getByExportRequestDetailId]
+  );
+
+  const fetchActiveStaffs = useCallback(async () => {
     if (!exportRequest?.exportDate) {
       message.error("Ngày nhận hàng không hợp lệ");
       return;
@@ -208,14 +242,13 @@ const ExportRequestDetail = () => {
       });
       setStaffs(activeStaffs);
     } catch (error) {
-      console.error("Failed to fetch warehouse keepers:", error);
       message.error("Không thể tải danh sách nhân viên kho");
     } finally {
       setLoadingStaff(false);
     }
-  };
+  }, [exportRequest, getActiveStaffsInDay]);
 
-  const fetchActiveKeeperStaffs = async () => {
+  const fetchActiveKeeperStaffs = useCallback(async () => {
     if (!exportRequest?.exportDate) {
       message.error("Ngày nhận hàng không hợp lệ");
       return;
@@ -225,18 +258,17 @@ const ExportRequestDetail = () => {
       exportRequestId: exportRequest.exportRequestId,
     });
     setKeeperStaffs(activeStaffs);
-  };
+  }, [exportRequest, getActiveStaffsInDay]);
 
   const fetchAssignedCountingStaff = useCallback(async () => {
-    if (!exportRequestId) return;
+    if (!exportRequest?.countingStaffId) return;
     try {
-      const response = await findAccountById(exportRequest?.countingStaffId);
+      const response = await findAccountById(exportRequest.countingStaffId);
       setAssignedStaff(response);
     } catch (error) {
-      console.error("Failed to fetch assigned staff:", error);
       message.error("Không thể tải thông tin nhân viên đã phân công");
     }
-  }, [exportRequestId, findAccountById]);
+  }, [exportRequest?.countingStaffId, findAccountById]);
 
   const fetchAssignedKeeper = useCallback(async () => {
     if (!exportRequest?.assignedWareHouseKeeperId) return;
@@ -250,150 +282,12 @@ const ExportRequestDetail = () => {
     }
   }, [exportRequest?.assignedWareHouseKeeperId, findAccountById]);
 
-  useEffect(() => {
-    fetchExportRequestData();
+  // Computed values
+  const getExportTypeText = useCallback((type) => {
+    return EXPORT_TYPE_MAP[type] || "";
   }, []);
 
-  useEffect(() => {
-    if (exportRequest?.countingStaffId) {
-      fetchAssignedCountingStaff();
-    }
-  }, [exportRequest]);
-
-  useEffect(() => {
-    fetchAssignedKeeper();
-  }, [exportRequest?.assignedWareHouseKeeperId]);
-
-  useEffect(() => {
-    fetchDetails();
-  }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
-
-  useEffect(() => {
-    // Nếu có exportRequest.type === "RETURN" và có providerId thì mới lấy
-    if (exportRequest?.type === "RETURN" && exportRequest.providerId) {
-      getProviderById(exportRequest.providerId)
-        .then((res) => setProviderInfo(res?.content))
-        .catch(() => setProviderInfo(null));
-    }
-  }, [exportRequest]);
-
-  // Khi đã có exportRequest
-  useEffect(() => {
-    if (exportRequest?.departmentId) {
-      getDepartmentById(exportRequest.departmentId).then((res) => {
-        setDepartmentInfo(res?.content);
-      });
-    }
-  }, [exportRequest?.departmentId]);
-
-  useEffect(() => {
-    getItems().then((res) => setItems(res?.content || []));
-  }, []);
-
-  // Huỷ tạo phiếu
-  const handleCancelCreateExport = () => {
-    setEditMode(false);
-    setEditedDetails([]);
-  };
-
-  // Xác nhận tạo phiếu xuất mới (có gọi cả API chi tiết)
-  const handleConfirmCreateExport = async () => {
-    // Lấy info phiếu xuất gốc
-    const exportRequestInfo = await getExportRequestById(exportRequestId);
-    if (!exportRequestInfo || !exportRequestId || editedDetails.length === 0) {
-      message.error("Thiếu thông tin phiếu xuất hoặc chi tiết");
-      return;
-    }
-
-    // Chuẩn bị payload đúng như API yêu cầu
-    const payload = {
-      exportRequestId: exportRequestId,
-      items: editedDetails.map((d) => ({
-        itemId: d.itemId,
-        quantity: d.quantity,
-        measurementValue: d.measurementValue,
-      })),
-    };
-
-    try {
-      await renewExportRequest(payload);
-      setEditMode(false);
-      setEditedDetails([]);
-      message.success("Gia hạn phiếu xuất thành công");
-
-      // Có thể gọi lại fetch data nếu muốn
-      await fetchExportRequestData();
-      fetchDetails();
-    } catch (error) {
-      message.error("Không thể gia hạn phiếu xuất.");
-    }
-    //luồng hủy
-    await updateExportRequestStatus(exportRequestId, ExportStatus.CANCELLED);
-    message.success("Đã hủy phiếu xuất hiện tại");
-    await fetchExportRequestData();
-    fetchDetails();
-  };
-
-  const handleOpenAssignModal = async () => {
-    setSelectedStaffId(null);
-    // Lấy configuration
-    try {
-      const config = await getConfiguration();
-      setConfiguration(config);
-    } catch (e) {
-      // Có thể toast lỗi ở đây nếu muốn
-    }
-    fetchActiveStaffs();
-    setAssignModalVisible(true);
-  };
-
-  const handleConfirmComplete = async () => {
-    await updateExportRequestStatus(exportRequestId, ExportStatus.COMPLETED);
-    message.success("Xác nhận hoàn thành phiếu xuất thành công");
-    setCompleteModalVisible(false);
-    setCompleteChecked(false);
-    await fetchExportRequestData();
-    fetchDetails();
-  };
-
-  const handleOpenAssignKeeperModal = async () => {
-    setSelectedKeeperId(null);
-    await fetchActiveKeeperStaffs();
-    setAssignKeeperModalVisible(true);
-  };
-
-  const handleCloseAssignModal = () => {
-    setAssignModalVisible(false);
-    setSelectedStaffId(null);
-  };
-
-  const handleSelectStaff = (staffId) => {
-    setSelectedStaffId(staffId);
-  };
-
-  const handleAssignCountingStaff = async () => {
-    if (!selectedStaffId || !exportRequestId) {
-      message.warning("Vui lòng chọn nhân viên để phân công");
-      return;
-    }
-    await assignCountingStaff(exportRequestId, selectedStaffId);
-    const exportRequestResponse = await fetchExportRequestData();
-    if (exportRequestResponse?.content?.countingStaffId) {
-      await findAccountById(exportRequestResponse.content.countingStaffId);
-    }
-    await fetchActiveStaffs();
-    setSelectedStaffId(null);
-  };
-
-  const getExportTypeText = (type) => {
-    if (type === "PRODUCTION") return "Xuất sản xuất";
-    else if (type === "SELLING") return "Xuất bán";
-    else if (type === "RETURN") return "Xuất trả nhà cung cấp";
-    return "";
-  };
-
-  // Add new function to check if reassignment is allowed
-  const canReassignCountingStaff = () => {
+  const canReassignCountingStaff = useCallback(() => {
     if (
       !exportRequest?.exportDate ||
       !exportRequest?.exportTime ||
@@ -402,22 +296,18 @@ const ExportRequestDetail = () => {
       return true;
     }
 
-    // Combine dateReceived and timeReceived into a Date object
     const receivedDateTime = new Date(
       `${exportRequest.exportDate}T${exportRequest.exportTime}`
     );
-    const now = new Date();
-    // Convert timeToAllowAssign to milliseconds
     const [hours, minutes, seconds] = configuration.timeToAllowAssign
       .split(":")
       .map(Number);
     const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
 
-    // If current time - received time < timeToAllowAssign, don't allow reassignment
     return Date.now() - receivedDateTime.getTime() <= allowAssignMs;
-  };
+  }, [exportRequest, configuration]);
 
-  const getRemainingAssignTime = () => {
+  const getRemainingAssignTime = useCallback(() => {
     if (
       !exportRequest?.exportDate ||
       !exportRequest?.exportTime ||
@@ -426,69 +316,58 @@ const ExportRequestDetail = () => {
       return null;
     }
 
-    // 1. Thời điểm nhận hàng
     const receivedDateTime = new Date(
       `${exportRequest.exportDate}T${exportRequest.exportTime}`
     );
-
-    // 2. Hạn chót = nhận hàng + timeToAllowAssign
     const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
     const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
-    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs); //  **+**  ở đây
+    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs);
 
-    // 3. Còn lại bao lâu
     const diffMs = deadline.getTime() - Date.now();
-    if (diffMs <= 0) return "0 tiếng 0 phút"; // đã quá hạn
+    if (diffMs <= 0) return "0 tiếng 0 phút";
 
     const diffMinutes = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMinutes / 60);
     const diffMins = diffMinutes % 60;
     return `${diffHours} tiếng ${diffMins} phút`;
-  };
+  }, [exportRequest, configuration]);
 
-  const calculateRemainingTime = (totalExpectedTime, defaultWorkingMinutes) => {
-    try {
-      const [hours, minutes] = totalExpectedTime.split(":").map(Number);
-      const expectedMinutes = hours * 60 + minutes;
-      const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
-      if (remainingMinutes <= 0) return "0 tiếng 0 phút";
-      const remainingHours = Math.floor(remainingMinutes / 60);
-      const remainingMins = Math.floor(remainingMinutes % 60);
-      return `${remainingHours} tiếng ${remainingMins} phút`;
-    } catch (error) {
-      return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${
-        defaultWorkingMinutes % 60
-      } phút`;
-    }
-  };
+  const calculateRemainingTime = useCallback(
+    (totalExpectedTime, defaultWorkingMinutes) => {
+      try {
+        const [hours, minutes] = totalExpectedTime.split(":").map(Number);
+        const expectedMinutes = hours * 60 + minutes;
+        const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
+        if (remainingMinutes <= 0) return "0 tiếng 0 phút";
+        const remainingHours = Math.floor(remainingMinutes / 60);
+        const remainingMins = Math.floor(remainingMinutes % 60);
+        return `${remainingHours} tiếng ${remainingMins} phút`;
+      } catch (error) {
+        return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${
+          defaultWorkingMinutes % 60
+        } phút`;
+      }
+    },
+    []
+  );
 
-  const getDefaultWorkingMinutes = () => {
-    if (!configuration) return 480; // fallback
+  const getDefaultWorkingMinutes = useCallback(() => {
+    if (!configuration) return 480;
     const [startH, startM] = configuration.workingTimeStart
       .split(":")
       .map(Number);
     const [endH, endM] = configuration.workingTimeEnd.split(":").map(Number);
     return endH * 60 + endM - (startH * 60 + startM);
-  };
+  }, [configuration]);
 
-  const handleSearch = (value) => {
-    setSearchText(value);
-  };
+  const getItemStatus = useCallback(() => {
+    if (!allExportRequestDetails || allExportRequestDetails.length === 0)
+      return null;
+    const hasLack = allExportRequestDetails.some((d) => d.status === "LACK");
+    return hasLack ? "LACK" : "ENOUGH";
+  }, [allExportRequestDetails]);
 
-  const handleAssignKeeper = async () => {
-    if (!selectedKeeperId || !exportRequestId) {
-      message.warning("Vui lòng chọn nhân viên để phân công");
-      return;
-    }
-
-    await assignConfirmimgStaff(exportRequestId, selectedKeeperId);
-    await fetchExportRequestData();
-    message.success("Phân công nhân viên xuất hàng thành công");
-    setAssignKeeperModalVisible(false);
-    setSelectedKeeperId(null);
-  };
-
-  const getFilteredAndSortedStaffs = () => {
+  const getFilteredAndSortedStaffs = useMemo(() => {
     const defaultWorkingMinutes = getDefaultWorkingMinutes();
     return staffs
       .map((staff) => ({
@@ -506,35 +385,272 @@ const ExportRequestDetail = () => {
         );
       })
       .sort((a, b) => {
-        // Convert remaining time to minutes for comparison
-        const getMinutes = (timeStr) => {
-          const [hours, minutes] = timeStr
-            .split(" tiếng ")
-            .map((part) => parseInt(part.replace(" phút", "")));
-          return hours * 60 + minutes;
-        };
-
-        return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
+        return (
+          getMinutesFromTimeString(b.remainingTime) -
+          getMinutesFromTimeString(a.remainingTime)
+        );
       });
-  };
+  }, [staffs, searchText, getDefaultWorkingMinutes, calculateRemainingTime]);
 
-  const ITEM_STATUS_SHOW_STATUSES = [ExportStatus.COUNT_CONFIRMED];
+  // Handler functions
+  const handleBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
 
-  const getItemStatus = () => {
-    if (!allExportRequestDetails || allExportRequestDetails.length === 0)
-      return null;
-    const hasLack = allExportRequestDetails.some((d) => d.status === "LACK");
-    return hasLack ? "LACK" : "ENOUGH";
-  };
+  const handleCancelCreateExport = useCallback(() => {
+    setEditMode(false);
+    setEditedDetails([]);
+  }, []);
 
-  const renderDescriptionItems = () => {
+  const handleConfirmCreateExport = useCallback(async () => {
+    const exportRequestInfo = await getExportRequestById(exportRequestId);
+    if (!exportRequestInfo || !exportRequestId || editedDetails.length === 0) {
+      message.error("Thiếu thông tin phiếu xuất hoặc chi tiết");
+      return;
+    }
+
+    const payload = {
+      exportRequestId: exportRequestId,
+      items: editedDetails.map((d) => ({
+        itemId: d.itemId,
+        quantity: d.quantity,
+        measurementValue: d.measurementValue,
+      })),
+    };
+
+    try {
+      await renewExportRequest(payload);
+      setEditMode(false);
+      setEditedDetails([]);
+      message.success("Gia hạn phiếu xuất thành công");
+      await fetchExportRequestData();
+      fetchDetails();
+    } catch (error) {
+      message.error("Không thể gia hạn phiếu xuất.");
+    }
+
+    await updateExportRequestStatus(exportRequestId, ExportStatus.CANCELLED);
+    message.success("Đã hủy phiếu xuất hiện tại");
+    await fetchExportRequestData();
+    fetchDetails();
+  }, [
+    exportRequestId,
+    editedDetails,
+    getExportRequestById,
+    renewExportRequest,
+    updateExportRequestStatus,
+    fetchExportRequestData,
+    fetchDetails,
+  ]);
+
+  const handleOpenAssignModal = useCallback(async () => {
+    setSelectedStaffId(null);
+    try {
+      const config = await getConfiguration();
+      setConfiguration(config);
+    } catch (e) {
+      // Handle error if needed
+    }
+    fetchActiveStaffs();
+    updateModal("assign", true);
+  }, [getConfiguration, fetchActiveStaffs, updateModal]);
+
+  const handleConfirmComplete = useCallback(async () => {
+    await updateExportRequestStatus(exportRequestId, ExportStatus.COMPLETED);
+    message.success("Xác nhận hoàn thành phiếu xuất thành công");
+    updateModal("complete", false);
+    setCompleteChecked(false);
+    await fetchExportRequestData();
+    fetchDetails();
+  }, [
+    exportRequestId,
+    updateExportRequestStatus,
+    updateModal,
+    fetchExportRequestData,
+    fetchDetails,
+  ]);
+
+  const handleOpenAssignKeeperModal = useCallback(async () => {
+    setSelectedKeeperId(null);
+    await fetchActiveKeeperStaffs();
+    updateModal("assignKeeper", true);
+  }, [fetchActiveKeeperStaffs, updateModal]);
+
+  const handleCloseAssignModal = useCallback(() => {
+    updateModal("assign", false);
+    setSelectedStaffId(null);
+  }, [updateModal]);
+
+  const handleSelectStaff = useCallback((staffId) => {
+    setSelectedStaffId(staffId);
+  }, []);
+
+  const handleAssignCountingStaff = useCallback(async () => {
+    if (!selectedStaffId || !exportRequestId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+    await assignCountingStaff(exportRequestId, selectedStaffId);
+    const exportRequestResponse = await fetchExportRequestData();
+    if (exportRequestResponse?.content?.countingStaffId) {
+      await findAccountById(exportRequestResponse.content.countingStaffId);
+    }
+    await fetchActiveStaffs();
+    setSelectedStaffId(null);
+  }, [
+    selectedStaffId,
+    exportRequestId,
+    assignCountingStaff,
+    fetchExportRequestData,
+    findAccountById,
+    fetchActiveStaffs,
+  ]);
+
+  const handleSearch = useCallback((value) => {
+    setSearchText(value);
+  }, []);
+
+  const handleAssignKeeper = useCallback(async () => {
+    if (!selectedKeeperId || !exportRequestId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+
+    await assignConfirmimgStaff(exportRequestId, selectedKeeperId);
+    await fetchExportRequestData();
+    message.success("Phân công nhân viên xuất hàng thành công");
+    updateModal("assignKeeper", false);
+    setSelectedKeeperId(null);
+  }, [
+    selectedKeeperId,
+    exportRequestId,
+    assignConfirmimgStaff,
+    fetchExportRequestData,
+    updateModal,
+  ]);
+
+  const handleConfirmCounted = useCallback(async () => {
+    try {
+      await updateExportRequestStatus(
+        exportRequestId,
+        ExportStatus.COUNT_CONFIRMED
+      );
+      message.success("Đã xác nhận kiểm đếm");
+      await fetchExportRequestData();
+      fetchDetails();
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái", error);
+      message.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+    }
+  }, [
+    exportRequestId,
+    updateExportRequestStatus,
+    fetchExportRequestData,
+    fetchDetails,
+  ]);
+
+  const handleTableChange = useCallback(
+    (pag) => {
+      setPagination({
+        ...pagination,
+        current: pag.current,
+        pageSize: pag.pageSize,
+      });
+      fetchDetails(pag.current, pag.pageSize);
+    },
+    [pagination, fetchDetails]
+  );
+
+  // Table columns
+  const columns = useMemo(
+    () =>
+      [
+        {
+          title: "Mã sản phẩm",
+          dataIndex: "itemId",
+          key: "itemId",
+          render: (id) => `${id}`,
+        },
+        {
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
+          ellipsis: true,
+        },
+        {
+          title: "Số lượng cần",
+          dataIndex: "quantity",
+          key: "quantity",
+          width: 180,
+          render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
+        },
+        {
+          title: "Số lượng đã đóng gói",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          width: 230,
+          render: (text, record) => (
+            <div
+              style={{ textAlign: "right" }}
+              className={`${
+                text < record.quantity ? "text-red-600 font-semibold" : ""
+              }`}
+            >
+              {text}
+            </div>
+          ),
+        },
+        ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+          exportRequest?.exportType
+        )
+          ? {
+              title: "Quy cách",
+              dataIndex: "measurementValue",
+              key: "measurementValue",
+            }
+          : null,
+        {
+          title: "Trạng thái",
+          dataIndex: "status",
+          key: "status",
+          render: (status) =>
+            status ? <StatusTag status={status} type="detail" /> : "-",
+        },
+        {
+          title: "Chi tiết",
+          key: "detail",
+          width: 200,
+          render: (text, record) => (
+            <div className="flex gap-3 justify-center">
+              <Tooltip title="Xem chi tiết phiếu xuất" placement="top">
+                <span
+                  className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
+                  style={{ width: 32, height: 32 }}
+                  onClick={() => {
+                    setSelectedExportRequestDetail(record);
+                    updateModal("detail", true);
+                    fetchInventoryItems(record.id, 1, 10);
+                  }}
+                >
+                  <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+                </span>
+              </Tooltip>
+            </div>
+          ),
+        },
+      ].filter(Boolean),
+    [exportRequest?.exportType, updateModal, fetchInventoryItems]
+  );
+
+  // Render functions
+  const renderDescriptionItems = useMemo(() => {
     if (!exportRequest) return null;
     const items = [
       <Descriptions.Item label="Trạng thái phiếu" key="status">
         <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
     ];
-    //Hiển thị Trạng thái hàng với Tag của Ant Design
+
     if (ITEM_STATUS_SHOW_STATUSES.includes(exportRequest.status)) {
       const itemStatus = getItemStatus();
       if (itemStatus === "LACK") {
@@ -670,116 +786,55 @@ const ExportRequestDetail = () => {
     }
 
     return items;
-  };
+  }, [
+    exportRequest,
+    assignedStaff,
+    assignedKeeper,
+    providerInfo,
+    getExportTypeText,
+    getItemStatus,
+  ]);
 
-  const handleConfirmCounted = async () => {
-    try {
-      await updateExportRequestStatus(
-        exportRequestId,
-        ExportStatus.COUNT_CONFIRMED
-      );
-      message.success("Đã xác nhận kiểm đếm");
+  // Effects
+  useEffect(() => {
+    fetchExportRequestData();
+  }, [fetchExportRequestData]);
 
-      // Gọi lại dữ liệu để cập nhật giao diện
-      await fetchExportRequestData();
-      fetchDetails();
-    } catch (error) {
-      console.error("Lỗi khi cập nhật trạng thái", error);
-      message.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+  useEffect(() => {
+    if (exportRequest?.countingStaffId) {
+      fetchAssignedCountingStaff();
     }
-  };
+  }, [exportRequest?.countingStaffId, fetchAssignedCountingStaff]);
 
-  const columns = [
-    {
-      title: "Mã sản phẩm",
-      dataIndex: "itemId",
-      key: "itemId",
-      render: (id) => `${id}`,
-    },
-    {
-      title: "Tên sản phẩm",
-      dataIndex: "itemName",
-      key: "itemName",
-      ellipsis: true,
-    },
-    {
-      title: "Số lượng cần",
-      dataIndex: "quantity",
-      key: "quantity",
-      width: 180,
-      render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
-    },
-    {
-      title: "Số lượng đã đóng gói",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      width: 230,
-      render: (text, record) => (
-        <div
-          style={{ textAlign: "right" }}
-          className={`${
-            text < record.quantity ? "text-red-600 font-semibold" : ""
-          }`}
-        >
-          {text}
-        </div>
-      ),
-    },
-    // Điều kiện column Quy cách
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-      exportRequest?.exportType
-    )
-      ? {
-          title: "Quy cách",
-          dataIndex: "measurementValue",
-          key: "measurementValue",
-        }
-      : null,
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status) =>
-        status ? <StatusTag status={status} type="detail" /> : "-", // Use StatusTag component with 'detail' type
-    },
-    {
-      title: "Chi tiết",
-      key: "detail",
-      width: 200,
-      render: (text, record) => (
-        <div className="flex gap-3 justify-center">
-          <Tooltip title="Xem chi tiết phiếu xuất" placement="top">
-            <span
-              className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
-              style={{ width: 32, height: 32 }}
-              onClick={() => {
-                setSelectedExportRequestDetail(record); // lưu lại chi tiết đang chọn
-                setDetailModalVisible(true);
-                fetchInventoryItems(record.id, 1, 10); // record.id là exportRequestDetailId
-              }}
-            >
-              <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
-            </span>
-          </Tooltip>
-        </div>
-      ),
-    },
-  ].filter(Boolean);
+  useEffect(() => {
+    fetchAssignedKeeper();
+  }, [fetchAssignedKeeper]);
 
-  const handleTableChange = (pag) => {
-    setPagination({
-      ...pagination,
-      current: pag.current,
-      pageSize: pag.pageSize,
-    });
-    // Gọi lại fetchDetails và luôn cập nhật allExportRequestDetails!
-    fetchDetails(pag.current, pag.pageSize);
-  };
+  useEffect(() => {
+    fetchDetails();
+  }, []);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+  useEffect(() => {
+    if (exportRequest?.type === "RETURN" && exportRequest.providerId) {
+      getProviderById(exportRequest.providerId)
+        .then((res) => setProviderInfo(res?.content))
+        .catch(() => setProviderInfo(null));
+    }
+  }, [exportRequest?.type, exportRequest?.providerId, getProviderById]);
 
+  useEffect(() => {
+    if (exportRequest?.departmentId) {
+      getDepartmentById(exportRequest.departmentId).then((res) => {
+        setDepartmentInfo(res?.content);
+      });
+    }
+  }, [exportRequest?.departmentId, getDepartmentById]);
+
+  useEffect(() => {
+    getItems().then((res) => setItems(res?.content || []));
+  }, [getItems]);
+
+  // Loading state
   if ((exportRequestLoading || exportRequestDetailLoading) && !exportRequest) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -806,7 +861,7 @@ const ExportRequestDetail = () => {
             <Button
               type="primary"
               className="ml-4"
-              onClick={() => setCompleteModalVisible(true)}
+              onClick={() => updateModal("complete", true)}
             >
               Xác nhận hoàn thành
             </Button>
@@ -842,14 +897,13 @@ const ExportRequestDetail = () => {
             </Button>
           )}
 
-        {/* Nút cập nhật ngày khách nhận hàng */}
         {userRole === AccountRole.DEPARTMENT &&
           exportRequest?.status === ExportStatus.COUNT_CONFIRMED && (
             <Button
               type="primary"
               className="ml-4"
-              onClick={() => setUpdateDateTimeModalOpen(true)}
-              disabled={getItemStatus() === "LACK"} // Disable nếu thiếu hàng
+              onClick={() => updateModal("updateDateTime", true)}
+              disabled={getItemStatus() === "LACK"}
             >
               Cập nhật ngày khách nhận hàng
             </Button>
@@ -867,7 +921,7 @@ const ExportRequestDetail = () => {
               className="ml-auto"
               style={{ minWidth: 120, fontWeight: 600 }}
               loading={exportRequestLoading}
-              onClick={() => setCancelModalVisible(true)}
+              onClick={() => updateModal("cancel", true)}
             >
               Hủy phiếu xuất
             </Button>
@@ -875,33 +929,30 @@ const ExportRequestDetail = () => {
       </div>
       <Card className="mb-6">
         <Descriptions title="Thông tin phiếu xuất" bordered>
-          {renderDescriptionItems()}
+          {renderDescriptionItems}
         </Descriptions>
       </Card>
-      {}
+
       <ProductDetailTable
         columns={columns}
         exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
-        allExportRequestDetails={
-          //editMode ? editedDetails : allExportRequestDetails
-          allExportRequestDetails
-        } // THÊM DÒNG NÀY
+        allExportRequestDetails={allExportRequestDetails}
         detailsLoading={exportRequestDetailLoading}
         pagination={pagination}
         handleTableChange={handleTableChange}
         userRole={userRole}
         exportRequest={exportRequest}
-        setConfirmModalVisible={setConfirmModalVisible}
+        setConfirmModalVisible={(value) => updateModal("confirm", value)}
         editMode={editMode}
         setEditMode={setEditMode}
         editedDetails={editedDetails}
         setEditedDetails={setEditedDetails}
         creating={exportRequestDetailLoading || exportRequestLoading}
         onCancelCreateExport={handleCancelCreateExport}
-        //onConfirmCreateExport={handleConfirmCreateExport}
-        onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
+        onConfirmCreateExport={() => updateModal("confirmCreateExport", true)}
       />
-      {/* Modal chọn Warehouse Keeper */}
+
+      {/* Modal phân công nhân viên kiểm đếm */}
       <Modal
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
@@ -918,7 +969,7 @@ const ExportRequestDetail = () => {
             </p>
           </div>
         }
-        open={assignModalVisible}
+        open={modals.assign}
         onCancel={handleCloseAssignModal}
         footer={[
           <Button key="cancel" onClick={handleCloseAssignModal}>
@@ -943,7 +994,6 @@ const ExportRequestDetail = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Current Assignment Info */}
             <div className="bg-gray-50 p-4 rounded-lg border">
               <h4 className="text-base font-medium text-gray-700 mb-3">
                 Nhân viên đang được phân công
@@ -960,7 +1010,6 @@ const ExportRequestDetail = () => {
               </div>
             </div>
 
-            {/* Staff List */}
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-base font-medium text-gray-700">
@@ -975,7 +1024,7 @@ const ExportRequestDetail = () => {
                 />
               </div>
               <Table
-                dataSource={getFilteredAndSortedStaffs()}
+                dataSource={getFilteredAndSortedStaffs}
                 rowKey="id"
                 pagination={false}
                 className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
@@ -1027,6 +1076,8 @@ const ExportRequestDetail = () => {
           </div>
         )}
       </Modal>
+
+      {/* Modal phân công nhân viên xuất hàng */}
       <Modal
         title={
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
@@ -1038,15 +1089,15 @@ const ExportRequestDetail = () => {
             </p>
           </div>
         }
-        open={assignKeeperModalVisible}
+        open={modals.assignKeeper}
         onCancel={() => {
-          setAssignKeeperModalVisible(false);
+          updateModal("assignKeeper", false);
           setSelectedKeeperId(null);
         }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => setAssignKeeperModalVisible(false)}
+            onClick={() => updateModal("assignKeeper", false)}
           >
             Đóng
           </Button>,
@@ -1069,7 +1120,6 @@ const ExportRequestDetail = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Current Assignment Info */}
             <div className="bg-gray-50 p-4 rounded-lg border">
               <h4 className="text-base font-medium text-gray-700 mb-3">
                 Nhân viên đang được phân công xuất hàng
@@ -1086,7 +1136,6 @@ const ExportRequestDetail = () => {
               </div>
             </div>
 
-            {/* Staff List */}
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-base font-medium text-gray-700">
@@ -1147,12 +1196,14 @@ const ExportRequestDetail = () => {
           </div>
         )}
       </Modal>
+
+      {/* Modal xác nhận kiểm đếm */}
       <Modal
-        open={confirmModalVisible}
-        onCancel={() => setConfirmModalVisible(false)}
+        open={modals.confirm}
+        onCancel={() => updateModal("confirm", false)}
         onOk={async () => {
           await handleConfirmCounted();
-          setConfirmModalVisible(false);
+          updateModal("confirm", false);
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
@@ -1164,7 +1215,7 @@ const ExportRequestDetail = () => {
         width={700}
         centered
         okButtonProps={{
-          disabled: !confirmChecked, // disable nếu chưa tick
+          disabled: !confirmChecked,
         }}
       >
         <div className="mb-4 font-semibold">
@@ -1199,9 +1250,11 @@ const ExportRequestDetail = () => {
           Tôi đã đọc và kiểm tra kỹ các thông tin về sản phẩm đã được kiểm đếm.
         </Checkbox>
       </Modal>
+
+      {/* Modal xác nhận hoàn thành */}
       <Modal
-        open={completeModalVisible}
-        onCancel={() => setCompleteModalVisible(false)}
+        open={modals.complete}
+        onCancel={() => updateModal("complete", false)}
         onOk={handleConfirmComplete}
         okText="Xác nhận"
         cancelText="Quay lại"
@@ -1238,9 +1291,11 @@ const ExportRequestDetail = () => {
           </label>
         </div>
       </Modal>
+
+      {/* Modal hủy phiếu xuất */}
       <Modal
-        open={cancelModalVisible}
-        onCancel={() => setCancelModalVisible(false)}
+        open={modals.cancel}
+        onCancel={() => updateModal("cancel", false)}
         onOk={async () => {
           try {
             await updateExportRequestStatus(
@@ -1249,13 +1304,11 @@ const ExportRequestDetail = () => {
             );
 
             message.success("Đã hủy phiếu xuất thành công");
-            setCancelModalVisible(false);
+            updateModal("cancel", false);
 
-            // Refresh data
             await fetchExportRequestData();
             await fetchDetails();
           } catch (error) {
-            console.error("Error cancelling export request:", error);
             message.error("Không thể hủy phiếu xuất. Vui lòng thử lại.");
           }
         }}
@@ -1284,44 +1337,49 @@ const ExportRequestDetail = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Modal cập nhật ngày giờ xuất */}
       <UpdateExportDateTimeModal
-        open={updateDateTimeModalOpen}
-        onCancel={() => setUpdateDateTimeModalOpen(false)}
+        open={modals.updateDateTime}
+        onCancel={() => updateModal("updateDateTime", false)}
         exportRequest={exportRequest || {}}
         updateExportDateTime={updateExportDateTime}
         updateExportRequestStatus={updateExportRequestStatus}
         loading={exportRequestLoading}
         onSuccess={async () => {
-          setUpdateDateTimeModalOpen(false);
+          updateModal("updateDateTime", false);
           await fetchExportRequestData();
         }}
       />
+
+      {/* Modal xác nhận tạo phiếu xuất */}
       <ExportRequestConfirmModal
-        open={confirmCreateExportModalVisible}
+        open={modals.confirmCreateExport}
         onOk={async () => {
           await handleConfirmCreateExport();
-          setConfirmCreateExportModalVisible(false);
+          updateModal("confirmCreateExport", false);
         }}
-        onCancel={() => setConfirmCreateExportModalVisible(false)}
+        onCancel={() => updateModal("confirmCreateExport", false)}
         confirmLoading={exportRequestLoading || exportRequestDetailLoading}
         formData={{
           exportReason: exportRequest?.exportReason,
           exportType: exportRequest?.type,
           exportDate: exportRequest?.exportDate,
           receivingDepartment: {
-            name: departmentInfo?.departmentName, // đã lấy từ API
+            name: departmentInfo?.departmentName,
           },
           receiverName: exportRequest?.receiverName,
           receiverPhone: exportRequest?.receiverPhone,
           receiverAddress: exportRequest?.receiverAddress,
           providerName: providerInfo?.name,
         }}
-        details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
-        // details={editedDetails}
+        details={enrichWithItemMeta(editedDetails, items)}
       />
+
+      {/* Modal chi tiết sản phẩm tồn kho */}
       <Modal
-        open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        open={modals.detail}
+        onCancel={() => updateModal("detail", false)}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
             Danh sách sản phẩm tồn kho (Mã hàng #
@@ -1347,7 +1405,7 @@ const ExportRequestDetail = () => {
                 pageSize
               );
             },
-            showSizeChanger: false, // chỉ cho phép pageSize=10
+            showSizeChanger: false,
           }}
           columns={[
             {
@@ -1355,7 +1413,6 @@ const ExportRequestDetail = () => {
               dataIndex: "id",
               key: "id",
             },
-            // Sau này bạn chỉ cần thêm các cột khác vào đây
           ]}
           size="small"
         />
@@ -1365,5 +1422,3 @@ const ExportRequestDetail = () => {
 };
 
 export default ExportRequestDetail;
-
-//hahaha
