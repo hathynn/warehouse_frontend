@@ -461,7 +461,8 @@ const ImportOrderDetail = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      align: 'right' as const,
+      render: (id: number) => `#${id}`,
+      align: 'left' as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -649,7 +650,7 @@ const ImportOrderDetail = () => {
                     onCancel={() => { setCancelImportOrderModalVisible(false); setCancelImportOrderResponsibilityChecked(false); }}
                     okText="Tôi xác nhận hủy đơn nhập"
                     cancelText="Hủy"
-                    okButtonProps={{ disabled: !cancelImportOrderResponsibilityChecked, danger: true }}
+                    okButtonProps={{ disabled: !cancelImportOrderResponsibilityChecked }}
                     maskClosable={false}
                   >
                     <Checkbox checked={cancelImportOrderResponsibilityChecked} onChange={e => setCancelImportOrderResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>
@@ -698,7 +699,7 @@ const ImportOrderDetail = () => {
               onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
               okText="Tôi xác nhận kiểm đếm"
               cancelText="Hủy"
-              okButtonProps={{ disabled: !confirmCountingResponsibilityChecked, danger: true }}
+              okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
               maskClosable={false}
             >
               <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>

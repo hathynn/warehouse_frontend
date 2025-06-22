@@ -106,21 +106,25 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       }), 
     },
     { 
-      title: "Giá trị đo lường", 
-      dataIndex: "measurementValue", 
-      key: "measurementValue", 
-      align: "right" as const,
+      title: "Đơn vị", 
+      dataIndex: "unitType", 
+      key: "unitType", 
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }), 
     },
-    { 
-      title: "Đơn vị tính", 
-      dataIndex: "measurementUnit", 
-      key: "measurementUnit", 
+    {
+      title: "Quy cách",
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
-      }), 
+      }),
+      render: (_: any, record: ImportRequestDetailRow) => {
+        console.log(record)
+        return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
+      }
     },
     { 
       title: "Nhà cung cấp", 
@@ -189,6 +193,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
             pageSize: pagination.pageSize,
             total: sortedDetails.length,
             showTotal: (total) => `Tổng ${total} mục`,
+            hideOnSinglePage: true,
           }}
           onChange={handleTableChange}
           size="small"

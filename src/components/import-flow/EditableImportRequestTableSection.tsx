@@ -151,7 +151,6 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
         <Input
           inputMode="numeric"
           pattern="[0-9]*"
-          min={1}
           value={value}
           onChange={e => {
             const val = e.target.value.replace(/\D/g, '');
@@ -168,23 +167,27 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       ),
     },
     {
-      width: "15%",
-      title: <span className="font-semibold">Giá trị đo lường</span>,
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-      align: "right" as const,
+      width: "12%",
+      title: <span className="font-semibold">Đơn vị</span>,
+      dataIndex: "unitType",
+      key: "unitType",
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
     {
-      width: "15%",
-      title: <span className="font-semibold">Đơn vị tính</span>,
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
+      width: "18%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
+      render: (_: any, record: ImportRequestDetailRow) => {
+        console.log(record)
+        return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
+      }
     },
     {
       width: "35%",
@@ -233,7 +236,8 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
           pageSizeOptions: ['5', '10', '20', '50'],
           locale: {
             items_per_page: "/ trang"
-          }
+          },
+          hideOnSinglePage: true,
         }}
         onChange={handleTableChange}
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}

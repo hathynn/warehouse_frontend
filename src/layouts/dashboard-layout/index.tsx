@@ -211,30 +211,7 @@ const DashboardLayout: React.FC = () => {
           {/* Collapse Toggle */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            style={{
-              position: 'absolute',
-              top: '48px',
-              right: '-12px',
-              backgroundColor: '#fff',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              borderRadius: '50%',
-              width: '28px',
-              height: '28px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid #f0f0f0',
-              transition: 'all 0.2s ease-in-out',
-              cursor: 'pointer',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#f5f5f5';
-              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#fff';
-              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-            }}
+            className="!absolute !top-12 !-right-3 !bg-white !shadow-md hover:!bg-gray-100 hover:!shadow-lg active:!bg-gray-200 !rounded-full !w-7 !h-7 !flex !items-center !justify-center !border !border-gray-200 !transition-all !duration-200 !ease-in-out !cursor-pointer focus:!outline-none focus:!ring-2 focus:!ring-blue-500 focus:!ring-opacity-50"
           >
             {collapsed ? <MdKeyboardArrowRight size={20} /> : <MdKeyboardArrowLeft size={20} />}
           </button>

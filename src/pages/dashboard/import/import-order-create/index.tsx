@@ -583,27 +583,36 @@ const ImportOrderCreate = () => {
       {/* Step 2: Show current form */}
       {step === 1 && (
         <div className="mt-4 flex gap-6">
-          <Card title="Thông tin đơn nhập" className="w-3/10">
+          <Card
+            title={<span className="text-xl font-semibold">Thông tin đơn nhập</span>}
+            className="w-3/10"
+          >
             <Space direction="vertical" className="w-full">
               <div className="mb-2">
-                <label className="text-md font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
+                <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
+                <div className="text-sm text-blue-500">
+                  <InfoCircleOutlined className="mr-1" />
+                  Phiếu nhập <b>{importRequest?.importRequestId}</b> có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
+                </div>
                 <DatePicker
-                  className="w-full"
+                  className="w-full !mt-1"
+                  size="large"
                   format="DD-MM-YYYY"
                   value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
                   onChange={handleDateChange}
                   disabledDate={disabledDate}
                   showNow={false}
                 />
-                <div className="text-sm text-red-400 mt-1">
-                  <InfoCircleOutlined className="mr-1" />
-                  LƯU Ý: Phiếu nhập <b>{importRequest?.importRequestId}</b> có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
-                </div>
               </div>
               <div>
-                <label className="text-md font-semibold">Giờ nhận dự kiến <span className="text-red-500">*</span></label>
+                <label className="text-base font-semibold">Giờ nhận dự kiến<span className="text-red-500">*</span></label>
+                <div className="text-sm text-blue-500 mb-1">
+                  <InfoCircleOutlined className="mr-1" />
+                  Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ</span>
+                </div>
                 <TimePicker
                   className="w-full"
+                  size="large"
                   value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
                   onChange={handleTimeChange}
                   format="HH:mm"
@@ -611,13 +620,9 @@ const ImportOrderCreate = () => {
                   needConfirm={false}
                   disabledTime={disabledTime}
                 />
-                <div className="text-sm text-blue-500">
-                  <InfoCircleOutlined className="mr-1" />
-                  Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ</span>
-                </div>
               </div>
               <div className="my-2">
-                <label className="text-md font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
+                <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
                 <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
                   {importRequest?.providerId
                     ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
@@ -625,7 +630,7 @@ const ImportOrderCreate = () => {
                 </Typography.Text>
               </div>
               <div>
-                <label className="text-md font-semibold">Ghi chú</label>
+                <label className="text-base font-semibold">Ghi chú</label>
                 <TextArea
                   placeholder="Nhập ghi chú"
                   rows={4}
@@ -649,7 +654,7 @@ const ImportOrderCreate = () => {
             </Space>
           </Card>
           <div className="w-7/10">
-            <Card title="Danh sách hàng hóa cần nhập">
+            <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa cần nhập</span>}>
               {editableRows.length > 0 ? (
                 <Table
                   columns={columns}

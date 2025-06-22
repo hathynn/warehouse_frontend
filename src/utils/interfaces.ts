@@ -45,6 +45,7 @@ export interface ImportRequestDetailRow {
     itemName: string;
     measurementValue?: number;
     measurementUnit?: string;
+    unitType?: string;
     totalMeasurementValue?: number;
     providerId: number;
     providerName: string;

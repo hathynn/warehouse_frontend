@@ -320,6 +320,7 @@ const ImportRequestCreate: React.FC = () => {
                 itemName: foundItem.name,
                 measurementUnit: foundItem.measurementUnit || "Unknown",
                 measurementValue: foundItem.measurementValue || 0,
+                unitType: foundItem.unitType,
                 providerName: foundProvider.name
               };
             });
@@ -424,23 +425,27 @@ const ImportRequestCreate: React.FC = () => {
       }),
     },
     {
-      width: "15%",
-      title: <span className="font-semibold">Giá trị đo lường</span>,
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-      align: "right" as const,
+      width: "12%",
+      title: <span className="font-semibold">Đơn vị</span>,
+      dataIndex: "unitType",
+      key: "unitType",
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
     {
-      width: "15%",
-      title: <span className="font-semibold">Đơn vị tính</span>,
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
+      width: "18%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
+      render: (_: any, record: ImportRequestDetailRow) => {
+        console.log(record)
+        return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
+      }
     },
     {
       width: "30%",
@@ -533,10 +538,10 @@ const ImportRequestCreate: React.FC = () => {
       )}
       {step === 1 && (
         <div className="mt-4 flex gap-6">
-          <Card title="Thông tin phiếu nhập" className="w-3/10">
+          <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
             <Space direction="vertical" className="w-full">
               <div className="mb-2">
-                <label className="text-md font-semibold">Lý do nhập kho <span className="text-red-500">*</span></label>
+                <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
                 <TextArea
                   placeholder="Nhập lý do"
                   rows={4}
@@ -548,10 +553,11 @@ const ImportRequestCreate: React.FC = () => {
                 />
               </div>
               <div className="mb-2">
-                <label className="text-md font-semibold">Ngày phiếu có hiệu lực <span className="text-red-500">*</span></label>
+                <label className="text-base font-semibold">Ngày phiếu có hiệu lực<span className="text-red-500">*</span></label>
                 <DatePicker
                   locale={locale}
                   format="DD-MM-YYYY"
+                  size="large"
                   className="w-full"
                   value={formData.startDate ? dayjs(formData.startDate) : null}
                   disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
@@ -560,33 +566,27 @@ const ImportRequestCreate: React.FC = () => {
                 />
               </div>
               <div className="mb-2">
-                <label className="text-md font-semibold">Ngày phiếu hết hạn <span className="text-red-500">*</span></label>
+                <label className="text-base font-semibold">Ngày phiếu hết hạn<span className="text-red-500">*</span></label>
+                <div className="text-sm text-blue-500 mb-1">
+                  <InfoCircleOutlined className="mr-1" />
+                  Hạn của phiếu nhập không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
+                </div>
                 <DatePicker
                   locale={locale}
                   format="DD-MM-YYYY"
+                  size="large"
                   className="w-full"
                   value={formData.endDate ? dayjs(formData.endDate) : null}
                   disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
                   onChange={handleEndDateChange}
                   placeholder="Chọn ngày phiếu hết hạn"
                 />
-                <div className="text-sm text-red-400 mt-1">
-                  <InfoCircleOutlined className="mr-1" />
-                  Hạn của phiếu nhập không được vượt quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
-                </div>
               </div>
-              <Alert
-                message="Lưu ý"
-                description="Hệ thống sẽ tự động tạo các phiếu nhập kho riêng biệt từng nhà cung cấp dựa trên dữ liệu từ file Excel."
-                type="info"
-                showIcon
-                className="!p-4"
-              />
               <Button
                 type="primary"
                 onClick={() => setShowConfirmModal(true)}
                 loading={loading}
-                className="w-full mt-4"
+                className="w-full mt-2"
                 id="btn-detail"
                 disabled={importedData.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
               >
@@ -595,7 +595,7 @@ const ImportRequestCreate: React.FC = () => {
             </Space>
           </Card>
           <div className="w-7/10">
-            <Card title="Danh sách hàng hóa từ file Excel">
+            <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa từ file Excel</span>}>
               {sortedData.length > 0 && (
                 <Alert
                   message="Thông tin nhập kho"

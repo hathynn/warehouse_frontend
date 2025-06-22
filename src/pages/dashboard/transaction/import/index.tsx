@@ -92,42 +92,6 @@ const ImportTransactionHistory: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: string): string => {
-    switch (status) {
-      case 'PENDING':
-        return 'Chờ xử lý';
-      case 'IN_PROGRESS':
-        return 'Đang xử lý';
-      case 'COMPLETED':
-        return 'Hoàn thành';
-      case 'CANCELLED':
-        return 'Đã hủy';
-      case 'EXTENDED':
-        return 'Đã gia hạn';
-      default:
-        return status;
-    }
-  };
-
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'PENDING':
-        return 'orange';
-      case 'IN_PROGRESS':
-        return 'blue';
-      case 'COMPLETED':
-        return 'green';
-      case 'CANCELLED':
-        return 'red';
-      case 'EXTEND':
-        return 'orange';
-      case 'EXTENDED':
-        return 'orange';
-      default:
-        return 'default';
-    }
-  };
-
   // ========== USE EFFECTS ==========
   useEffect(() => {
     fetchTransactionLogs();
@@ -205,7 +169,7 @@ const ImportTransactionHistory: React.FC = () => {
     setSelectedImportRequestId(importRequestId);
 
     // Get all transactions related to this import request
-    const relatedTransactions: TransactionDetail[] = [];
+    const relatedTransactionDetails: TransactionDetail[] = [];
 
     allTransactionLogs.forEach((log) => {
       if (log.type === 'IMPORT_REQUEST') {
@@ -214,7 +178,7 @@ const ImportTransactionHistory: React.FC = () => {
         if (Array.isArray(importRequestLog.responseContent)) {
           importRequestLog.responseContent.forEach((importRequest: ImportRequestResponse) => {
             if (importRequest.importRequestId === importRequestId) {
-              relatedTransactions.push({
+              relatedTransactionDetails.push({
                 id: log.id.toString(),
                 type: 'IMPORT_REQUEST',
                 action: log.action,
@@ -229,7 +193,7 @@ const ImportTransactionHistory: React.FC = () => {
         } else if (importRequestLog.responseContent) {
           const importRequest = importRequestLog.responseContent as ImportRequestResponse;
           if (importRequest.importRequestId === importRequestId) {
-            relatedTransactions.push({
+            relatedTransactionDetails.push({
               id: log.id.toString(),
               type: 'IMPORT_REQUEST',
               action: log.action,
@@ -241,12 +205,13 @@ const ImportTransactionHistory: React.FC = () => {
             });
           }
         }
-      } else if (log.type === 'IMPORT_ORDER') {
+      } 
+      else if (log.type === 'IMPORT_ORDER') {
         const importOrderLog = log as ImportOrderTransactionLog;
         const importOrder = importOrderLog.responseContent as ImportOrderResponse;
 
         if (importOrder.importRequestId === importRequestId) {
-          relatedTransactions.push({
+          relatedTransactionDetails.push({
             id: log.id.toString(),
             type: 'IMPORT_ORDER',
             action: log.action,
@@ -261,14 +226,14 @@ const ImportTransactionHistory: React.FC = () => {
       }
     });
 
-    // Sort by creation date - từ mới nhất đến cũ nhất
-    relatedTransactions.sort((a, b) => {
+    // Sort by creation date
+    relatedTransactionDetails.sort((a, b) => {
       const dateA = dayjs(a.createdDate);
       const dateB = dayjs(b.createdDate);
       return dateB.isBefore(dateA) ? -1 : dateB.isAfter(dateA) ? 1 : 0;
     });
 
-    setTransactionDetails(relatedTransactions);
+    setTransactionDetails(relatedTransactionDetails);
     setDrawerOpen(true);
   };
 
@@ -383,7 +348,7 @@ const ImportTransactionHistory: React.FC = () => {
         </div>
       </div>
 
-      <Table<ImportRequestSummary>
+      <Table
         columns={columns}
         dataSource={importRequestSummaries}
         rowKey="key"

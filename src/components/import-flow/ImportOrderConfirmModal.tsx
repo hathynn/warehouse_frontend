@@ -152,6 +152,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
           pageSize: pagination.pageSize,
           total: details.length,
           showTotal: (total) => `Tổng ${total} mục`,
+          hideOnSinglePage: true,
         }}
         onChange={handleTableChange}
         size="small"

@@ -75,12 +75,12 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
 
   const columns = [
     {
-      width: "10%",
+      width: "12%",
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
       render: (id: number) => `#${id}`,
-      align: "right" as const,
+      align: "left" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -143,7 +143,6 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
           <Input
             inputMode="numeric"
             pattern="[0-9]*"
-            min={1}
             max={maxAllowed}
             value={record.plannedQuantity}
             onChange={e => {
@@ -211,6 +210,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
             items_per_page: "/ trang"
           },
           showTotal: (total: number) => `Tổng ${total} mục`,
+          hideOnSinglePage: true,
         }}
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}
         onChange={handleTableChange}

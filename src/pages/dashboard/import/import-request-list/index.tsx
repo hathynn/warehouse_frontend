@@ -242,7 +242,35 @@ const ImportRequestList: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (quantity: number) => <div className="text-lg">{quantity || 0}</div>,
+      render: (quantity: number) => <div className="text-base">{quantity || 0}</div>,
+    },
+    {
+      title: "Tổng thực nhập",
+      dataIndex: "totalActualQuantityInRequest",
+      key: "totalActualQuantityInRequest",
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (actual: number, record: ImportRequestData) => {
+        const expected = record.totalExpectQuantityInRequest || 0;
+        const isEnough = actual >= expected;
+        return (
+          <div className="text-right">
+            {actual === 0 ? (
+              <span className="font-bold text-gray-600">Chưa nhập</span>
+            ) : (
+              <>
+                <div className="text-base">{actual}</div>
+                {expected > 0 && (
+                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                    {isEnough ? "" : `Thiếu ${expected - actual} so với dự nhập`}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Tổng đã lên đơn",
@@ -260,40 +288,7 @@ const ImportRequestList: React.FC = () => {
               <span className="font-bold text-gray-600">Chưa lên đơn</span>
             ) : (
               <>
-                <div className="text-lg">{ordered}</div>
-                {expected > 0 && (
-                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                    {isEnough ? "" : `Thiếu ${expected - ordered}`}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Tổng đã nhập",
-      dataIndex: "totalActualQuantityInRequest",
-      key: "totalActualQuantityInRequest",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (actual: number, record: ImportRequestData) => {
-        const expected = record.totalExpectQuantityInRequest || 0;
-        const isEnough = actual >= expected;
-        return (
-          <div className="text-right">
-            {actual === 0 ? (
-              <span className="font-bold text-gray-600">Chưa nhập</span>
-            ) : (
-              <>
-                <div className="text-lg">{actual}</div>
-                {expected > 0 && (
-                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                    {isEnough ? "" : `Thiếu ${expected - actual}`}
-                  </span>
-                )}
+                <div className="text-base">{ordered}</div>
               </>
             )}
           </div>
