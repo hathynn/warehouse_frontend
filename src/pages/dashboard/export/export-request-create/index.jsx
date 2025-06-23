@@ -63,6 +63,7 @@ const ExportRequestCreate = () => {
   const [hasTableError, setHasTableError] = useState(false);
   const [exportTypeCache, setExportTypeCache] = useState({});
   const [providers, setProviders] = useState([]);
+  const [excelFormData, setExcelFormData] = useState(null);
 
   // FORM DATA STATE
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -206,6 +207,7 @@ const ExportRequestCreate = () => {
     setFileConfirmed(false);
     setHasTableError(false);
     setExportTypeCache({});
+    setExcelFormData(null); // THÊM DÒNG NÀY
     setPagination({ current: 1, pageSize: 10, total: 0 });
     resetViewedPages(1);
   };
@@ -226,77 +228,229 @@ const ExportRequestCreate = () => {
         const ab = event.target.result;
         const wb = XLSX.read(ab, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(ws);
+        const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        const transformedData = jsonData.map((item, index) => {
-          const itemId = item["itemId"] || item["Mã hàng"];
-          const quantity = item["quantity"] || item["Số lượng"];
+        // ĐỌC EXPORT TYPE TỪ DÒNG ĐẦU CỦA FILE EXCEL
+        const detectedExportType = jsonData[0]?.[1]; // Dòng 1, cột B
 
-          if (!itemId || !quantity) {
+        // MAPPING CÁC GIÁ TRỊ CÓ THỂ CÓ TRONG EXCEL VỚI CÁC GIÁ TRỊ TRONG HỆ THỐNG
+        const exportTypeMapping = {
+          SELLING: "SELLING",
+          RETURN: "RETURN",
+          PRODUCTION: "PRODUCTION",
+          BORROWING: "BORROWING",
+          LIQUIDATION: "LIQUIDATION",
+        };
+
+        let transformedData = [];
+        let startRow = 0;
+        let finalExportType = formData.exportType;
+        let extractedFormData = null; // THÊM BIẾN NÀY ĐỂ LƯU EXCEL FORM DATA
+
+        // Nếu detect được export type từ Excel và nó khác với hiện tại
+        if (detectedExportType && exportTypeMapping[detectedExportType]) {
+          finalExportType = exportTypeMapping[detectedExportType];
+
+          // Tự động update export type nếu khác với hiện tại
+          if (finalExportType !== formData.exportType) {
+            setFormData((prev) => ({
+              ...prev,
+              exportType: finalExportType,
+            }));
+
+            toast.info(
+              `Đã tự động chuyển sang loại phiếu xuất: ${getExportTypeDisplayName(
+                finalExportType
+              )}`
+            );
+          }
+        }
+
+        // Xử lý đặc biệt cho SELLING
+        if (finalExportType === "SELLING") {
+          if (jsonData.length < 10) {
+            throw new Error("File Excel không đúng định dạng cho xuất bán");
+          }
+
+          // EXTRACT FORM DATA TỪ EXCEL
+          extractedFormData = {
+            exportReason:
+              jsonData[1]?.[1]?.replace?.("{Điền lý do xuất}", "")?.trim() ||
+              "",
+            receiverName:
+              jsonData[2]?.[1]
+                ?.replace?.("{Điền tên người nhận}", "")
+                ?.trim() || "",
+            receiverPhone:
+              jsonData[3]?.[1]
+                ?.replace?.("{Điền SĐT người nhận}", "")
+                ?.trim() || "",
+            receiverAddress:
+              jsonData[4]?.[1]
+                ?.replace?.("{Điền địa chỉ người nhận}", "")
+                ?.trim() || "",
+          };
+
+          // LƯU EXCEL FORM DATA VÀO STATE
+          setExcelFormData(extractedFormData);
+
+          // Update form data với thông tin từ Excel (giữ nguyên như cũ)
+          setFormData((prev) => ({
+            ...prev,
+            exportType: finalExportType,
+            exportReason: extractedFormData.exportReason || prev.exportReason,
+            receiverName: extractedFormData.receiverName || prev.receiverName,
+            receiverPhone:
+              extractedFormData.receiverPhone || prev.receiverPhone,
+            receiverAddress:
+              extractedFormData.receiverAddress || prev.receiverAddress,
+          }));
+
+          startRow = 8;
+          const headers = jsonData[7];
+          const dataRows = jsonData.slice(startRow);
+
+          transformedData = dataRows
+            .filter((row) => row && row.length > 0 && row[0])
+            .map((row, index) => {
+              const itemId = row[0];
+              const quantity = row[1];
+              const measurementValue = row[2] || "";
+
+              if (!itemId || !quantity) {
+                throw new Error(
+                  `Dòng ${
+                    startRow + index + 1
+                  }: Thiếu thông tin Mã hàng hoặc Số lượng`
+                );
+              }
+
+              return {
+                itemId: String(itemId).trim(),
+                quantity: Number(quantity),
+                measurementValue: measurementValue,
+              };
+            });
+        } else if (finalExportType === "PRODUCTION") {
+          if (jsonData.length < 10) {
             throw new Error(
-              `Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`
+              "File Excel không đúng định dạng cho xuất sản xuất"
             );
           }
 
-          if (formData.exportType === "RETURN") {
-            const providerId = item["providerId"] || item["Mã Nhà cung cấp"];
-            if (!providerId) {
+          // EXTRACT FORM DATA CHO PRODUCTION
+          extractedFormData = {
+            exportReason:
+              jsonData[1]?.[1]?.replace?.("{Điền lý do xuất}", "")?.trim() ||
+              "",
+            // Thêm các field khác cho production nếu cần
+          };
+
+          setExcelFormData(extractedFormData);
+
+          setFormData((prev) => ({
+            ...prev,
+            exportType: finalExportType,
+            exportReason: extractedFormData.exportReason || prev.exportReason,
+          }));
+
+          startRow = 8;
+          const dataRows = jsonData.slice(startRow);
+
+          transformedData = dataRows
+            .filter((row) => row && row.length > 0 && row[0])
+            .map((row, index) => {
+              const itemId = row[0];
+              const quantity = row[1];
+
+              if (!itemId || !quantity) {
+                throw new Error(
+                  `Dòng ${
+                    startRow + index + 1
+                  }: Thiếu thông tin Mã hàng hoặc Số lượng`
+                );
+              }
+
+              return {
+                itemId: String(itemId).trim(),
+                quantity: Number(quantity),
+                measurementValue: row[2] || "",
+              };
+            });
+        } else {
+          // Xử lý như cũ cho các loại xuất khác
+          setExcelFormData(null); // Clear excel form data cho các loại khác
+
+          const jsonDataObjects = XLSX.utils.sheet_to_json(ws);
+
+          transformedData = jsonDataObjects.map((item, index) => {
+            const itemId = item["itemId"] || item["Mã hàng"];
+            const quantity = item["quantity"] || item["Số lượng"];
+
+            if (!itemId || !quantity) {
               throw new Error(
-                `Dòng ${index + 1}: Thiếu thông tin Nhà cung cấp`
+                `Dòng ${index + 1}: Thiếu thông tin Mã hàng hoặc Số lượng`
               );
             }
 
-            const foundItem = items.content.find(
-              (i) => String(i.id) === String(itemId)
-            );
-            if (!foundItem) {
-              throw new Error(
-                `Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`
-              );
-            }
+            if (finalExportType === "RETURN") {
+              const providerId = item["providerId"] || item["Mã Nhà cung cấp"];
+              if (!providerId) {
+                throw new Error(
+                  `Dòng ${index + 1}: Thiếu thông tin Nhà cung cấp`
+                );
+              }
 
-            const foundProvider = providers.find(
-              (p) => p.id === Number(providerId)
-            );
-            if (!foundProvider) {
-              throw new Error(
-                `Dòng ${
-                  index + 1
-                }: Không tìm thấy nhà cung cấp với ID ${providerId}`
+              const foundItem = items.content.find(
+                (i) => String(i.id) === String(itemId)
               );
-            }
+              if (!foundItem) {
+                throw new Error(
+                  `Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`
+                );
+              }
 
-            // Validate the provider is actually linked to the item
-            if (
-              !Array.isArray(foundItem.providerIds) ||
-              !foundItem.providerIds.includes(Number(providerId))
-            ) {
-              throw new Error(
-                `Dòng ${
-                  index + 1
-                }: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`
+              const foundProvider = providers.find(
+                (p) => p.id === Number(providerId)
               );
+              if (!foundProvider) {
+                throw new Error(
+                  `Dòng ${
+                    index + 1
+                  }: Không tìm thấy nhà cung cấp với ID ${providerId}`
+                );
+              }
+
+              if (
+                !Array.isArray(foundItem.providerIds) ||
+                !foundItem.providerIds.includes(Number(providerId))
+              ) {
+                throw new Error(
+                  `Dòng ${
+                    index + 1
+                  }: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`
+                );
+              }
+
+              return {
+                itemId: String(itemId).trim(),
+                quantity: Number(quantity),
+                providerId: Number(providerId),
+                itemName: foundItem.name,
+                measurementUnit: foundItem.measurementUnit || "Không xác định",
+                totalMeasurementValue: foundItem.totalMeasurementValue || "",
+                providerName: foundProvider.name,
+              };
             }
 
             return {
               itemId: String(itemId).trim(),
               quantity: Number(quantity),
-              providerId: Number(providerId),
-              itemName: foundItem.name,
-              measurementUnit: foundItem.measurementUnit || "Không xác định",
-              totalMeasurementValue: foundItem.totalMeasurementValue || "",
-              providerName: foundProvider.name,
+              measurementValue:
+                item["measurementValue"] || item["Quy cách"] || "",
             };
-          }
-
-          // Các loại xuất khác (SELLING, PRODUCTION, LOAN)
-          return {
-            itemId: String(itemId).trim(),
-            quantity: Number(quantity),
-            measurementValue:
-              item["measurementValue"] || item["Quy cách"] || "",
-          };
-        });
+          });
+        }
 
         setData(transformedData);
         setValidationError("");
@@ -307,6 +461,18 @@ const ExportRequestCreate = () => {
     };
 
     reader.readAsArrayBuffer(uploadedFile);
+  };
+
+  // HELPER FUNCTION (giữ nguyên)
+  const getExportTypeDisplayName = (exportType) => {
+    const displayNames = {
+      SELLING: "Xuất bán",
+      RETURN: "Xuất trả nhà cung cấp",
+      PRODUCTION: "Xuất sản xuất",
+      BORROWING: "Xuất mượn",
+      LIQUIDATION: "Xuất thanh lý",
+    };
+    return displayNames[exportType] || exportType;
   };
 
   const triggerFileInput = () => fileInputRef.current?.click();
@@ -778,6 +944,7 @@ const ExportRequestCreate = () => {
           items={items.content || []}
           providers={providers}
           pagination={pagination}
+          excelFormData={excelFormData} // THÊM PROP NÀY
         />
       )}
 
@@ -807,4 +974,3 @@ const ExportRequestCreate = () => {
 };
 
 export default ExportRequestCreate;
-
