@@ -269,7 +269,7 @@ const useExportRequestService = () => {
         requestData
       );
       if (response && response.content) {
-        toast.success("Tạo phiếu xuất bán thành công");
+        // toast.success("Tạo phiếu xuất bán thành công");
       }
       return response.content;
     } catch (error) {

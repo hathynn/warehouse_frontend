@@ -68,23 +68,10 @@ const ExcelDataTableAfter = ({
     );
   };
 
-  // Helper lấy đơn vị tính, giá trị đo lường
-  const getUnit = (record) => {
-    return (
-      record.measurementUnit ||
-      items.find((i) => String(i.id) === String(record.itemId))
-        ?.measurementUnit ||
-      ""
-    );
-  };
-
-  const getTotalMeasurementValue = (record) => {
-    return (
-      record.totalMeasurementValue ||
-      items.find((i) => String(i.id) === String(record.itemId))
-        ?.totalMeasurementValue ||
-      0
-    );
+  // Helper lấy các thông tin từ items
+  const getItemInfo = (record, field) => {
+    const itemMeta = items.find((i) => String(i.id) === String(record.itemId));
+    return record[field] || itemMeta?.[field] || "";
   };
 
   // 1. Sort data trước nếu là RETURN (chú ý getProviderName phải khai báo phía trên)
@@ -131,30 +118,45 @@ const ExcelDataTableAfter = ({
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
+      align: "center",
       width: "9%",
-      render: (text) => (
-        <div style={{ textAlign: "right", paddingLeft: 12 }}>{text}</div>
-      ),
+      render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
     },
     {
-      title: "Giá trị đo lường",
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
       width: "12%",
+      title: <span className="font-semibold">Đơn vị tính</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       render: (_, record) => (
-        <div style={{ textAlign: "right", paddingLeft: 12 }}>
-          {getTotalMeasurementValue(record)}
-        </div>
+        <span style={{ display: "block", textAlign: "center" }}>
+          {getItemInfo(record, "unitType")}
+        </span>
       ),
     },
     {
-      width: "9%",
-      title: "Đơn vị tính",
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
-      render: (_, record) => <span>{getUnit(record)}</span>,
+      width: "18%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "specification",
+      key: "specification",
+      align: "center",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (_, record) => {
+        const measurementValue = getItemInfo(record, "measurementValue");
+        const measurementUnit = getItemInfo(record, "measurementUnit");
+        const unitType = getItemInfo(record, "unitType");
+        return (
+          <span>
+            {measurementValue} {measurementUnit} / {unitType}
+          </span>
+        );
+      },
     },
-    // Quy cách cho các loại này
+    // Điều kiện column Quy cách cho các loại đặc biệt
     ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
       ? {
           title: "Quy cách",
@@ -166,7 +168,7 @@ const ExcelDataTableAfter = ({
     // Nhà cung cấp cho RETURN
     exportType === "RETURN"
       ? {
-          width: "25%",
+          width: "35%",
           title: "Nhà cung cấp",
           dataIndex: "providerName",
           key: "providerName",
@@ -219,7 +221,7 @@ const ExcelDataTableAfter = ({
             ? `${record.itemId}-${record.providerId}-${idx}`
             : String(record.itemId)
         }
-        pagination={pagination}
+        pagination={pagination.total > pagination.pageSize ? pagination : false}
       />
     </>
   );
@@ -235,10 +237,7 @@ ExcelDataTableAfter.propTypes = {
       providerId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       providerName: PropTypes.string,
       measurementUnit: PropTypes.string,
-      totalMeasurementValue: PropTypes.oneOfType([
-        PropTypes.string,
-        PropTypes.number,
-      ]),
+      unitType: PropTypes.string,
     })
   ).isRequired,
   exportType: PropTypes.string.isRequired,

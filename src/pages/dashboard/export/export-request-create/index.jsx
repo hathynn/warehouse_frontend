@@ -9,7 +9,6 @@ import moment from "moment";
 import { ROUTES } from "@/constants/routes";
 // Components
 import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTable";
-import ExportTypeSelector from "@/components/export-flow/export-create/ExportTypeSelector";
 import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
 import FileUploadSection from "@/components/export-flow/export-create/FileUploadSection";
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
@@ -64,6 +63,8 @@ const ExportRequestCreate = () => {
   const [exportTypeCache, setExportTypeCache] = useState({});
   const [providers, setProviders] = useState([]);
   const [excelFormData, setExcelFormData] = useState(null);
+  const [resetRemovedItemsFunction, setResetRemovedItemsFunction] =
+    useState(null);
 
   // FORM DATA STATE
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -180,17 +181,41 @@ const ExportRequestCreate = () => {
   }, []);
 
   // =============================================================================
-  // UTILITY FUNCTIONS
+  // UTILITY FUNCTIONS - FIXED VERSION
   // =============================================================================
   function enrichDataWithItemMeta(dataArray, itemsArray) {
     return dataArray.map((row) => {
       const itemMeta =
         itemsArray.find((i) => String(i.id) === String(row.itemId)) || {};
+
+      // Nếu dữ liệu đã có đầy đủ thông tin (như RETURN type), chỉ bổ sung thiếu
+      const isFullyMapped = row.itemName && row.unitType;
+
+      if (isFullyMapped) {
+        // Chỉ bổ sung những thuộc tính chưa có
+        return {
+          ...row,
+          totalMeasurementValue:
+            row.totalMeasurementValue ?? itemMeta.totalMeasurementValue ?? "",
+          inventoryQuantity: itemMeta.quantity || 0,
+        };
+      }
+
+      // Map đầy đủ cho các trường hợp khác
       return {
         ...row,
-        itemName: itemMeta.name || "Không xác định",
-        totalMeasurementValue: itemMeta.totalMeasurementValue ?? "",
-        measurementUnit: itemMeta.measurementUnit ?? "",
+        itemName: row.itemName || itemMeta.name || "Không xác định",
+        totalMeasurementValue:
+          row.totalMeasurementValue ?? itemMeta.totalMeasurementValue ?? "",
+        measurementUnit:
+          (row.measurementUnit || itemMeta.measurementUnit) ?? "",
+        unitType: row.unitType || itemMeta.unitType || "",
+        measurementValue:
+          row.measurementValue || itemMeta.measurementValue || 0,
+        // QUAN TRỌNG: Thêm quantity từ kho
+        inventoryQuantity: itemMeta.quantity || 0,
+        ...(row.providerId && { providerId: row.providerId }),
+        ...(row.providerName && { providerName: row.providerName }),
       };
     });
   }
@@ -325,38 +350,33 @@ const ExportRequestCreate = () => {
                 );
               }
 
+              // ✅ TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
+              const foundItem = items.content?.find(
+                (i) => String(i.id) === String(itemId)
+              );
+
+              if (!foundItem) {
+                throw new Error(
+                  `Dòng ${
+                    startRow + index + 1
+                  }: Không tìm thấy mặt hàng với mã ${itemId}`
+                );
+              }
+
               return {
                 itemId: String(itemId).trim(),
                 quantity: Number(quantity),
                 measurementValue: measurementValue,
+                // ✅ THÊM CÁC THUỘC TÍNH TỪ ITEM METADATA
+                itemName: foundItem.name,
+                unitType: foundItem.unitType,
+                measurementUnit: foundItem.measurementUnit || "Không xác định",
+                totalMeasurementValue: foundItem.totalMeasurementValue || "",
               };
             });
-        } else if (finalExportType === "PRODUCTION") {
-          if (jsonData.length < 10) {
-            throw new Error(
-              "File Excel không đúng định dạng cho xuất sản xuất"
-            );
-          }
 
-          // EXTRACT FORM DATA CHO PRODUCTION
-          extractedFormData = {
-            exportReason:
-              jsonData[1]?.[1]?.replace?.("{Điền lý do xuất}", "")?.trim() ||
-              "",
-            // Thêm các field khác cho production nếu cần
-          };
-
-          setExcelFormData(extractedFormData);
-
-          setFormData((prev) => ({
-            ...prev,
-            exportType: finalExportType,
-            exportReason: extractedFormData.exportReason || prev.exportReason,
-          }));
-
-          startRow = 8;
-          const dataRows = jsonData.slice(startRow);
-
+          // TRONG PHẦN XỬ LÝ FILE UPLOAD - PRODUCTION
+          // Thay thế đoạn code hiện tại từ dòng transformedData = dataRows... trong PRODUCTION:
           transformedData = dataRows
             .filter((row) => row && row.length > 0 && row[0])
             .map((row, index) => {
@@ -371,12 +391,33 @@ const ExportRequestCreate = () => {
                 );
               }
 
+              // ✅ TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
+              const foundItem = items.content?.find(
+                (i) => String(i.id) === String(itemId)
+              );
+
+              if (!foundItem) {
+                throw new Error(
+                  `Dòng ${
+                    startRow + index + 1
+                  }: Không tìm thấy mặt hàng với mã ${itemId}`
+                );
+              }
+
               return {
                 itemId: String(itemId).trim(),
                 quantity: Number(quantity),
                 measurementValue: row[2] || "",
+                // ✅ THÊM CÁC THUỘC TÍNH TỪ ITEM METADATA
+                itemName: foundItem.name,
+                unitType: foundItem.unitType,
+                measurementUnit: foundItem.measurementUnit || "Không xác định",
+                totalMeasurementValue: foundItem.totalMeasurementValue || "",
               };
             });
+
+          // TRONG PHẦN XỬ LÝ FILE UPLOAD - CÁC LOẠI KHÁC
+          // Thay thế phần cuối else cho các loại khác:
         } else {
           // Xử lý như cũ cho các loại xuất khác
           setExcelFormData(null); // Clear excel form data cho các loại khác
@@ -439,8 +480,20 @@ const ExportRequestCreate = () => {
                 itemName: foundItem.name,
                 measurementUnit: foundItem.measurementUnit || "Không xác định",
                 totalMeasurementValue: foundItem.totalMeasurementValue || "",
+                unitType: foundItem.unitType,
+                measurementValue: foundItem.measurementValue || 0,
                 providerName: foundProvider.name,
               };
+            }
+
+            const foundItem = items.content?.find(
+              (i) => String(i.id) === String(itemId)
+            );
+
+            if (!foundItem) {
+              throw new Error(
+                `Dòng ${index + 1}: Không tìm thấy mặt hàng với mã ${itemId}`
+              );
             }
 
             return {
@@ -448,12 +501,20 @@ const ExportRequestCreate = () => {
               quantity: Number(quantity),
               measurementValue:
                 item["measurementValue"] || item["Quy cách"] || "",
+              itemName: foundItem.name,
+              unitType: foundItem.unitType,
+              measurementUnit: foundItem.measurementUnit || "Không xác định",
+              totalMeasurementValue: foundItem.totalMeasurementValue || "",
             };
           });
         }
 
         setData(transformedData);
         setValidationError("");
+        // Reset removed items
+        if (resetRemovedItemsFunction) {
+          resetRemovedItemsFunction();
+        }
       } catch (error) {
         setValidationError(error.message);
         toast.error(error.message);
@@ -813,7 +874,7 @@ const ExportRequestCreate = () => {
       await createExportDetails(createdExport.exportRequestId);
 
       // Success feedback and navigation
-      toast.success("Đã gửi chi tiết phiếu xuất thành công");
+      // toast.success("Đã gửi chi tiết phiếu xuất thành công");
       navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
 
       // Reset states after successful submission
