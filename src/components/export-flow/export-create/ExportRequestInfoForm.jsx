@@ -28,6 +28,7 @@ const ExportRequestInfoForm = ({
   items,
   providers,
   pagination,
+  excelFormData,
 }) => {
   const [timeError, setTimeError] = useState("");
   const [mandatoryError, setMandatoryError] = useState("");
@@ -100,6 +101,7 @@ const ExportRequestInfoForm = ({
                 setTimeError={setTimeError}
                 mandatoryError={mandatoryError}
                 setMandatoryError={setMandatoryError}
+                excelFormData={excelFormData} // TRUYỀN EXCEL DATA
               />
             )}
             {formData.exportType === "BORROWING" && (
@@ -111,6 +113,7 @@ const ExportRequestInfoForm = ({
                 setTimeError={setTimeError}
                 mandatoryError={mandatoryError}
                 setMandatoryError={setMandatoryError}
+                excelFormData={excelFormData} // TRUYỀN EXCEL DATA
               />
             )}
             {formData.exportType === "RETURN" && (
@@ -121,6 +124,7 @@ const ExportRequestInfoForm = ({
                 setTimeError={setTimeError}
                 mandatoryError={mandatoryError}
                 setMandatoryError={setMandatoryError}
+                excelFormData={excelFormData} // TRUYỀN EXCEL DATA
               />
             )}
             {formData.exportType === "SELLING" && (
@@ -131,6 +135,7 @@ const ExportRequestInfoForm = ({
                 setTimeError={setTimeError}
                 mandatoryError={mandatoryError}
                 setMandatoryError={setMandatoryError}
+                excelFormData={excelFormData} // TRUYỀN EXCEL DATA VÀO ĐÂY
               />
             )}
             {mandatoryError && (
@@ -195,7 +200,7 @@ const ExportRequestInfoForm = ({
         confirmLoading={confirmLoading}
         formData={formData}
         details={mappedData}
-        providers={providers} // <-- thêm dòng này
+        providers={providers}
       />
     </div>
   );
@@ -230,6 +235,7 @@ ExportRequestInfoForm.propTypes = {
   items: PropTypes.array,
   providers: PropTypes.array,
   pagination: PropTypes.object,
+  excelFormData: PropTypes.object, // THÊM PROP TYPE CHO EXCEL DATA
 };
 
 export default ExportRequestInfoForm;

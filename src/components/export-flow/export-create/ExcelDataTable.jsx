@@ -28,8 +28,7 @@ const ExcelDataTable = ({
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
     console.log("items:", items);
     const maxValue = itemMeta?.quantity ?? Infinity;
-    console.log("itemMeta:", itemMeta);
-    console.log("quantity" + itemMeta?.quantity);
+    // const maxValue = Infinity;
     if (num > maxValue) return `Tối đa còn ${maxValue}!`;
     return "";
   };

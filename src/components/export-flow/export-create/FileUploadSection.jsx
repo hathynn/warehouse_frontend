@@ -23,15 +23,70 @@ const FileUploadSection = ({
   onRemoveFile,
 }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
   const handleDownloadTemplate = () => {
     let template = [];
+    const wb = XLSX.utils.book_new();
+
     if (exportType === "SELLING") {
-      template = [
-        {
-          itemId: "Mã hàng",
-          quantity: "Số lượng",
-        },
+      // Tạo sheet dữ liệu xuất bán với thông tin form ở đầu
+      const exportData = [
+        // 5 dòng đầu chứa thông tin form
+        ["exportType", "SELLING"],
+        ["exportReason", "Xuất bán"],
+        ["receiverName", "{Điền tên người nhận}"],
+        ["receiverPhone", "{Điền SĐT người nhận}"],
+        ["receiverAddress", "{Điền địa chỉ người nhận}"],
+        [], // Dòng trống
+        [], // Dòng trống
+        // Header cho dữ liệu sản phẩm
+        ["itemId", "quantity"],
+        ["Mã hàng", "Số lượng"],
       ];
+
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+      // Set độ rộng cột
+      ws["!cols"] = [
+        { wch: 20 }, // Cột A - rộng hơn cho thông tin form
+        { wch: 25 }, // Cột B - rộng hơn cho nội dung form
+      ];
+
+      // Merge cells cho phần header thông tin form (optional - để đẹp hơn)
+      ws["!merges"] = [
+        { s: { r: 0, c: 2 }, e: { r: 4, c: 2 } }, // Merge cột C từ dòng 1-5
+      ];
+
+      // Thêm ghi chú/hướng dẫn
+      const instructionWs = XLSX.utils.aoa_to_sheet([
+        ["HƯỚNG DẪN SỬ DỤNG FILE TEMPLATE XUẤT BÁN"],
+        [""],
+        ["PHẦN 1: THÔNG TIN PHIẾU XUẤT (5 dòng đầu)"],
+        ["'- exportType: Loại xuất (SELLING - không thay đổi)"],
+        ["'- exportReason: Lý do xuất kho"],
+        ["'- receiverName: Tên người nhận hàng"],
+        ["'- receiverPhone: Số điện thoại người nhận"],
+        ["'- receiverAddress: Địa chỉ người nhận (không bắt buộc)"],
+        [""],
+        ["PHẦN 2: DANH SÁCH SẢN PHẨM (từ dòng 9)"],
+        ["'- itemId: Mã sản phẩm"],
+        ["'- quantity: Số lượng cần xuất (số nguyên dương)"],
+        [""],
+        ["LƯU Ý QUAN TRỌNG:"],
+        ["'- Không thay đổi vị trí và tên các trường ở 5 dòng đầu"],
+        ["'- Không thay đổi tên các cột ở dòng 8"],
+        ["'- Mã sản phẩm phải tồn tại trong hệ thống"],
+        ["'- Số lượng phải là số dương"],
+        ["'- Bắt đầu nhập dữ liệu sản phẩm từ dòng 9"],
+        ["'- Thêm dấu ' ở trước SĐT người nhận để đúng định dạng SĐT"],
+      ]);
+
+      // Set độ rộng cho sheet hướng dẫn
+      instructionWs["!cols"] = [{ wch: 60 }];
+
+      // Thêm sheets vào workbook - Dữ liệu xuất bán lên đầu, Hướng dẫn thứ 2
+      XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất bán");
+      XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
     } else if (exportType === "RETURN") {
       template = [
         {
@@ -40,33 +95,31 @@ const FileUploadSection = ({
           providerId: "Mã Nhà cung cấp",
         },
       ];
+      const ws = XLSX.utils.json_to_sheet(template);
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
     } else {
+      // Template mặc định cho các loại khác
       template = [
         {
           itemId: "Mã hàng",
           quantity: "Số lượng",
         },
       ];
+      const ws = XLSX.utils.json_to_sheet(template);
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
     }
 
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    // Download export request template based on type of the request
+    const fileNames = {
+      RETURN: "template_xuat_tra_NCC.xlsx",
+      SELLING: "template_xuat_ban.xlsx",
+      PRODUCTION: "export_production_template.xlsx",
+      BORROWING: "export_borrowing_template.xlsx",
+      LIQUIDATION: "export_liquidation_template.xlsx",
+    };
 
-    //Download export request template based on type of the request
-    if (exportType === "RETURN") {
-      XLSX.writeFile(wb, "export_return_template.xlsx");
-    } else if (exportType === "SELLING") {
-      XLSX.writeFile(wb, "export_selling_template.xlsx");
-    } else if (exportType === "PRODUCTION") {
-      XLSX.writeFile(wb, "export_production_template.xlsx");
-    } else if (exportType === "BORROWING") {
-      XLSX.writeFile(wb, "export_borrowing_template.xlsx");
-    } else if (exportType === "LIQUIDATION") {
-      XLSX.writeFile(wb, "export_liquidation_template.xlsx");
-    } else {
-      XLSX.writeFile(wb, "export_request_template.xlsx");
-    }
+    const fileName = fileNames[exportType] || "export_request_template.xlsx";
+    XLSX.writeFile(wb, fileName);
   };
 
   const handleRemoveClick = () => {
@@ -89,7 +142,7 @@ const FileUploadSection = ({
       <div className="flex flex-col gap-3">
         <div className="flex gap-3 justify-center items-start">
           <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-            Tải mẫu Excel
+            Tải mẫu Excel{" "}
             <span className="font-semibold">
               {EXPORT_TYPE_LABELS[exportType] || exportType}
             </span>
