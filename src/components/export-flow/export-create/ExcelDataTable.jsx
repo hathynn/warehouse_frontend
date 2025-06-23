@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Table, Input, Select } from "antd";
 import PropTypes from "prop-types";
 import { InfoCircleFilled } from "@ant-design/icons";
-// Thêm vào đầu file
 
 const ExcelDataTable = ({
   data,
@@ -11,12 +10,21 @@ const ExcelDataTable = ({
   onTableErrorChange,
   pagination,
   onPaginationChange,
-  setPagination, // <--- thêm prop này
-  exportType, // nhận vào ở đây cho exportType!
+  setPagination,
+  exportType,
   providers,
+  onRemovedItemsReset, // Thêm prop để reset từ parent
 }) => {
+  const [originalData, setOriginalData] = useState([]);
+  const [hasProcessed, setHasProcessed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [removedItems, setRemovedItems] = useState([]); // Lưu danh sách item bị xóa
   const pendingScrollItemId = useRef(null);
+
+  // Thêm function để reset removedItems từ bên ngoài
+  const resetRemovedItems = () => {
+    setRemovedItems([]);
+  };
 
   // Validate số lượng
   const validateQuantity = (value, itemId) => {
@@ -26,13 +34,63 @@ const ExcelDataTable = ({
     const num = Number(value);
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
-    console.log("items:", items);
     const maxValue = itemMeta?.quantity ?? Infinity;
-    // const maxValue = Infinity;
     if (num > maxValue) return `Tối đa còn ${maxValue}!`;
     return "";
   };
 
+  // Expose reset function ra ngoài qua ref hoặc callback
+  useEffect(() => {
+    if (onRemovedItemsReset) {
+      onRemovedItemsReset(resetRemovedItems);
+    }
+  }, [onRemovedItemsReset]);
+
+  useEffect(() => {
+    if (!items || items.length === 0 || !data || data.length === 0) return;
+
+    // Chỉ xử lý nếu data khác với originalData (data mới từ file)
+    if (JSON.stringify(data) !== JSON.stringify(originalData)) {
+      setOriginalData(data); // Lưu data gốc
+      setHasProcessed(false); // Reset flag
+    }
+
+    // Chỉ xử lý filter một lần cho mỗi data set mới
+    if (!hasProcessed) {
+      const itemsToRemove = [];
+      const itemsToKeep = [];
+
+      data.forEach((item) => {
+        const itemMeta = items.find(
+          (i) => String(i.id) === String(item.itemId)
+        );
+        const stockQuantity = itemMeta?.quantity ?? 0;
+
+        if (stockQuantity === 0) {
+          itemsToRemove.push({
+            itemId: item.itemId,
+            itemName: item.itemName || itemMeta?.name || `Item ${item.itemId}`,
+            requestedQuantity: item.quantity,
+            unitType: item.unitType || itemMeta?.unitType || "",
+          });
+        } else {
+          itemsToKeep.push(item);
+        }
+      });
+
+      // Cập nhật removedItems
+      setRemovedItems(itemsToRemove);
+
+      // Chỉ update data nếu có items bị remove
+      if (itemsToRemove.length > 0) {
+        onDataChange(itemsToKeep);
+      }
+
+      setHasProcessed(true); // Đánh dấu đã xử lý
+    }
+  }, [data, items]); // Bỏ onDataChange khỏi dependencies
+
+  // Validate errors cho các item còn lại
   useEffect(() => {
     const newErrors = {};
     data.forEach((item) => {
@@ -40,30 +98,46 @@ const ExcelDataTable = ({
       if (error) newErrors[item.itemId] = error;
     });
     setFieldErrors(newErrors);
-    if (onTableErrorChange)
+    if (onTableErrorChange) {
       onTableErrorChange(Object.keys(newErrors).length > 0);
+    }
+  }, [data, items, onTableErrorChange]);
+
+  useEffect(() => {
+    // Reset removed items khi không còn data
+    if (!data || data.length === 0) {
+      setRemovedItems([]);
+    }
+  }, [data?.length]);
+
+  // Trong ExcelDataTable
+  useEffect(() => {
+    console.log("Debug - data:", data);
+    console.log("Debug - items:", items);
+
+    data.forEach((item) => {
+      const itemMeta = items.find((i) => String(i.id) === String(item.itemId));
+      console.log(`Item ${item.itemId}:`, {
+        stockQuantity: itemMeta?.quantity,
+        hasStock: (itemMeta?.quantity ?? 0) > 0,
+      });
+    });
   }, [data, items]);
 
   // Hàm này chỉ xử lý provider
   const handleCellChange = (value, record, field) => {
-    setData(
-      data.map((row) => {
-        if (row === record && field === "providerId") {
-          const newProvider = providers.find((p) => p.id === value);
-          return {
-            ...row,
-            providerId: value,
-            providerName: newProvider ? newProvider.name : "",
-          };
-        }
-        return row;
-      })
-    );
-  };
-
-  // setData là onDataChange truyền vào prop
-  const setData = (newData) => {
-    onDataChange(newData);
+    const updatedData = data.map((row) => {
+      if (row === record && field === "providerId") {
+        const newProvider = providers.find((p) => p.id === value);
+        return {
+          ...row,
+          providerId: value,
+          providerName: newProvider ? newProvider.name : "",
+        };
+      }
+      return row;
+    });
+    onDataChange(updatedData);
   };
 
   const handleQuantityChange = (itemId, value) => {
@@ -134,7 +208,7 @@ const ExcelDataTable = ({
           pattern="[0-9]*"
           min={1}
           value={localValue}
-          style={{ textAlign: "right", width: 75 }}
+          style={{ textAlign: "right", width: 80 }}
           onWheel={(e) => e.currentTarget.blur()}
           onKeyDown={(e) => {
             if (["e", "E", "+", "-", "."].includes(e.key)) {
@@ -170,30 +244,46 @@ const ExcelDataTable = ({
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
-      render: (text) => <div>#{text}</div>,
+      render: (text) => <div>{text}</div>,
     },
-    { width: "18%", title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
+    { width: "12%", title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
     {
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
+      align: "center",
       width: "9%",
       render: (text, record) => <QuantityInput record={record} />,
     },
     {
-      title: "Giá trị đo lường",
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
       width: "12%",
+      title: <span className="font-semibold">Đơn vị tính</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       render: (text) => (
-        <div style={{ paddingLeft: 12, textAlign: "right" }}>{text}</div>
+        <span style={{ display: "block", textAlign: "center" }}>{text}</span>
       ),
     },
     {
-      width: "15%",
-      title: "Đơn vị tính",
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
+      width: "18%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (_, record) => {
+        return (
+          <span>
+            {record.measurementValue} {record.measurementUnit} /{" "}
+            {record.unitType}
+          </span>
+        );
+      },
     },
     // Điều kiện column Quy cách
     ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
@@ -267,6 +357,45 @@ const ExcelDataTable = ({
           Thông tin xuất kho
         </div>
         <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
+        {/* // Và trong phần render, sửa lại hiển thị: */}
+        {removedItems.length > 0 && (
+          <div
+            style={{
+              marginTop: 8,
+              padding: 8,
+              backgroundColor: "#fff1f0",
+              border: "1px solid #ffccc7",
+              borderRadius: 4,
+            }}
+          >
+            <div
+              style={{ color: "black", fontWeight: "bold", marginBottom: 4 }}
+            >
+              Tổng cộng có{" "}
+              <span style={{ color: "red" }}>{removedItems.length}</span> sản
+              phẩm không xuất được (tồn kho bằng 0):
+            </div>
+            <div style={{ color: "#d32029", fontSize: "14px" }}>
+              {removedItems.map((item, index) => (
+                <div key={`${item.itemId}-${index}`}>
+                  • {item.itemId} - Đã yêu cầu: {item.requestedQuantity}{" "}
+                  {item.unitType}
+                </div>
+              ))}
+            </div>
+            <div
+              style={{
+                marginTop: 4,
+                fontSize: "12px",
+                color: "#8c8c8c",
+                fontStyle: "italic",
+              }}
+            >
+              * Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
+            </div>
+          </div>
+        )}
+
         {Object.keys(fieldErrors).length > 0 && (
           <>
             <div style={{ marginTop: 4, color: "red" }}>
@@ -300,7 +429,7 @@ const ExcelDataTable = ({
         columns={columns}
         dataSource={data}
         rowKey={(record) => String(record?.itemId)}
-        pagination={pagination}
+        pagination={pagination.total > pagination.pageSize ? pagination : false}
         onChange={onPaginationChange}
         components={{
           body: {
@@ -312,6 +441,22 @@ const ExcelDataTable = ({
           },
         }}
       />
+      {/* <Table
+        columns={columns}
+        dataSource={data}
+        rowKey={(record) => String(record?.itemId)}
+        pagination={pagination}
+        onChange={onPaginationChange}
+        components={{
+          body: {
+            row: ({ children, ...restProps }) => (
+              <tr {...restProps} id={`row-${restProps["data-row-key"]}`}>
+                {children}
+              </tr>
+            ),
+          },
+        }}
+      /> */}
     </>
   );
 };
@@ -330,11 +475,14 @@ ExcelDataTable.propTypes = {
   onTableErrorChange: PropTypes.func,
   pagination: PropTypes.object,
   onPaginationChange: PropTypes.func,
-  setPagination: PropTypes.func, // <--- thêm cái này
-  exportType: PropTypes.string.isRequired, // nhận vào ở đây cho exportType!
+  setPagination: PropTypes.func,
+  exportType: PropTypes.string.isRequired,
   providers: PropTypes.array.isRequired,
+  onRemovedItemsReset: PropTypes.func, // Thêm prop type
   record: PropTypes.shape({
-    quantity: PropTypes.number.isRequired,
+    measurementValue: PropTypes.string,
+    measurementUnit: PropTypes.string,
+    unitType: PropTypes.string,
     itemId: PropTypes.string.isRequired,
     providerId: PropTypes.string,
   }).isRequired,
