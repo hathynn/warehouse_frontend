@@ -363,7 +363,7 @@ const ExcelDataTable = ({
             style={{
               marginTop: 8,
               padding: 8,
-              backgroundColor: "#fff1f0",
+              backgroundColor: "#ffffe0",
               border: "1px solid #ffccc7",
               borderRadius: 4,
             }}
@@ -398,27 +398,37 @@ const ExcelDataTable = ({
 
         {Object.keys(fieldErrors).length > 0 && (
           <>
-            <div style={{ marginTop: 4, color: "red" }}>
-              Tổng số mặt hàng vượt số lượng được xuất:{" "}
-              {Object.keys(fieldErrors).length}
-            </div>
-            <div style={{ marginTop: 4, color: "red" }}>
-              Các mặt hàng lỗi:{" "}
-              {Object.keys(fieldErrors).map((id, idx) => (
-                <span
-                  key={id}
-                  onClick={() => handleScrollToRow(id)}
-                  style={{
-                    cursor: "pointer",
-                    color: "#1890ff",
-                    textDecoration: "underline",
-                    marginRight: 4,
-                  }}
-                >
-                  #{id}
-                  {idx < Object.keys(fieldErrors).length - 1 ? "," : ""}
-                </span>
-              ))}
+            <div
+              style={{
+                marginTop: 8,
+                padding: 8,
+                backgroundColor: "#fff1f0",
+                border: "1px solid #ffccc7",
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ marginTop: 4, color: "red", fontWeight: "bold" }}>
+                Tổng số mặt hàng vượt số lượng được xuất:{" "}
+                {Object.keys(fieldErrors).length}
+              </div>
+              <div style={{ marginTop: 4, color: "red" }}>
+                • Các mặt hàng lỗi:{" "}
+                {Object.keys(fieldErrors).map((id, idx) => (
+                  <span
+                    key={id}
+                    onClick={() => handleScrollToRow(id)}
+                    style={{
+                      cursor: "pointer",
+                      color: "#1890ff",
+                      textDecoration: "underline",
+                      marginRight: 4,
+                    }}
+                  >
+                    #{id}
+                    {idx < Object.keys(fieldErrors).length - 1 ? "," : ""}
+                  </span>
+                ))}
+              </div>
             </div>
           </>
         )}

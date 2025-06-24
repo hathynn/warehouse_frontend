@@ -15,6 +15,7 @@ import ExportRequestInfoForm from "@/components/export-flow/export-create/Export
 import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
 import Title from "antd/es/typography/Title";
 import RequestTypeSelector from "@/components/commons/RequestTypeSelector";
+import UseExportFirstStep from "@/components/export-flow/export-create/UseExportFirstStep";
 // Services
 import useItemService from "@/services/useItemService";
 import useExportRequestService from "@/services/useExportRequestService";
@@ -65,6 +66,7 @@ const ExportRequestCreate = () => {
   const [excelFormData, setExcelFormData] = useState(null);
   const [resetRemovedItemsFunction, setResetRemovedItemsFunction] =
     useState(null);
+  const [returnImportData, setReturnImportData] = useState(null);
 
   // FORM DATA STATE
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -235,6 +237,7 @@ const ExportRequestCreate = () => {
     setExcelFormData(null); // THÊM DÒNG NÀY
     setPagination({ current: 1, pageSize: 10, total: 0 });
     resetViewedPages(1);
+    setReturnImportData(null);
   };
 
   // =============================================================================
@@ -603,8 +606,29 @@ const ExportRequestCreate = () => {
     }
   };
 
+  // const handleBackToFileStep = () => {
+  //   setFileConfirmed(false);
+  //   // Không reset returnImportData để giữ lại data đã chọn
+  //   setPagination((prev) => ({ ...prev, current: 1 }));
+  //   resetViewedPages(1);
+  // };
   const handleBackToFileStep = () => {
     setFileConfirmed(false);
+    if (returnImportData && returnImportData.selectedItems) {
+      const transformedData = returnImportData.selectedItems.map((item) => ({
+        itemId: item.itemId,
+        itemName: item.itemName,
+        quantity: item.quantity,
+        measurementValue: "",
+        unitType: item.unitType || "",
+        measurementUnit: item.measurementUnit || "",
+        totalMeasurementValue: item.totalMeasurementValue || "",
+        inventoryQuantity: item.actualQuantity || 0,
+        importOrderDetailId: item.importOrderDetailId,
+      }));
+      setData(transformedData);
+    }
+
     setPagination((prev) => ({ ...prev, current: 1 }));
     resetViewedPages(1);
   };
@@ -625,10 +649,29 @@ const ExportRequestCreate = () => {
   // =============================================================================
   // FORM SUBMISSION
   // =============================================================================
+  // const buildReturnPayload = () => {
+  //   let providerId = null;
+  //   // Nếu data tồn tại, lấy providerId của dòng đầu tiên (sau này handle multi-provider sau)
+  //   if (Array.isArray(data) && data.length > 0) {
+  //     providerId = data[0].providerId;
+  //   }
+
+  //   return {
+  //     countingDate: formData.exportDate,
+  //     countingTime: "07:00:00",
+  //     exportDate: formData.exportDate,
+  //     exportReason: formData.exportReason,
+  //     providerId: providerId,
+  //     type: "RETURN",
+  //   };
+  // };
+
   const buildReturnPayload = () => {
     let providerId = null;
-    // Nếu data tồn tại, lấy providerId của dòng đầu tiên (sau này handle multi-provider sau)
-    if (Array.isArray(data) && data.length > 0) {
+
+    if (returnImportData && returnImportData.importOrder) {
+      providerId = returnImportData.importOrder.providerId || null;
+    } else if (Array.isArray(data) && data.length > 0) {
       providerId = data[0].providerId;
     }
 
@@ -639,6 +682,10 @@ const ExportRequestCreate = () => {
       exportReason: formData.exportReason,
       providerId: providerId,
       type: "RETURN",
+      ...(returnImportData && {
+        importOrderId: returnImportData.importOrderId,
+        importRequestId: returnImportData.importRequestId,
+      }),
     };
   };
 
@@ -703,7 +750,7 @@ const ExportRequestCreate = () => {
       };
     }
 
-    if (!file || data.length === 0) {
+    if ((!file || data.length === 0) && formData.exportType != "RETURN") {
       return {
         isValid: false,
         errorMessage: "Vui lòng tải lên file Excel với dữ liệu hợp lệ",
@@ -790,20 +837,20 @@ const ExportRequestCreate = () => {
       }
     }
 
-    if (formData.exportType === "RETURN") {
-      if (!formData.exportDate || !formData.exportReason) {
-        return {
-          isValid: false,
-          errorMessage: "Vui lòng nhập đầy đủ ngày nhận và lý do xuất trả.",
-        };
-      }
-      if (!data || !data[0] || !data[0].providerId) {
-        return {
-          isValid: false,
-          errorMessage: "File Excel phải có cột Nhà cung cấp.",
-        };
-      }
-    }
+    // if (formData.exportType === "RETURN") {
+    //   if (!formData.exportDate || !formData.exportReason) {
+    //     return {
+    //       isValid: false,
+    //       errorMessage: "Vui lòng nhập đầy đủ ngày nhận và lý do xuất trả.",
+    //     };
+    //   }
+    //   if (!data || !data[0] || !data[0].providerId) {
+    //     return {
+    //       isValid: false,
+    //       errorMessage: "File Excel phải có cột Nhà cung cấp.",
+    //     };
+    //   }
+    // }
 
     return { isValid: true, errorMessage: "" };
   };
@@ -873,7 +920,6 @@ const ExportRequestCreate = () => {
       // Create export request details
       await createExportDetails(createdExport.exportRequestId);
 
-      // Success feedback and navigation
       // toast.success("Đã gửi chi tiết phiếu xuất thành công");
       navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
 
@@ -901,10 +947,35 @@ const ExportRequestCreate = () => {
     }
   };
 
+  const handleReturnImportConfirm = (data) => {
+    // ✅ UPDATE returnImportData với selectedItems mới
+    setReturnImportData({
+      ...data,
+      selectedItems: data.selectedItems.map((item) => ({
+        ...item,
+        importOrderDetailId: item.importOrderDetailId, // ✅ ENSURE có field này
+      })),
+    });
+
+    const transformedData = data.selectedItems.map((item) => ({
+      itemId: item.itemId,
+      itemName: item.itemName,
+      quantity: item.quantity,
+      measurementValue: "",
+      unitType: item.unitType || "",
+      measurementUnit: item.measurementUnit || "",
+      totalMeasurementValue: item.totalMeasurementValue || "",
+      inventoryQuantity: item.actualQuantity || 0,
+      importOrderDetailId: item.importOrderDetailId, // ✅ CRITICAL: Thêm field này
+    }));
+
+    setData(transformedData);
+    setFileConfirmed(true);
+  };
+
   return (
     <div className="container mx-auto p-3 pt-0">
       {!fileConfirmed ? (
-        // File Upload Step
         <>
           <ExportRequestHeader
             title=""
@@ -919,73 +990,85 @@ const ExportRequestCreate = () => {
             mode="export"
           />
 
-          <FileUploadSection
-            fileName={fileName}
-            exportType={formData.exportType}
-            onTriggerFileInput={triggerFileInput}
-            onRemoveFile={handleRemoveFile}
-          />
+          {["PRODUCTION", "BORROWING", "LIQUIDATION", "SELLING"].includes(
+            formData.exportType
+          ) ? (
+            <>
+              <FileUploadSection
+                fileName={fileName}
+                exportType={formData.exportType}
+                onTriggerFileInput={triggerFileInput}
+                onRemoveFile={handleRemoveFile}
+              />
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept=".xlsx,.xls"
-            onChange={handleFileUpload}
-            style={{ display: "none" }}
-          />
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                style={{ display: "none" }}
+              />
 
-          {validationError && (
-            <Alert
-              message="Lỗi dữ liệu"
-              description={validationError}
-              type="error"
-              showIcon
-              className="mb-4"
-              style={{ marginTop: "10px", marginBottom: "10px" }}
-              closable
+              {validationError && (
+                <Alert
+                  message="Lỗi dữ liệu"
+                  description={validationError}
+                  type="error"
+                  showIcon
+                  className="mb-4"
+                  style={{ marginTop: "10px", marginBottom: "10px" }}
+                  closable
+                />
+              )}
+
+              <Card title="Xem trước dữ liệu Excel" className="mb-4">
+                {mappedData.length > 0 ? (
+                  <ExcelDataTable
+                    data={mappedData}
+                    items={items.content}
+                    providers={providers}
+                    exportType={formData.exportType}
+                    onDataChange={setData}
+                    onTableErrorChange={setHasTableError}
+                    pagination={pagination}
+                    onPaginationChange={handleTablePageChange}
+                    setPagination={setPagination}
+                  />
+                ) : (
+                  <div className="text-center py-10 text-gray-500">
+                    Vui lòng tải lên file Excel để xem chi tiết hàng hóa
+                  </div>
+                )}
+              </Card>
+
+              <div className="flex justify-center mt-4">
+                <Button
+                  type="primary"
+                  disabled={
+                    data.length === 0 ||
+                    !!validationError ||
+                    hasTableError ||
+                    !allPagesViewed
+                  }
+                  onClick={() => setFileConfirmed(true)}
+                  className="w-300"
+                >
+                  Tiếp tục nhập thông tin phiếu xuất
+                  {!allPagesViewed && data.length > 0 && (
+                    <span style={{ color: "red", marginLeft: 8 }}>
+                      (Vui lòng xem tất cả các trang)
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <UseExportFirstStep
+              onConfirm={handleReturnImportConfirm}
+              initialSelectedOrder={returnImportData?.importOrder || null}
+              initialSelectedItems={returnImportData?.selectedItems || []}
             />
           )}
-
-          <Card title="Xem trước dữ liệu Excel" className="mb-4">
-            {mappedData.length > 0 ? (
-              <ExcelDataTable
-                data={mappedData}
-                items={items.content}
-                providers={providers}
-                exportType={formData.exportType}
-                onDataChange={setData}
-                onTableErrorChange={setHasTableError}
-                pagination={pagination}
-                onPaginationChange={handleTablePageChange}
-                setPagination={setPagination}
-              />
-            ) : (
-              <div className="text-center py-10 text-gray-500">
-                Vui lòng tải lên file Excel để xem chi tiết hàng hóa
-              </div>
-            )}
-          </Card>
-
-          <div className="flex justify-center mt-4">
-            <Button
-              type="primary"
-              disabled={
-                data.length === 0 ||
-                !!validationError ||
-                hasTableError ||
-                !allPagesViewed
-              }
-              onClick={() => setFileConfirmed(true)}
-              className="w-300"
-            >
-              Tiếp tục nhập thông tin phiếu xuất
-              {!allPagesViewed && data.length > 0 && (
-                <span style={{ color: "red", marginLeft: 8 }}>
-                  (Vui lòng xem tất cả các trang)
-                </span>
-              )}
-            </Button>
-          </div>
         </>
       ) : (
         // Form Input Step
@@ -1008,7 +1091,6 @@ const ExportRequestCreate = () => {
           excelFormData={excelFormData} // THÊM PROP NÀY
         />
       )}
-
       {/* Department Selection Modal */}
       <DeparmentModal
         visible={departmentModalVisible}
