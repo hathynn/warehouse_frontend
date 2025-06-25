@@ -26,13 +26,19 @@ export default defineConfig({
     }
   },
   server: {
-    hmr: { overlay: true }                          // Overlay khi HMR lỗi
+    hmr: { overlay: true },                          // Overlay khi HMR lỗi
+    sourcemapIgnoreList: false,  // Không ignore source maps
   },
   build: {
+    sourcemap: true,  // Enable source maps cho production
     rollupOptions: {
       onwarn(warning, warn) {
         warn(warning)  // Chỉ hiển thị warning
       }
     }
+  },
+  // Quan trọng: Enable source maps cho development
+  css: {
+    devSourcemap: true
   }
 })

@@ -3,6 +3,7 @@ import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig
 import dayjs from "dayjs";
 import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
 import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
+import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
 
 interface ImportOrderConfirmModalProps {
   open: boolean;
@@ -29,82 +30,95 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
   importRequestProvider,
 }) => {
   const [confirmCreateImportOrderChecked, setConfirmCreateImportOrderChecked] = useState(false);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 5,
-    total: details.length,
-  });
 
-  const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
-    details.length,
-    pagination.pageSize,
-    pagination.current
-  );
+  // ===== OLD PAGINATION TRACKER CODE (COMMENTED) =====
+  // const [pagination, setPagination] = useState({
+  //   current: 1,
+  //   pageSize: 5,
+  //   total: details.length,
+  // });
 
-  const handleTableChange = (newPagination: TablePaginationConfig) => {
-    setPagination({
-      ...pagination,
-      current: newPagination.current || 1,
-      pageSize: newPagination.pageSize || 5,
-    });
-    if (newPagination.current) {
-      markPageAsViewed(newPagination.current);
-    }
-  };
+  // const { allPagesViewed, markPageAsViewed, resetViewedPages } = usePaginationViewTracker(
+  //   details.length,
+  //   pagination.pageSize,
+  //   pagination.current
+  // );
+
+  // const handleTableChange = (newPagination: TablePaginationConfig) => {
+  //   setPagination({
+  //     ...pagination,
+  //     current: newPagination.current || 1,
+  //     pageSize: newPagination.pageSize || 5,
+  //   });
+  //   if (newPagination.current) {
+  //     markPageAsViewed(newPagination.current);
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   if (!open) {
+  //     setPagination({
+  //       current: 1,
+  //       pageSize: 5,
+  //       total: details.length,
+  //     });
+  //     setConfirmCreateImportOrderChecked(false);
+  //     resetViewedPages(1);
+  //   }
+  // }, [open, details.length, resetViewedPages]);
+  // ===== END OLD PAGINATION TRACKER CODE =====
+
+  // ===== NEW SCROLL TRACKER CODE =====
+  const { scrollContainerRef, checkScrollPosition, hasScrolledToBottom, resetScrollTracking } = useScrollViewTracker(5);
 
   useEffect(() => {
     if (!open) {
-      setPagination({
-        current: 1,
-        pageSize: 5,
-        total: details.length,
-      });
+      resetScrollTracking();
       setConfirmCreateImportOrderChecked(false);
-      resetViewedPages(1);
     }
-  }, [open, details.length, resetViewedPages]);
+  }, [open]);
 
   const columns = [
-    { 
-      title: "Mã hàng", 
-      dataIndex: "itemId", 
-      key: "itemId", 
+    {
+      title: "Mã hàng",
+      dataIndex: "itemId",
+      key: "itemId",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (id: number) => `#${id}` 
+      render: (id: number) => `#${id}`
     },
-    { 
+    {
       width: "30%",
-      title: "Tên hàng", 
-      dataIndex: "itemName", 
+      title: "Tên hàng",
+      dataIndex: "itemName",
       key: "itemName",
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
-    { 
-      title: "Dự nhập theo phiếu", 
-      dataIndex: "expectQuantity", 
+    {
+      title: "Dự nhập theo phiếu",
+      dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
-    { 
-      title: "Thực tế đã nhập", 
-      dataIndex: "actualQuantity", 
+    {
+      title: "Thực tế đã nhập",
+      dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
-    { 
-      title: "Dự nhập đơn này", 
-      dataIndex: "plannedQuantity", 
+    {
+      title: "Dự nhập đơn này",
+      dataIndex: "plannedQuantity",
       key: "plannedQuantity",
       align: "right" as const,
       onHeaderCell: () => ({
@@ -118,8 +132,8 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     }
   ];
 
-  const formattedDate = formData.dateReceived 
-    ? dayjs(formData.dateReceived).format("DD-MM-YYYY") 
+  const formattedDate = formData.dateReceived
+    ? dayjs(formData.dateReceived).format("DD-MM-YYYY")
     : "-";
 
   return (
@@ -143,31 +157,37 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         <Descriptions.Item label="Ghi chú" span={2}>{formData.note || "-"}</Descriptions.Item>
       </Descriptions>
       <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa nhập kho</Typography.Title>
-      <Table
-        columns={columns}
-        dataSource={details}
-        rowKey={(record) => `${record.itemId}`}
-        pagination={{
-          current: pagination.current,
-          pageSize: pagination.pageSize,
-          total: details.length,
-          showTotal: (total) => `Tổng ${total} mục`,
-          hideOnSinglePage: true,
-        }}
-        onChange={handleTableChange}
-        size="small"
-        bordered
-        className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
+      <div
+        ref={scrollContainerRef}
+        onScroll={checkScrollPosition}
         style={{ height: "350px", overflowY: "auto" }}
-      />
-      <Checkbox 
-        checked={confirmCreateImportOrderChecked} 
-        onChange={e => setConfirmCreateImportOrderChecked(e.target.checked)} 
-        style={{ marginTop: 8, fontSize: 14, fontWeight: "bold"}}
-        disabled={!allPagesViewed}
+      >
+        <Table
+          columns={columns}
+          dataSource={details}
+          rowKey={(record) => `${record.itemId}`}
+          // pagination={{
+          //   current: pagination.current,
+          //   pageSize: pagination.pageSize,
+          //   total: details.length,
+          //   showTotal: (total) => `Tổng ${total} mục`,
+          //   hideOnSinglePage: true,
+          // }}
+          // onChange={handleTableChange}
+          pagination={false}
+          size="small"
+          bordered
+          className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
+        />
+      </div>
+      <Checkbox
+        checked={confirmCreateImportOrderChecked}
+        onChange={e => setConfirmCreateImportOrderChecked(e.target.checked)}
+        style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
+        disabled={!hasScrolledToBottom}
       >
         Tôi xác nhận đơn nhập trên đúng số lượng và đồng ý tạo.
-        {!allPagesViewed && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
+        {!hasScrolledToBottom && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
       </Checkbox>
     </Modal>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -589,37 +589,49 @@ const ImportOrderCreate = () => {
           >
             <Space direction="vertical" className="w-full">
               <div className="mb-2">
-                <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
-                <div className="text-sm text-blue-500">
-                  <InfoCircleOutlined className="mr-1" />
-                  Phiếu nhập <b>{importRequest?.importRequestId}</b> có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
+                <div className="text-sm text-blue-500 mb-1">
+                  <div>
+                    <InfoCircleOutlined className="mr-1" />
+                    Phiếu nhập <b>{importRequest?.importRequestId}</b>
+                  </div> Có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
                 </div>
-                <DatePicker
-                  className="w-full !mt-1"
-                  size="large"
-                  format="DD-MM-YYYY"
-                  value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
-                  onChange={handleDateChange}
-                  disabledDate={disabledDate}
-                  showNow={false}
-                />
+                <div className="flex gap-2 items-center">
+                  <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
+                  <ConfigProvider direction="rtl">
+                    <DatePicker
+                      className="w-1/2 !ml-auto !p-[4px_8px]"
+                      size="large"
+                      format="DD-MM-YYYY"
+                      value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
+                      onChange={handleDateChange}
+                      disabledDate={disabledDate}
+                      showNow={false}
+                      allowClear
+                    />
+                  </ConfigProvider>
+                </div>
               </div>
               <div>
-                <label className="text-base font-semibold">Giờ nhận dự kiến<span className="text-red-500">*</span></label>
                 <div className="text-sm text-blue-500 mb-1">
                   <InfoCircleOutlined className="mr-1" />
                   Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ</span>
                 </div>
-                <TimePicker
-                  className="w-full"
-                  size="large"
-                  value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
-                  onChange={handleTimeChange}
-                  format="HH:mm"
-                  showNow={false}
-                  needConfirm={false}
-                  disabledTime={disabledTime}
-                />
+                <div className="flex gap-2 items-center">
+                  <label className="text-base font-semibold">Giờ nhận dự kiến<span className="text-red-500">*</span></label>
+                  <ConfigProvider direction="rtl">
+                    <TimePicker
+                      className="w-1/2 !ml-auto !p-[4px_8px]"
+                      size="large"
+                      value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
+                      onChange={handleTimeChange}
+                      format="HH:mm"
+                      showNow={false}
+                      needConfirm={false}
+                      disabledTime={disabledTime}
+                      allowClear
+                    />
+                  </ConfigProvider>
+                </div>
               </div>
               <div className="my-2">
                 <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>

@@ -185,7 +185,6 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
         style: { textAlign: 'center' as const }
       }),
       render: (_: any, record: ImportRequestDetailRow) => {
-        console.log(record)
         return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
       }
     },

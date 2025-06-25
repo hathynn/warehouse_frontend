@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
@@ -131,7 +131,7 @@ const ImportRequestCreate: React.FC = () => {
   const downloadTemplate = () => {
     // Tạo worksheet rỗng
     const ws = XLSX.utils.aoa_to_sheet([]);
-    
+
     // Thêm thông tin header
     XLSX.utils.sheet_add_aoa(ws, [
       ["importType", "ORDER"],
@@ -140,7 +140,7 @@ const ImportRequestCreate: React.FC = () => {
       ["itemId", "quantity", "providerId"], // Header cho dữ liệu
       ["{Mã hàng}", "{Số lượng - Ví dụ: 10}", "{Mã Nhà cung cấp}"] // Dữ liệu mẫu
     ], { origin: "A1" });
-    
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
     XLSX.writeFile(wb, "import_request_template.xlsx");
@@ -253,16 +253,16 @@ const ImportRequestCreate: React.FC = () => {
         if (ab instanceof ArrayBuffer) {
           const wb = XLSX.read(ab, { type: "array" });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          
+
           try {
             // Đọc importType từ B1
             const importTypeCell = ws['B1'];
             const importType = importTypeCell ? importTypeCell.v : null;
-            
+
             // Đọc importReason từ B2
             const importReasonCell = ws['B2'];
             const importReason = importReasonCell ? importReasonCell.v : "";
-            
+
             // Cập nhật formData nếu có dữ liệu từ file
             if (importType && (importType === "ORDER" || importType === "RETURN")) {
               setFormData(prev => ({
@@ -274,13 +274,13 @@ const ImportRequestCreate: React.FC = () => {
             // Đọc dữ liệu từ dòng 5 trở đi (bỏ qua header ở dòng 1,2,3,4)
             const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
             const jsonData = [];
-            
+
             for (let rowNum = 4; rowNum <= range.e.r; rowNum++) { // Bắt đầu từ dòng 5 (index 4)
               const row: any = {};
-              const itemIdCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 0})]; // Column A
-              const quantityCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 1})]; // Column B
-              const providerIdCell = ws[XLSX.utils.encode_cell({r: rowNum, c: 2})]; // Column C
-              
+              const itemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A
+              const quantityCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B
+              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C
+
               if (itemIdCell && quantityCell && providerIdCell) {
                 row.itemId = itemIdCell.v;
                 row.quantity = quantityCell.v;
@@ -288,31 +288,31 @@ const ImportRequestCreate: React.FC = () => {
                 jsonData.push(row);
               }
             }
-            
+
             const transformedData: ImportRequestDetailRow[] = jsonData.map((item: any, index: number) => {
               const itemId = item.itemId;
               const quantity = item.quantity;
               const providerId = item.providerId;
-              
+
               if (!itemId || !quantity || !providerId) {
                 throw new Error(`Dòng ${index + 5}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
               }
-              
+
               const foundItem = items.find(i => i.id === itemId);
               if (!foundItem) {
                 throw new Error(`Dòng ${index + 5}: Không tìm thấy mặt hàng với mã ${itemId}`);
               }
-              
+
               const foundProvider = providers.find(p => p.id === Number(providerId));
               if (!foundProvider) {
                 throw new Error(`Dòng ${index + 5}: Không tìm thấy nhà cung cấp với ID ${providerId}`);
               }
-              
+
               // Validate the provider is actually linked to the item
               if (!Array.isArray(foundItem.providerIds) || !foundItem.providerIds.includes(Number(providerId))) {
                 throw new Error(`Dòng ${index + 5}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
               }
-              
+
               return {
                 itemId: itemId,
                 quantity: Number(quantity),
@@ -324,10 +324,10 @@ const ImportRequestCreate: React.FC = () => {
                 providerName: foundProvider.name
               };
             });
-            
+
             setImportedData(transformedData);
             setIsImportRequestDataValid(true);
-            
+
           } catch (error) {
             if (error instanceof Error) {
               setIsImportRequestDataValid(false);
@@ -443,7 +443,6 @@ const ImportRequestCreate: React.FC = () => {
         style: { textAlign: 'center' as const }
       }),
       render: (_: any, record: ImportRequestDetailRow) => {
-        console.log(record)
         return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
       }
     },
@@ -540,46 +539,54 @@ const ImportRequestCreate: React.FC = () => {
         <div className="mt-4 flex gap-6">
           <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
             <Space direction="vertical" className="w-full">
-              <div className="mb-2">
+              <div className="text-sm text-blue-500">
+                <InfoCircleOutlined className="mr-1" />
+                Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
+              </div>
+              <div className="flex gap-6 mb-4">
+                <div className="mb-2 w-1/2">
+                  <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
+                  <ConfigProvider direction="rtl">
+                    <DatePicker
+                      locale={locale}
+                      format="DD-MM-YYYY"
+                      size="large"
+                      className="w-full !mt-1 !p-[4px_8px]"
+                      value={formData.startDate ? dayjs(formData.startDate) : null}
+                      disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                      onChange={handleStartDateChange}
+                      placeholder="Chọn ngày"
+                      allowClear
+                    />
+                  </ConfigProvider>
+                </div>
+                <div className="mb-2 w-1/2">
+                  <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
+                  <ConfigProvider direction="rtl">
+                    <DatePicker
+                      locale={locale}
+                      format="DD-MM-YYYY"
+                      size="large"
+                      className="w-full !mt-1 !p-[4px_8px]"
+                      value={formData.endDate ? dayjs(formData.endDate) : null}
+                      disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                      onChange={handleEndDateChange}
+                      placeholder="Chọn ngày"
+                      allowClear
+                    />
+                  </ConfigProvider>
+                </div>
+              </div>
+              <div className="mb-4">
                 <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
                 <TextArea
                   placeholder="Nhập lý do"
                   rows={4}
                   value={formData.importReason}
                   onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
-                  className="w-full"
+                  className="w-full !mt-1"
                   maxLength={150}
                   showCount
-                />
-              </div>
-              <div className="mb-2">
-                <label className="text-base font-semibold">Ngày phiếu có hiệu lực<span className="text-red-500">*</span></label>
-                <DatePicker
-                  locale={locale}
-                  format="DD-MM-YYYY"
-                  size="large"
-                  className="w-full"
-                  value={formData.startDate ? dayjs(formData.startDate) : null}
-                  disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
-                  onChange={handleStartDateChange}
-                  placeholder="Chọn ngày phiếu có hiệu lực"
-                />
-              </div>
-              <div className="mb-2">
-                <label className="text-base font-semibold">Ngày phiếu hết hạn<span className="text-red-500">*</span></label>
-                <div className="text-sm text-blue-500 mb-1">
-                  <InfoCircleOutlined className="mr-1" />
-                  Hạn của phiếu nhập không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
-                </div>
-                <DatePicker
-                  locale={locale}
-                  format="DD-MM-YYYY"
-                  size="large"
-                  className="w-full"
-                  value={formData.endDate ? dayjs(formData.endDate) : null}
-                  disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
-                  onChange={handleEndDateChange}
-                  placeholder="Chọn ngày phiếu hết hạn"
                 />
               </div>
               <Button
@@ -635,7 +642,7 @@ const ImportRequestCreate: React.FC = () => {
         onCancel={() => setShowConfirmModal(false)}
         confirmLoading={loading}
         formData={formData}
-        details={getConsolidatedData(importedData)} // Truyền data đã gộp vào modal
+        details={getConsolidatedData(importedData)}
         providers={providers.reduce((providerNameMap, provider) => {
           providerNameMap[provider.id] = provider.name;
           return providerNameMap;
