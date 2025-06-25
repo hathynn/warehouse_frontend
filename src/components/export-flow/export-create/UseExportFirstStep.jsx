@@ -12,6 +12,7 @@ import {
   Button,
 } from "antd";
 import useImportOrderService from "@/services/useImportOrderService";
+import useImportRequestService from "@/services/useImportRequestService";
 import { Package, Calendar, Clock, Hash } from "lucide-react";
 import PropTypes from "prop-types";
 
@@ -21,6 +22,7 @@ const UseExportFirstStep = ({
   initialSelectedItems,
 }) => {
   const { getAllImportOrders, loading } = useImportOrderService();
+  const { getImportRequestById } = useImportRequestService();
   const [importOrders, setImportOrders] = useState([]);
   const [error, setError] = useState(null);
   const [checkAll, setCheckAll] = useState(false);
@@ -33,15 +35,17 @@ const UseExportFirstStep = ({
     }
     return [];
   });
+  const [providerData, setProviderData] = useState({});
 
   // Handle select all checkbox
   const handleCheckAllChange = (e) => {
     const checked = e.target.checked;
     setCheckAll(checked);
     if (checked && selectedOrder) {
-      const allKeys = selectedOrder.importOrderDetails.map(
-        (detail) => detail.importOrderDetailId
-      );
+      // Chỉ lấy các detail có actualQuantity > 0
+      const allKeys = selectedOrder.importOrderDetails
+        .filter((detail) => detail.actualQuantity > 0)
+        .map((detail) => detail.importOrderDetailId);
       setSelectedRowKeys(allKeys);
     } else {
       setSelectedRowKeys([]);
@@ -53,7 +57,6 @@ const UseExportFirstStep = ({
   }, []);
 
   useEffect(() => {
-    // ✅ CHỈ SYNC KHI CÓ THAY ĐỔI selectedOrder VÀ CÓ initialSelectedItems
     if (
       selectedOrder &&
       initialSelectedItems &&
@@ -63,14 +66,13 @@ const UseExportFirstStep = ({
         (item) => item.importOrderDetailId
       );
 
-      // ✅ ĐỒNG BỘ selectedRowKeys
       setSelectedRowKeys(initialKeys);
 
-      // ✅ TÍNH TOÁN checkAll DỰA TRÊN initialKeys VÀ selectedOrder
       if (selectedOrder.importOrderDetails) {
-        const allKeys = selectedOrder.importOrderDetails.map(
-          (d) => d.importOrderDetailId
-        );
+        // ✅ THAY ĐỔI: Chỉ tính các detail có actualQuantity > 0
+        const allKeys = selectedOrder.importOrderDetails
+          .filter((detail) => detail.actualQuantity > 0)
+          .map((d) => d.importOrderDetailId);
         setCheckAll(
           initialKeys.length === allKeys.length && initialKeys.length > 0
         );
@@ -79,12 +81,55 @@ const UseExportFirstStep = ({
       selectedOrder &&
       (!initialSelectedItems || initialSelectedItems.length === 0)
     ) {
-      // ✅ KHI KHÔNG CÓ INITIAL ITEMS, RESET VỀ EMPTY
       setSelectedRowKeys([]);
       setCheckAll(false);
     }
   }, [selectedOrder, initialSelectedItems]);
 
+  // ✅ THÊM: useEffect để fetch và cache providerId khi selectedOrder thay đổi
+  useEffect(() => {
+    const fetchProviderData = async () => {
+      if (selectedOrder && selectedOrder.importRequestId) {
+        // Kiểm tra cache trước
+        if (providerData[selectedOrder.importRequestId]) {
+          return; // Đã có trong cache
+        }
+
+        try {
+          const importRequestResponse = await getImportRequestById(
+            selectedOrder.importRequestId
+          );
+          const providerId = importRequestResponse?.content?.providerId || null;
+
+          // Lưu vào cache
+          setProviderData((prev) => ({
+            ...prev,
+            [selectedOrder.importRequestId]: providerId,
+          }));
+        } catch (error) {
+          console.error("Error fetching provider data:", error);
+        }
+      }
+    };
+
+    fetchProviderData();
+  }, [selectedOrder?.importRequestId]);
+
+  // const fetchImportOrders = async () => {
+  //   try {
+  //     setError(null);
+  //     const response = await getAllImportOrders();
+  //     if (response?.content) {
+  //       // Lọc chỉ lấy các đơn có status COMPLETED
+  //       const completedOrders = response.content.filter(
+  //         (order) => order.status === "COMPLETED"
+  //       );
+  //       setImportOrders(completedOrders);
+  //     }
+  //   } catch (err) {
+  //     setError("Không thể tải danh sách đơn nhập");
+  //   }
+  // };
   const fetchImportOrders = async () => {
     try {
       setError(null);
@@ -94,7 +139,15 @@ const UseExportFirstStep = ({
         const completedOrders = response.content.filter(
           (order) => order.status === "COMPLETED"
         );
-        setImportOrders(completedOrders);
+
+        // ✅ THÊM: Lọc bỏ các đơn có tất cả actualQuantity = 0
+        const validOrders = completedOrders.filter((order) => {
+          return order.importOrderDetails.some(
+            (detail) => detail.actualQuantity > 0
+          );
+        });
+
+        setImportOrders(validOrders);
       }
     } catch (err) {
       setError("Không thể tải danh sách đơn nhập");
@@ -105,7 +158,7 @@ const UseExportFirstStep = ({
     const statusConfig = {
       LACK: { color: "warning", text: "Thiếu" },
       EXCESS: { color: "processing", text: "Thừa" },
-      EXACT: { color: "success", text: "Đủ" },
+      MATCH: { color: "success", text: "Đủ" },
     };
     const config = statusConfig[status] || { color: "default", text: status };
     return <Tag color={config.color}>{config.text}</Tag>;
@@ -122,8 +175,11 @@ const UseExportFirstStep = ({
   };
 
   // Handle continue button click
+  // ✅ SỬA: Handle continue button click
   const handleContinue = () => {
     if (selectedRowKeys.length > 0 && selectedOrder) {
+      const providerId = providerData[selectedOrder.importRequestId] || null;
+
       const selectedItems = selectedOrder.importOrderDetails
         .filter((detail) =>
           selectedRowKeys.includes(detail.importOrderDetailId)
@@ -143,8 +199,18 @@ const UseExportFirstStep = ({
         selectedItems: selectedItems,
         importOrderId: selectedOrder.importOrderId,
         importRequestId: selectedOrder.importRequestId,
+        providerId: providerId,
       });
     }
+  };
+
+  const handleSelectOrder = (order) => {
+    // Reset selection khi chuyển đơn khác
+    if (!initialSelectedItems || initialSelectedItems.length === 0) {
+      setSelectedRowKeys([]);
+      setCheckAll(false);
+    }
+    setSelectedOrder(order);
   };
 
   // Columns cho bảng chi tiết
@@ -155,7 +221,10 @@ const UseExportFirstStep = ({
           checked={checkAll}
           onChange={handleCheckAllChange}
           disabled={
-            !selectedOrder || selectedOrder.importOrderDetails.length === 0
+            !selectedOrder ||
+            selectedOrder.importOrderDetails.filter(
+              (detail) => detail.actualQuantity > 0
+            ).length === 0
           }
         />
       ),
@@ -178,14 +247,13 @@ const UseExportFirstStep = ({
               );
             }
 
-            // ✅ UPDATE selectedRowKeys
             setSelectedRowKeys(newSelectedKeys);
 
-            // ✅ TỰ ĐỘNG TÍNH TOÁN checkAll DỰA TRÊN newSelectedKeys
+            // ✅ THAY ĐỔI: Chỉ tính các detail có actualQuantity > 0
             if (selectedOrder && selectedOrder.importOrderDetails) {
-              const allKeys = selectedOrder.importOrderDetails.map(
-                (d) => d.importOrderDetailId
-              );
+              const allKeys = selectedOrder.importOrderDetails
+                .filter((detail) => detail.actualQuantity > 0)
+                .map((d) => d.importOrderDetailId);
               setCheckAll(
                 newSelectedKeys.length === allKeys.length &&
                   newSelectedKeys.length > 0
@@ -333,7 +401,8 @@ const UseExportFirstStep = ({
                 <Card
                   key={order.importOrderId}
                   hoverable
-                  onClick={() => setSelectedOrder(order)}
+                  // onClick={() => setSelectedOrder(order)}
+                  onClick={() => handleSelectOrder(order)}
                   style={{
                     marginBottom: "8px",
                     cursor: "pointer",
@@ -383,7 +452,14 @@ const UseExportFirstStep = ({
                   </div>
 
                   <div style={{ marginTop: "8px" }}>
-                    <Tag>{order.importOrderDetails.length} mặt hàng</Tag>
+                    <Tag>
+                      {
+                        order.importOrderDetails.filter(
+                          (detail) => detail.actualQuantity > 0
+                        ).length
+                      }{" "}
+                      mặt hàng
+                    </Tag>
                     {order.isExtended && <Tag color="warning">Đã gia hạn</Tag>}
                   </div>
                 </Card>
@@ -507,12 +583,20 @@ const UseExportFirstStep = ({
                   marginBottom: "16px",
                 }}
               >
-                Chi tiết mặt hàng ({selectedOrder.importOrderDetails.length})
+                Chi tiết mặt hàng (
+                {
+                  selectedOrder.importOrderDetails.filter(
+                    (detail) => detail.actualQuantity > 0
+                  ).length
+                }
+                )
               </h3>
 
               <Card>
                 <Table
-                  dataSource={selectedOrder.importOrderDetails}
+                  dataSource={selectedOrder.importOrderDetails.filter(
+                    (detail) => detail.actualQuantity > 0
+                  )}
                   columns={detailColumns}
                   rowKey="importOrderDetailId"
                   pagination={false}

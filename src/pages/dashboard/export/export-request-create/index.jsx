@@ -649,27 +649,13 @@ const ExportRequestCreate = () => {
   // =============================================================================
   // FORM SUBMISSION
   // =============================================================================
-  // const buildReturnPayload = () => {
-  //   let providerId = null;
-  //   // Nếu data tồn tại, lấy providerId của dòng đầu tiên (sau này handle multi-provider sau)
-  //   if (Array.isArray(data) && data.length > 0) {
-  //     providerId = data[0].providerId;
-  //   }
-
-  //   return {
-  //     countingDate: formData.exportDate,
-  //     countingTime: "07:00:00",
-  //     exportDate: formData.exportDate,
-  //     exportReason: formData.exportReason,
-  //     providerId: providerId,
-  //     type: "RETURN",
-  //   };
-  // };
-
   const buildReturnPayload = () => {
     let providerId = null;
 
-    if (returnImportData && returnImportData.importOrder) {
+    // ✅ ƯU TIÊN LẤY providerId TỪ returnImportData
+    if (returnImportData && returnImportData.providerId) {
+      providerId = returnImportData.providerId;
+    } else if (returnImportData && returnImportData.importOrder) {
       providerId = returnImportData.importOrder.providerId || null;
     } else if (Array.isArray(data) && data.length > 0) {
       providerId = data[0].providerId;
@@ -679,13 +665,10 @@ const ExportRequestCreate = () => {
       countingDate: formData.exportDate,
       countingTime: "07:00:00",
       exportDate: formData.exportDate,
+      importOrderId: returnImportData?.importOrderId || null, // ✅ THÊM importOrderId
       exportReason: formData.exportReason,
-      providerId: providerId,
+      providerId: providerId, // ✅ providerId từ API
       type: "RETURN",
-      ...(returnImportData && {
-        importOrderId: returnImportData.importOrderId,
-        importRequestId: returnImportData.importRequestId,
-      }),
     };
   };
 
@@ -837,20 +820,39 @@ const ExportRequestCreate = () => {
       }
     }
 
-    // if (formData.exportType === "RETURN") {
-    //   if (!formData.exportDate || !formData.exportReason) {
-    //     return {
-    //       isValid: false,
-    //       errorMessage: "Vui lòng nhập đầy đủ ngày nhận và lý do xuất trả.",
-    //     };
-    //   }
-    //   if (!data || !data[0] || !data[0].providerId) {
-    //     return {
-    //       isValid: false,
-    //       errorMessage: "File Excel phải có cột Nhà cung cấp.",
-    //     };
-    //   }
-    // }
+    if (formData.exportType === "RETURN") {
+      if (!formData.exportDate || !formData.exportReason) {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập đầy đủ ngày xuất và lý do xuất trả.",
+        };
+      }
+
+      // ✅ THÊM validation cho returnImportData
+      if (!returnImportData || !returnImportData.importOrderId) {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng chọn đơn nhập để tạo phiếu xuất trả.",
+        };
+      }
+
+      // ✅ THÊM validation cho providerId
+      if (!returnImportData.providerId) {
+        return {
+          isValid: false,
+          errorMessage:
+            "Không tìm thấy thông tin nhà cung cấp. Vui lòng thử lại.",
+        };
+      }
+
+      // ✅ THÊM validation cho selectedItems
+      if (!data || data.length === 0) {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng chọn ít nhất một mặt hàng để xuất trả.",
+        };
+      }
+    }
 
     return { isValid: true, errorMessage: "" };
   };
@@ -948,13 +950,14 @@ const ExportRequestCreate = () => {
   };
 
   const handleReturnImportConfirm = (data) => {
-    // ✅ UPDATE returnImportData với selectedItems mới
+    // ✅ UPDATE returnImportData với đầy đủ thông tin
     setReturnImportData({
       ...data,
       selectedItems: data.selectedItems.map((item) => ({
         ...item,
-        importOrderDetailId: item.importOrderDetailId, // ✅ ENSURE có field này
+        importOrderDetailId: item.importOrderDetailId,
       })),
+      providerId: data.providerId, // ✅ THÊM providerId từ UseExportFirstStep
     });
 
     const transformedData = data.selectedItems.map((item) => ({
@@ -966,7 +969,7 @@ const ExportRequestCreate = () => {
       measurementUnit: item.measurementUnit || "",
       totalMeasurementValue: item.totalMeasurementValue || "",
       inventoryQuantity: item.actualQuantity || 0,
-      importOrderDetailId: item.importOrderDetailId, // ✅ CRITICAL: Thêm field này
+      importOrderDetailId: item.importOrderDetailId,
     }));
 
     setData(transformedData);

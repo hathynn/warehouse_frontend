@@ -34,7 +34,7 @@ const useExportRequestDetailService = () => {
    */
   const createExportRequestDetail = async (
     details: {
-      itemId: number;
+      itemId: string;
       quantity: number;
       measurementValue: number;
       inventoryItemId: string;
