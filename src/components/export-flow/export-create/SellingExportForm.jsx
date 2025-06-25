@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Input, DatePicker } from "antd";
 import PropTypes from "prop-types";
 import dayjs from "dayjs";
+import useConfigurationService from "@/services/useConfigurationService"; // Cập nhật đường dẫn cho đúng
 
 const SellingExportForm = ({
   formData,
@@ -11,6 +12,38 @@ const SellingExportForm = ({
   excelFormData, // THÊM PROP NÀY ĐỂ NHẬN DATA TỪ EXCEL
 }) => {
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
+  const [workingTimeConfig, setWorkingTimeConfig] = useState({
+    workingTimeStart: null,
+    workingTimeEnd: null,
+  });
+
+  // Sử dụng configuration service
+  const { getConfiguration, loading: configLoading } =
+    useConfigurationService();
+
+  // Lấy cấu hình working time khi component mount
+  useEffect(() => {
+    const fetchConfiguration = async () => {
+      try {
+        const config = await getConfiguration();
+        if (config) {
+          setWorkingTimeConfig({
+            workingTimeStart: config.workingTimeStart,
+            workingTimeEnd: config.workingTimeEnd,
+          });
+          console.log("Working time config:", {
+            start: config.workingTimeStart,
+            end: config.workingTimeEnd,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching configuration:", error);
+      }
+    };
+
+    fetchConfiguration();
+  }, []);
+
   useEffect(() => {
     // CHỈ AUTO-FILL 1 LẦN DUY NHẤT KHI CÓ EXCEL DATA VÀ CHƯA AUTO-FILL
     if (excelFormData && !hasAutoFilled) {
@@ -29,10 +62,12 @@ const SellingExportForm = ({
       setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
     }
   }, [excelFormData, hasAutoFilled]); // BỎ setFormData khỏi dependency
+
   // RESET FLAG KHI EXPORT TYPE THAY ĐỔI
   useEffect(() => {
     setHasAutoFilled(false);
   }, [formData.exportType]);
+
   // Chặn nhập quá 150 ký tự cho lí do xuất
   const handleReasonChange = (e) => {
     const value = e.target.value;
@@ -42,9 +77,90 @@ const SellingExportForm = ({
     }
   };
 
-  // Disable các ngày trong quá khứ
+  // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
+  const calculateMinExportDate = () => {
+    if (
+      !workingTimeConfig.workingTimeStart ||
+      !workingTimeConfig.workingTimeEnd
+    ) {
+      return dayjs().startOf("day"); // Fallback nếu chưa có config
+    }
+
+    const now = dayjs();
+    const today = now.startOf("day");
+
+    // Parse working hours
+    const [startHour, startMin] = workingTimeConfig.workingTimeStart
+      .split(":")
+      .map(Number);
+    const [endHour, endMin] = workingTimeConfig.workingTimeEnd
+      .split(":")
+      .map(Number);
+
+    const todayWorkStart = today.hour(startHour).minute(startMin);
+    const todayWorkEnd = today.hour(endHour).minute(endMin);
+
+    // Thời gian kiểm đếm cố định 24h (sẽ config được sau)
+    const INSPECTION_HOURS = 24;
+
+    let startCalculationTime;
+
+    // Case 1: Ngoài giờ hành chính
+    if (now.isBefore(todayWorkStart) || now.isAfter(todayWorkEnd)) {
+      // Nếu trước giờ làm việc hôm nay -> bắt đầu từ giờ làm việc hôm nay
+      // Nếu sau giờ làm việc hôm nay -> bắt đầu từ giờ làm việc ngày mai
+      if (now.isBefore(todayWorkStart)) {
+        startCalculationTime = todayWorkStart;
+      } else {
+        startCalculationTime = todayWorkStart.add(1, "day");
+      }
+    }
+    // Case 2: Trong giờ hành chính
+    else {
+      startCalculationTime = now;
+    }
+
+    // Tính toán thời gian sau khi cộng thêm INSPECTION_HOURS (chỉ tính giờ hành chính)
+    let calculationTime = startCalculationTime.clone();
+    let remainingHours = INSPECTION_HOURS;
+
+    while (remainingHours > 0) {
+      const currentDay = calculationTime.startOf("day");
+      const workStart = currentDay.hour(startHour).minute(startMin);
+      const workEnd = currentDay.hour(endHour).minute(endMin);
+
+      // Nếu calculationTime trước giờ làm việc của ngày đó
+      if (calculationTime.isBefore(workStart)) {
+        calculationTime = workStart;
+      }
+
+      // Tính số giờ làm việc còn lại trong ngày
+      const hoursLeftInDay = workEnd.diff(calculationTime, "hour", true);
+
+      if (remainingHours <= hoursLeftInDay) {
+        // Đủ giờ trong ngày hiện tại
+        calculationTime = calculationTime.add(remainingHours, "hour");
+        remainingHours = 0;
+      } else {
+        // Không đủ giờ, chuyển sang ngày tiếp theo
+        remainingHours -= hoursLeftInDay;
+        calculationTime = currentDay
+          .add(1, "day")
+          .hour(startHour)
+          .minute(startMin);
+      }
+    }
+
+    // Trả về ngày (không tính giờ phút)
+    return calculationTime.startOf("day");
+  };
+
+  // Disable các ngày trước ngày xuất sớm nhất được phép
   const getDisabledDate = (current) => {
-    return current && current.isBefore(dayjs().startOf("day"));
+    if (!current) return false;
+
+    const minExportDate = calculateMinExportDate();
+    return current.isBefore(minExportDate);
   };
 
   return (
@@ -52,12 +168,14 @@ const SellingExportForm = ({
       {/* Loại xuất bán */}
       <span className="font-semibold">Loại xuất: Xuất bán</span>
       <div className="mb-2"></div>
+
       {/* Hiển thị thông báo nếu data được load từ Excel */}
       {excelFormData && (
         <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
           ✓ Thông tin đã được tự động điền từ file Excel
         </div>
       )}
+
       {/* Ngày xuất */}
       <div className="mb-4">
         <label className="block mb-1">
@@ -81,10 +199,12 @@ const SellingExportForm = ({
         />
         {!formData.exportDate && (
           <div className="text-red-500 text-xs mt-1">
-            Vui lòng chọn ngày xuất.
+            Vui lòng chọn ngày xuất (tối thiểu sau 24h kiểm đếm trong giờ hành
+            chính).
           </div>
         )}
       </div>
+
       {/* Lí do xuất */}
       <div className="mb-4">
         <label className="block mb-1">
@@ -108,6 +228,7 @@ const SellingExportForm = ({
           </div>
         )}
       </div>
+
       {/* Người nhận */}
       <div className="mb-4">
         <label className="block mb-1">
@@ -130,6 +251,7 @@ const SellingExportForm = ({
           </div>
         )}
       </div>
+
       {/* Số điện thoại người nhận */}
       <div className="mb-4">
         <label className="block mb-1">
