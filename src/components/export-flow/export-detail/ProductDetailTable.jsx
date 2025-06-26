@@ -29,6 +29,7 @@ const ProductDetailTable = ({
   creating,
   onCancelCreateExport,
   onConfirmCreateExport,
+  setRecountModalVisible, // Thêm prop mới
 }) => {
   const itemStatus = getItemStatus(allExportRequestDetails);
 
@@ -130,9 +131,21 @@ const ProductDetailTable = ({
         <span className="mr-15">Danh sách chi tiết sản phẩm xuất</span>
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
           exportRequest?.status === ExportStatus.COUNTED && (
-            <Button type="primary" onClick={() => setConfirmModalVisible(true)}>
-              Xác nhận số lượng đã kiểm đếm
-            </Button>
+            <>
+              <Button
+                type="primary"
+                onClick={() => setConfirmModalVisible(true)}
+              >
+                Xác nhận số lượng đã kiểm đếm
+              </Button>
+              <Button
+                danger
+                className="ml-4"
+                onClick={() => setRecountModalVisible(true)}
+              >
+                Kiểm đếm lại
+              </Button>
+            </>
           )}
 
         {!editMode &&
@@ -311,6 +324,7 @@ ProductDetailTable.propTypes = {
   creating: PropTypes.bool,
   onCancelCreateExport: PropTypes.func,
   onConfirmCreateExport: PropTypes.func,
+  setRecountModalVisible: PropTypes.func,
 };
 
 export default ProductDetailTable;

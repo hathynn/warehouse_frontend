@@ -28,7 +28,6 @@ import useConfigurationService from "@/services/useConfigurationService";
 import useAccountService from "@/services/useAccountService";
 import { AccountRole, ExportStatus } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
-import LackProductTable from "@/components/export-flow/export-detail/LackProductTable";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
 import ExportRequestConfirmModal from "@/components/export-flow/export-general/ExportRequestConfirmModal";
@@ -108,6 +107,14 @@ const ExportRequestDetail = () => {
     pageSize: 10,
     total: 0,
   });
+  const [modalPagination, setModalPagination] = useState({
+    current: 1,
+    pageSize: 10, // Set cứng là 10
+    total: 0,
+  });
+  const [recountModalVisible, setRecountModalVisible] = useState(false);
+  const [recountChecked, setRecountChecked] = useState(false);
+  const [viewedPages, setViewedPages] = useState(new Set([1])); // Track các trang đã xem
   const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
     useState(null);
   const { getByExportRequestDetailId, loading: inventoryLoading } =
@@ -713,7 +720,7 @@ const ExportRequestDetail = () => {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: 230,
+      width: 200,
       render: (text, record) => (
         <div
           style={{ textAlign: "right" }}
@@ -739,6 +746,7 @@ const ExportRequestDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      width: 200,
       render: (status) =>
         status ? <StatusTag status={status} type="detail" /> : "-", // Use StatusTag component with 'detail' type
     },
@@ -778,6 +786,22 @@ const ExportRequestDetail = () => {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const getSortedProducts = () => {
+    return [...allExportRequestDetails].sort((a, b) => {
+      if (a.status === "LACK" && b.status !== "LACK") return -1;
+      if (a.status !== "LACK" && b.status === "LACK") return 1;
+      return 0;
+    });
+  };
+
+  // Function kiểm tra đã xem hết tất cả trang chưa
+  const hasViewedAllPages = () => {
+    const totalPages = Math.ceil(
+      allExportRequestDetails.length / modalPagination.pageSize
+    );
+    return totalPages <= 1 || viewedPages.size >= totalPages;
   };
 
   const showPagination =
@@ -885,10 +909,7 @@ const ExportRequestDetail = () => {
       <ProductDetailTable
         columns={columns}
         exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
-        allExportRequestDetails={
-          //editMode ? editedDetails : allExportRequestDetails
-          allExportRequestDetails
-        } // THÊM DÒNG NÀY
+        allExportRequestDetails={allExportRequestDetails} // THÊM DÒNG NÀY
         detailsLoading={exportRequestDetailLoading}
         pagination={pagination}
         handleTableChange={handleTableChange}
@@ -901,8 +922,9 @@ const ExportRequestDetail = () => {
         setEditedDetails={setEditedDetails}
         creating={exportRequestDetailLoading || exportRequestLoading}
         onCancelCreateExport={handleCancelCreateExport}
-        //onConfirmCreateExport={handleConfirmCreateExport}
         onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
+        setRecountModalVisible={setRecountModalVisible}
+        recountModalVisible={recountModalVisible}
       />
       {/* Modal chọn Warehouse Keeper */}
       <Modal
@@ -1152,10 +1174,20 @@ const ExportRequestDetail = () => {
       </Modal>
       <Modal
         open={confirmModalVisible}
-        onCancel={() => setConfirmModalVisible(false)}
+        onCancel={() => {
+          setConfirmModalVisible(false);
+          // Reset state khi đóng modal
+          setModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setViewedPages(new Set([1]));
+          setConfirmChecked(false);
+        }}
         onOk={async () => {
           await handleConfirmCounted();
           setConfirmModalVisible(false);
+          // Reset state sau khi confirm
+          setModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setViewedPages(new Set([1]));
+          setConfirmChecked(false);
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
@@ -1164,10 +1196,10 @@ const ExportRequestDetail = () => {
         }
         okText="Xác nhận"
         cancelText="Quay lại"
-        width={700}
+        width={800}
         centered
         okButtonProps={{
-          disabled: !confirmChecked, // disable nếu chưa tick
+          disabled: !confirmChecked || !hasViewedAllPages(),
         }}
       >
         <div className="mb-4 font-semibold">
@@ -1182,15 +1214,99 @@ const ExportRequestDetail = () => {
           sản phẩm
         </div>
 
-        {allExportRequestDetails.some((d) => d.status === "LACK") && (
-          <>
-            <div style={{ fontSize: "16px" }} className="mb-2 font-bold ">
-              Danh sách sản phẩm thiếu:
-            </div>
-            <LackProductTable
-              data={allExportRequestDetails.filter((d) => d.status === "LACK")}
-            />
-          </>
+        <div style={{ fontSize: "16px" }} className="mb-2 font-bold">
+          Danh sách tất cả sản phẩm:
+        </div>
+
+        <Table
+          dataSource={getSortedProducts()}
+          rowKey="id"
+          style={{ height: "420px", overflowY: "auto" }}
+          pagination={
+            allExportRequestDetails.length > 10
+              ? {
+                  current: modalPagination.current,
+                  pageSize: modalPagination.pageSize,
+                  total: allExportRequestDetails.length,
+                  onChange: (page) => {
+                    setModalPagination({
+                      current: page,
+                      pageSize: 10,
+                      total: allExportRequestDetails.length,
+                    });
+                    // Thêm trang hiện tại vào danh sách đã xem
+                    setViewedPages((prev) => new Set([...prev, page]));
+                  },
+                  showSizeChanger: false,
+                  showQuickJumper: false,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} của ${total} sản phẩm`,
+                }
+              : false // Ẩn pagination nếu <= 10 items
+          }
+          size="small"
+          className="mb-4"
+          columns={[
+            {
+              title: "Mã sản phẩm",
+              dataIndex: "itemId",
+              key: "itemId",
+              width: 120,
+            },
+            {
+              title: "Tên sản phẩm",
+              dataIndex: "itemName",
+              key: "itemName",
+              ellipsis: true,
+            },
+            {
+              title: "Số lượng cần",
+              dataIndex: "quantity",
+              key: "quantity",
+              width: 120,
+              align: "right",
+            },
+            {
+              title: "Số lượng thực tế",
+              dataIndex: "actualQuantity",
+              key: "actualQuantity",
+              width: 140,
+              align: "right",
+              render: (text, record) => (
+                <span
+                  className={
+                    text < record.quantity ? "text-red-600 font-semibold" : ""
+                  }
+                >
+                  {text}
+                </span>
+              ),
+            },
+            {
+              title: "Trạng thái",
+              dataIndex: "status",
+              key: "status",
+              width: 100,
+              render: (status) => (
+                <Tag color={status === "LACK" ? "error" : "success"}>
+                  {status === "LACK" ? "Thiếu" : "Đủ"}
+                </Tag>
+              ),
+            },
+          ]}
+          rowClassName={(record) =>
+            record.status === "LACK" ? "bg-red-50" : ""
+          }
+        />
+
+        {/* Hiển thị thông báo nếu chưa xem hết tất cả trang */}
+        {!hasViewedAllPages() && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <span className="text-yellow-800 text-sm">
+              ⚠️ Bạn cần xem qua tất cả các trang trước khi có thể xác nhận kiểm
+              đếm.
+            </span>
+          </div>
         )}
 
         <Checkbox
@@ -1198,8 +1314,169 @@ const ExportRequestDetail = () => {
           checked={confirmChecked}
           onChange={(e) => setConfirmChecked(e.target.checked)}
           style={{ fontWeight: "500" }}
+          disabled={!hasViewedAllPages()}
         >
           Tôi đã đọc và kiểm tra kỹ các thông tin về sản phẩm đã được kiểm đếm.
+        </Checkbox>
+      </Modal>
+      <Modal
+        open={recountModalVisible}
+        onCancel={() => {
+          setRecountModalVisible(false);
+          // Reset state khi đóng modal
+          setModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setViewedPages(new Set([1]));
+          setRecountChecked(false);
+        }}
+        onOk={async () => {
+          try {
+            await updateExportRequestStatus(
+              exportRequestId,
+              ExportStatus.IN_PROGRESS
+            );
+            message.success("Đã yêu cầu kiểm đếm lại");
+            setRecountModalVisible(false);
+            // Reset state sau khi confirm
+            setModalPagination({ current: 1, pageSize: 10, total: 0 });
+            setViewedPages(new Set([1]));
+            setRecountChecked(false);
+            // Refresh data
+            await fetchExportRequestData();
+            fetchDetails();
+          } catch (error) {
+            console.error("Lỗi khi yêu cầu kiểm đếm lại", error);
+            message.error("Không thể yêu cầu kiểm đếm lại. Vui lòng thử lại.");
+          }
+        }}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Yêu cầu kiểm đếm lại
+          </span>
+        }
+        okText="Xác nhận"
+        cancelText="Quay lại"
+        width={800}
+        centered
+        okButtonProps={{
+          disabled: !recountChecked || !hasViewedAllPages(),
+        }}
+      >
+        <div className="mb-4 font-semibold">
+          Tổng đã kiểm đếm: {allExportRequestDetails.length} sản phẩm
+        </div>
+
+        <div className="mb-4 font-semibold">
+          Tổng thiếu:{" "}
+          <span className="text-red-600">
+            {allExportRequestDetails.filter((d) => d.status === "LACK").length}
+          </span>{" "}
+          sản phẩm
+        </div>
+
+        <div style={{ fontSize: "16px" }} className="mb-2 font-bold">
+          Danh sách tất cả sản phẩm:
+        </div>
+
+        <Table
+          dataSource={getSortedProducts()}
+          rowKey="id"
+          style={{ height: "420px", overflowY: "auto" }}
+          pagination={
+            allExportRequestDetails.length > 10
+              ? {
+                  current: modalPagination.current,
+                  pageSize: modalPagination.pageSize,
+                  total: allExportRequestDetails.length,
+                  onChange: (page) => {
+                    setModalPagination({
+                      current: page,
+                      pageSize: 10,
+                      total: allExportRequestDetails.length,
+                    });
+                    // Thêm trang hiện tại vào danh sách đã xem
+                    setViewedPages((prev) => new Set([...prev, page]));
+                  },
+                  showSizeChanger: false,
+                  showQuickJumper: false,
+                  showTotal: (total, range) =>
+                    `${range[0]}-${range[1]} của ${total} sản phẩm`,
+                }
+              : false // Ẩn pagination nếu <= 10 items
+          }
+          size="small"
+          className="mb-4"
+          columns={[
+            {
+              title: "Mã sản phẩm",
+              dataIndex: "itemId",
+              key: "itemId",
+              width: 120,
+            },
+            {
+              title: "Tên sản phẩm",
+              dataIndex: "itemName",
+              key: "itemName",
+              ellipsis: true,
+            },
+            {
+              title: "Số lượng cần",
+              dataIndex: "quantity",
+              key: "quantity",
+              width: 120,
+              align: "right",
+            },
+            {
+              title: "Số lượng thực tế",
+              dataIndex: "actualQuantity",
+              key: "actualQuantity",
+              width: 140,
+              align: "right",
+              render: (text, record) => (
+                <span
+                  className={
+                    text < record.quantity ? "text-red-600 font-semibold" : ""
+                  }
+                >
+                  {text}
+                </span>
+              ),
+            },
+            {
+              title: "Trạng thái",
+              dataIndex: "status",
+              key: "status",
+              width: 100,
+              render: (status) => (
+                <Tag color={status === "LACK" ? "error" : "success"}>
+                  {status === "LACK" ? "Thiếu" : "Đủ"}
+                </Tag>
+              ),
+            },
+          ]}
+          rowClassName={(record) =>
+            record.status === "LACK" ? "bg-red-50" : ""
+          }
+        />
+
+        {/* Hiển thị thông báo nếu chưa xem hết tất cả trang */}
+        {!hasViewedAllPages() && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+            <span className="text-yellow-800 text-sm">
+              ⚠️ Bạn cần xem qua tất cả các trang trước khi có thể xác nhận yêu
+              cầu kiểm đếm lại.
+            </span>
+          </div>
+        )}
+
+        <Checkbox
+          className="mb-4"
+          checked={recountChecked}
+          onChange={(e) => setRecountChecked(e.target.checked)}
+          style={{ fontWeight: "500" }}
+          disabled={!hasViewedAllPages()}
+        >
+          Tôi đã đọc và kiểm tra kỹ các thông tin về sản phẩm và yêu cầu kiểm
+          đếm lại.
         </Checkbox>
       </Modal>
       <Modal

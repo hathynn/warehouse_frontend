@@ -13,8 +13,9 @@ import {
 } from "antd";
 import useImportOrderService from "@/services/useImportOrderService";
 import useImportRequestService from "@/services/useImportRequestService";
-import { Package, Calendar, Clock, Hash } from "lucide-react";
 import PropTypes from "prop-types";
+import useProviderService from "@/services/useProviderService"; // ✅ THÊM
+import { Package, Calendar, Clock, Hash, Building2 } from "lucide-react"; // ✅ THÊM Building2 icon
 
 const UseExportFirstStep = ({
   onConfirm,
@@ -36,6 +37,8 @@ const UseExportFirstStep = ({
     return [];
   });
   const [providerData, setProviderData] = useState({});
+  const { getProviderById } = useProviderService(); // ✅ THÊM
+  const [providerInfo, setProviderInfo] = useState({}); // ✅ THÊM: Cache thông tin provider
 
   // Handle select all checkbox
   const handleCheckAllChange = (e) => {
@@ -92,7 +95,21 @@ const UseExportFirstStep = ({
       if (selectedOrder && selectedOrder.importRequestId) {
         // Kiểm tra cache trước
         if (providerData[selectedOrder.importRequestId]) {
-          return; // Đã có trong cache
+          const providerId = providerData[selectedOrder.importRequestId];
+
+          // Fetch thông tin provider nếu chưa có
+          if (providerId && !providerInfo[providerId]) {
+            try {
+              const providerResponse = await getProviderById(providerId);
+              setProviderInfo((prev) => ({
+                ...prev,
+                [providerId]: providerResponse?.content || null,
+              }));
+            } catch (error) {
+              console.error("Error fetching provider info:", error);
+            }
+          }
+          return;
         }
 
         try {
@@ -106,6 +123,19 @@ const UseExportFirstStep = ({
             ...prev,
             [selectedOrder.importRequestId]: providerId,
           }));
+
+          // Fetch thông tin provider
+          if (providerId) {
+            try {
+              const providerResponse = await getProviderById(providerId);
+              setProviderInfo((prev) => ({
+                ...prev,
+                [providerId]: providerResponse?.content || null,
+              }));
+            } catch (error) {
+              console.error("Error fetching provider info:", error);
+            }
+          }
         } catch (error) {
           console.error("Error fetching provider data:", error);
         }
@@ -175,10 +205,19 @@ const UseExportFirstStep = ({
   };
 
   // Handle continue button click
-  // ✅ SỬA: Handle continue button click
   const handleContinue = () => {
     if (selectedRowKeys.length > 0 && selectedOrder) {
       const providerId = providerData[selectedOrder.importRequestId] || null;
+      const currentProviderInfo = providerId ? providerInfo[providerId] : null;
+
+      // ✅ FORMAT lại providerInfo để match với expected structure
+      const formattedProviderInfo = currentProviderInfo
+        ? {
+            id: providerId,
+            name: currentProviderInfo.name,
+            // thêm các fields khác nếu cần
+          }
+        : null;
 
       const selectedItems = selectedOrder.importOrderDetails
         .filter((detail) =>
@@ -200,6 +239,7 @@ const UseExportFirstStep = ({
         importOrderId: selectedOrder.importOrderId,
         importRequestId: selectedOrder.importRequestId,
         providerId: providerId,
+        providerInfo: formattedProviderInfo, // ✅ SỬ DỤNG FORMATTED DATA
       });
     }
   };
@@ -493,6 +533,8 @@ const UseExportFirstStep = ({
 
               <Row gutter={24}>
                 <Col span={8}>
+                  {" "}
+                  {/* ✅ THAY ĐỔI: từ span={8} thành span={6} */}
                   <div>
                     <p
                       style={{
@@ -515,6 +557,8 @@ const UseExportFirstStep = ({
                   </div>
                 </Col>
                 <Col span={8}>
+                  {" "}
+                  {/* ✅ THAY ĐỔI: từ span={8} thành span={6} */}
                   <div>
                     <p
                       style={{
@@ -536,7 +580,9 @@ const UseExportFirstStep = ({
                     </p>
                   </div>
                 </Col>
+
                 <Col span={8}>
+                  {" "}
                   <div>
                     <p
                       style={{
@@ -556,6 +602,41 @@ const UseExportFirstStep = ({
                     >
                       {formatDate(selectedOrder.actualDateReceived)} -{" "}
                       {formatTime(selectedOrder.actualTimeReceived)}
+                    </p>
+                  </div>
+                </Col>
+                <Col span={10}>
+                  {" "}
+                  {/* ✅ THÊM: Cột nhà cung cấp */}
+                  <div className="mt-6">
+                    <p
+                      style={{
+                        color: "#8c8c8c",
+                        marginBottom: "4px",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <Building2
+                        size={14}
+                        style={{ marginRight: "4px", verticalAlign: "middle" }}
+                      />
+                      Nhà cung cấp
+                    </p>
+                    <p
+                      style={{
+                        fontWeight: "bold",
+                        fontSize: "16px",
+                        margin: 0,
+                      }}
+                    >
+                      {(() => {
+                        const providerId =
+                          providerData[selectedOrder.importRequestId];
+                        const provider = providerId
+                          ? providerInfo[providerId]
+                          : null;
+                        return provider ? provider.name : "Đang tải...";
+                      })()}
                     </p>
                   </div>
                 </Col>

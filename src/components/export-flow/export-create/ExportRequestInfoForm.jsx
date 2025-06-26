@@ -29,6 +29,7 @@ const ExportRequestInfoForm = ({
   providers,
   pagination,
   excelFormData,
+  returnProviders = [],
 }) => {
   const [timeError, setTimeError] = useState("");
   const [mandatoryError, setMandatoryError] = useState("");
@@ -160,11 +161,20 @@ const ExportRequestInfoForm = ({
         <div className="w-2/3">
           <Card title="Chi tiết hàng hóa từ file Excel">
             {mappedData.length > 0 ? (
+              // <ExcelDataTableAfter
+              //   data={mappedData}
+              //   exportType={formData.exportType}
+              //   items={items}
+              //   providers={providers}
+              //   pagination={pagination}
+              // />
               <ExcelDataTableAfter
                 data={mappedData}
-                exportType={formData.exportType}
                 items={items}
-                providers={providers}
+                providers={
+                  formData.exportType === "RETURN" ? returnProviders : providers
+                } // ✅ SỬA
+                exportType={formData.exportType}
                 pagination={pagination}
               />
             ) : (
@@ -236,6 +246,7 @@ ExportRequestInfoForm.propTypes = {
   providers: PropTypes.array,
   pagination: PropTypes.object,
   excelFormData: PropTypes.object, // THÊM PROP TYPE CHO EXCEL DATA
+  returnProviders: PropTypes.array, // ✅ THÊM
 };
 
 export default ExportRequestInfoForm;

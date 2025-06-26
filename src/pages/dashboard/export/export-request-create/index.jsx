@@ -61,11 +61,8 @@ const ExportRequestCreate = () => {
   const [validationError, setValidationError] = useState("");
   const [fileConfirmed, setFileConfirmed] = useState(false);
   const [hasTableError, setHasTableError] = useState(false);
-  const [exportTypeCache, setExportTypeCache] = useState({});
   const [providers, setProviders] = useState([]);
   const [excelFormData, setExcelFormData] = useState(null);
-  const [resetRemovedItemsFunction, setResetRemovedItemsFunction] =
-    useState(null);
   const [returnImportData, setReturnImportData] = useState(null);
 
   // FORM DATA STATE
@@ -233,8 +230,8 @@ const ExportRequestCreate = () => {
     setValidationError("");
     setFileConfirmed(false);
     setHasTableError(false);
-    setExportTypeCache({});
-    setExcelFormData(null); // THÊM DÒNG NÀY
+    // ✅ XÓA: setExportTypeCache({});
+    setExcelFormData(null);
     setPagination({ current: 1, pageSize: 10, total: 0 });
     resetViewedPages(1);
     setReturnImportData(null);
@@ -378,48 +375,6 @@ const ExportRequestCreate = () => {
               };
             });
 
-          // TRONG PHẦN XỬ LÝ FILE UPLOAD - PRODUCTION
-          // Thay thế đoạn code hiện tại từ dòng transformedData = dataRows... trong PRODUCTION:
-          transformedData = dataRows
-            .filter((row) => row && row.length > 0 && row[0])
-            .map((row, index) => {
-              const itemId = row[0];
-              const quantity = row[1];
-
-              if (!itemId || !quantity) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Thiếu thông tin Mã hàng hoặc Số lượng`
-                );
-              }
-
-              // ✅ TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
-              const foundItem = items.content?.find(
-                (i) => String(i.id) === String(itemId)
-              );
-
-              if (!foundItem) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Không tìm thấy mặt hàng với mã ${itemId}`
-                );
-              }
-
-              return {
-                itemId: String(itemId).trim(),
-                quantity: Number(quantity),
-                measurementValue: row[2] || "",
-                // ✅ THÊM CÁC THUỘC TÍNH TỪ ITEM METADATA
-                itemName: foundItem.name,
-                unitType: foundItem.unitType,
-                measurementUnit: foundItem.measurementUnit || "Không xác định",
-                totalMeasurementValue: foundItem.totalMeasurementValue || "",
-              };
-            });
-
-          // TRONG PHẦN XỬ LÝ FILE UPLOAD - CÁC LOẠI KHÁC
           // Thay thế phần cuối else cho các loại khác:
         } else {
           // Xử lý như cũ cho các loại xuất khác
@@ -514,10 +469,6 @@ const ExportRequestCreate = () => {
 
         setData(transformedData);
         setValidationError("");
-        // Reset removed items
-        if (resetRemovedItemsFunction) {
-          resetRemovedItemsFunction();
-        }
       } catch (error) {
         setValidationError(error.message);
         toast.error(error.message);
@@ -548,22 +499,15 @@ const ExportRequestCreate = () => {
     setData([]);
     setValidationError("");
     setFileConfirmed(false);
+    setExcelFormData(null);
 
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
 
-    // Clear cache for current export type
-    setExportTypeCache((prevCache) => ({
-      ...prevCache,
-      [formData.exportType]: {
-        file: null,
-        fileName: "",
-        data: [],
-        validationError: "",
-      },
-    }));
+    // ✅ XÓA: Bỏ cache logic
+    // setExportTypeCache((prevCache) => ({...}));
 
     // Reset pagination and view tracking
     setPagination((prev) => ({ ...prev, current: 1, total: 0 }));
@@ -573,37 +517,52 @@ const ExportRequestCreate = () => {
   // =============================================================================
   // EXPORT TYPE HANDLING
   // =============================================================================
+  // const handleExportTypeChange = (newExportType) => {
+  //   setFile(null);
+  //   setFileName("");
+  //   setData([]);
+  //   setValidationError("");
+  //   setFileConfirmed(false);
+  //   setExcelFormData(null);
+  //   setReturnImportData(null);
+
+  //   // Reset file input
+  //   if (fileInputRef.current) {
+  //     fileInputRef.current.value = "";
+  //   }
+
+  //   // Update export type
+  //   setFormData((prev) => ({ ...prev, exportType: newExportType }));
+
+  //   // Reset pagination and view tracking
+  //   setPagination({ current: 1, pageSize: 10, total: 0 });
+  //   resetViewedPages(1);
+  // };
+
   const handleExportTypeChange = (newExportType) => {
-    // Cache current data
-    setExportTypeCache((prevCache) => ({
-      ...prevCache,
-      [formData.exportType]: {
-        file,
-        fileName,
-        data,
-        validationError,
-      },
-    }));
+    // Clear file-related states
+    setFile(null);
+    setFileName("");
+    setData([]);
+    setValidationError("");
+    setFileConfirmed(false);
+    setExcelFormData(null);
+    setReturnImportData(null);
 
-    // Restore cached data for new type or use defaults
-    const cached = exportTypeCache[newExportType] || {
-      file: null,
-      fileName: "",
-      data: [],
-      validationError: "",
-    };
-
-    // Update states
-    setFormData((prev) => ({ ...prev, exportType: newExportType }));
-    setFile(cached.file);
-    setFileName(cached.fileName);
-    setData(cached.data);
-    setValidationError(cached.validationError);
-
-    // Reset file input if no cached file
-    if (!cached.file && fileInputRef.current) {
+    // Reset file input
+    if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+
+    // ✅ RESET FORM DATA VỀ INITIAL STATE + chỉ set exportType mới
+    setFormData({
+      ...INITIAL_FORM_DATA,
+      exportType: newExportType,
+    });
+
+    // Reset pagination and view tracking
+    setPagination({ current: 1, pageSize: 10, total: 0 });
+    resetViewedPages(1);
   };
 
   // const handleBackToFileStep = () => {
@@ -614,7 +573,9 @@ const ExportRequestCreate = () => {
   // };
   const handleBackToFileStep = () => {
     setFileConfirmed(false);
-    if (returnImportData && returnImportData.selectedItems) {
+
+    // Chỉ restore data cho RETURN type
+    if (formData.exportType === "RETURN" && returnImportData?.selectedItems) {
       const transformedData = returnImportData.selectedItems.map((item) => ({
         itemId: item.itemId,
         itemName: item.itemName,
@@ -949,6 +910,7 @@ const ExportRequestCreate = () => {
     }
   };
 
+  // ✅ SỬA: handleReturnImportConfirm function
   const handleReturnImportConfirm = (data) => {
     // ✅ UPDATE returnImportData với đầy đủ thông tin
     setReturnImportData({
@@ -958,6 +920,7 @@ const ExportRequestCreate = () => {
         importOrderDetailId: item.importOrderDetailId,
       })),
       providerId: data.providerId, // ✅ THÊM providerId từ UseExportFirstStep
+      providerInfo: data.providerInfo, // ✅ THÊM providerInfo từ UseExportFirstStep
     });
 
     const transformedData = data.selectedItems.map((item) => ({
@@ -1091,7 +1054,12 @@ const ExportRequestCreate = () => {
           items={items.content || []}
           providers={providers}
           pagination={pagination}
-          excelFormData={excelFormData} // THÊM PROP NÀY
+          excelFormData={excelFormData}
+          returnProviders={
+            returnImportData?.providerInfo
+              ? [returnImportData.providerInfo]
+              : []
+          } // ✅ THÊM
         />
       )}
       {/* Department Selection Modal */}
