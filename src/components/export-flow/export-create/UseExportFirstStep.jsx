@@ -14,8 +14,22 @@ import {
 import useImportOrderService from "@/services/useImportOrderService";
 import useImportRequestService from "@/services/useImportRequestService";
 import PropTypes from "prop-types";
-import useProviderService from "@/services/useProviderService"; // ✅ THÊM
-import { Package, Calendar, Clock, Hash, Building2 } from "lucide-react"; // ✅ THÊM Building2 icon
+import useProviderService from "@/services/useProviderService";
+import { Package, Calendar, Clock, Hash, Building2 } from "lucide-react";
+import { Input, Select, Dropdown, Space } from "antd";
+import { Search, SortAsc, SortDesc, ChevronDown } from "lucide-react";
+
+const checkboxStyle = `
+  .custom-table .ant-checkbox-inner {
+    border-width: 2.5px !important;
+  }
+  .custom-table .ant-checkbox-checked .ant-checkbox-inner {
+    border-width: 2.5px !important;
+  }
+  .custom-table .ant-checkbox:hover .ant-checkbox-inner {
+    border-width: 2.5px !important;
+  }
+`;
 
 const UseExportFirstStep = ({
   onConfirm,
@@ -37,8 +51,12 @@ const UseExportFirstStep = ({
     return [];
   });
   const [providerData, setProviderData] = useState({});
-  const { getProviderById } = useProviderService(); // ✅ THÊM
-  const [providerInfo, setProviderInfo] = useState({}); // ✅ THÊM: Cache thông tin provider
+  const { getProviderById } = useProviderService();
+  const [providerInfo, setProviderInfo] = useState({});
+  const [searchField, setSearchField] = useState("importOrderId");
+  const [searchValue, setSearchValue] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc"); // desc = mới nhất, asc = cũ nhất
+  const [filteredOrders, setFilteredOrders] = useState([]);
 
   // Handle select all checkbox
   const handleCheckAllChange = (e) => {
@@ -89,7 +107,6 @@ const UseExportFirstStep = ({
     }
   }, [selectedOrder, initialSelectedItems]);
 
-  // ✅ THÊM: useEffect để fetch và cache providerId khi selectedOrder thay đổi
   useEffect(() => {
     const fetchProviderData = async () => {
       if (selectedOrder && selectedOrder.importRequestId) {
@@ -145,21 +162,48 @@ const UseExportFirstStep = ({
     fetchProviderData();
   }, [selectedOrder?.importRequestId]);
 
-  // const fetchImportOrders = async () => {
-  //   try {
-  //     setError(null);
-  //     const response = await getAllImportOrders();
-  //     if (response?.content) {
-  //       // Lọc chỉ lấy các đơn có status COMPLETED
-  //       const completedOrders = response.content.filter(
-  //         (order) => order.status === "COMPLETED"
-  //       );
-  //       setImportOrders(completedOrders);
-  //     }
-  //   } catch (err) {
-  //     setError("Không thể tải danh sách đơn nhập");
-  //   }
-  // };
+  useEffect(() => {
+    let filtered = [...importOrders];
+
+    // Apply search filter
+    if (searchValue.trim()) {
+      filtered = filtered.filter((order) => {
+        const searchLower = searchValue.toLowerCase().trim();
+
+        switch (searchField) {
+          case "importOrderId":
+            return order.importOrderId.toLowerCase().includes(searchLower);
+          case "importRequestId":
+            return order.importRequestId.toLowerCase().includes(searchLower);
+          case "itemId":
+            return order.importOrderDetails.some((detail) =>
+              detail.itemId.toLowerCase().includes(searchLower)
+            );
+          case "itemName":
+            return order.importOrderDetails.some((detail) =>
+              detail.itemName.toLowerCase().includes(searchLower)
+            );
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sort
+    filtered.sort((a, b) => {
+      const dateA = new Date(`${a.actualDateReceived}T${a.actualTimeReceived}`);
+      const dateB = new Date(`${b.actualDateReceived}T${b.actualTimeReceived}`);
+
+      if (sortOrder === "desc") {
+        return dateB - dateA; // Mới nhất trước
+      } else {
+        return dateA - dateB; // Cũ nhất trước
+      }
+    });
+
+    setFilteredOrders(filtered);
+  }, [importOrders, searchValue, searchField, sortOrder]);
+
   const fetchImportOrders = async () => {
     try {
       setError(null);
@@ -304,13 +348,13 @@ const UseExportFirstStep = ({
       ),
     },
     {
-      title: "Mã hàng",
+      title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
       width: "15%",
     },
     {
-      title: "Tên hàng",
+      title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
       width: "30%",
@@ -359,11 +403,91 @@ const UseExportFirstStep = ({
     },
   ];
 
+  // 4. Component thanh search và sort (thêm sau header "Đơn nhập hoàn tất")
+  const SearchAndSortBar = (
+    <div
+      style={{
+        padding: "12px 20px",
+        borderBottom: "1px solid #f0f0f0",
+        backgroundColor: "#fafafa",
+      }}
+    >
+      <Space.Compact style={{ width: "100%" }}>
+        <Select
+          value={searchField}
+          onChange={setSearchField}
+          style={{ width: "35%" }}
+          options={[
+            { value: "importOrderId", label: "Mã đơn nhập" },
+            { value: "importRequestId", label: "Mã phiếu nhập" },
+            { value: "itemId", label: "Mã sản phẩm" },
+            { value: "itemName", label: "Tên sản phẩm" },
+          ]}
+        />
+        <Input
+          placeholder={`Tìm kiếm...`}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          prefix={<Search size={16} style={{ color: "#8c8c8c" }} />}
+          allowClear
+          style={{ flex: 1 }}
+        />
+      </Space.Compact>
+
+      <Dropdown
+        trigger={["click"]}
+        placement="bottomRight"
+        menu={{
+          items: [
+            {
+              key: "desc",
+              label: "Ngày giờ nhận mới nhất trước",
+              icon: <SortDesc size={16} />,
+              onClick: () => setSortOrder("desc"),
+            },
+            {
+              key: "asc",
+              label: "Ngày giờ nhận cũ nhất trước",
+              icon: <SortAsc size={16} />,
+              onClick: () => setSortOrder("asc"),
+            },
+          ],
+          selectedKeys: [sortOrder],
+        }}
+      >
+        <Button
+          style={{
+            marginTop: "8px",
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Space>
+            {sortOrder === "desc" ? (
+              <SortDesc size={16} />
+            ) : (
+              <SortAsc size={16} />
+            )}
+            <span>
+              {sortOrder === "desc"
+                ? "Ngày giờ nhận mới nhất trước"
+                : "Ngày giờ nhận cũ nhất trước"}
+            </span>
+          </Space>
+          <ChevronDown size={16} />
+        </Button>
+      </Dropdown>
+    </div>
+  );
+
   return (
     <div
       className="h-[66vh]"
       style={{ display: "flex", backgroundColor: "#f5f5f5" }}
     >
+      <style>{checkboxStyle}</style>
       {/* Phần bên trái - Danh sách Import Orders (1/3 màn hình) */}
       <div
         style={{
@@ -391,9 +515,12 @@ const UseExportFirstStep = ({
             Đơn nhập hoàn tất
           </h2>
           <p style={{ color: "#8c8c8c", marginTop: "8px", marginBottom: 0 }}>
-            Tổng số: {importOrders.length} đơn
+            Tổng số: {filteredOrders.length} / {importOrders.length} đơn
           </p>
         </div>
+
+        {/* Thêm thanh Search và Sort ở đây */}
+        {SearchAndSortBar}
 
         {/* Danh sách - có scroll */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px" }}>
@@ -430,14 +557,18 @@ const UseExportFirstStep = ({
                 </button>
               }
             />
-          ) : importOrders.length === 0 ? (
+          ) : filteredOrders.length === 0 ? (
             <Empty
-              description="Không có đơn nhập nào đã hoàn tất"
+              description={
+                searchValue.trim()
+                  ? "Không tìm thấy đơn nhập phù hợp"
+                  : "Không có đơn nhập nào đã hoàn tất"
+              }
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
             <div>
-              {importOrders.map((order) => (
+              {filteredOrders.map((order) => (
                 <Card
                   key={order.importOrderId}
                   hoverable
@@ -675,6 +806,7 @@ const UseExportFirstStep = ({
 
               <Card>
                 <Table
+                  className="custom-table"
                   dataSource={selectedOrder.importOrderDetails.filter(
                     (detail) => detail.actualQuantity > 0
                   )}
@@ -687,7 +819,11 @@ const UseExportFirstStep = ({
             </div>
 
             {/* Continue button */}
-            <div style={{ marginTop: "24px", textAlign: "center" }}>
+            <div
+              style={{
+                textAlign: "center",
+              }}
+            >
               <Button
                 type="primary"
                 size="large"

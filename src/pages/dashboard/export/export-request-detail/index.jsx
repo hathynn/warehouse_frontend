@@ -1203,7 +1203,7 @@ const ExportRequestDetail = () => {
         }}
       >
         <div className="mb-4 font-semibold">
-          Tổng đã kiểm đếm: {allExportRequestDetails.length} sản phẩm
+          Tổng đã đóng gói: {allExportRequestDetails.length} sản phẩm
         </div>
 
         <div className="mb-4 font-semibold">
@@ -1362,7 +1362,7 @@ const ExportRequestDetail = () => {
         }}
       >
         <div className="mb-4 font-semibold">
-          Tổng đã kiểm đếm: {allExportRequestDetails.length} sản phẩm
+          Tổng đã đóng gói: {allExportRequestDetails.length} sản phẩm
         </div>
 
         <div className="mb-4 font-semibold">
