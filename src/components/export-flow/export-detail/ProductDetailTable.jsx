@@ -136,14 +136,14 @@ const ProductDetailTable = ({
                 type="primary"
                 onClick={() => setConfirmModalVisible(true)}
               >
-                Xác nhận số lượng đã kiểm đếm
+                Xác nhận số lượng đã đóng gói
               </Button>
               <Button
                 danger
                 className="ml-4"
                 onClick={() => setRecountModalVisible(true)}
               >
-                Kiểm đếm lại
+                Yêu cầu kiểm đếm lại
               </Button>
             </>
           )}

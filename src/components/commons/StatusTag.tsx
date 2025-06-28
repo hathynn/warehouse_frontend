@@ -20,8 +20,8 @@ const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
 const exportStatusMap: Record<ExportStatus, { color: string; text: string }> = {
   NOT_STARTED: { color: "default", text: "Chưa bắt đầu" },
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
-  COUNTED: { color: "processing", text: "Đã kiểm đếm" },
-  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm đếm" },
+  COUNTED: { color: "processing", text: "Đã đóng gói" },
+  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận đóng gói" },
   WAITING_EXPORT: { color: "warning", text: "Chờ xuất kho" },
   EXTENDED: { color: "warning", text: "Hoãn xuất kho" },
   CONFIRMED: { color: "processing", text: "Đã xuất kho" },
