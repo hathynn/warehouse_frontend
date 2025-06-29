@@ -15,6 +15,7 @@ export enum ItemStatus {
 export interface InventoryItemResponse {
   id: string;
   reasonForDisposal?: string;
+  measurementValue?: number;
   quantity: number;
   status: ItemStatus;
   expiredDate: string;
@@ -29,15 +30,6 @@ export interface InventoryItemResponse {
   importOrderDetailId?: number;
   storedLocationId?: number;
   storedLocationName?: string;
-}
-
-// Interface to match QrCodeResponse.java
-export interface QrCodeResponse {
-  id: number;
-  itemId: number;
-  importOrderDetailId?: number;
-  exportRequestDetailId?: number;
-  measurementValue: number;
 }
 
 const useInventoryItemService = () => {
@@ -89,6 +81,20 @@ const useInventoryItemService = () => {
     }
   };
 
+  // Get inventory items by list import order detail IDs
+
+  const getByListImportOrderDetailIds = async (
+    importOrderDetailIds: string[]
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+    try {
+      const response = await callApi("post", "/inventory-item/import-order-detail", importOrderDetailIds);
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
+      throw error;
+    }
+  };
+
   // Get inventory items by export request detail ID
   const getByExportRequestDetailId = async (
     exportRequestDetailId: string,
@@ -107,26 +113,10 @@ const useInventoryItemService = () => {
     }
   };
 
-  // Get inventory items by stored location ID
-  const getByStoredLocationId = async (
-    storedLocationId: string,
-    page = 1,
-    limit = 10
-  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
-    try {
-      const response = await callApi(
-        "get",
-        `/inventory-item/stored-location/${storedLocationId}?page=${page}&limit=${limit}`
-      );
-      return response;
-    } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm theo vị trí");
-      throw error;
-    }
-  };
+
 
   // Get QR codes by inventory item IDs
-  const getListQrCodes = async (inventoryItemIds: string[]): Promise<ResponseDTO<QrCodeResponse[]>> => {
+  const getListQrCodes = async (inventoryItemIds: string[]): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
       const response = await callApi("post", "/inventory-item/qr-codes", inventoryItemIds);
       return response;
@@ -136,27 +126,16 @@ const useInventoryItemService = () => {
     }
   };
 
-  // Delete inventory item
-  const deleteInventoryItem = async (inventoryItemId: string): Promise<ResponseDTO<null>> => {
-    try {
-      const response = await callApi("delete", `/inventory-item/${inventoryItemId}`);
-      toast.success("Xóa sản phẩm thành công");
-      return response;
-    } catch (error) {
-      toast.error("Không thể xóa sản phẩm");
-      throw error;
-    }
-  };
+
 
   return {
     loading,
     getAllInventoryItems,
     getInventoryItemById,
     getByImportOrderDetailId,
+    getByListImportOrderDetailIds,
     getByExportRequestDetailId,
-    getByStoredLocationId,
-    deleteInventoryItem,
-    getListQrCodes
+    getListQrCodes,
   };
 };
 

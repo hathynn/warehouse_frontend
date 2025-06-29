@@ -187,7 +187,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         disabled={!hasScrolledToBottom}
       >
         Tôi xác nhận đơn nhập trên đúng số lượng và đồng ý tạo.
-        {!hasScrolledToBottom && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem tất cả các trang)</span>}
+        {!hasScrolledToBottom && <span style={{ color: 'red', marginLeft: 8 }}>(Vui lòng xem hết trang)</span>}
       </Checkbox>
     </Modal>
   );

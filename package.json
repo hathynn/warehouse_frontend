@@ -6,6 +6,7 @@
   "scripts": {
     "lint": "eslint . --fix",
     "dev": "tsc --noEmit && vite",
+    "prod": "tsc --noEmit && vite --mode production",
     "build": "vite build",
     "build:force": "vite build --mode production",
     "preview": "vite preview"

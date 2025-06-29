@@ -15,7 +15,7 @@ import {
   UserAddOutlined,
   PrinterOutlined,
   InfoCircleOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import useImportOrderService from "@/services/useImportOrderService";
 import useImportOrderDetailService from "@/services/useImportOrderDetailService";
@@ -30,10 +30,12 @@ import useConfigurationService, { ConfigurationDto } from "@/services/useConfigu
 import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
-import useInventoryItemService, { QrCodeResponse, InventoryItemResponse } from "@/services/useInventoryItemService";
+import useInventoryItemService, { InventoryItemResponse } from "@/services/useInventoryItemService";
+import useStoredLocationService, { StoredLocationResponse } from "@/services/useStoredLocationService";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
+import WarehouseMapModal from "@/components/commons/WarehouseMapModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import {
   getDefaultAssignedDateTimeForAction,
@@ -41,7 +43,7 @@ import {
   getDisabledTimeConfigForAction
 } from "@/utils/helpers";
 import { toast } from "react-toastify";
-
+import { MdApartment } from "react-icons/md";
 const { TextArea } = Input;
 
 const ImportOrderDetail = () => {
@@ -56,8 +58,8 @@ const ImportOrderDetail = () => {
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-  const [qrList, setQrList] = useState<QrCodeResponse[]>([]);
-  const [qrMap, setQrMap] = useState<Record<string, { itemName: string; itemId: string }>>({});
+  const [inventoryItemsData, setInventoryItemsData] = useState<InventoryItemResponse[]>([]);
+  const [storedLocationData, setStoredLocationData] = useState<StoredLocationResponse[]>([]);
 
   // ========== MODAL STATES ==========
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -65,6 +67,7 @@ const ImportOrderDetail = () => {
   const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
   const [extendModalVisible, setExtendModalVisible] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [showWarehouseMapModal, setShowWarehoueMapModal] = useState(false);
 
   // ========== FORM & UI STATES ==========
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
@@ -108,19 +111,22 @@ const ImportOrderDetail = () => {
     findAccountById
   } = useAccountService();
   const {
-    loading: configurationLoading,
     getConfiguration
   } = useConfigurationService();
   const {
     loading: inventoryItemLoading,
-    getByImportOrderDetailId,
-    getListQrCodes
+    getByListImportOrderDetailIds,
   } = useInventoryItemService();
+  const {
+    loading: storedLocationLoading,
+    getAllStoredLocations,
+  } = useStoredLocationService();
 
   // ========== USE EFFECTS ==========
   // Initialize configuration on mount
   useEffect(() => {
     fetchConfiguration();
+    fetchStoredLocationData();
   }, []);
 
   // Fetch import order data when importOrderId changes
@@ -130,6 +136,12 @@ const ImportOrderDetail = () => {
       fetchImportOrderDetails();
     }
   }, [importOrderId]);
+
+  useEffect(() => {
+    if (importOrderDetails.length > 0) {
+      fetchInventoryItemsData();
+    }
+  }, [importOrderDetails]);
 
   // Fetch assigned staff when importOrderData changes
   useEffect(() => {
@@ -199,6 +211,16 @@ const ImportOrderDetail = () => {
       importOrderId: importOrderData.importOrderId,
     });
     setStaffs(activeStaffs);
+  };
+
+  const fetchStoredLocationData = async () => {
+    const response = await getAllStoredLocations();
+    setStoredLocationData(response?.content || []);
+  };
+
+  const fetchInventoryItemsData = async () => {
+    const response = await getByListImportOrderDetailIds(importOrderDetails.map(detail => detail.importOrderDetailId));
+    setInventoryItemsData(response?.content || []);
   };
 
   // ========== UTILITY FUNCTIONS ==========
@@ -399,33 +421,19 @@ const ImportOrderDetail = () => {
   // ========== QR CODE HANDLERS ==========
   const handleOpenQrModal = async () => {
     setQrModalVisible(true);
-    const allInventoryItemIds: string[] = [];
-    const itemInfoMap: Record<string, { itemName: string; itemId: string }> = {};
-    for (const detail of importOrderDetails) {
-      const res = await getByImportOrderDetailId(detail.importOrderDetailId, 1, 999);
-      if (res?.content) {
-        for (const item of res.content) {
-          allInventoryItemIds.push(item.id);
-          itemInfoMap[item.id] = { itemName: item.itemName, itemId: item.itemId };
-        }
-      }
-    }
-    if (allInventoryItemIds.length === 0) {
-      toast.warning("Không có sản phẩm nào để in QRCode");
-      setQrList([]);
-      setQrMap({});
-      return;
-    }
-    const qrRes = await getListQrCodes(allInventoryItemIds);
-    setQrList(qrRes?.content || []);
-    setQrMap(itemInfoMap);
   };
 
   const handleCloseQrModal = () => {
     setQrModalVisible(false);
-    setQrList([]);
-    setQrMap({});
   };
+
+  // ========== WAREHOUSE MAP HANDLERS ==========
+  const handleOpenWarehouseMapModal = () => {
+    setShowWarehoueMapModal(true);
+  }  
+  const handleCloseWarehouseMapModal = () => {
+    setShowWarehoueMapModal(false);
+  }  
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const filteredAndSortedStaffs = staffs
@@ -666,20 +674,29 @@ const ImportOrderDetail = () => {
 
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
-      <div className="flex justify-end items-center mt-16 mb-4">
+      <div className="flex justify-end items-center mt-16 mb-4 gap-4">
         {importOrderData?.status === ImportStatus.COMPLETED && (
-          <Button
-            type="primary"
-            icon={<PrinterOutlined />}
-            onClick={handleOpenQrModal}
-          >
-            In QRCode
-          </Button>
+          <>
+            <Button
+              type="primary"
+              icon={<MdApartment />}
+              onClick={handleOpenWarehouseMapModal}
+            >
+              Cập nhật vị trí lưu kho
+            </Button>
+            <Button
+              type="default"
+              className="!text-blue-500 !border-blue-500"
+              icon={<PrinterOutlined />}
+              onClick={handleOpenQrModal}
+            >
+              In QRCode
+            </Button>
+          </>
         )}
         {importOrderData?.status === ImportStatus.COUNTED && (
           <>
             <Button
-              danger
               type="primary"
               loading={importOrderLoading}
               onClick={() => setConfirmCountingModalVisible(true)}
@@ -695,16 +712,50 @@ const ImportOrderDetail = () => {
                 if (!importOrderData?.importOrderId) return;
                 await completeImportOrder(importOrderData.importOrderId);
                 await fetchImportOrderData();
+                setShowWarehoueMapModal(true)
               }}
               onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
               okText="Tôi xác nhận kiểm đếm"
               cancelText="Hủy"
               okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
               maskClosable={false}
+              width={360}
             >
-              <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}>
-                Tôi xác nhận những thông tin trên là đúng sự thật.
-              </Checkbox>
+              <div className="space-y-4">
+                <Table
+                  columns={[
+                    {
+                      dataIndex: "itemName",
+                      key: "itemName",
+                      width: "70%",
+                      align: "left" as const,
+                      ellipsis: true,
+                    },
+                    {
+                      key: "quantity",
+                      width: "30%",
+                      align: "right" as const,
+                      render: (_, record: ImportOrderDetailResponse) => {
+                        const isMatch = record.expectQuantity === record.actualQuantity
+                        return (
+                          <span className={isMatch ? 'text-green-600 font-medium text-lg' : 'text-red-600 font-medium text-lg'} >
+                            {record.expectQuantity} / {record.actualQuantity}
+                          </span>
+                        )
+                      }
+                    }
+                  ]}
+                  dataSource={importOrderDetails}
+                  rowKey="importOrderDetailId"
+                  showHeader={false}
+                  size="small"
+                  pagination={false}
+                >
+                </Table>
+                <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
+                  Tôi xác nhận những thông tin trên là đúng sự thật.
+                </Checkbox>
+              </div>
             </Modal>
           </>
         )}
@@ -842,7 +893,7 @@ const ImportOrderDetail = () => {
         onCancel={handleCloseQrModal}
         footer={[
           <Button key="close" onClick={handleCloseQrModal}>Đóng</Button>,
-          <Button key="print" type="primary" onClick={() => window.print()} disabled={inventoryItemLoading || qrList.length === 0}>In</Button>,
+          <Button key="print" type="primary" onClick={() => window.print()} disabled={inventoryItemLoading || inventoryItemsData.length === 0}>In</Button>,
         ]}
         width={900}
         className="!top-[50px] print:!block"
@@ -852,15 +903,15 @@ const ImportOrderDetail = () => {
             <div className="col-span-3 flex justify-center items-center py-8">
               <Spin size="large" />
             </div>
-          ) : qrList.length === 0 ? (
+          ) : inventoryItemsData.length === 0 ? (
             <div className="col-span-3 text-center text-gray-500 py-8">Không có QRCode nào để in</div>
           ) : (
-            qrList.map((qr) => (
-              <div key={qr.id} className="border rounded-lg p-4 flex flex-col items-center bg-white print:shadow-none print:border print:p-2">
-                <QRCode value={qr.id.toString()} size={128} />
-                <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{qrMap[qr.id]?.itemId || '-'}</span></div>
-                <div className="text-sm text-gray-700">Tên sản phẩm: {qrMap[qr.id]?.itemName || '-'}</div>
-                <div className="text-xs text-gray-500 mt-1">ID QR: {qr.id}</div>
+            inventoryItemsData.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 flex flex-col items-center bg-white print:shadow-none print:border print:p-2">
+                <QRCode value={item.id.toString()} size={128} />
+                <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{item.itemId || '-'}</span></div>
+                <div className="text-sm text-gray-700">Tên sản phẩm: {item.itemName || '-'}</div>
+                <div className="text-xs text-gray-500 mt-1">ID QR: {item.id}</div>
               </div>
             ))
           )}
@@ -980,6 +1031,15 @@ const ImportOrderDetail = () => {
           </Checkbox>
         </div>
       </Modal>
+
+      {/* Modal sơ đồ kho */}
+      <WarehouseMapModal
+        loading={storedLocationLoading}
+        inventoryItems={inventoryItemsData}
+        storedLocationData={storedLocationData}
+        open={showWarehouseMapModal}
+        onClose={handleCloseWarehouseMapModal}
+      />
     </div>
   );
 };

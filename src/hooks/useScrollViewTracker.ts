@@ -21,6 +21,8 @@ export const useScrollViewTracker = (threshold: number = 5) => {
         // clientHeight: current height of the view
         const { scrollTop, scrollHeight, clientHeight } = container;
 
+        // when first open, scrollHeight is 0 for scrollable container
+        // only when start to scroll, scrollHeight is not 0
         if (scrollHeight > 0) {
             const isAtBottom = scrollTop + clientHeight >= scrollHeight - threshold;
             if (isAtBottom && !hasScrolledToBottom) {

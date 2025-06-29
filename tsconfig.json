@@ -11,6 +11,7 @@
     "isolatedModules": true, // Mã mỗi file phải có thể transpile riêng
     "esModuleInterop": true, // Hỗ trợ import/export giữa CJS & ESM
     "skipLibCheck": true, // Bỏ qua type-check trong node_modules
+    "resolveJsonModule": true,
     "baseUrl": ".", // Gốc để resolve non-relative paths
     "paths": {
       // Alias imports
