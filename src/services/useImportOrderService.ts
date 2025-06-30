@@ -153,6 +153,16 @@ const useImportOrderService = () => {
     }
   };
 
+  const updateImportOrderToReadyToStore = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", `/import-order/update-ready-to-store/${importOrderId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể cập nhật đơn nhập");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllImportOrders,
@@ -164,6 +174,7 @@ const useImportOrderService = () => {
     completeImportOrder,
     cancelImportOrder,
     extendImportOrder,
+    updateImportOrderToReadyToStore
   };
 };
 

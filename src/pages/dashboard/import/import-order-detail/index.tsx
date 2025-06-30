@@ -30,8 +30,9 @@ import useConfigurationService, { ConfigurationDto } from "@/services/useConfigu
 import dayjs, { Dayjs } from "dayjs";
 import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
-import useInventoryItemService, { InventoryItemResponse } from "@/services/useInventoryItemService";
+import useInventoryItemService, { InventoryItemResponse, UpdateInventoryLocationRequest } from "@/services/useInventoryItemService";
 import useStoredLocationService, { StoredLocationResponse } from "@/services/useStoredLocationService";
+import useItemService, { ItemResponse } from "@/services/useItemService";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
@@ -58,6 +59,7 @@ const ImportOrderDetail = () => {
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
+  const [importedItemsData, setImportedItemsData] = useState<ItemResponse[]>([]);
   const [inventoryItemsData, setInventoryItemsData] = useState<InventoryItemResponse[]>([]);
   const [storedLocationData, setStoredLocationData] = useState<StoredLocationResponse[]>([]);
 
@@ -99,7 +101,8 @@ const ImportOrderDetail = () => {
     assignStaff,
     cancelImportOrder,
     completeImportOrder,
-    extendImportOrder
+    extendImportOrder,
+    updateImportOrderToReadyToStore
   } = useImportOrderService();
   const {
     loading: importOrderDetailLoading,
@@ -121,6 +124,11 @@ const ImportOrderDetail = () => {
     loading: storedLocationLoading,
     getAllStoredLocations,
   } = useStoredLocationService();
+  const {
+    loading: itemLoading,
+    getItems,
+    getItemById,
+  } = useItemService();
 
   // ========== USE EFFECTS ==========
   // Initialize configuration on mount
@@ -140,6 +148,7 @@ const ImportOrderDetail = () => {
   useEffect(() => {
     if (importOrderDetails.length > 0) {
       fetchInventoryItemsData();
+      fetchImportItemsData();
     }
   }, [importOrderDetails]);
 
@@ -221,6 +230,13 @@ const ImportOrderDetail = () => {
   const fetchInventoryItemsData = async () => {
     const response = await getByListImportOrderDetailIds(importOrderDetails.map(detail => detail.importOrderDetailId));
     setInventoryItemsData(response?.content || []);
+  };
+
+  const fetchImportItemsData = async () => {
+    // use promise.all to get all items
+    const response = await Promise.all(importOrderDetails.map(detail => getItemById(detail.itemId)));
+    setImportedItemsData(response.map(item => item.content) || []);
+    console.log(importedItemsData);
   };
 
   // ========== UTILITY FUNCTIONS ==========
@@ -425,6 +441,12 @@ const ImportOrderDetail = () => {
 
   const handleCloseQrModal = () => {
     setQrModalVisible(false);
+  };
+
+  // ========== WAREHOUSE LOCATION HANDLERS ==========
+  const handleConfirmWarehouseLocation = async (locationUpdates: UpdateInventoryLocationRequest[]) => {
+    await updateImportOrderToReadyToStore(importOrderId);
+    await fetchInventoryItemsData(); // Refresh dữ liệu
   };
 
   // ========== WAREHOUSE MAP HANDLERS ==========
@@ -1035,10 +1057,12 @@ const ImportOrderDetail = () => {
       {/* Modal sơ đồ kho */}
       <WarehouseMapModal
         loading={storedLocationLoading}
+        importedItems={importedItemsData}
         inventoryItems={inventoryItemsData}
         storedLocationData={storedLocationData}
         open={showWarehouseMapModal}
         onClose={handleCloseWarehouseMapModal}
+        onConfirmLocation={handleConfirmWarehouseLocation}
       />
     </div>
   );

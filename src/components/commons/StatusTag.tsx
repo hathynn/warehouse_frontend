@@ -15,6 +15,8 @@ const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
   EXTENDED: { color: "warning", text: "Đã gia hạn" },
+  READY_TO_STORE: { color: "success", text: "Sẵn sàng lưu kho" },
+  STORED: { color: "success", text: "Đã lưu kho" },
 };
 
 const exportStatusMap: Record<ExportStatus, { color: string; text: string }> = {

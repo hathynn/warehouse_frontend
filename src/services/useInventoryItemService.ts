@@ -11,6 +11,12 @@ export enum ItemStatus {
   ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE"
 }
 
+// Interface to match UpdateInventoryLocationRequest.java
+export interface UpdateInventoryLocationRequest {
+  inventoryItemId: string;
+  storedLocationId: number;
+}
+
 // Interface to match InventoryItemResponse.java
 export interface InventoryItemResponse {
   id: string;
@@ -82,7 +88,6 @@ const useInventoryItemService = () => {
   };
 
   // Get inventory items by list import order detail IDs
-
   const getByListImportOrderDetailIds = async (
     importOrderDetailIds: string[]
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
@@ -113,8 +118,6 @@ const useInventoryItemService = () => {
     }
   };
 
-
-
   // Get QR codes by inventory item IDs
   const getListQrCodes = async (inventoryItemIds: string[]): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
@@ -126,7 +129,16 @@ const useInventoryItemService = () => {
     }
   };
 
-
+  // Update stored location of inventory items
+  const updateStoredLocation = async (requests: UpdateInventoryLocationRequest[]): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+    try {
+      const response = await callApi("put", "/inventory-item/update-location", requests);
+      return response;
+    } catch (error) {
+      toast.error("Không thể cập` nhật vị trí sản phẩm");
+      throw error;
+    }
+  };
 
   return {
     loading,

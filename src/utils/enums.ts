@@ -22,6 +22,8 @@ export enum ImportStatus {
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
   EXTENDED = "EXTENDED",
+  READY_TO_STORE = "READY_TO_STORE",
+  STORED = "STORED",
 }
 
 export enum ExportStatus {
