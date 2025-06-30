@@ -446,7 +446,9 @@ const ImportOrderDetail = () => {
   // ========== WAREHOUSE LOCATION HANDLERS ==========
   const handleConfirmWarehouseLocation = async (locationUpdates: UpdateInventoryLocationRequest[]) => {
     await updateImportOrderToReadyToStore(importOrderId);
-    await fetchInventoryItemsData(); // Refresh dữ liệu
+    await fetchImportOrderData(); // Refresh import order data
+    await fetchImportOrderDetails(); // Refresh import order details
+    await fetchInventoryItemsData(); // Refresh dữ liệu inventory items
   };
 
   // ========== WAREHOUSE MAP HANDLERS ==========
