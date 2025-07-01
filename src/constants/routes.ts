@@ -35,6 +35,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
 
     // Inventory item routes
     "/inventory-item/list",
+    "/inventory-item/warehouse-section",
 
     // Item routes
     "/item/list",
@@ -57,6 +58,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
 
     // Inventory item routes
     "/inventory-item/list",
+    "/inventory-item/warehouse-section",
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -114,6 +116,7 @@ export const ROUTES = {
 
     INVENTORY_ITEM: {
       LIST: "/inventory-item/list",
+      WAREHOUSE_SECTION: "/inventory-item/warehouse-section",
     },
 
     CONFIGURATION: {

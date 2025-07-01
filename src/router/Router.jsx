@@ -26,6 +26,7 @@ import ExportRequestCreate from '@/pages/dashboard/export/export-request-create'
 import InventoryItemList from '@/pages/dashboard/inventory-item';
 import ConfigurationPage from '@/pages/dashboard/configuration';
 import ImportTransactionHistory from '@/pages/dashboard/transaction/import';
+import WarehouseSection from '@/pages/dashboard/inventory-item/warehouse-section';
 
 export const Router = createBrowserRouter([
   {
@@ -85,6 +86,10 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
             element: <InventoryItemList />,
+          },
+          {
+            path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
+            element: <WarehouseSection />,
           },
           // Import routes
           {

@@ -32,7 +32,6 @@ import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
 import useInventoryItemService, { InventoryItemResponse, UpdateInventoryLocationRequest } from "@/services/useInventoryItemService";
 import useStoredLocationService, { StoredLocationResponse } from "@/services/useStoredLocationService";
-import useItemService, { ItemResponse } from "@/services/useItemService";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
@@ -59,7 +58,6 @@ const ImportOrderDetail = () => {
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-  const [importedItemsData, setImportedItemsData] = useState<ItemResponse[]>([]);
   const [inventoryItemsData, setInventoryItemsData] = useState<InventoryItemResponse[]>([]);
   const [storedLocationData, setStoredLocationData] = useState<StoredLocationResponse[]>([]);
 
@@ -124,97 +122,38 @@ const ImportOrderDetail = () => {
     loading: storedLocationLoading,
     getAllStoredLocations,
   } = useStoredLocationService();
-  const {
-    loading: itemLoading,
-    getItems,
-    getItemById,
-  } = useItemService();
-
-  // ========== USE EFFECTS ==========
-  // Initialize configuration on mount
-  useEffect(() => {
-    fetchConfiguration();
-    fetchStoredLocationData();
-  }, []);
-
-  // Fetch import order data when importOrderId changes
-  useEffect(() => {
-    if (importOrderId) {
-      fetchImportOrderData();
-      fetchImportOrderDetails();
-    }
-  }, [importOrderId]);
-
-  useEffect(() => {
-    if (importOrderDetails.length > 0) {
-      fetchInventoryItemsData();
-      fetchImportItemsData();
-    }
-  }, [importOrderDetails]);
-
-  // Fetch assigned staff when importOrderData changes
-  useEffect(() => {
-    if (importOrderData?.assignedStaffId) {
-      fetchAssignedStaff();
-    }
-  }, [importOrderData]);
-
-  // Handle pagination changes
-  useEffect(() => {
-    if (pagination.current > 0) {
-      fetchImportOrderDetails();
-    }
-  }, [pagination.current, pagination.pageSize]);
 
   // ========== DATA FETCHING FUNCTIONS ==========
-  const fetchConfiguration = async () => {
-    const config = await getConfiguration();
-    setConfiguration(config);
-  };
-
   const fetchImportOrderData = async () => {
-    if (!importOrderId) return null;
-
+    if (!importOrderId) return;
     const response = await getImportOrderById(importOrderId);
     if (response?.content) {
       setImportOrderData(response.content);
     }
-    return response;
   };
 
   const fetchImportOrderDetails = async () => {
     if (!importOrderId) return;
     const { current, pageSize } = pagination;
-    const response = await getImportOrderDetailsPaginated(
-      importOrderId,
-      current,
-      pageSize
-    );
-
+    const response = await getImportOrderDetailsPaginated(importOrderId, current, pageSize);
     if (response?.content) {
       setImportOrderDetails(response.content);
       if (response.metaDataDTO) {
         const { page, limit, total } = response.metaDataDTO;
-        setPagination(prev => ({
-          ...prev,
-          current: page,
-          pageSize: limit,
-          total: total,
-        }));
+        setPagination(prev => ({ ...prev, current: page, pageSize: limit, total: total }));
       }
     }
   };
 
-  const fetchAssignedStaff = async () => {
-    if (!importOrderId) return;
-    const response = await findAccountById(importOrderData?.assignedStaffId!);
-    setAssignedStaff(response);
+  const fetchInitialData = async () => {
+    const config = await getConfiguration();
+    setConfiguration(config);
+    const locationsResponse = await getAllStoredLocations();
+    setStoredLocationData(locationsResponse?.content || []);
   };
 
   const fetchActiveStaffs = async () => {
-    if (!importOrderData?.dateReceived) {
-      return;
-    }
+    if (!importOrderData?.dateReceived) return;
     const activeStaffs = await getActiveStaffsInDay({
       date: importOrderData.dateReceived,
       importOrderId: importOrderData.importOrderId,
@@ -222,22 +161,54 @@ const ImportOrderDetail = () => {
     setStaffs(activeStaffs);
   };
 
-  const fetchStoredLocationData = async () => {
-    const response = await getAllStoredLocations();
-    setStoredLocationData(response?.content || []);
-  };
-
   const fetchInventoryItemsData = async () => {
-    const response = await getByListImportOrderDetailIds(importOrderDetails.map(detail => detail.importOrderDetailId));
+    const detailIds = importOrderDetails.map(detail => detail.importOrderDetailId);
+    if (detailIds.length === 0) {
+      setInventoryItemsData([]);
+      return;
+    }
+    const response = await getByListImportOrderDetailIds(detailIds);
     setInventoryItemsData(response?.content || []);
   };
 
-  const fetchImportItemsData = async () => {
-    // use promise.all to get all items
-    const response = await Promise.all(importOrderDetails.map(detail => getItemById(detail.itemId)));
-    setImportedItemsData(response.map(item => item.content) || []);
-    console.log(importedItemsData);
+  const fetchAssignedStaff = async () => {
+    if (!importOrderData?.assignedStaffId) {
+      setAssignedStaff(null);
+      return;
+    };
+    const response = await findAccountById(importOrderData.assignedStaffId);
+    setAssignedStaff(response);
   };
+
+  // ========== USE EFFECTS ==========
+  // Initialize configuration and other static data on mount
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  // Fetch import order base data when ID changes
+  useEffect(() => {
+    if (importOrderId) {
+      fetchImportOrderData();
+    }
+  }, [importOrderId]);
+
+  // Fetch details when ID or pagination changes
+  useEffect(() => {
+    if (importOrderId) {
+      fetchImportOrderDetails();
+    }
+  }, [importOrderId, pagination.current, pagination.pageSize]);
+
+  // Chained data fetching based on previously fetched data
+  useEffect(() => {
+    fetchInventoryItemsData();
+  }, [importOrderDetails]);
+
+  useEffect(() => {
+    fetchAssignedStaff();
+  }, [importOrderData]);
+
 
   // ========== UTILITY FUNCTIONS ==========
   const calculateRemainingTime = (totalExpectedTime: string, defaultWorkingMinutes: number): string => {
@@ -302,11 +273,11 @@ const ImportOrderDetail = () => {
 
   // ========== EVENT HANDLERS ==========
   const handleTableChange = (pagination: any) => {
-    setPagination({
-      ...pagination,
+    setPagination(prev => ({
+      ...prev,
       current: pagination.current,
       pageSize: pagination.pageSize,
-    });
+    }));
   };
 
   const handleSearch = (value: string) => {
@@ -314,10 +285,8 @@ const ImportOrderDetail = () => {
   };
 
   // ========== ASSIGN STAFF HANDLERS ==========
-  const handleOpenAssignModal = async () => {
+  const handleOpenAssignModal = () => {
     setSelectedStaffId(null);
-    const config = await getConfiguration();
-    setConfiguration(config);
     fetchActiveStaffs();
     setAssignModalVisible(true);
   };
@@ -346,22 +315,16 @@ const ImportOrderDetail = () => {
 
     const response = await assignStaff({
       importOrderId: importOrderId,
-      accountId: selectedStaffId!
+      accountId: selectedStaffId
     });
 
-    if (response.statusCode != 200) {
+    if (response.statusCode === 200) {
+      await fetchImportOrderData(); // Re-fetch order data, which will trigger useEffect for assigned staff
+      await fetchActiveStaffs(); // Re-fetch list of available staff
+      setSelectedStaffId(null);
+    } else {
       toast.error("Không thể phân công nhân viên");
-      handleCloseAssignModal();
-      return;
     }
-
-    const importOrderResponse = await fetchImportOrderData();
-    if (importOrderResponse?.content?.assignedStaffId) {
-      await findAccountById(importOrderResponse.content.assignedStaffId);
-    }
-    await fetchActiveStaffs();
-    setSelectedStaffId(null);
-
   };
 
   // ========== CANCEL ORDER HANDLERS ==========
@@ -435,7 +398,7 @@ const ImportOrderDetail = () => {
   };
 
   // ========== QR CODE HANDLERS ==========
-  const handleOpenQrModal = async () => {
+  const handleOpenQrModal = () => {
     setQrModalVisible(true);
   };
 
@@ -446,18 +409,22 @@ const ImportOrderDetail = () => {
   // ========== WAREHOUSE LOCATION HANDLERS ==========
   const handleConfirmWarehouseLocation = async (locationUpdates: UpdateInventoryLocationRequest[]) => {
     await updateImportOrderToReadyToStore(importOrderId);
-    await fetchImportOrderData(); // Refresh import order data
-    await fetchImportOrderDetails(); // Refresh import order details
-    await fetchInventoryItemsData(); // Refresh dữ liệu inventory items
+    // Fetch data in parallel for better performance.
+    // fetchInventoryItemsData is not needed here as it's triggered by the change in importOrderDetails from fetchImportOrderDetails.
+    await Promise.all([
+      getAllStoredLocations().then(res => setStoredLocationData(res?.content || [])),
+      fetchImportOrderData(),
+      fetchImportOrderDetails(),
+    ]);
   };
 
   // ========== WAREHOUSE MAP HANDLERS ==========
   const handleOpenWarehouseMapModal = () => {
     setShowWarehoueMapModal(true);
-  }  
+  }
   const handleCloseWarehouseMapModal = () => {
     setShowWarehoueMapModal(false);
-  }  
+  }
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const filteredAndSortedStaffs = staffs
@@ -543,7 +510,7 @@ const ImportOrderDetail = () => {
     }
   ];
 
-  // Chuẩn bị dữ liệu cho DetailCard
+  // Prepare data for DetailCard
   const infoItems = [
     { label: "Mã đơn nhập", value: `#${importOrderData?.importOrderId}` },
     { label: "Ngày tạo", value: importOrderData?.createdDate ? dayjs(importOrderData?.createdDate).format("DD-MM-YYYY") : "-" },
@@ -553,7 +520,7 @@ const ImportOrderDetail = () => {
       value: (
         <>
           {!importOrderData?.isExtended ? (
-            // Đơn chưa gia hạn
+            // Order not extended
             (importOrderData?.status !== ImportStatus.CANCELLED &&
               importOrderData?.status !== ImportStatus.COMPLETED &&
               importOrderData?.status !== ImportStatus.COUNTED) ? (
@@ -572,14 +539,14 @@ const ImportOrderDetail = () => {
                 </Button>
               </div>
             ) : (
-              // Đơn chưa gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
+              // Order not extended but in a final state - show info only
               <div>
                 <div> Ngày <strong>{importOrderData?.dateReceived ? dayjs(importOrderData.dateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
                 <div> Lúc {importOrderData?.timeReceived ? <strong>{importOrderData?.timeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
               </div>
             )
           ) : (
-            // Đơn đã gia hạn
+            // Order extended
             (importOrderData?.status !== ImportStatus.CANCELLED &&
               importOrderData?.status !== ImportStatus.COMPLETED &&
               importOrderData?.status !== ImportStatus.COUNTED) ? (
@@ -598,7 +565,7 @@ const ImportOrderDetail = () => {
                 </Button>
               </div>
             ) : (
-              // Đơn đã gia hạn nhưng có trạng thái CANCELLED, COMPLETED hoặc COUNTED - chỉ hiển thị thông tin
+              // Order extended and in a final state - show info only
               <div>
                 <div className="text-orange-600 font-medium"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
                 <div className="text-orange-600 font-medium"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
@@ -826,7 +793,7 @@ const ImportOrderDetail = () => {
             type="primary"
             onClick={handleAssignStaff}
             disabled={!selectedStaffId}
-            loading={importOrderLoading}
+            loading={importOrderLoading || accountLoading}
           >
             Phân công
           </Button>,
@@ -1059,7 +1026,7 @@ const ImportOrderDetail = () => {
       {/* Modal sơ đồ kho */}
       <WarehouseMapModal
         loading={storedLocationLoading}
-        importedItems={importedItemsData}
+        importOrder={importOrderData}
         inventoryItems={inventoryItemsData}
         storedLocationData={storedLocationData}
         open={showWarehouseMapModal}

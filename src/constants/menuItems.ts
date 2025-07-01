@@ -6,7 +6,8 @@ import {
   AiOutlineExport,
   AiOutlineInbox,
   AiOutlineSetting,
-  AiOutlineHistory
+  AiOutlineHistory,
+  AiOutlineCompass
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -76,6 +77,14 @@ const itemMenuItems: MenuItem[] = [
     icon: AiOutlineInbox,
     label: "Quản lý hàng tồn kho",
     path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+    children: [
+      {
+        key: "warehouse-section",
+        icon: AiOutlineCompass,
+        label: "Sơ đồ kho",
+        path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
+      },
+    ],
   },
 ];
 
@@ -125,7 +134,15 @@ export const menuItems: RoleMenuConfig = {
       icon: AiOutlineInbox,
       label: "Quản lý hàng tồn kho",
       path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
-    }
+      children: [
+        {
+          key: "warehouse-section",
+          icon: AiOutlineCompass,
+          label: "Sơ đồ kho",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
+        },
+      ],
+    },
   ],
 
   [AccountRole.STAFF]: [
@@ -153,7 +170,15 @@ export const menuItems: RoleMenuConfig = {
       icon: AiOutlineInbox,
       label: "Quản lý hàng tồn kho",
       path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
-    }
+      children: [
+        {
+          key: "warehouse-section",
+          icon: AiOutlineCompass,
+          label: "Sơ đồ kho",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
+        },
+      ],
+    },
   ],
 
   [AccountRole.ACCOUNTING]: [

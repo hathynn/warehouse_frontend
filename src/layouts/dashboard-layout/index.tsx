@@ -21,7 +21,7 @@ const MIN_CONTENT_WIDTH = 1024; // Minimum content width for overflow
 const getPageTitle = (path: string): string => {
   // Handle dynamic routes with IDs
   const normalizedPath = path.replace(/\/\d+/g, '/:id');
-  return pageTitles[normalizedPath] || "Warehouse Management System";
+  return pageTitles[normalizedPath] || "Hệ thống quản lý kho vải";
 }; 
 
 const DashboardLayout: React.FC = () => {
@@ -188,7 +188,7 @@ const DashboardLayout: React.FC = () => {
               fontWeight: 700,
               color: '#1e293b'
             }}>
-              {collapsed ? "WM" : "Warehouse Management"}
+              {collapsed ? "KV" : "Hệ thống quản lý kho vải"}
             </span>
           </div>
 
