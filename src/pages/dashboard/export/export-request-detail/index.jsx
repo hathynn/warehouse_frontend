@@ -63,7 +63,6 @@ const ExportRequestDetail = () => {
   } = useExportRequestService();
   const { getExportRequestDetails, loading: exportRequestDetailLoading } =
     useExportRequestDetailService();
-  const { getItemById } = useItemService();
   const [exportRequest, setExportRequest] = useState(null);
   const [exportRequestDetails, setExportRequestDetails] = useState([]);
   const [pagination, setPagination] = useState({
@@ -122,6 +121,7 @@ const ExportRequestDetail = () => {
 
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
+  const [itemsLoading, setItemsLoading] = useState(true);
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -129,53 +129,65 @@ const ExportRequestDetail = () => {
     setExportRequest(data);
   }, [exportRequestId, getExportRequestById]);
 
-  // Hàm "enrich" danh sách chi tiết sản phẩm bằng cách lấy itemName từ API
-  const enrichDetails = async (details) => {
-    const enriched = await Promise.all(
-      details.map(async (detail) => {
-        try {
-          const res = await getItemById(String(detail.itemId));
-          const itemName =
-            res && res.content ? res.content.name : "Không xác định";
-          return { ...detail, itemName };
-        } catch (error) {
-          console.error(`Error fetching item with id ${detail.itemId}:`, error);
-          return { ...detail, itemName: "Không xác định" };
+  // ✅ GIẢI PHÁP TỐI ÂU: Sử dụng items đã có sẵn thay vì gọi API
+  const enrichDetailsWithLocalData = (details, itemsData) => {
+    return details.map((detail) => {
+      const itemInfo = itemsData.find(
+        (item) => String(item.id) === String(detail.itemId)
+      );
+      return {
+        ...detail,
+        itemName: itemInfo?.name || detail.itemName || "Không xác định",
+      };
+    });
+  };
+
+  const fetchDetails = useCallback(
+    async (page = pagination.current, pageSize = pagination.pageSize) => {
+      if (!exportRequestId || items.length === 0) return; // ✅ Đợi items load xong
+
+      try {
+        // Lấy dữ liệu phân trang
+        const response = await getExportRequestDetails(
+          exportRequestId,
+          page,
+          pageSize
+        );
+
+        if (response && response.content) {
+          const enriched = enrichDetailsWithLocalData(response.content, items);
+          setExportRequestDetails(enriched);
+
+          const meta = response.metaDataDTO;
+          setPagination((prev) => ({
+            current: meta ? meta.page : page,
+            pageSize: meta ? meta.limit : pageSize,
+            total: meta ? meta.total : 0,
+          }));
         }
-      })
-    );
-    return enriched;
-  };
 
-  const fetchDetails = async (
-    page = pagination.current,
-    pageSize = pagination.pageSize
-  ) => {
-    if (!exportRequestId) return;
-
-    const response = await getExportRequestDetails(
-      exportRequestId,
-      page,
-      pageSize
-    );
-    if (response && response.content) {
-      const enriched = await enrichDetails(response.content);
-      setExportRequestDetails(enriched);
-      const meta = response.metaDataDTO;
-      setPagination({
-        current: meta ? meta.page : page,
-        pageSize: meta ? meta.limit : pageSize,
-        total: meta ? meta.total : 0,
-      });
-    }
-
-    // Fetch tất cả sản phẩm
-    const allResp = await getExportRequestDetails(exportRequestId, 1, 50); // đảm bảo lấy đủ tất cả
-    if (allResp && allResp.content) {
-      const allEnriched = await enrichDetails(allResp.content);
-      setAllExportRequestDetails(allEnriched);
-    }
-  };
+        // ✅ Chỉ fetch all data một lần khi chưa có
+        if (allExportRequestDetails.length === 0 && page === 1) {
+          const allResp = await getExportRequestDetails(
+            exportRequestId,
+            1,
+            1000
+          );
+          if (allResp && allResp.content) {
+            const allEnriched = enrichDetailsWithLocalData(
+              allResp.content,
+              items
+            );
+            setAllExportRequestDetails(allEnriched);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching export request details:", error);
+        message.error("Không thể tải chi tiết phiếu xuất");
+      }
+    },
+    [exportRequestId, items, allExportRequestDetails.length]
+  );
 
   const fetchInventoryItems = async (
     exportRequestDetailId,
@@ -271,12 +283,11 @@ const ExportRequestDetail = () => {
     fetchAssignedKeeper();
   }, [exportRequest?.assignedWareHouseKeeperId]);
 
-  // useEffect(() => {
-  //   fetchDetails();
-  // }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
   useEffect(() => {
-    fetchDetails(); // Chỉ fetch một lần khi component mount
-  }, []); // ✅ SỬA: Dependency array rỗng
+    if (items.length > 0 && exportRequestId) {
+      fetchDetails(1, pagination.pageSize); // Reset về trang 1
+    }
+  }, [items, exportRequestId, fetchDetails]);
 
   useEffect(() => {
     // Nếu có exportRequest.type === "RETURN" và có providerId thì mới lấy
@@ -297,8 +308,40 @@ const ExportRequestDetail = () => {
   }, [exportRequest?.departmentId]);
 
   useEffect(() => {
-    getItems().then((res) => setItems(res?.content || []));
+    const loadItems = async () => {
+      setItemsLoading(true);
+      try {
+        const res = await getItems();
+        setItems(res?.content || []);
+      } catch (error) {
+        console.error("Error loading items:", error);
+        setItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
+    loadItems();
   }, []);
+
+  useEffect(() => {
+    if (allExportRequestDetails.length > 0 && items.length > 0) {
+      const enriched = enrichDetailsWithLocalData(
+        allExportRequestDetails,
+        items
+      );
+
+      // Chỉ update nếu thực sự có thay đổi về itemName
+      const hasChanges = enriched.some(
+        (item, index) =>
+          item.itemName !== allExportRequestDetails[index]?.itemName
+      );
+
+      if (hasChanges) {
+        setAllExportRequestDetails(enriched);
+      }
+    }
+  }, [items]);
 
   // Huỷ tạo phiếu
   const handleCancelCreateExport = () => {
@@ -1651,6 +1694,7 @@ const ExportRequestDetail = () => {
           providerName: providerInfo?.name,
         }}
         details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
+        items={items}
         // details={editedDetails}
       />
       <Modal
