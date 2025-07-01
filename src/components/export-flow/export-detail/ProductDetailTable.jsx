@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Table, Button, Tag } from "antd";
 import { InputNumber, Popconfirm, Tooltip } from "antd";
 import { ExportStatus, AccountRole } from "@/utils/enums";
@@ -31,6 +31,7 @@ const ProductDetailTable = ({
   onConfirmCreateExport,
   setRecountModalVisible, // Thêm prop mới
 }) => {
+  const lastValidValuesRef = useRef({});
   const itemStatus = getItemStatus(allExportRequestDetails);
 
   const totalEnough = allExportRequestDetails.filter(
@@ -42,16 +43,71 @@ const ProductDetailTable = ({
   const totalItems = allExportRequestDetails.length;
 
   const handleQuantityChange = (value, recordId) => {
+    console.log(`Quantity changed for ${recordId}:`, value);
+
     setEditedDetails((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
           let error = "";
-          if (!value || value <= 0) {
-            error = "Không được bỏ trống";
-          } else if (value > item.actualQuantity) {
-            error = "Phải ≤" + item.actualQuantity;
+          const finalValue = value;
+
+          // Chỉ validate khi có giá trị
+          if (value !== null && value !== undefined && value !== "") {
+            if (value <= 0) {
+              error = "Phải lớn hơn 0";
+            } else if (value > item.actualQuantity) {
+              error = "Phải ≤ " + item.actualQuantity;
+            } else {
+              // ✅ Nếu giá trị hợp lệ, lưu vào ref
+              console.log(`Saving valid value ${value} for item ${recordId}`);
+              lastValidValuesRef.current[recordId] = value;
+              console.log(
+                "Updated lastValidValues:",
+                lastValidValuesRef.current
+              );
+            }
           }
-          return { ...item, quantity: value, error };
+
+          return { ...item, quantity: finalValue, error };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleInputBlur = (recordId) => {
+    setEditedDetails((prev) =>
+      prev.map((item) => {
+        if (item.id === recordId) {
+          // Kiểm tra nếu quantity không hợp lệ
+          if (
+            item.quantity == null ||
+            item.quantity == undefined ||
+            item.quantity == "" ||
+            item.quantity <= 0 ||
+            item.quantity > item.actualQuantity
+          ) {
+            // Debug log
+            console.log("Invalid value detected for item:", recordId);
+            console.log("Current quantity:", item.quantity);
+            console.log(
+              "Last valid value:",
+              lastValidValuesRef.current[recordId]
+            );
+            console.log("Actual quantity:", item.actualQuantity);
+
+            // Khôi phục về lastValidValue nếu có, nếu không thì về actualQuantity
+            const restoreValue =
+              lastValidValuesRef.current[recordId] || item.actualQuantity;
+
+            return {
+              ...item,
+              quantity: restoreValue,
+              error: "", // Xóa lỗi khi khôi phục giá trị
+            };
+          }
+          // Nếu giá trị hợp lệ, giữ nguyên
+          return item;
         }
         return item;
       })
@@ -60,7 +116,20 @@ const ProductDetailTable = ({
 
   const hasValidationError =
     editedDetails.length === 0 ||
-    editedDetails.some((item) => item.error && item.status === "LACK");
+    editedDetails.some((item) => {
+      // Chỉ validate những item LACK với actualQuantity > 1 (những item có thể edit)
+      if (item.status === "LACK" && item.actualQuantity > 1) {
+        // Chỉ kiểm tra error và giá trị hợp lệ (không check empty nữa)
+        return (
+          (item.error && item.error !== "") ||
+          (item.quantity !== null &&
+            item.quantity !== undefined &&
+            item.quantity !== "" &&
+            (item.quantity <= 0 || item.quantity > item.actualQuantity))
+        );
+      }
+      return false;
+    });
 
   const handleDeleteRow = (recordId) => {
     setEditedDetails((prev) => prev.filter((item) => item.id !== recordId));
@@ -71,7 +140,7 @@ const ProductDetailTable = ({
     key: "action",
     width: 80,
     render: (_, record) =>
-      record.status === "LACK" ? (
+      record.status === "LACK" ? ( // ✅ THÊM điều kiện actualQuantity > 1
         <Popconfirm
           title="Bạn có chắc muốn xoá dòng này không?"
           onConfirm={() => handleDeleteRow(record.id)}
@@ -90,14 +159,24 @@ const ProductDetailTable = ({
       if (editMode && col.dataIndex === "quantity") {
         return {
           ...col,
-          render: (text, record) =>
-            record.status === "LACK" ? (
-              <div>
+          render: (text, record) => {
+            const isLackWithQuantityOne =
+              record.status === "LACK" && record.actualQuantity === 1;
+            const isEnough = record.status !== "LACK";
+
+            if (isEnough || isLackWithQuantityOne) {
+              return <div style={{ textAlign: "right" }}>{text}</div>;
+            }
+
+            return (
+              <div style={{ textAlign: "right" }}>
                 <InputNumber
                   min={1}
+                  max={record.actualQuantity}
                   value={record.quantity}
                   onChange={(val) => handleQuantityChange(val, record.id)}
-                  style={{ width: 80, textAlign: "right" }}
+                  onBlur={() => handleInputBlur(record.id)} // ✅ THÊM: onBlur handler
+                  style={{ width: 100 }}
                 />
                 {record.error && (
                   <div
@@ -105,15 +184,15 @@ const ProductDetailTable = ({
                       color: "#ff4d4f",
                       fontSize: 12,
                       fontWeight: "bold",
+                      marginTop: 4,
                     }}
                   >
                     {record.error}
                   </div>
                 )}
               </div>
-            ) : (
-              <div style={{ textAlign: "right" }}>{text}</div>
-            ),
+            );
+          },
         };
       }
       return col;
@@ -156,20 +235,45 @@ const ProductDetailTable = ({
               type="primary"
               onClick={() => {
                 setEditMode(true);
+
+                // Lọc các sản phẩm có actualQuantity > 0
+                const filteredItems = allExportRequestDetails.filter(
+                  (item) => item.actualQuantity > 0
+                );
+
+                // Tách thành 3 nhóm...
+                const lackItemsEditable = filteredItems.filter(
+                  (item) => item.status === "LACK" && item.actualQuantity > 1
+                );
+                const lackItemsNotEditable = filteredItems.filter(
+                  (item) => item.status === "LACK" && item.actualQuantity == 1
+                );
+                const enoughItems = filteredItems.filter(
+                  (item) => item.status !== "LACK"
+                );
+
+                const sortedEditedDetails = [
+                  ...lackItemsEditable,
+                  ...lackItemsNotEditable,
+                  ...enoughItems,
+                ];
+
+                // ✅ THÊM: Khởi tạo lastValidValues với giá trị ban đầu trong ref
+                lastValidValuesRef.current = {};
+                sortedEditedDetails.forEach((item) => {
+                  if (item.status === "LACK" && item.actualQuantity > 1) {
+                    lastValidValuesRef.current[item.id] = item.actualQuantity;
+                  }
+                });
+
                 setEditedDetails(
-                  allExportRequestDetails
-                    .filter((item) => item.actualQuantity > 0)
-                    .map((item) => {
-                      let error = "";
-                      // Khi vào edit mode, quantity = actualQuantity
-                      const quantity = item.actualQuantity;
-                      if (!quantity || quantity <= 0) {
-                        error = "Không được bỏ trống";
-                      } else if (quantity > item.actualQuantity) {
-                        error = "Phải ≤ " + item.actualQuantity;
-                      }
-                      return { ...item, quantity, error };
-                    })
+                  sortedEditedDetails.map((item) => {
+                    return {
+                      ...item,
+                      quantity: item.actualQuantity,
+                      error: "",
+                    };
+                  })
                 );
               }}
             >
@@ -188,7 +292,14 @@ const ProductDetailTable = ({
             >
               Xác nhận tạo phiếu
             </Button>
-            <Button danger onClick={onCancelCreateExport} disabled={creating}>
+            <Button
+              danger
+              onClick={() => {
+                onCancelCreateExport(); // Gọi prop từ parent
+                lastValidValuesRef.current = {}; // Reset ref
+              }}
+              disabled={creating}
+            >
               Hủy tạo phiếu
             </Button>
           </>

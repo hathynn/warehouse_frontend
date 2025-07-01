@@ -241,6 +241,11 @@ const ExcelDataTable = ({
     }).isRequired,
   };
 
+  const getItemInfo = (record, field) => {
+    const itemMeta = items.find((i) => String(i.id) === String(record.itemId));
+    return record[field] || itemMeta?.[field] || "";
+  };
+
   const columns = [
     {
       width: "10%",
@@ -280,10 +285,10 @@ const ExcelDataTable = ({
         style: { textAlign: "center" },
       }),
       render: (_, record) => {
+        const measurementValue = getItemInfo(record, "measurementValue");
         return (
           <span>
-            {record.measurementValue} {record.measurementUnit} /{" "}
-            {record.unitType}
+            {measurementValue} {record.measurementUnit} / {record.unitType}
           </span>
         );
       },

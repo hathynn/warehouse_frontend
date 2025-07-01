@@ -228,6 +228,7 @@ const ExportRequestInfoForm = ({
         formData={formData}
         details={mappedData}
         providers={providers}
+        items={items}
       />
     </div>
   );

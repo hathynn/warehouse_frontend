@@ -57,6 +57,7 @@ const ExportRequestConfirmModal = ({
   formData,
   details,
   providers,
+  items,
 }) => {
   const [confirmChecked, setConfirmChecked] = useState(false);
   const {
@@ -100,6 +101,11 @@ const ExportRequestConfirmModal = ({
     dataSource = getConsolidatedData(dataSource);
   }
 
+  const getItemInfo = (record, field) => {
+    const itemMeta = items?.find((i) => String(i.id) === String(record.itemId));
+    return record[field] || itemMeta?.[field] || "";
+  };
+
   const columns = [
     {
       title: "Mã hàng",
@@ -115,15 +121,28 @@ const ExportRequestConfirmModal = ({
       render: (text) => <div className="pl-12 text-right">{text}</div>,
     },
     {
-      title: "Giá trị đo lường",
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
-      render: (text) => <div className="pl-12 text-right">{text}</div>,
-    },
-    {
       title: "Đơn vị tính",
       dataIndex: "measurementUnit",
       key: "measurementUnit",
+    },
+    {
+      width: "18%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "specification",
+      key: "specification",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (_, record) => {
+        const measurementValue = getItemInfo(record, "measurementValue");
+        const measurementUnit = getItemInfo(record, "measurementUnit");
+        const unitType = getItemInfo(record, "unitType");
+        return (
+          <span>
+            {measurementValue} {measurementUnit} / {unitType}
+          </span>
+        );
+      },
     },
     // Quy cách
     ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
@@ -205,7 +224,7 @@ const ExportRequestConfirmModal = ({
       <div
         ref={scrollContainerRef}
         onScroll={checkScrollPosition}
-        style={{ height: "490px", overflowY: "auto" }}
+        style={{ height: "465px", overflowY: "auto" }}
       >
         <Table
           columns={columns}
@@ -269,6 +288,7 @@ ExportRequestConfirmModal.propTypes = {
     })
   ).isRequired,
   providers: PropTypes.array,
+  items: PropTypes.array,
 };
 
 export default ExportRequestConfirmModal;
