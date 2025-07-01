@@ -271,9 +271,12 @@ const ExportRequestDetail = () => {
     fetchAssignedKeeper();
   }, [exportRequest?.assignedWareHouseKeeperId]);
 
+  // useEffect(() => {
+  //   fetchDetails();
+  // }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
   useEffect(() => {
-    fetchDetails();
-  }, [pagination.current, pagination.pageSize]); // fetch lại mỗi khi chuyển trang
+    fetchDetails(); // Chỉ fetch một lần khi component mount
+  }, []); // ✅ SỬA: Dependency array rỗng
 
   useEffect(() => {
     // Nếu có exportRequest.type === "RETURN" và có providerId thì mới lấy
@@ -721,16 +724,28 @@ const ExportRequestDetail = () => {
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       width: 200,
-      render: (text, record) => (
-        <div
-          style={{ textAlign: "right" }}
-          className={`${
-            text < record.quantity ? "text-red-600 font-semibold" : ""
-          }`}
-        >
-          {text}
-        </div>
-      ),
+      render: (text, record) => {
+        // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
+        if (
+          userRole === AccountRole.DEPARTMENT &&
+          [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
+            exportRequest?.status
+          )
+        ) {
+          return <div style={{ textAlign: "right" }}>0</div>;
+        }
+
+        return (
+          <div
+            style={{ textAlign: "right" }}
+            className={`${
+              text < record.quantity ? "text-red-600 font-semibold" : ""
+            }`}
+          >
+            {text}
+          </div>
+        );
+      },
     },
     // Điều kiện column Quy cách
     ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
@@ -747,8 +762,19 @@ const ExportRequestDetail = () => {
       dataIndex: "status",
       key: "status",
       width: 200,
-      render: (status) =>
-        status ? <StatusTag status={status} type="detail" /> : "-", // Use StatusTag component with 'detail' type
+      render: (status) => {
+        // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
+        if (
+          userRole === AccountRole.DEPARTMENT &&
+          [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
+            exportRequest?.status
+          )
+        ) {
+          return "-";
+        }
+
+        return status ? <StatusTag status={status} type="detail" /> : "-";
+      },
     },
     {
       title: "Chi tiết",
@@ -789,11 +815,34 @@ const ExportRequestDetail = () => {
   };
 
   const getSortedProducts = () => {
-    return [...allExportRequestDetails].sort((a, b) => {
-      if (a.status === "LACK" && b.status !== "LACK") return -1;
-      if (a.status !== "LACK" && b.status === "LACK") return 1;
-      return 0;
+    // Tách riêng items LACK và ENOUGH
+    const lackItems = allExportRequestDetails.filter(
+      (item) => item.status === "LACK"
+    );
+    const enoughItems = allExportRequestDetails.filter(
+      (item) => item.status !== "LACK"
+    );
+
+    return [...lackItems, ...enoughItems];
+  };
+
+  // Thêm function để lấy data đã sort cho bảng chính
+  const getSortedProductsForMainTable = () => {
+    const sortedData = getSortedProducts(); // Dùng lại function sort đã có
+    const startIndex = (pagination.current - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return sortedData.slice(startIndex, endIndex);
+  };
+
+  // Thêm handler mới cho bảng chính
+  const handleMainTableChange = (pag) => {
+    setPagination({
+      ...pagination,
+      current: pag.current,
+      pageSize: pag.pageSize,
+      total: allExportRequestDetails.length, // ✅ Total dựa trên allExportRequestDetails
     });
+    // ✅ KHÔNG gọi fetchDetails nữa vì đã có allExportRequestDetails
   };
 
   // Function kiểm tra đã xem hết tất cả trang chưa
@@ -908,11 +957,16 @@ const ExportRequestDetail = () => {
       {}
       <ProductDetailTable
         columns={columns}
-        exportRequestDetails={editMode ? editedDetails : exportRequestDetails}
-        allExportRequestDetails={allExportRequestDetails} // THÊM DÒNG NÀY
+        exportRequestDetails={
+          editMode ? editedDetails : getSortedProductsForMainTable()
+        } // ✅ SỬA: Sử dụng sorted data
+        allExportRequestDetails={allExportRequestDetails}
         detailsLoading={exportRequestDetailLoading}
-        pagination={pagination}
-        handleTableChange={handleTableChange}
+        pagination={{
+          ...pagination,
+          total: allExportRequestDetails.length, // ✅ SỬA: Total dựa trên allExportRequestDetails
+        }}
+        handleTableChange={handleMainTableChange} // ✅ SỬA: Sử dụng handler mới
         userRole={userRole}
         exportRequest={exportRequest}
         setConfirmModalVisible={setConfirmModalVisible}
@@ -1202,7 +1256,7 @@ const ExportRequestDetail = () => {
           disabled: !confirmChecked || !hasViewedAllPages(),
         }}
       >
-        <div className="mb-4 font-semibold">
+        <div className="mb-1 font-semibold">
           Tổng đã đóng gói: {allExportRequestDetails.length} sản phẩm
         </div>
 
@@ -1221,7 +1275,7 @@ const ExportRequestDetail = () => {
         <Table
           dataSource={getSortedProducts()}
           rowKey="id"
-          style={{ height: "420px", overflowY: "auto" }}
+          style={{ height: "500px", overflowY: "auto" }}
           pagination={
             allExportRequestDetails.length > 10
               ? {
@@ -1361,7 +1415,7 @@ const ExportRequestDetail = () => {
           disabled: !recountChecked || !hasViewedAllPages(),
         }}
       >
-        <div className="mb-4 font-semibold">
+        <div className="mb-1 font-semibold">
           Tổng đã đóng gói: {allExportRequestDetails.length} sản phẩm
         </div>
 
@@ -1380,7 +1434,7 @@ const ExportRequestDetail = () => {
         <Table
           dataSource={getSortedProducts()}
           rowKey="id"
-          style={{ height: "420px", overflowY: "auto" }}
+          style={{ height: "500px", overflowY: "auto" }}
           pagination={
             allExportRequestDetails.length > 10
               ? {

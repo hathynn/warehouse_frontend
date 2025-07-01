@@ -191,9 +191,11 @@ const FileUploadSection = ({
         cancelText="Hủy"
         okType="danger"
       >
-        <p>Bạn có chắc muốn xóa file đã chọn?</p>
+        <p className="text-red-600 font-semibold">
+          Bạn có chắc muốn xóa file đã chọn?
+        </p>
         <p>
-          File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn đối với loại
+          * File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn đối với loại
           xuất này.
         </p>
       </Modal>
