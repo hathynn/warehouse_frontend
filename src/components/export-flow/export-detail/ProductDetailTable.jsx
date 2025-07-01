@@ -251,19 +251,26 @@ const ProductDetailTable = ({
                 ExportStatus.CONFIRMED,
                 ExportStatus.COMPLETED,
                 ExportStatus.CANCELLED,
-              ].includes(exportRequest?.status) && (
-                <>
-                  <span>
-                    Tổng số hàng đủ: <span>{totalEnough}</span>
-                  </span>
-                  <span>
-                    Tổng số hàng thiếu:{" "}
-                    <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
-                      {totalLack}
+              ].includes(exportRequest?.status) &&
+                // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
+                !(
+                  userRole === AccountRole.DEPARTMENT &&
+                  [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
+                    exportRequest?.status
+                  )
+                ) && (
+                  <>
+                    <span>
+                      Tổng số hàng đủ: <span>{totalEnough}</span>
                     </span>
-                  </span>
-                </>
-              )}
+                    <span>
+                      Tổng số hàng thiếu:{" "}
+                      <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
+                        {totalLack}
+                      </span>
+                    </span>
+                  </>
+                )}
             </div>
           </div>
 
@@ -278,13 +285,7 @@ const ProductDetailTable = ({
 
       <Table
         columns={editMode ? editableColumns : columns}
-        dataSource={(editMode ? editedDetails : exportRequestDetails)
-          .slice()
-          .sort((a, b) => {
-            if (a.status === "LACK" && b.status !== "LACK") return -1;
-            if (a.status !== "LACK" && b.status === "LACK") return 1;
-            return 0;
-          })}
+        dataSource={editMode ? editedDetails : exportRequestDetails} // ✅ SỬA: Bỏ logic sort ở đây
         rowKey="id"
         loading={detailsLoading}
         onChange={handleTableChange}

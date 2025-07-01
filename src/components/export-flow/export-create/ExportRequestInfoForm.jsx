@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Space, Card, Typography } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import UseExportForm from "@/components/export-flow/export-create/UseExportForm";
@@ -35,6 +35,29 @@ const ExportRequestInfoForm = ({
   const [mandatoryError, setMandatoryError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [tablePagination, setTablePagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  // THÊM useEffect ĐỂ UPDATE TOTAL KHI mappedData THAY ĐỔI
+  useEffect(() => {
+    setTablePagination((prev) => ({
+      ...prev,
+      total: mappedData.length,
+      current: 1, // Reset về trang 1 khi data thay đổi
+    }));
+  }, [mappedData.length]);
+
+  // THÊM HANDLER CHO PAGINATION
+  const handleTablePaginationChange = (paginationInfo) => {
+    setTablePagination((prev) => ({
+      ...prev,
+      current: paginationInfo.current,
+      pageSize: paginationInfo.pageSize || prev.pageSize,
+    }));
+  };
 
   const missingFields =
     (formData.exportType === "PRODUCTION" &&
@@ -161,21 +184,15 @@ const ExportRequestInfoForm = ({
         <div className="w-2/3">
           <Card title="Chi tiết hàng hóa từ file Excel">
             {mappedData.length > 0 ? (
-              // <ExcelDataTableAfter
-              //   data={mappedData}
-              //   exportType={formData.exportType}
-              //   items={items}
-              //   providers={providers}
-              //   pagination={pagination}
-              // />
               <ExcelDataTableAfter
                 data={mappedData}
                 items={items}
                 providers={
                   formData.exportType === "RETURN" ? returnProviders : providers
-                } // ✅ SỬA
+                }
                 exportType={formData.exportType}
-                pagination={pagination}
+                pagination={tablePagination} // SỬA: SỬ DỤNG tablePagination THAY VÌ pagination
+                onPaginationChange={handleTablePaginationChange} // THÊM PROP NÀY
               />
             ) : (
               <div className="text-center py-10 text-gray-500">

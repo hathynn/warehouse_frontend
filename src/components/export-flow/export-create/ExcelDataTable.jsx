@@ -14,6 +14,7 @@ const ExcelDataTable = ({
   exportType,
   providers,
   onRemovedItemsReset, // Thêm prop để reset từ parent
+  onRemovedItemsNotification,
 }) => {
   const [originalData, setOriginalData] = useState([]);
   const [hasProcessed, setHasProcessed] = useState(false);
@@ -84,9 +85,14 @@ const ExcelDataTable = ({
       // Chỉ update data nếu có items bị remove
       if (itemsToRemove.length > 0) {
         onDataChange(itemsToKeep);
+
+        // Gọi callback để hiện popup
+        if (onRemovedItemsNotification) {
+          onRemovedItemsNotification(itemsToRemove);
+        }
       }
 
-      setHasProcessed(true); // Đánh dấu đã xử lý
+      setHasProcessed(true);
     }
   }, [data, items]); // Bỏ onDataChange khỏi dependencies
 
@@ -112,9 +118,6 @@ const ExcelDataTable = ({
 
   // Trong ExcelDataTable
   useEffect(() => {
-    console.log("Debug - data:", data);
-    console.log("Debug - items:", items);
-
     data.forEach((item) => {
       const itemMeta = items.find((i) => String(i.id) === String(item.itemId));
       console.log(`Item ${item.itemId}:`, {
@@ -357,7 +360,6 @@ const ExcelDataTable = ({
           Thông tin xuất kho
         </div>
         <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
-        {/* // Và trong phần render, sửa lại hiển thị: */}
         {removedItems.length > 0 && (
           <div
             style={{
@@ -386,12 +388,13 @@ const ExcelDataTable = ({
             <div
               style={{
                 marginTop: 4,
-                fontSize: "12px",
-                color: "#8c8c8c",
+                fontSize: "14px",
                 fontStyle: "italic",
+                color: "red", // hoặc "#ff4d4f" để đồng bộ với Ant Design
+                fontWeight: "600", // hoặc "bold"
               }}
             >
-              * Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
+              Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
             </div>
           </div>
         )}
@@ -496,6 +499,7 @@ ExcelDataTable.propTypes = {
     itemId: PropTypes.string.isRequired,
     providerId: PropTypes.string,
   }).isRequired,
+  onRemovedItemsNotification: PropTypes.func,
 };
 
 export default ExcelDataTable;

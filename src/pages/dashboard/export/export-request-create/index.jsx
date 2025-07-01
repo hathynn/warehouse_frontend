@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Button, Card, Alert } from "antd";
+import { Button, Card, Alert, Modal } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
+import { InfoCircleFilled } from "@ant-design/icons";
 
 // Constants
 import { ROUTES } from "@/constants/routes";
@@ -64,6 +65,10 @@ const ExportRequestCreate = () => {
   const [providers, setProviders] = useState([]);
   const [excelFormData, setExcelFormData] = useState(null);
   const [returnImportData, setReturnImportData] = useState(null);
+  const [removedItemsNotification, setRemovedItemsNotification] = useState({
+    visible: false,
+    items: [],
+  });
 
   // FORM DATA STATE
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
@@ -236,6 +241,30 @@ const ExportRequestCreate = () => {
     resetViewedPages(1);
     setReturnImportData(null);
   };
+
+  /**
+   * Gộp các sản phẩm có cùng mã hàng và cộng quantity
+   */
+  function consolidateDuplicateItems(dataArray) {
+    const consolidated = {};
+
+    dataArray.forEach((item) => {
+      const key = String(item.itemId);
+
+      if (consolidated[key]) {
+        // Nếu đã tồn tại, cộng quantity
+        consolidated[key].quantity += Number(item.quantity || 0);
+      } else {
+        // Nếu chưa tồn tại, tạo mới
+        consolidated[key] = {
+          ...item,
+          quantity: Number(item.quantity || 0),
+        };
+      }
+    });
+
+    return Object.values(consolidated);
+  }
 
   // =============================================================================
   // FILE HANDLING FUNCTIONS
@@ -466,7 +495,7 @@ const ExportRequestCreate = () => {
             };
           });
         }
-
+        transformedData = consolidateDuplicateItems(transformedData);
         setData(transformedData);
         setValidationError("");
       } catch (error) {
@@ -506,9 +535,6 @@ const ExportRequestCreate = () => {
       fileInputRef.current.value = "";
     }
 
-    // ✅ XÓA: Bỏ cache logic
-    // setExportTypeCache((prevCache) => ({...}));
-
     // Reset pagination and view tracking
     setPagination((prev) => ({ ...prev, current: 1, total: 0 }));
     resetViewedPages(1);
@@ -517,28 +543,6 @@ const ExportRequestCreate = () => {
   // =============================================================================
   // EXPORT TYPE HANDLING
   // =============================================================================
-  // const handleExportTypeChange = (newExportType) => {
-  //   setFile(null);
-  //   setFileName("");
-  //   setData([]);
-  //   setValidationError("");
-  //   setFileConfirmed(false);
-  //   setExcelFormData(null);
-  //   setReturnImportData(null);
-
-  //   // Reset file input
-  //   if (fileInputRef.current) {
-  //     fileInputRef.current.value = "";
-  //   }
-
-  //   // Update export type
-  //   setFormData((prev) => ({ ...prev, exportType: newExportType }));
-
-  //   // Reset pagination and view tracking
-  //   setPagination({ current: 1, pageSize: 10, total: 0 });
-  //   resetViewedPages(1);
-  // };
-
   const handleExportTypeChange = (newExportType) => {
     // Clear file-related states
     setFile(null);
@@ -565,12 +569,6 @@ const ExportRequestCreate = () => {
     resetViewedPages(1);
   };
 
-  // const handleBackToFileStep = () => {
-  //   setFileConfirmed(false);
-  //   // Không reset returnImportData để giữ lại data đã chọn
-  //   setPagination((prev) => ({ ...prev, current: 1 }));
-  //   resetViewedPages(1);
-  // };
   const handleBackToFileStep = () => {
     setFileConfirmed(false);
 
@@ -939,6 +937,19 @@ const ExportRequestCreate = () => {
     setFileConfirmed(true);
   };
 
+  // Thêm function xử lý notification
+  const handleRemovedItemsNotification = (removedItems) => {
+    setRemovedItemsNotification({
+      visible: true,
+      items: removedItems,
+    });
+
+    // Tự động đóng sau 15 giây
+    setTimeout(() => {
+      setRemovedItemsNotification((prev) => ({ ...prev, visible: false }));
+    }, 15000);
+  };
+
   return (
     <div className="container mx-auto p-3 pt-0">
       {!fileConfirmed ? (
@@ -999,6 +1010,7 @@ const ExportRequestCreate = () => {
                     pagination={pagination}
                     onPaginationChange={handleTablePageChange}
                     setPagination={setPagination}
+                    onRemovedItemsNotification={handleRemovedItemsNotification}
                   />
                 ) : (
                   <div className="text-center py-10 text-gray-500">
@@ -1083,6 +1095,65 @@ const ExportRequestCreate = () => {
         onCancel={() => setDepartmentModalVisible(false)}
         loading={departmentLoading}
       />
+      {/* Modal thông báo sản phẩm bị xóa */}
+      <Modal
+        title={
+          <div style={{ color: "#d32029", fontWeight: "bold" }}>
+            <InfoCircleFilled style={{ marginRight: 8 }} />
+            Thông báo sản phẩm không thể xuất
+          </div>
+        }
+        open={removedItemsNotification.visible}
+        onOk={() =>
+          setRemovedItemsNotification((prev) => ({ ...prev, visible: false }))
+        }
+        onCancel={() =>
+          setRemovedItemsNotification((prev) => ({ ...prev, visible: false }))
+        }
+        okText="OK"
+        cancelButtonProps={{ style: { display: "none" } }}
+        width={600}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ color: "black", fontWeight: "bold", marginBottom: 8 }}>
+            Tổng cộng có{" "}
+            <span style={{ color: "red" }}>
+              {removedItemsNotification.items.length}
+            </span>{" "}
+            sản phẩm không xuất được (tồn kho bằng 0):
+          </div>
+          <div
+            style={{
+              color: "#d32029",
+              fontSize: "14px",
+              maxHeight: 200,
+              overflowY: "auto",
+              border: "1px solid #ffccc7",
+              padding: 12,
+              borderRadius: 4,
+              backgroundColor: "#ffffe0",
+            }}
+          >
+            {removedItemsNotification.items.map((item, index) => (
+              <div key={`${item.itemId}-${index}`} style={{ marginBottom: 4 }}>
+                • {item.itemId} - Đã yêu cầu: {item.requestedQuantity}{" "}
+                {item.unitType}
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: "14px",
+              fontStyle: "italic",
+              color: "red", // hoặc "#ff4d4f" để đồng bộ với Ant Design
+              fontWeight: "600", // hoặc "bold"
+            }}
+          >
+            Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
