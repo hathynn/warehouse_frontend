@@ -234,9 +234,12 @@ const ExportRequestConfirmModal = ({
               ? `${record.itemId}-${record.providerId}-${idx}`
               : String(record.itemId)
           }
-          pagination={false} // ✅ TẮT pagination
+          pagination={false}
           size="small"
           bordered
+          sticky={{
+            offsetHeader: 0,
+          }}
           className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
         />
       </div>
