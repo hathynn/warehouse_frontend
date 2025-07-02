@@ -35,6 +35,7 @@ import dayjs from "dayjs";
 import useDepartmentService from "@/services/useDepartmentService";
 import useInventoryItemService from "@/services/useInventoryItemService";
 import useProviderService from "@/services/useProviderService";
+import { SwapOutlined } from "@ant-design/icons";
 
 function enrichWithItemMeta(details, items) {
   return details.map((row) => {
@@ -117,6 +118,14 @@ const ExportRequestDetail = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [expandedModal, setExpandedModal] = useState(false);
+  const [availableInventoryItems, setAvailableInventoryItems] = useState([]);
+  const [selectedNewItem, setSelectedNewItem] = useState(null);
+  const [selectedOldItem, setSelectedOldItem] = useState(null);
+  const [confirmSwapModalVisible, setConfirmSwapModalVisible] = useState(false);
+  const [availableItemsLoading, setAvailableItemsLoading] = useState(false);
+  const { getAllInventoryItems, changeInventoryItemExportDetail } =
+    useInventoryItemService();
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -196,6 +205,25 @@ const ExportRequestDetail = () => {
       setInventoryItems(response.content || []);
     } catch (error) {
       setInventoryItems([]);
+    }
+  };
+
+  const fetchAvailableInventoryItems = async (itemId) => {
+    try {
+      setAvailableItemsLoading(true);
+      const response = await getAllInventoryItems(1, 100000);
+
+      // Filter items với itemId trùng và status AVAILABLE
+      const filtered = (response.content || []).filter(
+        (item) => item.itemId === itemId && item.status === "AVAILABLE"
+      );
+
+      setAvailableInventoryItems(filtered);
+    } catch (error) {
+      console.error("Error fetching available items:", error);
+      setAvailableInventoryItems([]);
+    } finally {
+      setAvailableItemsLoading(false);
     }
   };
 
@@ -333,6 +361,24 @@ const ExportRequestDetail = () => {
   const handleCancelCreateExport = () => {
     setEditMode(false);
     setEditedDetails([]);
+  };
+
+  const handleSwapItem = async () => {
+    try {
+      await changeInventoryItemExportDetail({
+        oldInventoryItemId: selectedOldItem.id,
+        newInventoryItemId: selectedNewItem.id,
+      });
+
+      // Refresh data
+      await fetchInventoryItems(selectedExportRequestDetail.id);
+      setConfirmSwapModalVisible(false);
+      setSelectedOldItem(null);
+      setSelectedNewItem(null);
+      setExpandedModal(false);
+    } catch (error) {
+      console.error("Error swapping items:", error);
+    }
   };
 
   // Function filter inventory items theo search text
@@ -1678,14 +1724,14 @@ const ExportRequestDetail = () => {
           exportType: exportRequest?.type,
           exportDate: exportRequest?.exportDate,
           receivingDepartment: {
-            name: departmentInfo?.departmentName, // đã lấy từ API
+            name: departmentInfo?.departmentName,
           },
           receiverName: exportRequest?.receiverName,
           receiverPhone: exportRequest?.receiverPhone,
           receiverAddress: exportRequest?.receiverAddress,
           providerName: providerInfo?.name,
         }}
-        details={enrichWithItemMeta(editedDetails, items)} // <--- truyền đúng info enrich vào đây
+        details={enrichWithItemMeta(editedDetails, items)}
         items={items}
         // details={editedDetails}
       />
@@ -1693,7 +1739,10 @@ const ExportRequestDetail = () => {
         open={detailModalVisible}
         onCancel={() => {
           setDetailModalVisible(false);
-          setInventorySearchText(""); // ✅ THÊM: Reset search khi đóng modal
+          setInventorySearchText("");
+          setExpandedModal(false);
+          setSelectedOldItem(null);
+          setSelectedNewItem(null);
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
@@ -1702,43 +1751,205 @@ const ExportRequestDetail = () => {
           </span>
         }
         footer={null}
-        width={600}
+        width={expandedModal ? 1200 : 600}
+        style={{ transition: "all 0.3s ease" }}
       >
-        {/* ✅ THÊM: Search bar */}
-        <div className="mb-4">
-          <Input.Search
-            placeholder="Tìm kiếm theo mã sản phẩm tồn kho"
-            allowClear
-            value={inventorySearchText}
-            onChange={(e) => setInventorySearchText(e.target.value)}
-            onSearch={(value) => setInventorySearchText(value)}
-            style={{ width: "100%" }}
-          />
-        </div>
-
-        <div style={{ maxHeight: 400, overflowY: "auto", paddingTop: -10 }}>
-          <Table
-            className="pb-6"
-            loading={inventoryLoading}
-            rowKey="id"
-            dataSource={getFilteredInventoryItems()}
-            pagination={false}
-            scroll={false} // ✅ SỬA: Tắt scroll của Table
-            columns={[
-              {
-                title: "Mã sản phẩm tồn kho",
-                dataIndex: "id",
-                key: "id",
-              },
-            ]}
-            sticky={{
-              offsetHeader: 0,
+        <div style={{ display: "flex", gap: "20px" }}>
+          {/* Phần bên trái - Danh sách hiện tại */}
+          <div
+            style={{
+              flex: expandedModal ? "0 0 48%" : "1",
+              transition: "all 0.3s ease",
             }}
-            size="small"
-            rowClassName={(record, index) =>
-              index % 2 === 1 ? "bg-gray-100" : ""
-            }
-          />
+          >
+            <div className="mb-4">
+              <Input.Search
+                placeholder="Tìm kiếm theo mã sản phẩm tồn kho"
+                allowClear
+                value={inventorySearchText}
+                onChange={(e) => setInventorySearchText(e.target.value)}
+                onSearch={(value) => setInventorySearchText(value)}
+                style={{ width: "100%" }}
+              />
+            </div>
+
+            <div style={{ maxHeight: 400, overflowY: "auto" }}>
+              <Table
+                className="pb-6"
+                loading={inventoryLoading}
+                rowKey="id"
+                dataSource={getFilteredInventoryItems()}
+                pagination={false}
+                columns={[
+                  {
+                    title: "Mã sản phẩm tồn kho",
+                    dataIndex: "id",
+                    key: "id",
+                    ellipsis: true,
+                  },
+                  // Chỉ thêm cột "Thao tác" khi đúng điều kiện
+                  ...(userRole === AccountRole.WAREHOUSE_MANAGER &&
+                  [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
+                    exportRequest?.status
+                  )
+                    ? [
+                        {
+                          title: "Thao tác",
+                          key: "action",
+                          width: 80,
+                          render: (_, record) => (
+                            <Button
+                              size="small"
+                              icon={<SwapOutlined />}
+                              onClick={() => {
+                                setSelectedOldItem(record);
+                                setExpandedModal(true);
+                                fetchAvailableInventoryItems(
+                                  selectedExportRequestDetail?.itemId
+                                );
+                              }}
+                              className="hover:bg-blue-50"
+                            >
+                              Đổi
+                            </Button>
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+                size="small"
+                rowClassName={(record, index) => {
+                  if (record.id === selectedOldItem?.id) return "bg-blue-100";
+                  return index % 2 === 1 ? "bg-gray-50" : "";
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Phần bên phải - Danh sách available items (chỉ hiện khi expand) */}
+          {expandedModal && (
+            <div
+              style={{
+                flex: "0 0 48%",
+                borderLeft: "2px solid #f0f0f0",
+                paddingLeft: "20px",
+              }}
+            >
+              <div className="mb-4">
+                <h3 className="text-base font-semibold mb-2">
+                  Sản phẩm có sẵn để thay thế
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Chọn sản phẩm bên dưới để thay thế cho:{" "}
+                  <strong>{selectedOldItem?.id}</strong>
+                </p>
+              </div>
+
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                {availableItemsLoading ? (
+                  <div className="flex justify-center items-center h-32">
+                    <Spin />
+                  </div>
+                ) : availableInventoryItems.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    Không có sản phẩm khả dụng để thay thế
+                  </div>
+                ) : (
+                  <Table
+                    rowKey="id"
+                    dataSource={availableInventoryItems}
+                    pagination={false}
+                    columns={[
+                      {
+                        title: "Mã sản phẩm",
+                        dataIndex: "id",
+                        key: "id",
+                        ellipsis: true,
+                      },
+                      {
+                        title: "Ngày nhập",
+                        dataIndex: "importedDate",
+                        key: "importedDate",
+                        width: 100,
+                        render: (date) => dayjs(date).format("DD/MM/YYYY"),
+                      },
+                      {
+                        title: "",
+                        key: "select",
+                        width: 80,
+                        render: (_, record) => (
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={() => {
+                              setSelectedNewItem(record);
+                              setConfirmSwapModalVisible(true);
+                            }}
+                          >
+                            Chọn
+                          </Button>
+                        ),
+                      },
+                    ]}
+                    size="small"
+                    rowClassName={(record, index) =>
+                      index % 2 === 1 ? "bg-gray-50" : ""
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+      <Modal
+        open={confirmSwapModalVisible}
+        onCancel={() => {
+          setConfirmSwapModalVisible(false);
+          setSelectedNewItem(null);
+        }}
+        onOk={handleSwapItem}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận đổi sản phẩm
+          </span>
+        }
+        okText="Xác nhận"
+        cancelText="Hủy"
+        confirmLoading={inventoryLoading}
+        width={500}
+        centered
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
+            <div className="flex-1">
+              <p className="text-sm text-gray-600 mb-1">Từ:</p>
+              <p className="font-semibold text-red-700">
+                {selectedOldItem?.id}
+              </p>
+              <p className="text-sm text-gray-500">
+                {selectedOldItem?.storedLocationName}
+              </p>
+            </div>
+            <SwapOutlined className="text-xl text-gray-400" />
+            <div className="flex-1">
+              <p className="text-sm text-gray-600 mb-1">Sang:</p>
+              <p className="font-semibold text-green-700">
+                {selectedNewItem?.id}
+              </p>
+              <p className="text-sm text-gray-500">
+                {selectedNewItem?.storedLocationName}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 text-amber-700 bg-amber-50 p-3 rounded">
+            <ExclamationCircleOutlined className="mt-0.5" />
+            <p className="text-sm">
+              Hành động này sẽ thay thế sản phẩm trong phiếu xuất. Vui lòng kiểm
+              tra kỹ thông tin trước khi xác nhận.
+            </p>
+          </div>
         </div>
       </Modal>
     </div>

@@ -8,13 +8,19 @@ export enum ItemStatus {
   UNAVAILABLE = "UNAVAILABLE",
   DISPOSED = "DISPOSED",
   SAFE = "SAFE",
-  ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE"
+  ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE",
 }
 
 // Interface to match UpdateInventoryLocationRequest.java
 export interface UpdateInventoryLocationRequest {
   inventoryItemId: string;
   storedLocationId: number;
+}
+
+// Interface for change inventory item export detail request
+export interface ChangeInventoryItemExportDetailRequest {
+  oldInventoryItemId: string;
+  newInventoryItemId: string;
 }
 
 // Interface to match InventoryItemResponse.java
@@ -59,9 +65,14 @@ const useInventoryItemService = () => {
   };
 
   // Get inventory item by ID
-  const getInventoryItemById = async (inventoryItemId: string): Promise<ResponseDTO<InventoryItemResponse>> => {
+  const getInventoryItemById = async (
+    inventoryItemId: string
+  ): Promise<ResponseDTO<InventoryItemResponse>> => {
     try {
-      const response = await callApi("get", `/inventory-item/${inventoryItemId}`);
+      const response = await callApi(
+        "get",
+        `/inventory-item/${inventoryItemId}`
+      );
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin sản phẩm");
@@ -92,7 +103,11 @@ const useInventoryItemService = () => {
     importOrderDetailIds: string[]
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
-      const response = await callApi("post", "/inventory-item/import-order-detail", importOrderDetailIds);
+      const response = await callApi(
+        "post",
+        "/inventory-item/import-order-detail",
+        importOrderDetailIds
+      );
       return response;
     } catch (error) {
       toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
@@ -119,9 +134,15 @@ const useInventoryItemService = () => {
   };
 
   // Get QR codes by inventory item IDs
-  const getListQrCodes = async (inventoryItemIds: string[]): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+  const getListQrCodes = async (
+    inventoryItemIds: string[]
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
-      const response = await callApi("post", "/inventory-item/qr-codes", inventoryItemIds);
+      const response = await callApi(
+        "post",
+        "/inventory-item/qr-codes",
+        inventoryItemIds
+      );
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin mã QR");
@@ -130,12 +151,36 @@ const useInventoryItemService = () => {
   };
 
   // Update stored location of inventory items
-  const updateStoredLocation = async (requests: UpdateInventoryLocationRequest[]): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+  const updateStoredLocation = async (
+    requests: UpdateInventoryLocationRequest[]
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
-      const response = await callApi("put", "/inventory-item/update-location", requests);
+      const response = await callApi(
+        "put",
+        "/inventory-item/update-location",
+        requests
+      );
       return response;
     } catch (error) {
-      toast.error("Không thể cập` nhật vị trí sản phẩm");
+      toast.error("Không thể cập nhật vị trí sản phẩm");
+      throw error;
+    }
+  };
+
+  // Change inventory item of export request detail
+  const changeInventoryItemExportDetail = async (
+    request: ChangeInventoryItemExportDetailRequest
+  ): Promise<ResponseDTO<any>> => {
+    try {
+      const response = await callApi(
+        "post",
+        "/inventory-item/change-inventory-item-export-detail",
+        request
+      );
+      toast.success("Đổi sản phẩm xuất kho thành công");
+      return response;
+    } catch (error) {
+      toast.error("Không thể đổi sản phẩm xuất kho");
       throw error;
     }
   };
@@ -149,7 +194,8 @@ const useInventoryItemService = () => {
     getByExportRequestDetailId,
     getListQrCodes,
     updateStoredLocation,
+    changeInventoryItemExportDetail,
   };
 };
 
-export default useInventoryItemService; 
+export default useInventoryItemService;
