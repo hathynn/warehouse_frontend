@@ -622,7 +622,7 @@ const ExportRequestCreate = () => {
 
     return {
       countingDate: formData.exportDate,
-      countingTime: "07:00:00",
+      countingTime: "12:00:00",
       exportDate: formData.exportDate,
       importOrderId: returnImportData?.importOrderId || null, // ✅ THÊM importOrderId
       exportReason: formData.exportReason,
@@ -674,7 +674,7 @@ const ExportRequestCreate = () => {
 
   const buildSellingPayload = () => ({
     countingDate: formData.exportDate,
-    countingTime: "07:00:00",
+    countingTime: "12:00:00",
     exportDate: formData.exportDate,
     exportReason: formData.exportReason,
     receiverName: formData.receiverName,
