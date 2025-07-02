@@ -35,7 +35,7 @@ import useStoredLocationService, { StoredLocationResponse } from "@/services/use
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
-import WarehouseMapModal from "@/components/commons/WarehouseMapModal";
+import UpdateInventoryItemLocationModal from "@/components/commons/UpdateInventoryItemLocationModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import {
   getDefaultAssignedDateTimeForAction,
@@ -67,7 +67,7 @@ const ImportOrderDetail = () => {
   const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
   const [extendModalVisible, setExtendModalVisible] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [showWarehouseMapModal, setShowWarehoueMapModal] = useState(false);
+  const [showUpdateInventoryItemLocationModal, setShowUpdateInventoryItemLocationModal] = useState(false);
 
   // ========== FORM & UI STATES ==========
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
@@ -117,6 +117,7 @@ const ImportOrderDetail = () => {
   const {
     loading: inventoryItemLoading,
     getByListImportOrderDetailIds,
+    updateStoredLocation,
   } = useInventoryItemService();
   const {
     loading: storedLocationLoading,
@@ -328,7 +329,6 @@ const ImportOrderDetail = () => {
   };
 
   // ========== CANCEL ORDER HANDLERS ==========
-
   const handleCancelModalOk = async () => {
     if (!importOrderId) return;
     await cancelImportOrder(importOrderId);
@@ -406,8 +406,19 @@ const ImportOrderDetail = () => {
     setQrModalVisible(false);
   };
 
-  // ========== WAREHOUSE LOCATION HANDLERS ==========
-  const handleConfirmWarehouseLocation = async (locationUpdates: UpdateInventoryLocationRequest[]) => {
+  // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
+  const handleUpdateInventoryItemLocation = async () => {
+    const requests: UpdateInventoryLocationRequest[] = inventoryItemsData.map(inventoryItem => ({
+      inventoryItemId: inventoryItem.id,
+      storedLocationId: inventoryItem.storedLocationId
+    }));
+    await updateStoredLocation(requests);
+    await fetchImportOrderData();
+    await fetchImportOrderDetails();
+    await fetchInventoryItemsData();
+  }
+
+  const handleReadyToStoreConfirm = async () => {
     await updateImportOrderToReadyToStore(importOrderId);
     // Fetch data in parallel for better performance.
     // fetchInventoryItemsData is not needed here as it's triggered by the change in importOrderDetails from fetchImportOrderDetails.
@@ -418,12 +429,12 @@ const ImportOrderDetail = () => {
     ]);
   };
 
-  // ========== WAREHOUSE MAP HANDLERS ==========
-  const handleOpenWarehouseMapModal = () => {
-    setShowWarehoueMapModal(true);
+  // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
+  const handleOpenUpdateInventoryItemLocationModal = () => {
+    setShowUpdateInventoryItemLocationModal(true);
   }
-  const handleCloseWarehouseMapModal = () => {
-    setShowWarehoueMapModal(false);
+  const handleCloseUpdateInventoryItemLocationModal = () => {
+    setShowUpdateInventoryItemLocationModal(false);
   }
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
@@ -671,7 +682,7 @@ const ImportOrderDetail = () => {
             <Button
               type="primary"
               icon={<MdApartment />}
-              onClick={handleOpenWarehouseMapModal}
+              onClick={handleOpenUpdateInventoryItemLocationModal}
             >
               Cập nhật vị trí lưu kho
             </Button>
@@ -703,7 +714,7 @@ const ImportOrderDetail = () => {
                 if (!importOrderData?.importOrderId) return;
                 await completeImportOrder(importOrderData.importOrderId);
                 await fetchImportOrderData();
-                setShowWarehoueMapModal(true)
+                setShowUpdateInventoryItemLocationModal(true)
               }}
               onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
               okText="Tôi xác nhận kiểm đếm"
@@ -1023,15 +1034,16 @@ const ImportOrderDetail = () => {
         </div>
       </Modal>
 
-      {/* Modal sơ đồ kho */}
-      <WarehouseMapModal
-        loading={storedLocationLoading}
+      <UpdateInventoryItemLocationModal
+        loading={storedLocationLoading} 
         importOrder={importOrderData}
         inventoryItems={inventoryItemsData}
         storedLocationData={storedLocationData}
-        open={showWarehouseMapModal}
-        onClose={handleCloseWarehouseMapModal}
-        onConfirmLocation={handleConfirmWarehouseLocation}
+        open={showUpdateInventoryItemLocationModal}
+        onClose={handleCloseUpdateInventoryItemLocationModal}
+        onReadyToStoreConfirm={handleReadyToStoreConfirm}
+        onUpdateInventoryItemsLocation={updatedInventoryItems => setInventoryItemsData(updatedInventoryItems)}
+        onUpdateInventoryItemsLocationConfirm={handleUpdateInventoryItemLocation}
       />
     </div>
   );

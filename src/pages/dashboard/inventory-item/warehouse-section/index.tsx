@@ -84,7 +84,7 @@ const WarehouseSection: React.FC = () => {
       if (location.currentCapacity === 0) {
         return (
           <div>
-            <div>{location.itemId.split('-')[0]}</div>
+            <div>{location.itemId}</div>
             <div>Còn trống</div>
           </div>
         );
@@ -92,7 +92,7 @@ const WarehouseSection: React.FC = () => {
       else {
         return (
           <div>
-            <div>{location.itemId.split('-')[0]}</div>
+            <div>{location.itemId}</div>
             <div>{location.currentCapacity}/{location.maximumCapacityForItem}</div>
           </div>
         );
@@ -115,14 +115,14 @@ const WarehouseSection: React.FC = () => {
               return (
                 <div
                   key={`${zone}-${floor}-${row}-${line}`}
-                  className={`w-16 h-16 border border-gray-300 flex items-center justify-center text-xs font-medium transition-all duration-300 ${getCellColor(location)}`}
+                  className={`w-18 h-16 border border-gray-300 flex items-center justify-center text-xs font-medium transition-all duration-300 ${getCellColor(location)}`}
                   style={isHighlighted ? {
                     boxShadow: '0 0 30px rgba(249, 115, 22, 0.8), inset 0 0 20px rgba(249, 115, 22, 0.3)',
                   } : {}}
                 >
                   <div className="text-center leading-tight">
                     <div className="text-[12px]">{location ? `${row}-${line}` : ''}</div>
-                    <div className="text-[12px]">{getCellText(location)}</div>
+                    <div className="text-[10px]">{getCellText(location)}</div>
                   </div>
                 </div>
               );

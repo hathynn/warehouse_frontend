@@ -148,6 +148,7 @@ const useInventoryItemService = () => {
     getByListImportOrderDetailIds,
     getByExportRequestDetailId,
     getListQrCodes,
+    updateStoredLocation,
   };
 };
 
