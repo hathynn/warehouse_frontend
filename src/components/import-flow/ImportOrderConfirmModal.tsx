@@ -123,12 +123,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
-      }),
-      render: (_: any, record: ImportOrderDetailRow) => (
-        <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block" style={{ textAlign: 'right' }}>
-          {record.plannedQuantity}
-        </span>
-      )
+      })
     }
   ];
 

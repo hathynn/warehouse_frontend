@@ -721,41 +721,51 @@ const ImportOrderDetail = () => {
               cancelText="Hủy"
               okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
               maskClosable={false}
-              width={360}
+              width={480}
             >
               <div className="space-y-4">
                 <Table
                   columns={[
                     {
+                      title: "Tên sản phẩm",
                       dataIndex: "itemName",
                       key: "itemName",
-                      width: "70%",
+                      width: "50%",
                       align: "left" as const,
                       ellipsis: true,
+                      onHeaderCell: () => ({
+                        style: { textAlign: 'center' as const }
+                      })
                     },
                     {
-                      key: "quantity",
-                      width: "30%",
+                      title: "Thực tế",
+                      key: "actualQuantity",
+                      dataIndex: "actualQuantity",
+                      width: "25%",
                       align: "right" as const,
-                      render: (_, record: ImportOrderDetailResponse) => {
-                        const isMatch = record.expectQuantity === record.actualQuantity
-                        return (
-                          <span className={isMatch ? 'text-green-600 font-medium text-lg' : 'text-red-600 font-medium text-lg'} >
-                            {record.expectQuantity} / {record.actualQuantity}
-                          </span>
-                        )
-                      }
+                      onHeaderCell: () => ({
+                        style: { textAlign: 'center' as const }
+                      })
+                    },
+                    {
+                      title: "Dự kiến",
+                      key: "expectQuantity",
+                      dataIndex: "expectQuantity",
+                      width: "25%",
+                      align: "right" as const,
+                      onHeaderCell: () => ({
+                        style: { textAlign: 'center' as const }
+                      })
                     }
                   ]}
                   dataSource={importOrderDetails}
                   rowKey="importOrderDetailId"
-                  showHeader={false}
                   size="small"
                   pagination={false}
                 >
                 </Table>
                 <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
-                  Tôi xác nhận những thông tin trên là đúng sự thật.
+                  Tôi xác nhận những thông tin trên là đúng.
                 </Checkbox>
               </div>
             </Modal>

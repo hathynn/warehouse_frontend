@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Input, Alert, TablePaginationConfig, Card, Table } from "antd";
+import { Input, Alert, TablePaginationConfig, Card, Table, Button, Modal } from "antd";
+import { DeleteOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
+import { AiFillDelete } from "react-icons/ai";
+import { MdOutlineDeleteForever } from "react-icons/md";
 
 export interface ImportOrderDetailRow {
   itemId: number;
@@ -43,6 +46,9 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     total: data.length,
   });
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<ImportOrderDetailRow | null>(null);
+
   const { allPagesViewed } = usePaginationViewTracker(
     data.length,
     pagination.pageSize,
@@ -73,6 +79,35 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     onChange(newData);
   };
 
+  const handleDeleteRow = (record: ImportOrderDetailRow) => {
+    setRecordToDelete(record);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (recordToDelete) {
+      const newData = data.filter(row => row.itemId !== recordToDelete.itemId);
+      onChange(newData);
+      
+      // Update pagination total
+      setPagination(prev => ({
+        ...prev,
+        total: newData.length,
+        // If current page becomes empty after deletion, go to previous page
+        current: Math.ceil(newData.length / prev.pageSize) < prev.current 
+          ? Math.max(1, prev.current - 1) 
+          : prev.current
+      }));
+    }
+    setIsDeleteModalOpen(false);
+    setRecordToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setRecordToDelete(null);
+  };
+
   const columns = [
     {
       width: "12%",
@@ -86,7 +121,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       }),
     },
     {
-      width: "30%",
+      width: "28%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
@@ -155,6 +190,24 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
         );
       },
     },
+    {
+      title: "Hành động",
+      key: "action",
+      width: "10%",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (_: any, record: ImportOrderDetailRow) => (
+        <Button
+          type="text"
+          danger
+          icon={<MdOutlineDeleteForever size={20} />}
+          onClick={() => handleDeleteRow(record)}
+          title="Xóa dòng"
+        />
+      ),
+    },
   ];
 
   // Tổng hợp lỗi
@@ -215,6 +268,30 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}
         onChange={handleTableChange}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            Xác nhận xóa
+          </div>
+        }
+        open={isDeleteModalOpen}
+        onOk={confirmDelete}
+        onCancel={cancelDelete}
+        okText="Xóa"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+        width={320}
+      >
+        {recordToDelete && (
+          <div>
+            <p><strong>Mã hàng:</strong> #{recordToDelete.itemId}</p>
+            <p><strong>Tên hàng:</strong> {recordToDelete.itemName}</p>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 };

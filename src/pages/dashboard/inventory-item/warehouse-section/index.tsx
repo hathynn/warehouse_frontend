@@ -203,7 +203,7 @@ const WarehouseSection: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-2">
+    <div className="container mx-auto">
       <Title level={2}>Sơ đồ kho</Title>
       <Card>
         <Title level={4}>Tìm kiếm sản phẩm</Title>
@@ -232,8 +232,8 @@ const WarehouseSection: React.FC = () => {
             <span className="text-base">Có sản phẩm</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gray-300 border border-gray-300"></div>
-            <span className="text-base">Vị trí trống</span>
+            <div className="w-6 h-6 bg-white border border-gray-300"></div>
+            <span className="text-base">Chưa có sản phẩm</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-blue-200 border border-gray-300"></div>
