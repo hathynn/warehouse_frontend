@@ -101,11 +101,6 @@ const ExportRequestDetail = () => {
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [inventoryItems, setInventoryItems] = useState([]);
-  const [inventoryPagination, setInventoryPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
   const [modalPagination, setModalPagination] = useState({
     current: 1,
     pageSize: 10, // Set cứng là 10
@@ -118,10 +113,11 @@ const ExportRequestDetail = () => {
     useState(null);
   const { getByExportRequestDetailId, loading: inventoryLoading } =
     useInventoryItemService();
-
+  const [inventorySearchText, setInventorySearchText] = useState("");
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
   const [itemsLoading, setItemsLoading] = useState(true);
+
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -144,7 +140,7 @@ const ExportRequestDetail = () => {
 
   const fetchDetails = useCallback(
     async (page = pagination.current, pageSize = pagination.pageSize) => {
-      if (!exportRequestId || items.length === 0) return; // ✅ Đợi items load xong
+      if (!exportRequestId || items.length === 0) return;
 
       try {
         // Lấy dữ liệu phân trang
@@ -189,25 +185,15 @@ const ExportRequestDetail = () => {
     [exportRequestId, items, allExportRequestDetails.length]
   );
 
-  const fetchInventoryItems = async (
-    exportRequestDetailId,
-    page = 1,
-    pageSize = 10
-  ) => {
+  const fetchInventoryItems = async (exportRequestDetailId) => {
     try {
+      setInventorySearchText("");
       const response = await getByExportRequestDetailId(
         exportRequestDetailId,
-        page,
-        pageSize
+        1,
+        1000
       );
       setInventoryItems(response.content || []);
-      if (response.metaDataDTO) {
-        setInventoryPagination({
-          current: response.metaDataDTO.page,
-          pageSize: response.metaDataDTO.limit,
-          total: response.metaDataDTO.total,
-        });
-      }
     } catch (error) {
       setInventoryItems([]);
     }
@@ -347,6 +333,19 @@ const ExportRequestDetail = () => {
   const handleCancelCreateExport = () => {
     setEditMode(false);
     setEditedDetails([]);
+  };
+
+  // Function filter inventory items theo search text
+  const getFilteredInventoryItems = () => {
+    if (!inventorySearchText.trim()) {
+      return inventoryItems;
+    }
+    return inventoryItems.filter((item) =>
+      item.id
+        .toString()
+        .toLowerCase()
+        .includes(inventorySearchText.toLowerCase())
+    );
   };
 
   // Xác nhận tạo phiếu xuất mới (có gọi cả API chi tiết)
@@ -806,7 +805,6 @@ const ExportRequestDetail = () => {
       key: "status",
       width: 200,
       render: (status) => {
-        // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
         if (
           userRole === AccountRole.DEPARTMENT &&
           [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
@@ -830,9 +828,9 @@ const ExportRequestDetail = () => {
               className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
               style={{ width: 32, height: 32 }}
               onClick={() => {
-                setSelectedExportRequestDetail(record); // lưu lại chi tiết đang chọn
+                setSelectedExportRequestDetail(record);
                 setDetailModalVisible(true);
-                fetchInventoryItems(record.id, 1, 10); // record.id là exportRequestDetailId
+                fetchInventoryItems(record.id);
               }}
             >
               <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
@@ -841,17 +839,15 @@ const ExportRequestDetail = () => {
         </div>
       ),
     },
-  ].filter(Boolean);
-
-  const handleTableChange = (pag) => {
-    setPagination({
-      ...pagination,
-      current: pag.current,
-      pageSize: pag.pageSize,
-    });
-    // Gọi lại fetchDetails và luôn cập nhật allExportRequestDetails!
-    fetchDetails(pag.current, pag.pageSize);
-  };
+  ].filter((column) => {
+    if (
+      column?.key === "detail" &&
+      exportRequest?.status === ExportStatus.CANCELLED
+    ) {
+      return false;
+    }
+    return Boolean(column);
+  });
 
   const handleBack = () => {
     navigate(-1);
@@ -883,9 +879,8 @@ const ExportRequestDetail = () => {
       ...pagination,
       current: pag.current,
       pageSize: pag.pageSize,
-      total: allExportRequestDetails.length, // ✅ Total dựa trên allExportRequestDetails
+      total: allExportRequestDetails.length,
     });
-    // ✅ KHÔNG gọi fetchDetails nữa vì đã có allExportRequestDetails
   };
 
   // Function kiểm tra đã xem hết tất cả trang chưa
@@ -895,9 +890,6 @@ const ExportRequestDetail = () => {
     );
     return totalPages <= 1 || viewedPages.size >= totalPages;
   };
-
-  const showPagination =
-    inventoryPagination.total > inventoryPagination.pageSize;
 
   if ((exportRequestLoading || exportRequestDetailLoading) && !exportRequest) {
     return (
@@ -1002,14 +994,14 @@ const ExportRequestDetail = () => {
         columns={columns}
         exportRequestDetails={
           editMode ? editedDetails : getSortedProductsForMainTable()
-        } // ✅ SỬA: Sử dụng sorted data
+        }
         allExportRequestDetails={allExportRequestDetails}
         detailsLoading={exportRequestDetailLoading}
         pagination={{
           ...pagination,
-          total: allExportRequestDetails.length, // ✅ SỬA: Total dựa trên allExportRequestDetails
+          total: allExportRequestDetails.length,
         }}
-        handleTableChange={handleMainTableChange} // ✅ SỬA: Sử dụng handler mới
+        handleTableChange={handleMainTableChange}
         userRole={userRole}
         exportRequest={exportRequest}
         setConfirmModalVisible={setConfirmModalVisible}
@@ -1699,7 +1691,10 @@ const ExportRequestDetail = () => {
       />
       <Modal
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setInventorySearchText(""); // ✅ THÊM: Reset search khi đóng modal
+        }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
             Danh sách sản phẩm tồn kho (Mã hàng #
@@ -1709,37 +1704,42 @@ const ExportRequestDetail = () => {
         footer={null}
         width={600}
       >
-        <Table
-          className="mt-5 pb-6"
-          loading={inventoryLoading}
-          rowKey="id"
-          dataSource={inventoryItems}
-          pagination={
-            showPagination
-              ? {
-                  current: inventoryPagination.current,
-                  pageSize: inventoryPagination.pageSize,
-                  total: inventoryPagination.total,
-                  onChange: (page, pageSize) => {
-                    fetchInventoryItems(
-                      selectedExportRequestDetail.id,
-                      page,
-                      pageSize
-                    );
-                  },
-                  showSizeChanger: false,
-                }
-              : false
-          }
-          columns={[
-            {
-              title: "Mã sản phẩm tồn kho",
-              dataIndex: "id",
-              key: "id",
-            },
-          ]}
-          size="small"
-        />
+        {/* ✅ THÊM: Search bar */}
+        <div className="mb-4">
+          <Input.Search
+            placeholder="Tìm kiếm theo mã sản phẩm tồn kho"
+            allowClear
+            value={inventorySearchText}
+            onChange={(e) => setInventorySearchText(e.target.value)}
+            onSearch={(value) => setInventorySearchText(value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        <div style={{ maxHeight: 400, overflowY: "auto", paddingTop: -10 }}>
+          <Table
+            className="pb-6"
+            loading={inventoryLoading}
+            rowKey="id"
+            dataSource={getFilteredInventoryItems()}
+            pagination={false}
+            scroll={false} // ✅ SỬA: Tắt scroll của Table
+            columns={[
+              {
+                title: "Mã sản phẩm tồn kho",
+                dataIndex: "id",
+                key: "id",
+              },
+            ]}
+            sticky={{
+              offsetHeader: 0,
+            }}
+            size="small"
+            rowClassName={(record, index) =>
+              index % 2 === 1 ? "bg-gray-100" : ""
+            }
+          />
+        </div>
       </Modal>
     </div>
   );
