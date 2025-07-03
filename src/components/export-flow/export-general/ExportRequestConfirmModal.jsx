@@ -237,9 +237,6 @@ const ExportRequestConfirmModal = ({
           pagination={false}
           size="small"
           bordered
-          sticky={{
-            offsetHeader: 0,
-          }}
           className="[&_.ant-table-cell]:!border-gray-400 [&_.ant-table-thead>tr>th]:!border-gray-400 [&_.ant-table-tbody>tr>td]:!border-gray-400 [&_.ant-table-container]:!border-gray-400"
         />
       </div>
