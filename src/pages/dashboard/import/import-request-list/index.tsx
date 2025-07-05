@@ -75,29 +75,29 @@ const ImportRequestList: React.FC = () => {
   };
 
   // ========== COMPUTED VALUES & FILTERING ==========
-  const filteredItems = importRequestsData.filter((item) => {
-    const matchesSearch = item.importRequestId.toString().includes(searchTerm.toLowerCase());
-    const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === item.createdDate?.split('T')[0] : true;
-    const matchesImportType = item.importType === selectedImportType;
-    const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(item.providerName) : true;
+  const filteredItems = importRequestsData.filter((importRequest) => {
+    const matchesSearch = importRequest.importRequestId.toString().toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDate = selectedDate ? selectedDate.format('YYYY-MM-DD') === importRequest.createdDate?.split('T')[0] : true;
+    const matchesImportType = importRequest.importType === selectedImportType;
+    const matchesProvider = selectedProvider.length > 0 ? selectedProvider.includes(importRequest.providerName) : true;
 
     // Filter logic based on selected status filter
     let matchesStatusFilter = true;
     if (selectedStatusFilter) {
       switch (selectedStatusFilter) {
         case 'not-started':
-          matchesStatusFilter = item.status === 'NOT_STARTED';
+          matchesStatusFilter = importRequest.status === 'NOT_STARTED';
           break;
         case 'in-progress':
-          matchesStatusFilter = item.status === 'IN_PROGRESS';
+          matchesStatusFilter = importRequest.status === 'IN_PROGRESS';
           break;
         case 'near-end-date':
-          matchesStatusFilter = isNearEndDate(item.endDate) &&
-            item.status !== 'COMPLETED' &&
-            item.status !== 'CANCELLED';
+          matchesStatusFilter = isNearEndDate(importRequest.endDate) &&
+          importRequest.status !== 'COMPLETED' &&
+          importRequest.status !== 'CANCELLED';
           break;
         case 'completed':
-          matchesStatusFilter = item.status === 'COMPLETED';
+          matchesStatusFilter = importRequest.status === 'COMPLETED';
           break;
         default:
           matchesStatusFilter = true;
@@ -184,7 +184,7 @@ const ImportRequestList: React.FC = () => {
       title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
       key: "importRequestId",
-      align: "right" as const,
+      align: "left" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -279,9 +279,7 @@ const ImportRequestList: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (ordered: number, record: ImportRequestData) => {
-        const expected = record.totalExpectQuantityInRequest || 0;
-        const isEnough = ordered >= expected;
+      render: (ordered: number) => {
         return (
           <div className="text-right">
             {ordered === 0 ? (
@@ -360,7 +358,7 @@ const ImportRequestList: React.FC = () => {
 
       <div className="flex items-center justify-between mb-3">
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="min-w-[300px]">
+          <div className="min-w-[240px]">
             <Input
               placeholder="Tìm theo mã phiếu nhập"
               value={searchTerm}

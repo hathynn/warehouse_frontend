@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
@@ -18,8 +18,6 @@ import locale from "antd/es/date-picker/locale/vi_VN";
 import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import RequestTypeSelector, { ImportRequestType } from "@/components/commons/RequestTypeSelector";
-
-const { Title } = Typography;
 const { TextArea } = Input;
 
 interface FormData {
@@ -36,7 +34,6 @@ const ImportRequestCreate: React.FC = () => {
 
   // ========== DATA STATES ==========
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [step, setStep] = useState<number>(0);
   const [importedData, setImportedData] = useState<ImportRequestDetailRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
@@ -53,6 +50,9 @@ const ImportRequestCreate: React.FC = () => {
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ========== UI & FORM STATES ==========
+  const [step, setStep] = useState<number>(0);
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
@@ -469,7 +469,7 @@ const ImportRequestCreate: React.FC = () => {
 
   return (
     <div className="container mx-auto p-3 pt-0">
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-2">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={handleBack}
@@ -478,7 +478,22 @@ const ImportRequestCreate: React.FC = () => {
           Quay lại
         </Button>
       </div>
-      <Title level={2}>Tạo phiếu nhập</Title>
+      <div className="w-2/3 mx-auto">
+        <Steps
+          className="!mb-4"
+          current={step}
+          onChange={setStep}
+          items={[
+            {
+              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Tải lên file Excel</span>,
+            },
+            {
+              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Xác nhận thông tin</span>,
+              disabled: importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed
+            }
+          ]}
+        />
+      </div>
 
       {step === 0 && (
         <>

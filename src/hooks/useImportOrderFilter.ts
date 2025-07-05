@@ -2,14 +2,16 @@ import { TablePaginationConfig } from 'antd';
 import { createFilterHook } from '../contexts/filter/createFilterHook';
 
 export interface ImportOrderFilterState {
-    searchTerm: string;
+    searchImportRequestTerm: string;
+    searchImportOrderTerm: string;
     pagination: TablePaginationConfig;
     selectedStatusFilter: string | null;
     selectedStaff: string[];
 }
 
 const defaultImportOrderFilterState: ImportOrderFilterState = {
-    searchTerm: '',
+    searchImportRequestTerm: '',
+    searchImportOrderTerm: '',
     selectedStaff: [],
     selectedStatusFilter: null,
     pagination: {

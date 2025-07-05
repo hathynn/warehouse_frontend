@@ -38,7 +38,8 @@ const ImportOrderList: React.FC = () => {
   // ========== FILTER CONTEXT ==========
   const { filterState, updateFilter } = useImportOrderFilter();
   const {
-    searchTerm,
+    searchImportRequestTerm,
+    searchImportOrderTerm,
     selectedStatusFilter,
     selectedStaff,
     pagination
@@ -93,8 +94,8 @@ const ImportOrderList: React.FC = () => {
 
   // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importOrdersData.filter((importOrder) => {
-    const matchesSearch = importOrder.importOrderId.toString().includes(searchTerm.toLowerCase()) ||
-      importOrder.importRequestId.toString().includes(searchTerm.toLowerCase());
+    const matchesImportRequestSearch = importOrder.importRequestId.toString().toLowerCase().includes(searchImportRequestTerm.toLowerCase());
+    const matchesImportOrderSearch = importOrder.importOrderId.toString().toLowerCase().includes(searchImportOrderTerm.toLowerCase());
 
     // Filter by assigned staff
     const matchesStaff = selectedStaff.length > 0 ?
@@ -130,7 +131,7 @@ const ImportOrderList: React.FC = () => {
       }
     }
 
-    return matchesSearch && matchesStaff && matchesStatusFilter;
+    return matchesImportRequestSearch && matchesImportOrderSearch && matchesStaff && matchesStatusFilter;
   });
 
   // ========== USE EFFECTS ==========
@@ -218,8 +219,12 @@ const ImportOrderList: React.FC = () => {
   };
 
   // ========== EVENT HANDLERS ==========
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    updateFilter({ searchTerm: e.target.value });
+  const handleImportRequestSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    updateFilter({ searchImportRequestTerm: e.target.value });
+  };
+
+  const handleImportOrderSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    updateFilter({ searchImportOrderTerm: e.target.value });
   };
 
   const handleTableChange = (newPagination: TablePaginationConfig): void => {
@@ -248,13 +253,14 @@ const ImportOrderList: React.FC = () => {
       dataIndex: "importOrderId",
       key: "importOrderId",
       render: (id: number) => `#${id}`,
-      align: "right" as const,
+      align: "left" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
     },
     {
-      title: "Số mặt hàng cần nhập",
+      width: "12%",
+      title: "Số hàng cần nhập",
       dataIndex: "importOrderDetailsCount",
       key: "importOrderDetailsCount",
       align: "center" as const,
@@ -263,7 +269,8 @@ const ImportOrderList: React.FC = () => {
       ),
     },
     {
-      title: "Số mặt hàng đã nhập đủ",
+      width: "12%",
+      title: "Số hàng đã nhập đủ",
       dataIndex: "importOrderDetailsCompletedCount",
       key: "importOrderDetailsCompletedCount",
       align: "center" as const,
@@ -450,11 +457,20 @@ const ImportOrderList: React.FC = () => {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2 items-center">
-        <div className="min-w-[300px]">
+        <div className="min-w-[240px]">
           <Input
-            placeholder="Tìm kiếm theo mã đơn nhập"
-            value={searchTerm}
-            onChange={handleSearchChange}
+            placeholder="Tìm theo mã đơn nhập"
+            value={searchImportOrderTerm}
+            onChange={handleImportOrderSearchChange}
+            prefix={<SearchOutlined />}
+            className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+          />
+        </div>
+        <div className="min-w-[240px]">
+          <Input
+            placeholder="Tìm theo mã phiếu nhập"
+            value={searchImportRequestTerm}
+            onChange={handleImportRequestSearchChange}
             prefix={<SearchOutlined />}
             className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
           />

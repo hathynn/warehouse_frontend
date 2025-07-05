@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider, Steps } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -21,7 +21,6 @@ import {
   getDisabledTimeConfigForAction
 } from "@/utils/helpers";
 
-const { Title } = Typography;
 const { TextArea } = Input;
 
 // ==================== UTILITY FUNCTIONS ====================
@@ -528,7 +527,7 @@ const ImportOrderCreate = () => {
   // ==================== RENDER ====================
   return (
     <div className="container mx-auto p-3 pt-0">
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-2">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={() => step === 1 ? setStep(0) : navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId))}
@@ -537,11 +536,21 @@ const ImportOrderCreate = () => {
           Quay lại
         </Button>
       </div>
-      <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Tạo đơn nhập kho - {importRequest
-          ? `Phiếu nhập #${importRequest.importRequestId}`
-          : 'Chưa chọn phiếu nhập'}
-        </Title>
+      <div className="w-2/3 mx-auto">
+        <Steps
+          className="!mb-4"
+          current={step}
+          onChange={setStep}
+          items={[
+            {
+              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Nhập thông tin</span>,
+            },
+            {
+              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Xác nhận thông tin</span>,
+              disabled: editableRows.length === 0 || !isImportOrderDataValid || !isAllPagesViewed
+            }
+          ]}
+        />
       </div>
 
       {/* Step 1: Upload Excel + Editable Table */}
