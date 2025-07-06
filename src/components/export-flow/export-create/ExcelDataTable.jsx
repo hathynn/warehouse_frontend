@@ -380,7 +380,7 @@ const ExcelDataTable = ({
             >
               Tổng cộng có{" "}
               <span style={{ color: "red" }}>{removedItems.length}</span> sản
-              phẩm không xuất được (tồn kho bằng 0):
+              phẩm không xuất được (tồn kho bằng hoặc dưới mức khả dụng):
             </div>
             <div style={{ color: "#d32029", fontSize: "14px" }}>
               {removedItems.map((item, index) => (
@@ -395,8 +395,8 @@ const ExcelDataTable = ({
                 marginTop: 4,
                 fontSize: "14px",
                 fontStyle: "italic",
-                color: "red", // hoặc "#ff4d4f" để đồng bộ với Ant Design
-                fontWeight: "600", // hoặc "bold"
+                color: "red",
+                fontWeight: "600",
               }}
             >
               Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
@@ -459,22 +459,6 @@ const ExcelDataTable = ({
           },
         }}
       />
-      {/* <Table
-        columns={columns}
-        dataSource={data}
-        rowKey={(record) => String(record?.itemId)}
-        pagination={pagination}
-        onChange={onPaginationChange}
-        components={{
-          body: {
-            row: ({ children, ...restProps }) => (
-              <tr {...restProps} id={`row-${restProps["data-row-key"]}`}>
-                {children}
-              </tr>
-            ),
-          },
-        }}
-      /> */}
     </>
   );
 };

@@ -34,21 +34,6 @@ function getConsolidatedData(data = []) {
   return Object.values(grouped);
 }
 
-// // Tính rowSpan cho cell gộp (theo field, idx)
-// function calculateRowSpanForItemHaveSameCompareValue(data, field, idx) {
-//   if (!Array.isArray(data) || data.length === 0) return 1;
-//   const curValue = data[idx]?.[field];
-//   // Nếu không phải dòng đầu tiên của nhóm => rowSpan = 0 (ẩn)
-//   if (idx > 0 && data[idx - 1]?.[field] === curValue) return 0;
-//   // Đếm số dòng liên tiếp cùng value
-//   let rowSpan = 1;
-//   for (let i = idx + 1; i < data.length; ++i) {
-//     if (data[i][field] === curValue) rowSpan++;
-//     else break;
-//   }
-//   return rowSpan;
-// }
-
 const ExportRequestConfirmModal = ({
   open,
   onOk,
@@ -72,7 +57,7 @@ const ExportRequestConfirmModal = ({
       setConfirmChecked(false);
       resetScrollTracking();
     }
-  }, [open, resetScrollTracking]);
+  }, [open]);
 
   // Hàm lấy tên nhà cung cấp
   const getProviderName = (record, providers) => {
@@ -122,8 +107,8 @@ const ExportRequestConfirmModal = ({
     },
     {
       title: "Đơn vị tính",
-      dataIndex: "measurementUnit",
-      key: "measurementUnit",
+      dataIndex: "unitType",
+      key: "unitType",
     },
     {
       width: "18%",
