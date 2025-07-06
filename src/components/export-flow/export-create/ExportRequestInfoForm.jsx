@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Space, Card, Typography } from "antd";
+import { Button, Space, Card, Typography, Steps } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import UseExportForm from "@/components/export-flow/export-create/UseExportForm";
 import LoanExportForm from "@/components/export-flow/export-create/LoanExportForm";
@@ -30,6 +30,8 @@ const ExportRequestInfoForm = ({
   pagination,
   excelFormData,
   returnProviders = [],
+  allPagesViewed,
+  hasTableError,
 }) => {
   const [timeError, setTimeError] = useState("");
   const [mandatoryError, setMandatoryError] = useState("");
@@ -104,6 +106,36 @@ const ExportRequestInfoForm = ({
         >
           Quay lại
         </Button>
+      </div>
+
+      <div className="w-2/3 mx-auto">
+        <Steps
+          className="!mb-4"
+          current={1}
+          onChange={(clickedStep) => {
+            // Chỉ cho phép quay lại step 0
+            if (clickedStep === 0) {
+              setFileConfirmed(false);
+            }
+            // Step 1 luôn active vì đang ở step này
+          }}
+          items={[
+            {
+              title: (
+                <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                  Tải lên file Excel
+                </span>
+              ),
+            },
+            {
+              title: (
+                <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                  Xác nhận thông tin
+                </span>
+              ),
+            },
+          ]}
+        />
       </div>
 
       <div className="flex justify-between items-center mb-4">
@@ -263,8 +295,10 @@ ExportRequestInfoForm.propTypes = {
   items: PropTypes.array,
   providers: PropTypes.array,
   pagination: PropTypes.object,
-  excelFormData: PropTypes.object, // THÊM PROP TYPE CHO EXCEL DATA
-  returnProviders: PropTypes.array, // ✅ THÊM
+  excelFormData: PropTypes.object,
+  returnProviders: PropTypes.array,
+  allPagesViewed: PropTypes.bool,
+  hasTableError: PropTypes.bool,
 };
 
 export default ExportRequestInfoForm;

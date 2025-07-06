@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
-import { Button, Card, Alert, Modal } from "antd";
+import { Button, Card, Alert, Modal, Steps } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import moment from "moment";
@@ -960,7 +960,45 @@ const ExportRequestCreate = () => {
           />
 
           <Title level={2}>Tạo phiếu xuất</Title>
-
+          <div className="w-2/3 mx-auto">
+            <Steps
+              className="!mb-4"
+              current={0}
+              onChange={(clickedStep) => {
+                // Chỉ cho phép chuyển sang step 1 nếu đủ điều kiện
+                if (
+                  clickedStep === 1 &&
+                  data.length > 0 &&
+                  !validationError &&
+                  !hasTableError &&
+                  allPagesViewed
+                ) {
+                  setFileConfirmed(true);
+                }
+              }}
+              items={[
+                {
+                  title: (
+                    <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      Tải lên file Excel
+                    </span>
+                  ),
+                },
+                {
+                  title: (
+                    <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                      Xác nhận thông tin
+                    </span>
+                  ),
+                  disabled:
+                    data.length === 0 ||
+                    !!validationError ||
+                    hasTableError ||
+                    !allPagesViewed,
+                },
+              ]}
+            />
+          </div>
           <RequestTypeSelector
             requestType={formData.exportType}
             setRequestType={handleExportTypeChange}
@@ -1050,29 +1088,33 @@ const ExportRequestCreate = () => {
         </>
       ) : (
         // Form Input Step
-        <ExportRequestInfoForm
-          formData={formData}
-          setFormData={setFormData}
-          data={data}
-          mappedData={mappedData}
-          validationError={validationError}
-          handleSubmit={handleSubmit}
-          departmentModalVisible={departmentModalVisible}
-          setDepartmentModalVisible={setDepartmentModalVisible}
-          departments={departments}
-          setFileConfirmed={handleBackToFileStep}
-          fileName={fileName}
-          exportType={formData.exportType}
-          items={items.content || []}
-          providers={providers}
-          pagination={pagination}
-          excelFormData={excelFormData}
-          returnProviders={
-            returnImportData?.providerInfo
-              ? [returnImportData.providerInfo]
-              : []
-          } // ✅ THÊM
-        />
+        <>
+          <ExportRequestInfoForm
+            formData={formData}
+            setFormData={setFormData}
+            data={data}
+            mappedData={mappedData}
+            validationError={validationError}
+            handleSubmit={handleSubmit}
+            departmentModalVisible={departmentModalVisible}
+            setDepartmentModalVisible={setDepartmentModalVisible}
+            departments={departments}
+            setFileConfirmed={handleBackToFileStep}
+            fileName={fileName}
+            exportType={formData.exportType}
+            items={items.content || []}
+            providers={providers}
+            pagination={pagination}
+            excelFormData={excelFormData}
+            returnProviders={
+              returnImportData?.providerInfo
+                ? [returnImportData.providerInfo]
+                : []
+            }
+            allPagesViewed={allPagesViewed}
+            hasTableError={hasTableError}
+          />
+        </>
       )}
       {/* Department Selection Modal */}
       <DeparmentModal
@@ -1120,7 +1162,7 @@ const ExportRequestCreate = () => {
             <span style={{ color: "red" }}>
               {removedItemsNotification.items.length}
             </span>{" "}
-            sản phẩm không xuất được (tồn kho bằng 0):
+            sản phẩm không xuất được (tồn kho bằng hoặc dưới mức khả dụng):
           </div>
           <div
             style={{
