@@ -33,6 +33,7 @@ const INITIAL_FORM_DATA = {
   exportTime: null,
   exportReason: "",
   note: "",
+  inspectionDateTime: null,
   // Production fields
   receivingDepartment: null,
   departmentRepresentative: "",
@@ -622,7 +623,7 @@ const ExportRequestCreate = () => {
 
     return {
       countingDate: formData.exportDate,
-      countingTime: "12:00:00",
+      countingTime: "23:59:59",
       exportDate: formData.exportDate,
       importOrderId: returnImportData?.importOrderId || null, // ✅ THÊM importOrderId
       exportReason: formData.exportReason,
@@ -672,16 +673,38 @@ const ExportRequestCreate = () => {
     }
   };
 
-  const buildSellingPayload = () => ({
-    countingDate: formData.exportDate,
-    countingTime: "12:00:00",
-    exportDate: formData.exportDate,
-    exportReason: formData.exportReason,
-    receiverName: formData.receiverName,
-    receiverPhone: formData.receiverPhone,
-    receiverAddress: formData.receiverAddress,
-    type: "SELLING",
-  });
+  // const buildSellingPayload = () => ({
+  //   countingDate: formData.exportDate,
+  //   countingTime: "12:00:00",
+  //   exportDate: formData.exportDate,
+  //   exportReason: formData.exportReason,
+  //   receiverName: formData.receiverName,
+  //   receiverPhone: formData.receiverPhone,
+  //   receiverAddress: formData.receiverAddress,
+  //   type: "SELLING",
+  // });
+  const buildSellingPayload = () => {
+    let countingDate = formData.exportDate;
+    let countingTime = "12:00:00";
+
+    // Nếu có inspectionDateTime, cắt chuỗi để lấy ngày và giờ
+    if (formData.inspectionDateTime) {
+      const [datePart, timePart] = formData.inspectionDateTime.split(" ");
+      countingDate = datePart;
+      countingTime = timePart;
+    }
+
+    return {
+      countingDate: countingDate,
+      countingTime: countingTime,
+      exportDate: formData.exportDate,
+      exportReason: formData.exportReason,
+      receiverName: formData.receiverName,
+      receiverPhone: formData.receiverPhone,
+      receiverAddress: formData.receiverAddress,
+      type: "SELLING",
+    };
+  };
 
   const validateFormData = () => {
     // Common validation
@@ -908,9 +931,7 @@ const ExportRequestCreate = () => {
     }
   };
 
-  // ✅ SỬA: handleReturnImportConfirm function
   const handleReturnImportConfirm = (data) => {
-    // ✅ UPDATE returnImportData với đầy đủ thông tin
     setReturnImportData({
       ...data,
       selectedItems: data.selectedItems.map((item) => ({
@@ -944,10 +965,10 @@ const ExportRequestCreate = () => {
       items: removedItems,
     });
 
-    // Tự động đóng sau 15 giây
+    // Tự động đóng sau 2 phút 30 giây
     setTimeout(() => {
       setRemovedItemsNotification((prev) => ({ ...prev, visible: false }));
-    }, 15000);
+    }, 150000);
   };
 
   return (

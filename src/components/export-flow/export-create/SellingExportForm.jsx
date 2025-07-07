@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Input, DatePicker } from "antd";
+import { Input, DatePicker, ConfigProvider } from "antd";
 import PropTypes from "prop-types";
 import dayjs from "dayjs";
 import useConfigurationService from "@/services/useConfigurationService"; // Cập nhật đường dẫn cho đúng
+import "dayjs/locale/vi";
+import locale from "antd/es/date-picker/locale/vi_VN";
 
 const SellingExportForm = ({
   formData,
@@ -31,10 +33,6 @@ const SellingExportForm = ({
             workingTimeStart: config.workingTimeStart,
             workingTimeEnd: config.workingTimeEnd,
           });
-          console.log("Working time config:", {
-            start: config.workingTimeStart,
-            end: config.workingTimeEnd,
-          });
         }
       } catch (error) {
         console.error("Error fetching configuration:", error);
@@ -45,13 +43,9 @@ const SellingExportForm = ({
   }, []);
 
   useEffect(() => {
-    // CHỈ AUTO-FILL 1 LẦN DUY NHẤT KHI CÓ EXCEL DATA VÀ CHƯA AUTO-FILL
     if (excelFormData && !hasAutoFilled) {
-      console.log("Auto-filling from Excel data:", excelFormData);
-
       setFormData((prev) => ({
         ...prev,
-        // CHỈ FILL NỀU FIELD ĐANG TRỐNG
         exportReason: prev.exportReason || excelFormData.exportReason || "",
         receiverName: prev.receiverName || excelFormData.receiverName || "",
         receiverPhone: prev.receiverPhone || excelFormData.receiverPhone || "",
@@ -61,9 +55,8 @@ const SellingExportForm = ({
 
       setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
     }
-  }, [excelFormData, hasAutoFilled]); // BỎ setFormData khỏi dependency
+  }, [excelFormData, hasAutoFilled]);
 
-  // RESET FLAG KHI EXPORT TYPE THAY ĐỔI
   useEffect(() => {
     setHasAutoFilled(false);
   }, [formData.exportType]);
@@ -152,15 +145,21 @@ const SellingExportForm = ({
     }
 
     // Trả về ngày (không tính giờ phút)
-    return calculationTime.startOf("day");
+    return calculationTime;
   };
 
   // Disable các ngày trước ngày xuất sớm nhất được phép
+  // const getDisabledDate = (current) => {
+  //   if (!current) return false;
+
+  //   const minExportDate = calculateMinExportDate();
+  //   return current.isBefore(minExportDate);
+  // };
   const getDisabledDate = (current) => {
     if (!current) return false;
 
     const minExportDate = calculateMinExportDate();
-    return current.isBefore(minExportDate);
+    return current.isBefore(minExportDate.startOf("day")); // So sánh theo ngày, bỏ qua giờ
   };
 
   return (
@@ -176,33 +175,68 @@ const SellingExportForm = ({
         </div>
       )}
 
-      {/* Ngày xuất */}
-      <div className="mb-4">
-        <label className="block mb-1">
-          Ngày xuất <span className="text-red-500">*</span>
-        </label>
-        <DatePicker
-          format="DD-MM-YYYY"
-          value={formData.exportDate ? dayjs(formData.exportDate) : null}
-          onChange={(date) => {
-            const newDate = date?.isValid() ? date.format("YYYY-MM-DD") : null;
-            setFormData({
-              ...formData,
-              exportDate: newDate,
-            });
-            setMandatoryError("");
-          }}
-          className="w-full"
-          allowClear
-          placeholder="Chọn ngày xuất"
-          disabledDate={getDisabledDate}
-        />
-        {!formData.exportDate && (
-          <div className="text-red-500 text-xs mt-1">
-            Vui lòng chọn ngày xuất (tối thiểu sau 24h kiểm đếm trong giờ hành
-            chính).
+      {/* Ngày xuất và Hạn kiểm đếm dự kiến */}
+      <div className="mb-4 flex gap-4">
+        {/* Ngày xuất */}
+        <div className="w-1/2">
+          <label className="block mb-1">
+            Ngày xuất <span className="text-red-500">*</span>
+          </label>
+
+          <ConfigProvider>
+            <div dir="rtl">
+              <DatePicker
+                locale={locale}
+                format="DD-MM-YYYY"
+                size="large"
+                value={formData.exportDate ? dayjs(formData.exportDate) : null}
+                onChange={(date) => {
+                  const newDate = date?.isValid()
+                    ? date.format("YYYY-MM-DD")
+                    : null;
+
+                  // Tính toán hạn kiểm đếm dự kiến và lưu vào formData
+                  const inspectionDateTime = newDate
+                    ? calculateMinExportDate()
+                    : null;
+
+                  setFormData({
+                    ...formData,
+                    exportDate: newDate,
+                    inspectionDateTime: inspectionDateTime
+                      ? inspectionDateTime.format("YYYY-MM-DD HH:mm:ss")
+                      : null,
+                  });
+                  setMandatoryError("");
+                }}
+                className="w-full !mt-1 !p-[4px_8px]"
+                allowClear
+                placeholder="Chọn ngày xuất"
+                disabledDate={getDisabledDate}
+              />
+            </div>
+          </ConfigProvider>
+          {!formData.exportDate && (
+            <div className="text-red-500 text-xs mt-1">
+              Vui lòng chọn ngày xuất tối thiểu sau 24h kiểm đếm trong giờ hành
+              chính.
+            </div>
+          )}
+        </div>
+
+        {/* Hạn kiểm đếm dự kiến */}
+        <div className="w-1/2">
+          <label className="block mb-1">Hạn kiểm đếm dự kiến</label>
+          <div>
+            <Input
+              value={calculateMinExportDate().format("DD-MM-YYYY HH:mm")}
+              placeholder="Hạn kiểm đếm dự kiến"
+              disabled
+              size="large"
+              className="w-full bg-gray-50 text-right"
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Lí do xuất */}
@@ -268,11 +302,18 @@ const SellingExportForm = ({
           }
           className="w-full"
         />
-        {!formData.receiverPhone && (
+        {formData.receiverPhone === "" && (
           <div className="text-red-500 text-xs mt-1">
             Vui lòng nhập số điện thoại người nhận.
           </div>
         )}
+        {formData.receiverPhone &&
+          !/^(\+84|0)(3|5|7|8|9)\d{8}$/.test(formData.receiverPhone) && (
+            <div className="text-red-500 text-xs mt-1">
+              Số điện thoại không hợp lệ. Vui lòng nhập theo dạng +84xxxxxxxxx
+              hoặc 0xxxxxxxxx.
+            </div>
+          )}
       </div>
 
       {/* Địa chỉ người nhận */}
@@ -304,6 +345,7 @@ SellingExportForm.propTypes = {
     receiverPhone: PropTypes.string,
     receiverAddress: PropTypes.string,
     exportType: PropTypes.string,
+    inspectionDateTime: PropTypes.string,
   }).isRequired,
   setFormData: PropTypes.func.isRequired,
   mandatoryError: PropTypes.string,
