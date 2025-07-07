@@ -407,12 +407,8 @@ const ImportOrderDetail = () => {
   };
 
   // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
-  const handleUpdateInventoryItemLocation = async () => {
-    const requests: UpdateInventoryLocationRequest[] = inventoryItemsData.map(inventoryItem => ({
-      inventoryItemId: inventoryItem.id,
-      storedLocationId: inventoryItem.storedLocationId
-    }));
-    await updateStoredLocation(requests);
+  const handleUpdateInventoryItemLocation = async (changedInventoryItems: { inventoryItemId: string; storedLocationId: number; }[]) => {
+    await updateStoredLocation(changedInventoryItems);
     await fetchImportOrderData();
     await fetchImportOrderDetails();
     await fetchInventoryItemsData();
@@ -1045,7 +1041,7 @@ const ImportOrderDetail = () => {
       </Modal>
 
       <UpdateInventoryItemLocationModal
-        loading={storedLocationLoading} 
+        loading={storedLocationLoading || inventoryItemLoading}
         importOrder={importOrderData}
         inventoryItems={inventoryItemsData}
         storedLocationData={storedLocationData}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button, Table, Tag, Card, Space, Checkbox, InputNumber, Radio } from 'antd';
-import { EditOutlined, CheckOutlined } from '@ant-design/icons';
+import { EditOutlined, CheckOutlined, WarningOutlined } from '@ant-design/icons';
 import { InventoryItemResponse, UpdateInventoryLocationRequest } from '@/services/useInventoryItemService';
 import { StoredLocationResponse } from '@/services/useStoredLocationService';
 import { ImportOrderResponse } from '@/services/useImportOrderService';
@@ -16,7 +16,7 @@ interface UpdateInventoryItemLocationModalProps {
   onClose: () => void;
   onReadyToStoreConfirm: () => Promise<void>;
   onUpdateInventoryItemsLocation: (updatedItems: InventoryItemResponse[]) => void;
-  onUpdateInventoryItemsLocationConfirm: () => Promise<void>;
+  onUpdateInventoryItemsLocationConfirm: (changedItems: { inventoryItemId: string; storedLocationId: number }[]) => Promise<void>;
 }
 
 const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModalProps> = (
@@ -345,12 +345,19 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   ];
 
   const handleOnReadyToStoreConfirm = async () => {
-    await onReadyToStoreConfirm();
     onClose();
+    await onReadyToStoreConfirm();
+    setReadyToStoreConfirmModalOpen(false);
   }
   
   const handleOnUpdateInventoryItemsLocationConfirm = async () => {
-    await onUpdateInventoryItemsLocationConfirm();
+    // Tạo danh sách các inventory item đã thay đổi vị trí
+    const changedInventoryItems = getChangedInventoryItems();
+    // Chỉ gọi API nếu có thay đổi
+    if (changedInventoryItems.length > 0) {
+      await onUpdateInventoryItemsLocationConfirm(changedInventoryItems);
+    }
+    
     setInventoryItemsLocationConfirmModalOpen(false);
     setInventoryItemsLocationResponsibilityChecked(false);
     setSelectedImportOrderDetail(null);
@@ -476,8 +483,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     }
     // Đóng modal và reset state
     handleTransferLocationModalClose();
-
-    console.log(`Đã ${operationType === 'add' ? 'thêm' : 'lấy ra'} ${transferQuantity} sản phẩm ${highlightedItemId} ${operationType === 'add' ? 'vào' : 'khỏi'} vị trí ${selectedLocation.zone}-${selectedLocation.floor}-${selectedLocation.row}-${selectedLocation.line}`);
   };
 
   // Tính số lượng có thể thêm vào hoặc lấy ra
@@ -501,6 +506,42 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     }
   };
 
+  // Hàm lấy danh sách các inventory item đã thay đổi vị trí
+  const getChangedInventoryItems = () => {
+    if (inventoryItemsBeforeUpdate.length === 0) return [];
+
+    // Tạo map để tra cứu nhanh trạng thái ban đầu
+    const beforeUpdateMap = new Map(
+      inventoryItemsBeforeUpdate.map(item => [item.id, item.storedLocationId])
+    );
+
+    // Tìm các inventory item có thay đổi vị trí
+    const changedItems = inventoryItems.filter(currentItem => {
+      const originalLocationId = beforeUpdateMap.get(currentItem.id);
+      const currentLocationId = currentItem.storedLocationId;
+      
+      // Kiểm tra xem có thay đổi vị trí không
+      // Trường hợp 1: Từ không có vị trí -> có vị trí
+      // Trường hợp 2: Từ có vị trí -> không có vị trí  
+      // Trường hợp 3: Thay đổi từ vị trí này sang vị trí khác
+      return originalLocationId !== currentLocationId;
+    });
+
+    // Chuyển đổi sang format mà backend API cần
+    return changedItems
+      .filter(item => item.storedLocationId) // Chỉ lấy các item có vị trí mới
+      .map(item => ({
+        inventoryItemId: item.id,
+        storedLocationId: item.storedLocationId
+      }));
+  };
+
+  // Hàm kiểm tra xem sản phẩm đang được highlight có còn inventory items chưa có vị trí không
+  const hasUnpositionedItemsForHighlighted = () => {
+    const quantities = getInventoryQuantityByItemId(highlightedItemId);
+    return quantities.unpositioned > 0;
+  };
+
   return (
     <>
       <Modal
@@ -509,16 +550,23 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
             <h3 className="text-xl font-bold text-blue-900">Đợt nhập #{importOrder?.importOrderId}</h3>
             <p className="text-sm text-gray-600 mt-1">Cập nhật số lượng sản phẩm trong các vị trí lưu trữ</p>
             {highlightedItemId && (
-              <div className="mt-2 p-2 bg-orange-100 rounded-md border border-orange-300">
-                <p className="text-sm font-medium text-orange-800">
+              <div className="mt-2 p-2 bg-orange-50 rounded-md border border-orange-300">
+                <p className="text-sm font-medium text-blue-800">
                   Chọn vị trí để cập nhật số lượng: <span className="font-bold">#{highlightedItemId}</span>
                 </p>
-                <button
+                {hasUnpositionedItemsForHighlighted() && (
+                  <p className="text-sm mt-1 font-medium text-orange-800">
+                    <WarningOutlined /> <span className="font-bold">CÒN SẢN PHẨM CHƯA CÓ VỊ TRÍ LƯU KHO</span>
+                  </p>
+                )}
+                <Button
+                  type="primary"
                   onClick={handleInventoryItemsLocationConfirm}
-                  className="text-xs text-orange-600 hover:text-orange-800 underline mt-1 font-medium"
+                  disabled={hasUnpositionedItemsForHighlighted() || getChangedInventoryItems().length === 0}
+                  className="text-xs text-orange-600 hover:text-orange-800 mt-1 font-medium"
                 >
-                  Xác nhận đã chọn xong
-                </button>
+                  Xác nhận vị trí #{highlightedItemId}
+                </Button>
               </div>
             )}
           </div>
@@ -533,7 +581,8 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
           <Button
             key="confirm"
             type="primary"
-            onClick={handleOnUpdateInventoryItemsLocationConfirm}
+            onClick={handleReadyToStoreConfirm}
+            disabled={highlightedItemId !== null}
           >
             Xác nhận vị trí lưu kho
           </Button>
@@ -640,11 +689,11 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
         </div>
       </Modal>
 
-      {/* Modal xác nhận */}
+      {/* Modal xác nhận vị trí lưu kho */}
       <Modal
         title={
           <div className="text-center">
-            <h3 className="text-lg font-bold">Xác nhận vị trí lưu kho</h3>
+            <h3 className="text-lg font-bold">Tiến hành xác nhận vị trí lưu kho</h3>
           </div>
         }
         open={readyToStoreConfirmModalOpen}
@@ -676,18 +725,18 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
               disabled={loading}
             >
               <span className='font-bold'>
-                Tôi đã kiểm tra kỹ và xác nhận các vị trí lưu kho.
+                Tôi đã kiểm tra kỹ và xác nhận các vị trí lưu kho là đúng.
               </span>
             </Checkbox>
           </div>
         </div>
       </Modal>
 
-      {/* Modal xác nhận đã chọn xong */}
+      {/* Modal xác nhận cập nhật vị trí sản phẩm */}
       <Modal
         title={
           <div className="text-center">
-            <h3 className="text-lg font-bold">Xác nhận đã chọn xong</h3>
+            <h3 className="text-lg font-bold">Thực hiện cập nhật vị trí cho #{highlightedItemId}</h3>
           </div>
         }
         open={inventoryItemsLocationConfirmModalOpen}
@@ -703,10 +752,10 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
             loading={loading}
             onClick={handleOnUpdateInventoryItemsLocationConfirm}
           >
-            Tôi xác nhận đã chọn xong
+            Tôi xác nhận cập nhật vị trí cho #{highlightedItemId}
           </Button>
         ]}
-        width={500}
+        width={540}
         centered
         maskClosable={!loading}
       >
@@ -719,7 +768,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
               disabled={loading}
             >
               <span className='font-bold'>
-                Tôi đã hoàn thành việc cập nhật vị trí cho sản phẩm #{highlightedItemId}.
+                Tôi đã kiểm tra kĩ và xác nhận cập nhật vị trí cho #{highlightedItemId}.
               </span>
             </Checkbox>
           </div>
@@ -773,12 +822,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
               <p className="text-sm">
                 <span className="font-medium">Mã sản phẩm:</span> #{highlightedItemId}
               </p>
-              {/* <div className="text-sm mt-1">
-                <span className="font-medium">Trạng thái: </span>
-                <span className="text-green-600">{getInventoryQuantityByItemId(highlightedItemId).positioned} đã có vị trí</span>
-                {' / '}
-                <span className="text-orange-600">{getInventoryQuantityByItemId(highlightedItemId).unpositioned} chưa có vị trí</span>
-              </div> */}
             </div>
           )}
 
