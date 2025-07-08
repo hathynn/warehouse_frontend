@@ -87,6 +87,72 @@ const FileUploadSection = ({
       // Thêm sheets vào workbook - Dữ liệu xuất bán lên đầu, Hướng dẫn thứ 2
       XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất bán");
       XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
+    } else if (exportType === "PRODUCTION") {
+      // Tạo sheet dữ liệu xuất sản xuất với thông tin form ở đầu
+      const exportData = [
+        // 3 dòng đầu chứa thông tin form
+        ["exportType", "PRODUCTION"],
+        ["exportReason", "{Điền lý do xuất sản xuất}"],
+        ["departmentId", "{Điền mã phòng ban}"],
+        [], // Dòng trống
+        [], // Dòng trống
+        // Header cho dữ liệu sản phẩm
+        ["itemId", "measurementValue"],
+        ["Mã sản phẩm", "Giá trị đo lường"],
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
+
+      // Set độ rộng cột
+      ws["!cols"] = [
+        { wch: 20 }, // Cột A - rộng hơn cho thông tin form
+        { wch: 25 }, // Cột B - rộng hơn cho nội dung form
+      ];
+
+      // Merge cells cho phần header thông tin form (optional - để đẹp hơn)
+      ws["!merges"] = [
+        { s: { r: 0, c: 2 }, e: { r: 2, c: 2 } }, // Merge cột C từ dòng 1-3
+      ];
+
+      // Thêm ghi chú/hướng dẫn
+      const instructionWs = XLSX.utils.aoa_to_sheet([
+        ["HƯỚNG DẪN SỬ DỤNG FILE TEMPLATE XUẤT SẢN XUẤT"],
+        [""],
+        ["PHẦN 1: THÔNG TIN PHIẾU XUẤT (3 dòng đầu)"],
+        ["'- exportType: Loại xuất (PRODUCTION - không thay đổi)"],
+        [
+          "'- exportReason: Lý do xuất sản xuất (ví dụ: Sản xuất áo thun, Gia công...)",
+        ],
+        ["'- departmentId: Mã phòng ban sản xuất"],
+        [""],
+        ["PHẦN 2: DANH SÁCH SẢN PHẨM (từ dòng 7)"],
+        ["'- itemId: Mã sản phẩm cần xuất"],
+        ["'- measurementValue: Giá trị đo lường theo đơn vị của sản phẩm"],
+        [""],
+        ["LƯU Ý VỀ MEASUREMENT VALUE:"],
+        [
+          "'- Khác với quantity (số lượng), measurementValue tính theo đơn vị đo",
+        ],
+        ["'- Ví dụ: Vải sẽ tính theo mét (m), ..."],
+        [
+          "'- Giá trị đo lường (measurementValue) phải là số dương (có thể là số thập phân)",
+        ],
+        [""],
+        ["LƯU Ý QUAN TRỌNG:"],
+        ["'- Không thay đổi vị trí và tên các trường ở 3 dòng đầu"],
+        ["'- Không thay đổi tên các cột ở dòng 6"],
+        ["'- Mã sản phẩm phải tồn tại trong hệ thống"],
+        ["'- departmentId phải là mã phòng ban hợp lệ, là số nguyên"],
+        ["'- measurementValue phải phù hợp với đơn vị của sản phẩm"],
+        ["'- Bắt đầu nhập dữ liệu sản phẩm từ dòng 7"],
+      ]);
+
+      // Set độ rộng cho sheet hướng dẫn
+      instructionWs["!cols"] = [{ wch: 70 }];
+
+      // Thêm sheets vào workbook - Dữ liệu xuất sản xuất lên đầu, Hướng dẫn thứ 2
+      XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất sản xuất");
+      XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
     } else if (exportType === "RETURN") {
       template = [
         {
