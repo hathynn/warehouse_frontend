@@ -29,7 +29,6 @@ const ProductDetailTable = ({
   creating,
   onCancelCreateExport,
   onConfirmCreateExport,
-  setRecountModalVisible, // Thêm prop mới
 }) => {
   const lastValidValuesRef = useRef({});
   const itemStatus = getItemStatus(allExportRequestDetails);
@@ -59,12 +58,7 @@ const ProductDetailTable = ({
               error = "Phải ≤ " + item.actualQuantity;
             } else {
               // ✅ Nếu giá trị hợp lệ, lưu vào ref
-              console.log(`Saving valid value ${value} for item ${recordId}`);
               lastValidValuesRef.current[recordId] = value;
-              console.log(
-                "Updated lastValidValues:",
-                lastValidValuesRef.current
-              );
             }
           }
 
@@ -87,15 +81,6 @@ const ProductDetailTable = ({
             item.quantity <= 0 ||
             item.quantity > item.actualQuantity
           ) {
-            // Debug log
-            console.log("Invalid value detected for item:", recordId);
-            console.log("Current quantity:", item.quantity);
-            console.log(
-              "Last valid value:",
-              lastValidValuesRef.current[recordId]
-            );
-            console.log("Actual quantity:", item.actualQuantity);
-
             // Khôi phục về lastValidValue nếu có, nếu không thì về actualQuantity
             const restoreValue =
               lastValidValuesRef.current[recordId] || item.actualQuantity;
@@ -103,10 +88,9 @@ const ProductDetailTable = ({
             return {
               ...item,
               quantity: restoreValue,
-              error: "", // Xóa lỗi khi khôi phục giá trị
+              error: "",
             };
           }
-          // Nếu giá trị hợp lệ, giữ nguyên
           return item;
         }
         return item;
@@ -175,7 +159,7 @@ const ProductDetailTable = ({
                   max={record.actualQuantity}
                   value={record.quantity}
                   onChange={(val) => handleQuantityChange(val, record.id)}
-                  onBlur={() => handleInputBlur(record.id)} // ✅ THÊM: onBlur handler
+                  onBlur={() => handleInputBlur(record.id)}
                   style={{ width: 100 }}
                 />
                 {record.error && (
@@ -216,13 +200,6 @@ const ProductDetailTable = ({
                 onClick={() => setConfirmModalVisible(true)}
               >
                 Xác nhận số lượng đã đóng gói
-              </Button>
-              <Button
-                danger
-                className="ml-4"
-                onClick={() => setRecountModalVisible(true)}
-              >
-                Yêu cầu kiểm đếm lại
               </Button>
             </>
           )}
@@ -436,7 +413,6 @@ ProductDetailTable.propTypes = {
   creating: PropTypes.bool,
   onCancelCreateExport: PropTypes.func,
   onConfirmCreateExport: PropTypes.func,
-  setRecountModalVisible: PropTypes.func,
 };
 
 export default ProductDetailTable;
