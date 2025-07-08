@@ -263,18 +263,40 @@ const ExcelDataTable = ({
       width: "9%",
       render: (text, record) => <QuantityInput record={record} />,
     },
-    {
-      width: "12%",
-      title: <span className="font-semibold">Đơn vị tính</span>,
-      dataIndex: "unitType",
-      key: "unitType",
-      onHeaderCell: () => ({
-        style: { textAlign: "center" },
-      }),
-      render: (text) => (
-        <span style={{ display: "block", textAlign: "center" }}>{text}</span>
-      ),
-    },
+    ["SELLING"].includes(exportType)
+      ? {
+          width: "12%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "unitType",
+          key: "unitType",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (text) => (
+            <span style={{ display: "block", textAlign: "center" }}>
+              {text}
+            </span>
+          ),
+        }
+      : null,
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+      ? {
+          width: "12%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "unitType",
+          key: "unitType",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (_, record) => {
+            return (
+              <span style={{ display: "block", textAlign: "center" }}>
+                {record.measurementUnit}
+              </span>
+            );
+          },
+        }
+      : null,
     {
       width: "18%",
       title: <span className="font-semibold">Quy cách</span>,
@@ -293,14 +315,6 @@ const ExcelDataTable = ({
         );
       },
     },
-    // Điều kiện column Quy cách
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
-      ? {
-          title: "Quy cách",
-          dataIndex: "measurementValue",
-          key: "measurementValue",
-        }
-      : null,
     // Điều kiện column Nhà cung cấp
     exportType === "RETURN"
       ? {

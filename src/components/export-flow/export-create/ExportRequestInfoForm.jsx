@@ -123,7 +123,9 @@ const ExportRequestInfoForm = ({
             {
               title: (
                 <span style={{ fontSize: "20px", fontWeight: "bold" }}>
-                  Tải lên file Excel
+                  {formData.exportType === "RETURN"
+                    ? "Chọn đơn nhập"
+                    : "Tải lên file Excel"}
                 </span>
               ),
             },

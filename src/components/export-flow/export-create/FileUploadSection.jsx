@@ -113,9 +113,9 @@ const FileUploadSection = ({
     const fileNames = {
       RETURN: "template_xuat_tra_NCC.xlsx",
       SELLING: "template_xuat_ban.xlsx",
-      PRODUCTION: "export_production_template.xlsx",
-      BORROWING: "export_borrowing_template.xlsx",
-      LIQUIDATION: "export_liquidation_template.xlsx",
+      PRODUCTION: "template_xuat_san_xuat.xlsx",
+      BORROWING: "template_xuat_muon.xlsx",
+      LIQUIDATION: "template_xuat_thanh_ly.xlsx",
     };
 
     const fileName = fileNames[exportType] || "export_request_template.xlsx";
