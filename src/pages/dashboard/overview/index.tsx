@@ -284,7 +284,7 @@ const SummaryOverview = () => {
         </div>
       </div>
 
-      <div className="mt-8 bg-white p-4 rounded-lg shadow-sm">
+      {/* <div className="mt-8 bg-white p-4 rounded-lg shadow-sm">
         <Title level={5} className="mb-3">
           Thao tác nhanh
         </Title>
@@ -299,7 +299,7 @@ const SummaryOverview = () => {
             Kiểm tra tồn kho
           </button>
         </Space>
-      </div>
+      </div> */}
     </div>
   );
 };
