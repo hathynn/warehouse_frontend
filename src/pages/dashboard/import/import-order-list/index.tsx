@@ -38,7 +38,7 @@ const ImportOrderList: React.FC = () => {
   // ========== FILTER CONTEXT ==========
   const { filterState, updateFilter } = useImportOrderFilter();
   const {
-    searchImportRequestTerm,
+    selectedImportRequest,
     searchImportOrderTerm,
     selectedStatusFilter,
     selectedStaff,
@@ -94,7 +94,8 @@ const ImportOrderList: React.FC = () => {
 
   // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importOrdersData.filter((importOrder) => {
-    const matchesImportRequestSearch = importOrder.importRequestId.toString().toLowerCase().includes(searchImportRequestTerm.toLowerCase());
+    const matchesImportRequestSearch = selectedImportRequest.length > 0 ?
+      selectedImportRequest.includes(importOrder.importRequestId.toString()) : true;
     const matchesImportOrderSearch = importOrder.importOrderId.toString().toLowerCase().includes(searchImportOrderTerm.toLowerCase());
 
     // Filter by assigned staff
@@ -220,7 +221,7 @@ const ImportOrderList: React.FC = () => {
 
   // ========== EVENT HANDLERS ==========
   const handleImportRequestSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    updateFilter({ searchImportRequestTerm: e.target.value });
+    updateFilter({ selectedImportRequest: [e.target.value] });
   };
 
   const handleImportOrderSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -466,18 +467,31 @@ const ImportOrderList: React.FC = () => {
             className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
           />
         </div>
-        <div className="min-w-[240px]">
-          <Input
-            placeholder="Tìm theo mã phiếu nhập"
-            value={searchImportRequestTerm}
-            onChange={handleImportRequestSearchChange}
-            prefix={<SearchOutlined />}
-            className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
-          />
-        </div>
         <Select
           mode="multiple"
-          placeholder="Nhân viên được phân công"
+          allowClear
+          placeholder="Tìm theo mã phiếu nhập"
+          value={selectedImportRequest}
+          onChange={(value) => updateFilter({
+            selectedImportRequest: value,
+            pagination: { ...pagination, current: 1 }
+          })}
+          className="min-w-[240px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
+          options={importOrdersData.map(order => ({
+            label: order.importRequestId.toString(),
+            value: order.importRequestId.toString()
+          }))}
+          filterOption={(input, option) =>
+            option?.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          dropdownStyle={{ 
+            maxHeight: '240px', 
+          }}
+          listHeight={160}
+        />
+        <Select
+          mode="multiple"
+          placeholder="Tìm theo nhân viên được phân công"
           className="min-w-[300px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
           value={selectedStaff}
           onChange={(value) => updateFilter({ selectedStaff: value })}
@@ -487,6 +501,13 @@ const ImportOrderList: React.FC = () => {
             label: staff.fullName,
             value: staff.id.toString()
           }))}
+          filterOption={(input, option) =>
+            option?.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
+          }
+          dropdownStyle={{ 
+            maxHeight: '240px', 
+          }}
+          listHeight={160}
         />
       </div>
 

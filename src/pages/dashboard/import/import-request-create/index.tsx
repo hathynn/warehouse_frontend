@@ -561,35 +561,31 @@ const ImportRequestCreate: React.FC = () => {
               <div className="flex gap-6 mb-4">
                 <div className="mb-2 w-1/2">
                   <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
-                  <ConfigProvider direction="rtl">
-                    <DatePicker
-                      locale={locale}
-                      format="DD-MM-YYYY"
-                      size="large"
-                      className="w-full !mt-1 !p-[4px_8px]"
-                      value={formData.startDate ? dayjs(formData.startDate) : null}
-                      disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
-                      onChange={handleStartDateChange}
-                      placeholder="Chọn ngày"
-                      allowClear
-                    />
-                  </ConfigProvider>
+                  <DatePicker
+                    locale={locale}
+                    format="DD-MM-YYYY"
+                    size="large"
+                    className="w-full !mt-1 !p-[4px_8px]"
+                    value={formData.startDate ? dayjs(formData.startDate) : null}
+                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                    onChange={handleStartDateChange}
+                    placeholder="Chọn ngày"
+                    allowClear
+                  />
                 </div>
                 <div className="mb-2 w-1/2">
                   <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
-                  <ConfigProvider direction="rtl">
-                    <DatePicker
-                      locale={locale}
-                      format="DD-MM-YYYY"
-                      size="large"
-                      className="w-full !mt-1 !p-[4px_8px]"
-                      value={formData.endDate ? dayjs(formData.endDate) : null}
-                      disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
-                      onChange={handleEndDateChange}
-                      placeholder="Chọn ngày"
-                      allowClear
-                    />
-                  </ConfigProvider>
+                  <DatePicker
+                    locale={locale}
+                    format="DD-MM-YYYY"
+                    size="large"
+                    className="w-full !mt-1 !p-[4px_8px]"
+                    value={formData.endDate ? dayjs(formData.endDate) : null}
+                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                    onChange={handleEndDateChange}
+                    placeholder="Chọn ngày"
+                    allowClear
+                  />
                 </div>
               </div>
               <div className="mb-4">

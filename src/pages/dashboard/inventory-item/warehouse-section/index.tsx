@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Select, Card, Typography } from 'antd';
+import { Select, Card, Typography, Row, Col } from 'antd';
 import useStoredLocationService, { StoredLocationResponse } from '@/services/useStoredLocationService';
 import useItemService, { ItemResponse } from '@/services/useItemService';
+import useInventoryItemService, { InventoryItemResponse } from '@/services/useInventoryItemService';
 
 const { Title } = Typography;
 
 const WarehouseSection: React.FC = () => {
   const [highlightedItemIds, setHighlightedItemIds] = useState<string[]>([]);
+  const [highlightedInventoryItemIds, setHighlightedInventoryItemIds] = useState<string[]>([]);
   const [storedLocationData, setStoredLocationData] = useState<StoredLocationResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItemResponse[]>([]);
 
   const { getAllStoredLocations, loading: storedLocationLoading } = useStoredLocationService();
   const { getItems, loading: itemsLoading } = useItemService();
+  const { getAllInventoryItems, loading: inventoryItemsLoading } = useInventoryItemService();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,6 +26,10 @@ const WarehouseSection: React.FC = () => {
       const itemsResponse = await getItems();
       if (itemsResponse?.content) {
         setItems(itemsResponse.content);
+      }
+      const inventoryItemsResponse = await getAllInventoryItems();
+      if (inventoryItemsResponse?.content) {
+        setInventoryItems(inventoryItemsResponse.content);
       }
     };
     fetchData();
@@ -53,27 +61,45 @@ const WarehouseSection: React.FC = () => {
   const getCellColor = (location: StoredLocationResponse | undefined) => {
     if (!location) return 'bg-gray-300';
 
-    const isHighlighted = highlightedItemIds.length > 0 && location.itemId && highlightedItemIds.includes(location.itemId);
+    // Check if this location should be highlighted (either by item search or inventory id search)
+    const isHighlightedByItemSearch = highlightedItemIds.length > 0 && location.itemId && highlightedItemIds.includes(location.itemId);
+    const isHighlightedByInventorySearch = highlightedInventoryItemIds.length > 0 && location.inventoryItemIds && highlightedInventoryItemIds.some(id => location.inventoryItemIds.includes(id));
 
     if (location.isDoor == true) {
-      return isHighlighted ?
-        'bg-yellow-400 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600' :
-        'bg-yellow-400';
+      if (isHighlightedByInventorySearch) {
+        return 'bg-yellow-400 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600';
+      }
+      if (isHighlightedByItemSearch) {
+        return 'bg-yellow-400 ring-8 ring-yellow-500 ring-opacity-90 shadow-2xl shadow-yellow-400 transform scale-110 z-10 relative border-2 border-yellow-600';
+      }
+      return 'bg-yellow-400';
     }
     if (location.isRoad == true) {
-      return isHighlighted ?
-        'bg-blue-200 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600' :
-        'bg-blue-200';
+      if (isHighlightedByInventorySearch) {
+        return 'bg-blue-200 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600';
+      }
+      if (isHighlightedByItemSearch) {
+        return 'bg-blue-200 ring-8 ring-yellow-500 ring-opacity-90 shadow-2xl shadow-yellow-400 transform scale-110 z-10 relative border-2 border-yellow-600';
+      }
+      return 'bg-blue-200';
     }
     if (location.currentCapacity > 0) {
-      return isHighlighted ?
-        'bg-green-300 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600' :
-        'bg-green-300';
+      if (isHighlightedByInventorySearch) {
+        return 'bg-green-300 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600';
+      }
+      if (isHighlightedByItemSearch) {
+        return 'bg-green-300 ring-8 ring-yellow-500 ring-opacity-90 shadow-2xl shadow-yellow-400 transform scale-110 z-10 relative border-2 border-yellow-600';
+      }
+      return 'bg-green-300';
     }
 
-    return isHighlighted ?
-      'bg-gray-50 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600' :
-      'bg-gray-50';
+    if (isHighlightedByInventorySearch) {
+      return 'bg-gray-50 ring-8 ring-orange-500 ring-opacity-90 shadow-2xl shadow-orange-400 transform scale-110 z-10 relative border-2 border-orange-600';
+    }
+    if (isHighlightedByItemSearch) {
+      return 'bg-gray-50 ring-8 ring-yellow-500 ring-opacity-90 shadow-2xl shadow-yellow-400 transform scale-110 z-10 relative border-2 border-yellow-600';
+    }
+    return 'bg-gray-50';
   };
 
   const getCellText = (location: StoredLocationResponse | undefined) => {
@@ -111,14 +137,25 @@ const WarehouseSection: React.FC = () => {
           {rows.map(row => (
             lines.map(line => {
               const location = warehouseData[zone]?.[floor]?.[row]?.[line];
-              const isHighlighted = highlightedItemIds.length > 0 && location?.itemId && highlightedItemIds.includes(location.itemId);
+              const isHighlightedByItemSearch = highlightedItemIds.length > 0 && location?.itemId && highlightedItemIds.includes(location.itemId);
+              const isHighlightedByInventorySearch = highlightedInventoryItemIds.length > 0 && location?.inventoryItemIds && highlightedInventoryItemIds.some(id => location.inventoryItemIds.includes(id));
+              
+              let boxShadowStyle = {};
+              if (isHighlightedByInventorySearch) {
+                boxShadowStyle = {
+                  boxShadow: '0 0 30px rgba(249, 115, 22, 0.8), inset 0 0 20px rgba(249, 115, 22, 0.3)',
+                };
+              } else if (isHighlightedByItemSearch) {
+                boxShadowStyle = {
+                  boxShadow: '0 0 30px rgba(234, 179, 8, 0.8), inset 0 0 20px rgba(234, 179, 8, 0.3)',
+                };
+              }
+
               return (
                 <div
                   key={`${zone}-${floor}-${row}-${line}`}
                   className={`w-18 h-16 border border-gray-300 flex items-center justify-center text-xs font-medium transition-all duration-300 ${getCellColor(location)}`}
-                  style={isHighlighted ? {
-                    boxShadow: '0 0 30px rgba(249, 115, 22, 0.8), inset 0 0 20px rgba(249, 115, 22, 0.3)',
-                  } : {}}
+                  style={boxShadowStyle}
                 >
                   <div className="text-center leading-tight">
                     <div className="text-[12px]">{location ? `${row}-${line}` : ''}</div>
@@ -135,10 +172,29 @@ const WarehouseSection: React.FC = () => {
 
   const handleSearchChange = (itemIds: string[]) => {
     setHighlightedItemIds(itemIds);
+    // Clear inventory search when using item search
+    setHighlightedInventoryItemIds([]);
 
     if (itemIds.length > 0) {
       const firstItemId = itemIds[0];
       const location = storedLocationData.find(loc => loc.itemId === firstItemId);
+      if (location) {
+        const floorElement = document.getElementById(`floor-${location.floor}`);
+        if (floorElement) {
+          floorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+  };
+
+  const handleInventorySearchChange = (value: string[]) => {
+    setHighlightedInventoryItemIds(value);
+    // Clear item search when using inventory search
+    setHighlightedItemIds([]);
+
+    if (value) {
+      // Find first matching location and scroll to it
+      const location = storedLocationData.find(loc => loc.inventoryItemIds && loc.inventoryItemIds.some(id => value.includes(id)));
       if (location) {
         const floorElement = document.getElementById(`floor-${location.floor}`);
         if (floorElement) {
@@ -157,6 +213,18 @@ const WarehouseSection: React.FC = () => {
     value: item.id,
     label: `${item.name} (${item.id})`,
   }));
+
+  const inventoryItemsInWarehouse = useMemo(() => {
+    return storedLocationData.flatMap(loc => loc.inventoryItemIds || []).filter(Boolean);
+  }, [inventoryItems, storedLocationData]);
+  
+  const inventoryItemSearchOptions = inventoryItemsInWarehouse.map(inventoryItemId => {
+    return {
+      value: inventoryItemId,
+      label: inventoryItemId,
+    };
+  });
+  
 
   const renderFloorsLoading = () => {
     return (
@@ -206,23 +274,60 @@ const WarehouseSection: React.FC = () => {
     <div className="container mx-auto">
       <Title level={2}>Sơ đồ kho</Title>
       <Card>
-        <Title level={4}>Tìm kiếm sản phẩm</Title>
-        <Select
-          mode="multiple"
-          showSearch
-          style={{ width: '100%' }}
-          placeholder="Gõ để tìm kiếm sản phẩm... (có thể chọn nhiều)"
-          value={highlightedItemIds}
-          onChange={handleSearchChange}
-          onClear={() => setHighlightedItemIds([])}
-          filterOption={(input, option) =>
-            option?.label.toLowerCase().includes(input.toLowerCase()) ?? false
-          }
-          options={itemSearchOptions}
-          allowClear
-          loading={itemsLoading || storedLocationLoading}
-          maxTagCount="responsive"
-        />
+        <Title level={4}>Tìm kiếm</Title>
+        <Row gutter={16}>
+          <Col span={12}>
+            <div className="mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tìm kiếm theo loại sản phẩm
+              </label>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Gõ để tìm kiếm loại sản phẩm..."
+                value={highlightedItemIds}
+                onChange={handleSearchChange}
+                onClear={() => setHighlightedItemIds([])}
+                filterOption={(input, option) =>
+                  option?.label.toLowerCase().includes(input.toLowerCase()) ?? false
+                }
+                options={itemSearchOptions}
+                allowClear
+                loading={itemsLoading || storedLocationLoading}
+                maxTagCount="responsive"
+                dropdownStyle={{ 
+                  maxHeight: '240px', 
+                }}
+                listHeight={160}
+              />
+            </div>
+          </Col>
+          <Col span={12}>
+            <div className="mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tìm kiếm theo mã sản phẩm cụ thể
+              </label>
+              <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Gõ để tìm kiếm mã sản phẩm cụ thể..."
+                value={highlightedInventoryItemIds}
+                onChange={handleInventorySearchChange}
+                onClear={() => setHighlightedInventoryItemIds([])}
+                filterOption={(input, option) =>
+                  option?.label.toLowerCase().includes(input.toLowerCase()) ?? false
+                }
+                options={inventoryItemSearchOptions}
+                allowClear
+                loading={storedLocationLoading || inventoryItemsLoading}
+                dropdownStyle={{ 
+                  maxHeight: '240px', 
+                }}
+                listHeight={160}
+              />
+            </div>
+          </Col>
+        </Row>
       </Card>
 
       <div className="bg-gray-50 p-4 rounded-lg">
