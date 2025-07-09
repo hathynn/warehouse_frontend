@@ -105,11 +105,17 @@ const ExportRequestConfirmModal = ({
       key: "quantity",
       render: (text) => <div className="pl-12 text-right">{text}</div>,
     },
-    {
-      title: "Đơn vị tính",
-      dataIndex: "unitType",
-      key: "unitType",
-    },
+    ["SELLING"].includes(formData?.exportType)
+      ? {
+          title: "Đơn vị tính",
+          dataIndex: "unitType",
+          key: "unitType",
+          render: (_, record) => {
+            const unitType = getItemInfo(record, "unitType");
+            return <span>{unitType}</span>;
+          },
+        }
+      : null,
     {
       width: "18%",
       title: <span className="font-semibold">Quy cách</span>,
@@ -137,21 +143,10 @@ const ExportRequestConfirmModal = ({
           key: "measurementValue",
         }
       : null,
-    // Nhà cung cấp cho RETURN (group + rowSpan)
-    formData?.exportType === "RETURN"
-      ? {
-          title: "Nhà cung cấp",
-          dataIndex: "providerName",
-          key: "providerName",
-          render: (_, record) => (
-            <span>{getProviderName(record, providers)}</span>
-          ),
-        }
-      : null,
   ].filter(Boolean);
   return (
     <Modal
-      title={<Title level={4}>Xác nhận thông tin phiếu xuất</Title>}
+      title={<Title level={4}>Xác nhận thông tin phiếu xuất mới</Title>}
       open={open}
       onOk={onOk}
       onCancel={onCancel}

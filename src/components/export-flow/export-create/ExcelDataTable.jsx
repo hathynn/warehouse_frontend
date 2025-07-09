@@ -36,7 +36,26 @@ const ExcelDataTable = ({
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
     const maxValue = itemMeta?.quantity ?? Infinity;
-    if (num > maxValue) return `Tối đa còn ${maxValue}!`;
+    if (num > maxValue)
+      return `Tối đa còn ${maxValue} ${itemMeta?.unitType || ""}!`;
+    return "";
+  };
+
+  // Validate giá trị đo lường
+  const validateMeasurementValue = (value, itemId) => {
+    if (value === "" || value === undefined || value === null)
+      return "Vui lòng nhập giá trị!";
+    if (!/^\d*\.?\d+$/.test(value)) return "Không nhập chữ!";
+    const num = Number(value);
+    if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
+
+    const itemMeta = items?.find((item) => String(item.id) === String(itemId));
+    const maxValue = itemMeta?.totalMeasurementValue;
+
+    // ✅ CHỈ validate max nếu có totalMeasurementValue và > 0
+    if (maxValue && maxValue > 0 && num > maxValue) {
+      return `Tối đa còn ${maxValue} ${itemMeta?.measurementUnit || ""}!`;
+    }
     return "";
   };
 
@@ -48,15 +67,23 @@ const ExcelDataTable = ({
   }, [onRemovedItemsReset]);
 
   useEffect(() => {
+    // ✅ Clear field errors khi exportType thay đổi
+    setFieldErrors({});
+    setHasProcessed(false);
+    setOriginalData([]);
+    if (onTableErrorChange) {
+      onTableErrorChange(false);
+    }
+  }, [exportType, onTableErrorChange]);
+
+  useEffect(() => {
     if (!items || items.length === 0 || !data || data.length === 0) return;
 
-    // Chỉ xử lý nếu data khác với originalData (data mới từ file)
     if (JSON.stringify(data) !== JSON.stringify(originalData)) {
-      setOriginalData(data); // Lưu data gốc
-      setHasProcessed(false); // Reset flag
+      setOriginalData(data);
+      setHasProcessed(false);
     }
 
-    // Chỉ xử lý filter một lần cho mỗi data set mới
     if (!hasProcessed) {
       const itemsToRemove = [];
       const itemsToKeep = [];
@@ -68,10 +95,18 @@ const ExcelDataTable = ({
         const stockQuantity = itemMeta?.quantity ?? 0;
 
         if (stockQuantity === 0) {
+          // Lấy requested amount dựa trên export type
+          let requestedAmount;
+          if (exportType === "PRODUCTION") {
+            requestedAmount = item.measurementValue || 0;
+          } else {
+            requestedAmount = item.quantity || 0;
+          }
+
           itemsToRemove.push({
             itemId: item.itemId,
             itemName: item.itemName || itemMeta?.name || `Item ${item.itemId}`,
-            requestedQuantity: item.quantity,
+            requestedQuantity: requestedAmount,
             unitType: item.unitType || itemMeta?.unitType || "",
           });
         } else {
@@ -79,14 +114,10 @@ const ExcelDataTable = ({
         }
       });
 
-      // Cập nhật removedItems
       setRemovedItems(itemsToRemove);
 
-      // Chỉ update data nếu có items bị remove
       if (itemsToRemove.length > 0) {
         onDataChange(itemsToKeep);
-
-        // Gọi callback để hiện popup
         if (onRemovedItemsNotification) {
           onRemovedItemsNotification(itemsToRemove);
         }
@@ -94,20 +125,42 @@ const ExcelDataTable = ({
 
       setHasProcessed(true);
     }
-  }, [data, items]); // Bỏ onDataChange khỏi dependencies
+  }, [data, items, exportType]);
 
   // Validate errors cho các item còn lại
   useEffect(() => {
     const newErrors = {};
+
     data.forEach((item) => {
-      const error = validateQuantity(item?.quantity?.toString(), item.itemId);
+      let error = "";
+
+      // SELLING chỉ validate quantity
+      if (exportType === "SELLING") {
+        if (item.quantity !== undefined) {
+          error = validateQuantity(item?.quantity?.toString(), item.itemId);
+        }
+      }
+      // PRODUCTION, BORROWING, LIQUIDATION chỉ validate measurementValue
+      else if (
+        ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+      ) {
+        if (item.measurementValue !== undefined) {
+          error = validateMeasurementValue(
+            item?.measurementValue?.toString(),
+            item.itemId
+          );
+        }
+      }
+      // RETURN có logic riêng (có thể validate cả hai)
+
       if (error) newErrors[item.itemId] = error;
     });
+
     setFieldErrors(newErrors);
     if (onTableErrorChange) {
       onTableErrorChange(Object.keys(newErrors).length > 0);
     }
-  }, [data, items, onTableErrorChange]);
+  }, [data, items, onTableErrorChange, exportType]);
 
   useEffect(() => {
     // Reset removed items khi không còn data
@@ -147,6 +200,15 @@ const ExcelDataTable = ({
     const updatedData = data.map((item) =>
       String(item.itemId) === String(itemId)
         ? { ...item, quantity: value }
+        : item
+    );
+    onDataChange(updatedData);
+  };
+
+  const handleMeasurementValueChange = (itemId, value) => {
+    const updatedData = data.map((item) =>
+      String(item.itemId) === String(itemId)
+        ? { ...item, measurementValue: value }
         : item
     );
     onDataChange(updatedData);
@@ -241,6 +303,55 @@ const ExcelDataTable = ({
     }).isRequired,
   };
 
+  const MeasurementValueInput = ({ record }) => {
+    const [localValue, setLocalValue] = useState(record.measurementValue);
+
+    useEffect(() => {
+      setLocalValue(record.measurementValue);
+    }, [record.measurementValue]);
+
+    const handleBlur = () => {
+      handleMeasurementValueChange(record.itemId, localValue);
+    };
+
+    return (
+      <div>
+        <Input
+          inputMode="decimal"
+          value={localValue}
+          style={{ textAlign: "right", width: 100 }}
+          onWheel={(e) => e.currentTarget.blur()}
+          onKeyDown={(e) => {
+            if (["e", "E", "+", "-"].includes(e.key)) {
+              e.preventDefault();
+            }
+            if (e.key === "Enter") {
+              e.currentTarget.blur();
+            }
+          }}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={handleBlur}
+          status={fieldErrors[record.itemId] ? "error" : undefined}
+        />
+        {fieldErrors[record.itemId] && (
+          <div style={{ color: "red", fontSize: 12, marginTop: 4 }}>
+            {fieldErrors[record.itemId]}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  MeasurementValueInput.propTypes = {
+    record: PropTypes.shape({
+      measurementValue: PropTypes.oneOfType([
+        PropTypes.number,
+        PropTypes.string,
+      ]).isRequired,
+      itemId: PropTypes.string.isRequired,
+    }).isRequired,
+  };
+
   const getItemInfo = (record, field) => {
     const itemMeta = items.find((i) => String(i.id) === String(record.itemId));
     return record[field] || itemMeta?.[field] || "";
@@ -255,26 +366,60 @@ const ExcelDataTable = ({
       render: (text) => <div>{text}</div>,
     },
     { width: "12%", title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
-    {
-      title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "center",
-      width: "9%",
-      render: (text, record) => <QuantityInput record={record} />,
-    },
-    {
-      width: "12%",
-      title: <span className="font-semibold">Đơn vị tính</span>,
-      dataIndex: "unitType",
-      key: "unitType",
-      onHeaderCell: () => ({
-        style: { textAlign: "center" },
-      }),
-      render: (text) => (
-        <span style={{ display: "block", textAlign: "center" }}>{text}</span>
-      ),
-    },
+    ["SELLING"].includes(exportType)
+      ? {
+          title: "Số lượng",
+          dataIndex: "quantity",
+          key: "quantity",
+          align: "center",
+          width: "9%",
+          render: (text, record) => <QuantityInput record={record} />,
+        }
+      : null,
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+      ? {
+          title: "Giá trị cần xuất",
+          dataIndex: "measurement",
+          key: "measurement",
+          align: "center",
+          width: "9%",
+          render: (text, record) => <MeasurementValueInput record={record} />,
+        }
+      : null,
+    ["SELLING"].includes(exportType)
+      ? {
+          width: "12%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "unitType",
+          key: "unitType",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (text) => (
+            <span style={{ display: "block", textAlign: "center" }}>
+              {text}
+            </span>
+          ),
+        }
+      : null,
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+      ? {
+          width: "12%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "measurementUnit",
+          key: "measurementUnit",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (_, record) => {
+            return (
+              <span style={{ display: "block", textAlign: "center" }}>
+                {record.measurementUnit}
+              </span>
+            );
+          },
+        }
+      : null,
     {
       width: "18%",
       title: <span className="font-semibold">Quy cách</span>,
@@ -285,22 +430,20 @@ const ExcelDataTable = ({
         style: { textAlign: "center" },
       }),
       render: (_, record) => {
-        const measurementValue = getItemInfo(record, "measurementValue");
+        // ✅ LẤY measurementValue từ item metadata (database), KHÔNG phải từ input
+        const itemMeta = items.find(
+          (i) => String(i.id) === String(record.itemId)
+        );
+        const measurementValueFromDB = itemMeta?.measurementValue || "";
+
         return (
           <span>
-            {measurementValue} {record.measurementUnit} / {record.unitType}
+            {measurementValueFromDB} {record.measurementUnit} /{" "}
+            {record.unitType}
           </span>
         );
       },
     },
-    // Điều kiện column Quy cách
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
-      ? {
-          title: "Quy cách",
-          dataIndex: "measurementValue",
-          key: "measurementValue",
-        }
-      : null,
     // Điều kiện column Nhà cung cấp
     exportType === "RETURN"
       ? {
