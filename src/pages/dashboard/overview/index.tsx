@@ -94,7 +94,7 @@ const SummaryOverview = () => {
   );
 
   return (
-    <div className=" min-h-screen">
+    <div className="overflow-x-hidden ">
       <div className="mb-6 bg-blue-500 text-white p-4 rounded-lg shadow-sm">
         <div className="flex flex-wrap items-center justify-center-safe gap-4">
           <div className="flex items-center  gap-2">
@@ -240,14 +240,7 @@ const SummaryOverview = () => {
                 color="bg-indigo-50 text-indigo-600"
               />
             </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatCard
-                title="Yêu cầu xuất"
-                value={mockData.exportRequests}
-                icon={<TruckOutlined className="text-xl" />}
-                color="bg-pink-50 text-pink-600"
-              />
-            </Col>
+     
             <Col xs={24} sm={12} md={8} lg={6}>
               <StatCard
                 title="Đang xử lý"
