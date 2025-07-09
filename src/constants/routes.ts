@@ -19,6 +19,8 @@ export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
 // Route permissions mapping
 export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   [AccountRole.DEPARTMENT]: [
+    "/overview",
+    
     // Import routes
     "/import/request-list",
     "/import/request-detail/:id",
@@ -48,6 +50,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   ],
   [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
+    "/overview",
     // Import routes
     "/import/order-detail/:id",
     "/import/orders",
