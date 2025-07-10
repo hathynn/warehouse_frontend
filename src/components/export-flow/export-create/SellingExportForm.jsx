@@ -94,7 +94,7 @@ const SellingExportForm = ({
     const todayWorkEnd = today.hour(endHour).minute(endMin);
 
     // Thời gian kiểm đếm cố định 24h (sẽ config được sau)
-    const INSPECTION_HOURS = 24;
+    const INSPECTION_HOURS = 12;
 
     let startCalculationTime;
 

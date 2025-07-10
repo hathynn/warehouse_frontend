@@ -64,7 +64,6 @@ const ExportRequestInfoForm = ({
   const missingFields =
     (formData.exportType === "PRODUCTION" &&
       (!formData.exportDate ||
-        !formData.exportTime ||
         !formData.exportReason ||
         !formData.receivingDepartment)) ||
     (formData.exportType === "BORROWING" &&

@@ -37,7 +37,7 @@ const ExcelDataTable = ({
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
     const maxValue = itemMeta?.quantity ?? Infinity;
     if (num > maxValue)
-      return `Tối đa còn ${maxValue} ${itemMeta?.unitType || ""}!`;
+      return `Tối đa có thể xuất ${maxValue} ${itemMeta?.unitType || ""}!`;
     return "";
   };
 
@@ -54,7 +54,9 @@ const ExcelDataTable = ({
 
     // ✅ CHỈ validate max nếu có totalMeasurementValue và > 0
     if (maxValue && maxValue > 0 && num > maxValue) {
-      return `Tối đa còn ${maxValue} ${itemMeta?.measurementUnit || ""}!`;
+      return `Tối đa có thể xuất ${maxValue} ${
+        itemMeta?.measurementUnit || ""
+      }!`;
     }
     return "";
   };
@@ -97,7 +99,11 @@ const ExcelDataTable = ({
         if (stockQuantity === 0) {
           // Lấy requested amount dựa trên export type
           let requestedAmount;
-          if (exportType === "PRODUCTION") {
+          if (
+            exportType === "PRODUCTION" ||
+            exportType === "BORROWING" ||
+            exportType === "LIQUIDATION"
+          ) {
             requestedAmount = item.measurementValue || 0;
           } else {
             requestedAmount = item.quantity || 0;
@@ -108,6 +114,8 @@ const ExcelDataTable = ({
             itemName: item.itemName || itemMeta?.name || `Item ${item.itemId}`,
             requestedQuantity: requestedAmount,
             unitType: item.unitType || itemMeta?.unitType || "",
+            measurementUnit:
+              item.measurementUnit || itemMeta?.measurementUnit || "", // THÊM DÒNG NÀY
           });
         } else {
           itemsToKeep.push(item);
@@ -523,13 +531,15 @@ const ExcelDataTable = ({
             >
               Tổng cộng có{" "}
               <span style={{ color: "red" }}>{removedItems.length}</span> sản
-              phẩm không xuất được (tồn kho bằng hoặc dưới mức khả dụng):
+              phẩm không xuất được (không đủ tồn kho khả dụng):
             </div>
             <div style={{ color: "#d32029", fontSize: "14px" }}>
               {removedItems.map((item, index) => (
                 <div key={`${item.itemId}-${index}`}>
                   • {item.itemId} - Đã yêu cầu: {item.requestedQuantity}{" "}
-                  {item.unitType}
+                  {exportType === "SELLING"
+                    ? item.unitType
+                    : item.measurementUnit}
                 </div>
               ))}
             </div>
