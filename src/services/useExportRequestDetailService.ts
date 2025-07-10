@@ -19,7 +19,7 @@ export interface ExportRequestDetailRequest {
   quantity: number;
   status: string;
   itemName: string;
-  measurementValue: string;
+  measurementValue: number;
   inventoryItemId: string;
 }
 

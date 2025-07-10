@@ -719,16 +719,28 @@ const ExportRequestCreate = () => {
     };
   };
 
-  const buildProductionPayload = () => ({
-    exportReason: formData.exportReason,
-    departmentId: formData.receivingDepartment.id,
-    receiverName: formData.departmentRepresentative,
-    receiverPhone: formData.departmentRepresentativePhone,
-    type: "PRODUCTION",
-    exportDate: formData.exportDate,
-    countingDate: countingDate,
-    countingTime: countingTime,
-  });
+  const buildProductionPayload = () => {
+    let countingDate = formData.exportDate;
+    let countingTime = "12:00:00";
+
+    // Nếu có inspectionDateTime, cắt chuỗi để lấy ngày và giờ
+    if (formData.inspectionDateTime) {
+      const [datePart, timePart] = formData.inspectionDateTime.split(" ");
+      countingDate = datePart;
+      countingTime = timePart;
+    }
+
+    return {
+      exportReason: formData.exportReason,
+      receiverName: formData.departmentRepresentative,
+      receiverPhone: formData.departmentRepresentativePhone,
+      departmentId: formData.receivingDepartment.id,
+      countingDate: countingDate,
+      countingTime: countingTime,
+      type: "PRODUCTION",
+      exportDate: formData.exportDate,
+    };
+  };
 
   const buildLoanPayload = () => {
     const basePayload = {
@@ -760,16 +772,6 @@ const ExportRequestCreate = () => {
     }
   };
 
-  // const buildSellingPayload = () => ({
-  //   countingDate: formData.exportDate,
-  //   countingTime: "12:00:00",
-  //   exportDate: formData.exportDate,
-  //   exportReason: formData.exportReason,
-  //   receiverName: formData.receiverName,
-  //   receiverPhone: formData.receiverPhone,
-  //   receiverAddress: formData.receiverAddress,
-  //   type: "SELLING",
-  // });
   const buildSellingPayload = () => {
     let countingDate = formData.exportDate;
     let countingTime = "12:00:00";
@@ -954,19 +956,55 @@ const ExportRequestCreate = () => {
     return createdExport;
   };
 
+  // const createExportDetails = async (exportRequestId) => {
+  //   const exportDetailsPayload = data.map((item) => {
+  //     const { itemId, quantity, measurementValue, inventoryItemId } = item;
+
+  //     const detail = { itemId };
+
+  //     // Chỉ thêm quantity nếu có (SELLING)
+  //     if (quantity !== undefined) {
+  //       detail.quantity = quantity;
+  //     }
+  //     // Chỉ thêm measurementValue nếu có (PRODUCTION, BORROWING, LIQUIDATION)
+  //     if (measurementValue !== undefined) {
+  //       detail.measurementValue = measurementValue;
+  //     }
+
+  //     if (inventoryItemId !== undefined) {
+  //       detail.inventoryItemId = inventoryItemId;
+  //     }
+
+  //     return detail;
+  //   });
+
+  //   await createExportRequestDetail(exportDetailsPayload, exportRequestId);
+  // };
+
   const createExportDetails = async (exportRequestId) => {
     const exportDetailsPayload = data.map((item) => {
       const { itemId, quantity, measurementValue, inventoryItemId } = item;
 
       const detail = { itemId };
 
-      // Chỉ thêm quantity nếu có (SELLING)
-      if (quantity !== undefined) {
-        detail.quantity = quantity;
-      }
-      // Chỉ thêm measurementValue nếu có (PRODUCTION, BORROWING, LIQUIDATION)
-      if (measurementValue !== undefined) {
-        detail.measurementValue = measurementValue;
+      // Logic cho từng loại export type
+      if (
+        formData.exportType === "SELLING" ||
+        formData.exportType === "RETURN"
+      ) {
+        // Chỉ thêm quantity nếu có (SELLING, RETURN)
+        if (quantity !== undefined) {
+          detail.quantity = quantity;
+        }
+      } else if (
+        formData.exportType === "PRODUCTION" ||
+        formData.exportType === "BORROWING" ||
+        formData.exportType === "LIQUIDATION"
+      ) {
+        // Chỉ thêm measurementValue nếu có (PRODUCTION, BORROWING, LIQUIDATION)
+        if (measurementValue !== undefined) {
+          detail.measurementValue = measurementValue;
+        }
       }
 
       if (inventoryItemId !== undefined) {
@@ -1057,9 +1095,19 @@ const ExportRequestCreate = () => {
 
   // Thêm function xử lý notification
   const handleRemovedItemsNotification = (removedItems) => {
+    // Đảm bảo mỗi item có đủ thông tin measurementUnit
+    const enrichedItems = removedItems.map((item) => ({
+      ...item,
+      measurementUnit:
+        item.measurementUnit ||
+        items.content?.find((i) => String(i.id) === String(item.itemId))
+          ?.measurementUnit ||
+        "",
+    }));
+
     setRemovedItemsNotification({
       visible: true,
-      items: removedItems,
+      items: enrichedItems,
     });
 
     // Tự động đóng sau 2 phút 30 giây
@@ -1282,7 +1330,7 @@ const ExportRequestCreate = () => {
             <span style={{ color: "red" }}>
               {removedItemsNotification.items.length}
             </span>{" "}
-            sản phẩm không xuất được (tồn kho bằng hoặc dưới mức khả dụng):
+            sản phẩm không xuất được (không đủ tồn kho khả dụng):
           </div>
           <div
             style={{
@@ -1299,7 +1347,9 @@ const ExportRequestCreate = () => {
             {removedItemsNotification.items.map((item, index) => (
               <div key={`${item.itemId}-${index}`} style={{ marginBottom: 4 }}>
                 • {item.itemId} - Đã yêu cầu: {item.requestedQuantity}{" "}
-                {item.unitType}
+                {formData.exportType === "SELLING"
+                  ? item.unitType
+                  : item.measurementUnit}
               </div>
             ))}
           </div>

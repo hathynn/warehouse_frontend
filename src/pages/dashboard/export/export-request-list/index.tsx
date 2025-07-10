@@ -58,7 +58,7 @@ const ExportRequestList = () => {
 
   useEffect(() => {
     // Lấy các providerId khác null/undefined
-    const providerIds = Array.from(new Set(exportRequestsData.map(r => r.providerId).filter(Boolean)));
+    const providerIds = Array.from(new Set(exportRequestsData?.map(r => r.providerId).filter(Boolean)));
 
     const fetchProviderNames = async () => {
       const result = {};
