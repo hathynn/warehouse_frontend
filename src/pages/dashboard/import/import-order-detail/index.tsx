@@ -625,7 +625,7 @@ const ImportOrderDetail = () => {
       </div>
       <div className="flex items-center mb-4">
         <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrderData?.importOrderId}</h1>
-        {importOrderData?.status !== ImportStatus.CANCELLED && importOrderData?.status !== ImportStatus.COMPLETED && (
+        {importOrderData?.status === ImportStatus.IN_PROGRESS || importOrderData?.status === ImportStatus.EXTENDED && (
           <>
             {userRole === AccountRole.WAREHOUSE_MANAGER && (
               <Button
@@ -710,6 +710,7 @@ const ImportOrderDetail = () => {
                 if (!importOrderData?.importOrderId) return;
                 await completeImportOrder(importOrderData.importOrderId);
                 await fetchImportOrderData();
+                await fetchInventoryItemsData();
                 setShowUpdateInventoryItemLocationModal(true)
               }}
               onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}

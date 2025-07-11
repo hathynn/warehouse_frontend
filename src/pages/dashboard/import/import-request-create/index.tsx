@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps } from "antd";
+import { Button, Input, Select, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps, Modal, Checkbox } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
-import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
@@ -18,6 +18,7 @@ import locale from "antd/es/date-picker/locale/vi_VN";
 import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import RequestTypeSelector, { ImportRequestType } from "@/components/commons/RequestTypeSelector";
+import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
 const { TextArea } = Input;
 
 interface FormData {
@@ -50,6 +51,14 @@ const ImportRequestCreate: React.FC = () => {
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ========== ZERO QUANTITY DELETE STATES ==========
+  const [quantityZeroRowsToDelete, setQuantityZeroRowsToDelete] = useState<ImportRequestDetailRow[]>([]);
+  const [deleteQuantityZeroRowsResponsibilityChecked, setDeleteQuantityZeroRowsResponsibilityChecked] = useState<boolean>(false);
+  const [isDeleteQuantityZeroRowModalOpen, setIsDeleteQuantityZeroRowModalOpen] = useState(false);
+
+  // ========== SCROLL VIEW TRACKER FOR DELETE MODAL ==========
+  const { scrollContainerRef: deleteModalScrollRef, checkScrollPosition: checkDeleteModalScroll, hasScrolledToBottom: hasScrolledToBottomInDeleteModal, resetScrollTracking: resetDeleteModalScroll } = useScrollViewTracker(5);
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
@@ -206,6 +215,14 @@ const ImportRequestCreate: React.FC = () => {
       }));
     }
   }, [configuration]);
+
+  // Reset scroll tracking when delete modal opens/closes
+  useEffect(() => {
+    if (!isDeleteQuantityZeroRowModalOpen) {
+      resetDeleteModalScroll();
+      setDeleteQuantityZeroRowsResponsibilityChecked(false);
+    }
+  }, [isDeleteQuantityZeroRowModalOpen, resetDeleteModalScroll]);
 
   // ========== EVENT HANDLERS ==========
   const handleChangePage = (paginationObj: any) => {
@@ -403,6 +420,32 @@ const ImportRequestCreate: React.FC = () => {
     }
   };
 
+  // ========== ZERO QUANTITY HANDLERS ==========
+  const handleNextStep = () => {
+    const quantityZeroRows = importedData.filter(row => row.quantity === 0);
+    if (quantityZeroRows.length > 0) {
+      setQuantityZeroRowsToDelete(quantityZeroRows);
+      setIsDeleteQuantityZeroRowModalOpen(true);
+    } else {
+      setStep(1);
+    }
+  };
+
+  const confirmDeleteQuantityZeroRow = () => {
+    const newImportedData = importedData.filter(row => !quantityZeroRowsToDelete.includes(row));
+    setImportedData(newImportedData);
+    setQuantityZeroRowsToDelete([]);
+    setIsDeleteQuantityZeroRowModalOpen(false);
+    setDeleteQuantityZeroRowsResponsibilityChecked(false);
+    setStep(1);
+  };
+
+  const cancelDeleteQuantityZeroRow = () => {
+    setIsDeleteQuantityZeroRowModalOpen(false);
+    setDeleteQuantityZeroRowsResponsibilityChecked(false);
+    setQuantityZeroRowsToDelete([]);
+  };
+
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
@@ -540,7 +583,7 @@ const ImportRequestCreate: React.FC = () => {
             </div>
             <Button
               type="primary"
-              onClick={() => setStep(1)}
+              onClick={handleNextStep}
               disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
             >
               Tiếp tục nhập thông tin phiếu nhập
@@ -647,6 +690,58 @@ const ImportRequestCreate: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Zero Quantity Row Delete Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            Những mã hàng sau sẽ bị loại bỏ do số lượng bằng 0
+          </div>
+        }
+        open={isDeleteQuantityZeroRowModalOpen}
+        onOk={confirmDeleteQuantityZeroRow}
+        onCancel={cancelDeleteQuantityZeroRow}
+        okText="Xác nhận và tiếp tục"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !deleteQuantityZeroRowsResponsibilityChecked }}
+        width={540}
+        maskClosable={false}
+      >
+        {quantityZeroRowsToDelete.length > 0 && (
+          <>
+            <div
+              ref={deleteModalScrollRef}
+              onScroll={checkDeleteModalScroll}
+              style={{ 
+                height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto", 
+                overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
+                marginBottom: 16
+              }}
+            >
+              {quantityZeroRowsToDelete.map((item, index) => (
+                <div key={`${item.itemId}-${item.providerId}-${index}`} className="mb-2 border-b pb-2">
+                  <p><strong>Mã hàng:</strong> #{item.itemId}</p>
+                  <p><strong>Tên hàng:</strong> {item.itemName}</p>
+                  <p><strong>Nhà cung cấp:</strong> {item.providerName}</p>
+                </div>
+              ))}
+            </div>
+            <Checkbox
+              checked={deleteQuantityZeroRowsResponsibilityChecked}
+              onChange={e => setDeleteQuantityZeroRowsResponsibilityChecked(e.target.checked)}
+              style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
+              disabled={quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal}
+            >
+              Tôi xác nhận số lượng là đúng và đồng ý tiếp tục.
+              {quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal && (
+                <div style={{ color: 'red' }}>(Vui lòng xem hết danh sách)</div>
+              )}
+            </Checkbox>
+          </>
+        )}
+      </Modal>
+
       <ImportRequestConfirmModal
         open={showConfirmModal}
         onOk={handleSubmit}

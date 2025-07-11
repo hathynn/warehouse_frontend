@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Table, Select, Input, Card, TablePaginationConfig } from "antd";
+import { Table, Select, Input, Card, TablePaginationConfig, Alert } from "antd";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
 
@@ -108,6 +108,32 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
       })
     );
   };
+
+  // Tổng hợp lỗi validation
+  const invalidRows = data
+    .map((row, idx) => {
+      if (row.quantity <= 0) {
+        return `Dòng ${idx + 1}: Số lượng đang bằng 0. Nếu bạn tiếp tục, mã hàng này sẽ bị loại bỏ.`;
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  const validationAlertNode = invalidRows.length > 0 ? (
+    <Alert
+      type="error"
+      showIcon
+      message="Có vấn đề trong bảng nhập liệu:"
+      description={
+        <ul>
+          {invalidRows.map((msg, i) => (
+            <li key={i}>{msg}</li>
+          ))}
+        </ul>
+      }
+      style={{ marginBottom: 16 }}
+    />
+  ) : null;
 
   const columns = [
     {
@@ -222,6 +248,7 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
 
   return (
     <Card title={title}>
+      {validationAlertNode}
       {alertNode}
       <Table
         columns={columns}

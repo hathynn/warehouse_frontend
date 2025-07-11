@@ -163,12 +163,13 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     if (zonesCount === 3) return 'grid-cols-3';
     if (zonesCount === 4) return 'grid-cols-4';
     if (zonesCount === 5) return 'grid-cols-5';
-    return 'grid-cols-6'; // max 6 cột
+    if (zonesCount === 6) return 'grid-cols-6';
+    return 'grid-cols-7'; // max 7 cột
   };
 
   const getLocationGridCols = (locationsCount: number) => {
     // Logic đơn giản: số cột = số locations (tối đa 6)
-    return Math.min(locationsCount, 6);
+    return Math.min(locationsCount, 2);
   };
 
   const renderZoneFloor = (zone: string, floor: string) => {

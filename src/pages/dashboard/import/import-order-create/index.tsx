@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider, Steps } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider, Steps, Modal, Checkbox } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
@@ -9,7 +9,7 @@ import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailSe
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
-import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
@@ -68,10 +68,13 @@ const ImportOrderCreate = () => {
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
   const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]);
+  const [plannedQuantityZeroRowsToDelete, setPlannedQuantityZeroRowsToDelete] = useState<ImportOrderDetailRow[]>([]);
+  const [deletePlannedQuantityZeroRowsResponsibilityChecked, setDeletePlannedQuantityZeroRowsResponsibilityChecked] = useState<boolean>(false);
 
   // ==================== UI & FORM STATES ====================
   const [step, setStep] = useState<number>(0); // 0 = upload/edit, 1 = confirm
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showImportOrderConfirmModal, setShowImportOrderConfirmModal] = useState(false);
+  const [isDeletePlannedQuantityZeroRowModalOpen, setIsDeletePlannedQuantityZeroRowModalOpen] = useState(false);
   const [excelImported, setExcelImported] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>("");
@@ -102,9 +105,9 @@ const ImportOrderCreate = () => {
   // Validation flag for import order data
   const isImportOrderDataValid = editableRows.length > 0 && editableRows.every(row => {
     if (row.actualQuantity === 0) {
-      return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
+      return row.plannedQuantity >= 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
     }
-    return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
+    return row.plannedQuantity >= 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
   });
 
   // ==================== UTILITY FUNCTIONS ====================
@@ -259,7 +262,7 @@ const ImportOrderCreate = () => {
 
   const handleConfirmClick = () => {
     if (!checkImportOrderExpiry()) return;
-    setShowConfirmModal(true);
+    setShowImportOrderConfirmModal(true);
   };
 
   const handleSubmit = async () => {
@@ -303,6 +306,31 @@ const ImportOrderCreate = () => {
       navigate(ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(importRequest?.importRequestId!));
       return;
     }
+  };
+
+  const handleNextStep = () => {
+    const plannedQuantityZeroRows = editableRows.filter(row => row.plannedQuantity === 0);
+    if (plannedQuantityZeroRows.length > 0) {
+      setPlannedQuantityZeroRowsToDelete(plannedQuantityZeroRows);
+      setIsDeletePlannedQuantityZeroRowModalOpen(true);
+    }
+    if (plannedQuantityZeroRows.length === 0) {
+      setStep(1);
+    }
+  };
+
+  const confirmDeletePlannedQuantityZeroRow = () => {
+    const newEditableRows = editableRows.filter(row => !plannedQuantityZeroRowsToDelete.includes(row));
+    setEditableRows(newEditableRows);
+    setPlannedQuantityZeroRowsToDelete([]);
+    setIsDeletePlannedQuantityZeroRowModalOpen(false);
+    setStep(1);
+  };
+
+  const cancelDeletePlannedQuantityZeroRow = () => {
+    setIsDeletePlannedQuantityZeroRowModalOpen(false);
+    setDeletePlannedQuantityZeroRowsResponsibilityChecked(false);
+    setPlannedQuantityZeroRowsToDelete([]);
   };
 
   // ==================== EXCEL FUNCTIONS ====================
@@ -580,7 +608,7 @@ const ImportOrderCreate = () => {
             type="primary"
             className="mt-2"
             disabled={!isImportOrderDataValid || !isAllPagesViewed}
-            onClick={() => setStep(1)}
+            onClick={handleNextStep}
           >
             Tiếp tục nhập thông tin đơn nhập
             {!isAllPagesViewed && isImportOrderDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
@@ -696,10 +724,46 @@ const ImportOrderCreate = () => {
         </div>
 
       )}
+      {/* All Row Delete Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            Những mã hàng sau sẽ bị loại bỏ do số lượng bằng 0
+          </div>
+        }
+        open={isDeletePlannedQuantityZeroRowModalOpen}
+        onOk={confirmDeletePlannedQuantityZeroRow}
+        onCancel={cancelDeletePlannedQuantityZeroRow}
+        okText="Xác nhận và tiếp tục"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !deletePlannedQuantityZeroRowsResponsibilityChecked }}
+        width={500}
+      >
+        {plannedQuantityZeroRowsToDelete.length > 0 && (
+          <div>
+            {plannedQuantityZeroRowsToDelete.map(importOrderDetailRow => (
+              <div key={importOrderDetailRow.itemId} className="mb-2 border-b pb-2">
+                <p><strong>Mã hàng:</strong> #{importOrderDetailRow.itemId}</p>
+                <p><strong>Tên hàng:</strong> {importOrderDetailRow.itemName}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <Checkbox
+          checked={deletePlannedQuantityZeroRowsResponsibilityChecked}
+          onChange={e => setDeletePlannedQuantityZeroRowsResponsibilityChecked(e.target.checked)}
+          style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
+        >
+          Tôi xác nhận số lượng là đúng và đồng ý tiếp tục.
+        </Checkbox>
+      </Modal>
+
+      {/* Confirm Modal */}
       <ImportOrderConfirmModal
-        open={showConfirmModal}
+        open={showImportOrderConfirmModal}
         onOk={handleSubmit}
-        onCancel={() => setShowConfirmModal(false)}
+        onCancel={() => setShowImportOrderConfirmModal(false)}
         confirmLoading={loading}
         formData={formData}
         details={editableRows}

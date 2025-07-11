@@ -262,7 +262,7 @@ const ImportRequestList: React.FC = () => {
               <>
                 <div className="text-base">{actual}</div>
                 {expected > 0 && (
-                  <span className={`font-bold ${isEnough ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`${isEnough ? 'text-green-600' : 'text-red-600'}`}>
                     {isEnough ? "" : `Thiếu ${expected - actual} so với dự nhập`}
                   </span>
                 )}

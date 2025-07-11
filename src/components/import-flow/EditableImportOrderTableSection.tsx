@@ -38,6 +38,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   title,
   emptyText,
   setIsAllPagesViewed,
+  
 }) => {
 
   const [pagination, setPagination] = useState({
@@ -224,8 +225,8 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
         return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
       }
 
-      if (row.plannedQuantity < 0) {
-        return `Dòng ${idx + 1}: Số lượng nhập phải lớn hơn hoặc bằng 0`;
+      if (row.plannedQuantity <= 0) {
+        return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Nếu bạn tiếp tục, mã hàng này sẽ bị loại bỏ.`;
       }
       return null;
     })
@@ -235,9 +236,9 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     <Alert
       type="error"
       showIcon
-      message="Có lỗi trong bảng nhập liệu:"
+      message="Có vấn đề trong bảng nhập liệu:"
       description={
-        <ul style={{ margin: 0, paddingLeft: 18 }}>
+        <ul>
           {invalidRows.map((msg, i) => (
             <li key={i}>{msg}</li>
           ))}
