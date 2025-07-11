@@ -14,23 +14,40 @@ const EXPORT_TYPE_LABELS = {
   LIQUIDATION: "Thanh lý",
 };
 
-// Group data theo itemId + providerId
-function getConsolidatedData(data = []) {
+function getConsolidatedData(data = [], exportType) {
   const grouped = {};
+
   data.forEach((row) => {
+    // Group theo itemId cho tất cả loại xuất
     const key = row.providerId
       ? `${row.itemId}-${row.providerId}`
       : `${row.itemId}`;
+
     if (grouped[key]) {
-      grouped[key] = {
-        ...grouped[key],
-        quantity:
-          Number(grouped[key].quantity || 0) + Number(row.quantity || 0),
-      };
+      // Cộng quantity cho SELLING và RETURN
+      if (row.quantity !== undefined) {
+        grouped[key].quantity =
+          Number(grouped[key].quantity || 0) + Number(row.quantity || 0);
+      }
+      // Cộng measurementValue cho PRODUCTION, BORROWING, LIQUIDATION
+      if (row.measurementValue !== undefined && row.measurementValue !== "") {
+        grouped[key].measurementValue =
+          (Number(grouped[key].measurementValue) || 0) +
+          Number(row.measurementValue || 0);
+      }
     } else {
-      grouped[key] = { ...row };
+      grouped[key] = {
+        ...row,
+        quantity:
+          row.quantity !== undefined ? Number(row.quantity || 0) : undefined,
+        measurementValue:
+          row.measurementValue !== undefined
+            ? Number(row.measurementValue || 0)
+            : undefined,
+      };
     }
   });
+
   return Object.values(grouped);
 }
 
@@ -70,20 +87,20 @@ const ExportRequestConfirmModal = ({
 
   let dataSource = details;
 
-  // Nếu loại RETURN thì sort và group trước
+  // Áp dụng consolidation cho tất cả loại xuất
+  dataSource = getConsolidatedData(dataSource, formData.exportType);
+
+  // Nếu loại RETURN thì sort theo provider
   if (formData.exportType === "RETURN") {
-    dataSource = [...details];
     dataSource.sort((a, b) => {
       const pa = getProviderName(a, providers) || "";
       const pb = getProviderName(b, providers) || "";
       if (pa < pb) return -1;
       if (pa > pb) return 1;
-      // Bạn có thể sort thêm theo tên hàng nếu muốn:
       const ia = a.itemName || "";
       const ib = b.itemName || "";
       return ia.localeCompare(ib);
     });
-    dataSource = getConsolidatedData(dataSource);
   }
 
   const getItemInfo = (record, field) => {
@@ -91,56 +108,144 @@ const ExportRequestConfirmModal = ({
     return record[field] || itemMeta?.[field] || "";
   };
 
+  // 3. Thay thế phần columns bằng columns mới giống ExcelDataTableAfter:
   const columns = [
     {
+      width: "14%",
       title: "Mã hàng",
       dataIndex: "itemId",
       key: "itemId",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       render: (text) => <div>{text}</div>,
     },
-    { title: "Tên hàng", dataIndex: "itemName", key: "itemName" },
-    {
-      title: "Số lượng",
-      dataIndex: "quantity",
-      key: "quantity",
-      render: (text) => <div className="pl-12 text-right">{text}</div>,
-    },
-    ["SELLING"].includes(formData?.exportType)
-      ? {
-          title: "Đơn vị tính",
-          dataIndex: "unitType",
-          key: "unitType",
-          render: (_, record) => {
-            const unitType = getItemInfo(record, "unitType");
-            return <span>{unitType}</span>;
-          },
-        }
-      : null,
     {
       width: "18%",
-      title: <span className="font-semibold">Quy cách</span>,
-      dataIndex: "specification",
-      key: "specification",
+      title: "Tên hàng",
+      dataIndex: "itemName",
+      key: "itemName",
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
       render: (_, record) => {
-        const measurementValue = getItemInfo(record, "measurementValue");
+        const itemName =
+          record.itemName ||
+          items?.find((i) => String(i.id) === String(record.itemId))?.name ||
+          "Không xác định";
+        return <span>{itemName}</span>;
+      },
+    },
+    // Cột Số lượng cho SELLING
+    ["SELLING"].includes(formData?.exportType)
+      ? {
+          title: "Số lượng",
+          dataIndex: "quantity",
+          key: "quantity",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          align: "center",
+          width: "9%",
+          render: (text) => (
+            <div style={{ textAlign: "center" }}>{text || 0}</div>
+          ),
+        }
+      : null,
+    // Cột Giá trị cần xuất cho PRODUCTION, BORROWING, LIQUIDATION
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+      ? {
+          title: "Giá trị cần xuất",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          align: "center",
+          width: "9%",
+          render: (text) => (
+            <div style={{ textAlign: "center" }}>{text || 0}</div>
+          ),
+        }
+      : null,
+    // Cột Đơn vị tính cho SELLING
+    ["SELLING"].includes(formData?.exportType)
+      ? {
+          width: "10%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "unitType",
+          key: "unitType",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (_, record) => (
+            <span style={{ display: "block", textAlign: "center" }}>
+              {getItemInfo(record, "unitType")}
+            </span>
+          ),
+        }
+      : null,
+    // Cột Đơn vị tính cho PRODUCTION, BORROWING, LIQUIDATION
+    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+      ? {
+          width: "10%",
+          title: <span className="font-semibold">Đơn vị tính</span>,
+          dataIndex: "measurementUnit",
+          key: "measurementUnit",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (_, record) => (
+            <span style={{ display: "block", textAlign: "center" }}>
+              {getItemInfo(record, "measurementUnit")}
+            </span>
+          ),
+        }
+      : null,
+    // Cột Quy cách - LẤY từ database metadata
+    {
+      width: "12%",
+      title: <span className="font-semibold">Quy cách</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (_, record) => {
+        // LẤY measurementValue từ item metadata (database), KHÔNG phải từ input
+        const itemMeta = items?.find(
+          (i) => String(i.id) === String(record.itemId)
+        );
+        const measurementValueFromDB = itemMeta?.measurementValue || "";
         const measurementUnit = getItemInfo(record, "measurementUnit");
         const unitType = getItemInfo(record, "unitType");
+
         return (
           <span>
-            {measurementValue} {measurementUnit} / {unitType}
+            {measurementValueFromDB} {measurementUnit} / {unitType}
           </span>
         );
       },
     },
-    // Quy cách
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+    // Cột Nhà cung cấp cho RETURN
+    formData?.exportType === "RETURN"
       ? {
-          title: "Quy cách",
-          dataIndex: "measurementValue",
-          key: "measurementValue",
+          width: "35%",
+          title: "Nhà cung cấp",
+          dataIndex: "providerName",
+          key: "providerName",
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+          render: (_, record) => {
+            // Lấy provider name từ record hoặc providers array
+            const providerName =
+              record.providerName ||
+              providers?.find((p) => p.id === record.providerId)?.name ||
+              "Không xác định";
+            return <span>{providerName}</span>;
+          },
         }
       : null,
   ].filter(Boolean);
@@ -165,23 +270,27 @@ const ExportRequestConfirmModal = ({
         style={{ marginBottom: 24 }}
         className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400"
       >
-        {/* Descriptions Items giữ nguyên */}
+        {/* Loại xuất - giữ nguyên */}
         <Descriptions.Item label="Loại xuất">
           {EXPORT_TYPE_LABELS[formData.exportType] || formData.exportType}
         </Descriptions.Item>
+
+        {/* Lý do xuất - giữ nguyên */}
         <Descriptions.Item label="Lý do xuất">
           <div className="max-h-[48px] overflow-y-auto leading-[24px]">
             {formData.exportReason}
           </div>
         </Descriptions.Item>
+
+        {/* Ngày nhận - giữ nguyên */}
         <Descriptions.Item label="Ngày nhận">
           {formData.exportDate
             ? dayjs(formData.exportDate).format("DD-MM-YYYY")
             : "-"}
         </Descriptions.Item>
-        {["SELLING", "PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-          formData.exportType
-        ) && (
+
+        {/* Fields cho SELLING và RETURN - giữ nguyên */}
+        {["SELLING", "RETURN"].includes(formData.exportType) && (
           <>
             <Descriptions.Item label="Người nhận">
               {formData.receiverName || "-"}
@@ -191,6 +300,23 @@ const ExportRequestConfirmModal = ({
             </Descriptions.Item>
             <Descriptions.Item label="Địa chỉ">
               {formData.receiverAddress || "-"}
+            </Descriptions.Item>
+          </>
+        )}
+
+        {/* Fields cho PRODUCTION, BORROWING, LIQUIDATION - mới */}
+        {["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+          formData.exportType
+        ) && (
+          <>
+            <Descriptions.Item label="Phòng ban">
+              {formData.receivingDepartment?.name || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Người đại diện">
+              {formData.departmentRepresentative || "-"}
+            </Descriptions.Item>
+            <Descriptions.Item label="Số điện thoại">
+              {formData.departmentRepresentativePhone || "-"}
             </Descriptions.Item>
           </>
         )}
@@ -209,11 +335,11 @@ const ExportRequestConfirmModal = ({
         <Table
           columns={columns}
           dataSource={dataSource}
-          rowKey={(record, idx) =>
-            formData.exportType === "RETURN"
-              ? `${record.itemId}-${record.providerId}-${idx}`
-              : String(record.itemId)
-          }
+          rowKey={(record) => {
+            return record.providerId
+              ? `${record.itemId}-${record.providerId}`
+              : String(record.itemId);
+          }}
           pagination={false}
           size="small"
           bordered
@@ -254,6 +380,8 @@ ExportRequestConfirmModal.propTypes = {
     receivingDepartment: PropTypes.shape({
       name: PropTypes.string,
     }),
+    departmentRepresentative: PropTypes.string,
+    departmentRepresentativePhone: PropTypes.string,
   }).isRequired,
   details: PropTypes.arrayOf(
     PropTypes.shape({

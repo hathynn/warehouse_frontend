@@ -12,7 +12,9 @@ const UseExportForm = ({
   openDepartmentModal,
   mandatoryError,
   setMandatoryError,
+  excelFormData,
 }) => {
+  const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [workingTimeConfig, setWorkingTimeConfig] = useState({
     workingTimeStart: null,
     workingTimeEnd: null,
@@ -21,6 +23,23 @@ const UseExportForm = ({
   // Sử dụng configuration service
   const { getConfiguration, loading: configLoading } =
     useConfigurationService();
+
+  // THÊM useEffect để xử lý auto-fill từ Excel
+  useEffect(() => {
+    if (excelFormData && !hasAutoFilled) {
+      setFormData((prev) => ({
+        ...prev,
+        exportReason: prev.exportReason || excelFormData.exportReason || "",
+        // Có thể thêm các field khác nếu cần
+      }));
+
+      setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
+    }
+  }, [excelFormData, hasAutoFilled]);
+
+  useEffect(() => {
+    setHasAutoFilled(false);
+  }, [formData.exportType]);
 
   // Lấy cấu hình working time khi component mount
   useEffect(() => {
@@ -142,6 +161,13 @@ const UseExportForm = ({
       <span className="font-semibold">Loại xuất: Sản Xuất</span>
       <div className="mb-2"></div>
 
+      {/* THÊM thông báo nếu data được load từ Excel */}
+      {excelFormData && (
+        <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+          ✓ Thông tin đã được tự động điền từ file Excel
+        </div>
+      )}
+
       {/* Ngày xuất và Hạn kiểm đếm dự kiến */}
       <div className="mb-4 flex gap-4">
         {/* Ngày xuất */}
@@ -210,6 +236,9 @@ const UseExportForm = ({
       <div className="mb-4">
         <label className="block mb-1">
           Lý do xuất <span className="text-red-500">*</span>
+          {excelFormData?.exportReason && (
+            <span className="text-blue-500 text-xs ml-1">(từ Excel)</span>
+          )}
         </label>
         <Input.TextArea
           value={formData.exportReason || ""}
@@ -293,11 +322,16 @@ UseExportForm.propTypes = {
     departmentRepresentativePhone: PropTypes.string,
     note: PropTypes.string,
     type: PropTypes.string,
+    exportType: PropTypes.string, // Added missing prop type
   }).isRequired,
   setFormData: PropTypes.func.isRequired,
   openDepartmentModal: PropTypes.func.isRequired,
   mandatoryError: PropTypes.string,
   setMandatoryError: PropTypes.func,
+  excelFormData: PropTypes.shape({
+    exportReason: PropTypes.string,
+    departmentId: PropTypes.string,
+  }),
 };
 
 export default UseExportForm;
