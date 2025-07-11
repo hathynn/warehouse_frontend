@@ -69,10 +69,11 @@ const ExcelDataTable = ({
   }, [onRemovedItemsReset]);
 
   useEffect(() => {
-    // ✅ Clear field errors khi exportType thay đổi
+    // Reset tất cả states khi exportType thay đổi
     setFieldErrors({});
     setHasProcessed(false);
     setOriginalData([]);
+    //setRemovedItems([]);
     if (onTableErrorChange) {
       onTableErrorChange(false);
     }
@@ -81,61 +82,76 @@ const ExcelDataTable = ({
   useEffect(() => {
     if (!items || items.length === 0 || !data || data.length === 0) return;
 
+    // Reset khi exportType thay đổi
     if (JSON.stringify(data) !== JSON.stringify(originalData)) {
       setOriginalData(data);
       setHasProcessed(false);
+      //setRemovedItems([]); // Reset removed items khi data mới
     }
 
     if (!hasProcessed) {
-      const itemsToRemove = [];
-      const itemsToKeep = [];
+      // Đợi một chút để đảm bảo component đã render hoàn toàn
+      const timeoutId = setTimeout(() => {
+        const itemsToRemove = [];
+        const itemsToKeep = [];
 
-      data.forEach((item) => {
-        const itemMeta = items.find(
-          (i) => String(i.id) === String(item.itemId)
-        );
-        const stockQuantity = itemMeta?.quantity ?? 0;
+        data.forEach((item) => {
+          const itemMeta = items.find(
+            (i) => String(i.id) === String(item.itemId)
+          );
+          const stockQuantity = itemMeta?.quantity ?? 0;
 
-        if (stockQuantity === 0) {
-          // Lấy requested amount dựa trên export type
-          let requestedAmount;
-          if (
-            exportType === "PRODUCTION" ||
-            exportType === "BORROWING" ||
-            exportType === "LIQUIDATION"
-          ) {
-            requestedAmount = item.measurementValue || 0;
+          if (stockQuantity === 0) {
+            // Lấy requested amount dựa trên export type
+            let requestedAmount;
+            if (
+              exportType === "PRODUCTION" ||
+              exportType === "BORROWING" ||
+              exportType === "LIQUIDATION"
+            ) {
+              requestedAmount = item.measurementValue || 0;
+            } else {
+              requestedAmount = item.quantity || 0;
+            }
+
+            itemsToRemove.push({
+              itemId: item.itemId,
+              itemName:
+                item.itemName || itemMeta?.name || `Item ${item.itemId}`,
+              requestedQuantity: requestedAmount,
+              unitType: item.unitType || itemMeta?.unitType || "",
+              measurementUnit:
+                item.measurementUnit || itemMeta?.measurementUnit || "",
+            });
           } else {
-            requestedAmount = item.quantity || 0;
+            itemsToKeep.push(item);
           }
+        });
 
-          itemsToRemove.push({
-            itemId: item.itemId,
-            itemName: item.itemName || itemMeta?.name || `Item ${item.itemId}`,
-            requestedQuantity: requestedAmount,
-            unitType: item.unitType || itemMeta?.unitType || "",
-            measurementUnit:
-              item.measurementUnit || itemMeta?.measurementUnit || "", // THÊM DÒNG NÀY
-          });
-        } else {
-          itemsToKeep.push(item);
+        setRemovedItems(itemsToRemove);
+
+        if (itemsToRemove.length > 0) {
+          onDataChange(itemsToKeep);
+          if (onRemovedItemsNotification) {
+            onRemovedItemsNotification(itemsToRemove);
+          }
         }
-      });
 
-      setRemovedItems(itemsToRemove);
+        setHasProcessed(true);
+      }, 100); // Delay 100ms để đảm bảo render xong
 
-      if (itemsToRemove.length > 0) {
-        onDataChange(itemsToKeep);
-        if (onRemovedItemsNotification) {
-          onRemovedItemsNotification(itemsToRemove);
-        }
-      }
-
-      setHasProcessed(true);
+      return () => clearTimeout(timeoutId);
     }
-  }, [data, items, exportType]);
+  }, [
+    data,
+    items,
+    exportType,
+    // hasProcessed,
+    // originalData,
+    // onDataChange,
+    // onRemovedItemsNotification,
+  ]);
 
-  // Validate errors cho các item còn lại
   useEffect(() => {
     const newErrors = {};
 

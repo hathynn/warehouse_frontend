@@ -635,22 +635,23 @@ const ExportRequestCreate = () => {
   // EXPORT TYPE HANDLING
   // =============================================================================
   const handleExportTypeChange = (newExportType) => {
+    // Reset file-related states
     setFile(null);
     setFileName("");
     setData([]);
     setValidationError("");
     setFileConfirmed(false);
-    setExcelFormData(null);
+    setExcelFormData(null); // ✅ Reset Excel data
     setReturnImportData(null);
-    setHasTableError(false); // ✅ THÊM dòng này
+    setHasTableError(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
 
     setFormData({
-      ...INITIAL_FORM_DATA,
-      exportType: newExportType,
+      ...INITIAL_FORM_DATA, // Reset tất cả các field về giá trị ban đầu
+      exportType: newExportType, // Chỉ giữ lại exportType mới
     });
 
     setPagination({ current: 1, pageSize: 10, total: 0 });
