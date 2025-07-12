@@ -142,6 +142,8 @@ const ExportRequestDetail = () => {
       return {
         ...detail,
         itemName: itemInfo?.name || detail.itemName || "Không xác định",
+        unitType: itemInfo?.unitType || "", // Thêm unitType vào đây
+        measurementUnit: itemInfo?.measurementUnit || "",
       };
     });
   };
@@ -791,25 +793,66 @@ const ExportRequestDetail = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
+      width: "18%",
       render: (id) => `${id}`,
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
+      width: "18%",
       ellipsis: true,
     },
+    // Thêm cột "Giá trị cần xuất" - chỉ hiển thị cho PRODUCTION, BORROWING, LIQUIDATION
+    ...(["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportRequest?.type)
+      ? [
+          {
+            title: "Giá trị cần xuất",
+            dataIndex: "measurementValue",
+            key: "measurementValue",
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
+            width: 180,
+            render: (text, record) => (
+              <div style={{ textAlign: "center" }}>
+                <span style={{ fontWeight: "600", fontSize: "18px" }}>
+                  {text}
+                </span>{" "}
+                {record.measurementUnit && (
+                  <span className="text-gray-500">
+                    {record.measurementUnit}
+                  </span>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
     {
       title: "Số lượng cần",
       dataIndex: "quantity",
       key: "quantity",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       width: 180,
-      render: (text) => <div style={{ textAlign: "right" }}>{text}</div>,
+      render: (text, record) => (
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+          {record.unitType && (
+            <span className="text-gray-500">{record.unitType}</span>
+          )}
+        </div>
+      ),
     },
     {
       title: "Số lượng đã đóng gói",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       width: 200,
       render: (text, record) => {
         // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
@@ -819,17 +862,27 @@ const ExportRequestDetail = () => {
             exportRequest?.status
           )
         ) {
-          return <div style={{ textAlign: "right" }}>0</div>;
+          return (
+            <div style={{ textAlign: "center" }}>
+              <span style={{ fontWeight: "600", fontSize: "18px" }}>0</span>{" "}
+              {record.unitType && (
+                <span className="text-gray-500">{record.unitType}</span>
+              )}
+            </div>
+          );
         }
 
         return (
           <div
-            style={{ textAlign: "right" }}
+            style={{ textAlign: "center" }}
             className={`${
               text < record.quantity ? "text-red-600 font-semibold" : ""
             }`}
           >
-            {text}
+            <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+            {record.unitType && (
+              <span className="text-gray-500">{record.unitType}</span>
+            )}
           </div>
         );
       },
@@ -848,6 +901,10 @@ const ExportRequestDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      align: "center",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       width: 200,
       render: (status) => {
         if (
@@ -865,6 +922,9 @@ const ExportRequestDetail = () => {
     {
       title: "Chi tiết",
       key: "detail",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
       width: 200,
       render: (text, record) => (
         <div className="flex gap-3 justify-center">
@@ -1330,7 +1390,7 @@ const ExportRequestDetail = () => {
         }
         okText="Xác nhận"
         cancelText="Quay lại"
-        width={800}
+        width={1000}
         centered
         okButtonProps={{
           disabled: !confirmChecked || !hasViewedAllPages(),
@@ -1385,46 +1445,95 @@ const ExportRequestDetail = () => {
               title: "Mã sản phẩm",
               dataIndex: "itemId",
               key: "itemId",
-              width: 120,
+              width: "18%",
             },
             {
               title: "Tên sản phẩm",
               dataIndex: "itemName",
               key: "itemName",
               ellipsis: true,
+              width: "22%",
             },
+            // Cột Giá trị cần xuất - chỉ hiển thị cho PRODUCTION, BORROWING, LIQUIDATION
+            ...(["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+              exportRequest?.type
+            )
+              ? [
+                  {
+                    title: "Giá trị cần xuất",
+                    dataIndex: "measurementValue",
+                    key: "measurementValue",
+                    width: 140,
+                    align: "left",
+                    render: (text, record) => (
+                      <span>
+                        <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                          {text}
+                        </span>{" "}
+                        {record.measurementUnit && (
+                          <span className="text-gray-500">
+                            {record.measurementUnit}
+                          </span>
+                        )}
+                      </span>
+                    ),
+                  },
+                ]
+              : []),
             {
               title: "Số lượng cần",
               dataIndex: "quantity",
               key: "quantity",
               width: 120,
-              align: "right",
+              align: "left",
+              render: (text, record) => (
+                <span>
+                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                    {text}
+                  </span>{" "}
+                  {record.unitType && (
+                    <span className="text-gray-500">{record.unitType}</span>
+                  )}
+                </span>
+              ),
             },
             {
               title: "Số lượng thực tế",
               dataIndex: "actualQuantity",
               key: "actualQuantity",
               width: 140,
-              align: "right",
-              render: (text, record) => (
-                <span
-                  className={
-                    text < record.quantity ? "text-red-600 font-semibold" : ""
-                  }
-                >
-                  {text}
-                </span>
-              ),
+              align: "left",
+              render: (text, record) => {
+                const isLacking = text < record.quantity;
+
+                return (
+                  <span
+                    className={isLacking ? "text-red-600 font-semibold" : ""}
+                  >
+                    <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                      {text}
+                    </span>{" "}
+                    {record.unitType && (
+                      <span className="text-gray-500">{record.unitType}</span>
+                    )}
+                  </span>
+                );
+              },
             },
             {
               title: "Trạng thái",
               dataIndex: "status",
               key: "status",
               width: 100,
+              onHeaderCell: () => ({
+                style: { textAlign: "center" },
+              }),
               render: (status) => (
-                <Tag color={status === "LACK" ? "error" : "success"}>
-                  {status === "LACK" ? "Thiếu" : "Đủ"}
-                </Tag>
+                <div style={{ textAlign: "center" }}>
+                  <Tag color={status === "LACK" ? "error" : "success"}>
+                    {status === "LACK" ? "Thiếu" : "Đủ"}
+                  </Tag>
+                </div>
               ),
             },
           ]}
