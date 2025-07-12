@@ -338,7 +338,6 @@ const ProductDetailTable = ({
                 ExportStatus.WAITING_EXPORT,
                 ExportStatus.CONFIRMED,
                 ExportStatus.COMPLETED,
-                ExportStatus.CANCELLED,
               ].includes(exportRequest?.status) &&
                 // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
                 !(
