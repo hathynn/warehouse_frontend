@@ -479,15 +479,17 @@ const ImportOrderList: React.FC = () => {
             pagination: { ...pagination, current: 1 }
           })}
           className="min-w-[240px] text-black [&_.ant-select-selector]:!border-gray-400 [&_.ant-select-selection-placeholder]:!text-gray-400 [&_.ant-select-clear]:!text-lg [&_.ant-select-clear]:!flex [&_.ant-select-clear]:!items-center [&_.ant-select-clear]:!justify-center [&_.ant-select-clear_svg]:!w-5 [&_.ant-select-clear_svg]:!h-5"
-          options={importOrdersData.map(order => ({
-            label: order.importRequestId.toString(),
-            value: order.importRequestId.toString()
-          }))}
+          options={
+            Array.from(new Set(importOrdersData.map(importOrder => importOrder.importRequestId))).map(importRequestId => ({
+              label: importRequestId.toString(),
+              value: importRequestId.toString()
+            }))
+          }
           filterOption={(input, option) =>
             option?.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
           }
-          dropdownStyle={{ 
-            maxHeight: '240px', 
+          dropdownStyle={{
+            maxHeight: '240px',
           }}
           listHeight={160}
         />
@@ -506,8 +508,8 @@ const ImportOrderList: React.FC = () => {
           filterOption={(input, option) =>
             option?.label.toLowerCase().indexOf(input.toLowerCase()) >= 0
           }
-          dropdownStyle={{ 
-            maxHeight: '240px', 
+          dropdownStyle={{
+            maxHeight: '240px',
           }}
           listHeight={160}
         />

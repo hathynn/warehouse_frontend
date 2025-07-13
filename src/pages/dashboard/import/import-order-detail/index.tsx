@@ -445,9 +445,11 @@ const ImportOrderDetail = () => {
   // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
   const handleUpdateInventoryItemLocation = async (changedInventoryItems: { inventoryItemId: string; storedLocationId: number; }[]) => {
     await updateStoredLocation(changedInventoryItems);
-    await fetchImportOrderData();
-    await fetchImportOrderDetails();
-    await fetchInventoryItemsData();
+    await Promise.all([
+      fetchImportOrderData(),
+      fetchImportOrderDetails(),
+      fetchInventoryItemsData(),
+    ]);
   }
 
   const handleReadyToStoreConfirm = async () => {
@@ -708,48 +710,49 @@ const ImportOrderDetail = () => {
 
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
-      <div className="flex justify-end items-center mt-16 mb-4 gap-4">
-        {importOrderData?.status === ImportStatus.COMPLETED && (
-          <>
-            <Button
-              type="primary"
-              icon={<MdApartment />}
-              onClick={handleOpenUpdateInventoryItemLocationModal}
-            >
-              Cập nhật vị trí lưu kho
-            </Button>
-            <Button
-              type="default"
-              className="!text-blue-500 !border-blue-500"
-              icon={<PrinterOutlined />}
-              onClick={handleOpenQrModal}
-            >
-              In QRCode
-            </Button>
-          </>
-        )}
-        {importOrderData?.status === ImportStatus.COUNTED && (
-          <>
-            <Button
-              type="primary"
-              loading={importOrderLoading}
-              icon={<RedoOutlined />}
-              onClick={() => setConfirmRequireCountingAgainModalVisible(true)}
-            >
-              Yêu cầu kiểm đếm lại
-            </Button>
-            <Button
-              type="primary"
-              loading={importOrderLoading}
-              icon={<CheckCircleOutlined />}
-              onClick={() => setConfirmCountingModalVisible(true)}
-            >
-              Xác nhận kiểm đếm
-            </Button>
-          </>
-        )}
-      </div>
-
+      {userRole === AccountRole.WAREHOUSE_MANAGER && (
+        <div className="flex justify-end items-center mt-16 mb-4 gap-4">
+          {importOrderData?.status === ImportStatus.COMPLETED && (
+            <>
+              <Button
+                type="primary"
+                icon={<MdApartment />}
+                onClick={handleOpenUpdateInventoryItemLocationModal}
+              >
+                Cập nhật vị trí lưu kho
+              </Button>
+              <Button
+                type="default"
+                className="!text-blue-500 !border-blue-500"
+                icon={<PrinterOutlined />}
+                onClick={handleOpenQrModal}
+              >
+                In QRCode
+              </Button>
+            </>
+          )}
+          {importOrderData?.status === ImportStatus.COUNTED && (
+            <>
+              <Button
+                type="primary"
+                loading={importOrderLoading}
+                icon={<RedoOutlined />}
+                onClick={() => setConfirmRequireCountingAgainModalVisible(true)}
+              >
+                Yêu cầu kiểm đếm lại
+              </Button>
+              <Button
+                type="primary"
+                loading={importOrderLoading}
+                icon={<CheckCircleOutlined />}
+                onClick={() => setConfirmCountingModalVisible(true)}
+              >
+                Xác nhận kiểm đếm
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       <Table
         columns={columns}
         dataSource={importOrderDetails}
@@ -1116,14 +1119,17 @@ const ImportOrderDetail = () => {
           await fetchInventoryItemsData();
         }}
         onCancel={() => { setConfirmRequireCountingAgainModalVisible(false); setConfirmRequireCountingAgainResponsibilityChecked(false); }}
-        okText="Tôi xác nhận yêu cầu kiểm đếm lại"
+        okText="Xác nhận yêu cầu kiểm đếm lại"
         cancelText="Hủy"
         okButtonProps={{ disabled: !confirmRequireCountingAgainResponsibilityChecked }}
         maskClosable={false}
-        width={320}
+        width={360}
       >
+        <div className="my-4">
+          Thông báo cho nhân viên <b>{assignedStaff?.fullName}</b> kiểm đếm lại số lượng hàng hoá.
+        </div>
         <Checkbox checked={confirmRequireCountingAgainResponsibilityChecked} onChange={e => setConfirmRequireCountingAgainResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
-          Tôi xác nhận những thông tin trên là đúng.
+          Tôi chịu trách nhiệm về quyết định này.
         </Checkbox>
       </Modal>
     </div>
