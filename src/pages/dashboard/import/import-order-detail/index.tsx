@@ -16,6 +16,8 @@ import {
   PrinterOutlined,
   InfoCircleOutlined,
   ClockCircleOutlined,
+  RedoOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import useImportOrderService from "@/services/useImportOrderService";
 import useImportOrderDetailService from "@/services/useImportOrderDetailService";
@@ -32,6 +34,7 @@ import duration from "dayjs/plugin/duration";
 import QRCode from 'react-qr-code';
 import useInventoryItemService, { InventoryItemResponse, UpdateInventoryLocationRequest } from "@/services/useInventoryItemService";
 import useStoredLocationService, { StoredLocationResponse } from "@/services/useStoredLocationService";
+import { usePusherContext } from "@/contexts/pusher/PusherContext";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
@@ -52,6 +55,9 @@ const ImportOrderDetail = () => {
   const navigate = useNavigate();
   const userRole = useSelector((state: { user: UserState }) => state.user.role);
 
+  // ========== PUSHER CONTEXT ==========
+  const { latestNotification } = usePusherContext();
+
   // ========== DATA STATES ==========
   const [importOrderData, setImportOrderData] = useState<ImportOrderResponse | null>(null);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
@@ -65,6 +71,7 @@ const ImportOrderDetail = () => {
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [confirmCountingModalVisible, setConfirmCountingModalVisible] = useState(false);
   const [cancelImportOrderModalVisible, setCancelImportOrderModalVisible] = useState(false);
+  const [confirmRequireCountingAgainModalVisible, setConfirmRequireCountingAgainModalVisible] = useState(false);
   const [extendModalVisible, setExtendModalVisible] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [showUpdateInventoryItemLocationModal, setShowUpdateInventoryItemLocationModal] = useState(false);
@@ -73,6 +80,7 @@ const ImportOrderDetail = () => {
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState('');
   const [confirmCountingResponsibilityChecked, setConfirmCountingResponsibilityChecked] = useState(false);
+  const [confirmRequireCountingAgainResponsibilityChecked, setConfirmRequireCountingAgainResponsibilityChecked] = useState(false);
   const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
   const [extendResponsibilityChecked, setExtendResponsibilityChecked] = useState(false);
   const [extendFormData, setExtendFormData] = useState<{
@@ -100,7 +108,8 @@ const ImportOrderDetail = () => {
     cancelImportOrder,
     completeImportOrder,
     extendImportOrder,
-    updateImportOrderToReadyToStore
+    updateImportOrderToReadyToStore,
+    countAgainImportOrder
   } = useImportOrderService();
   const {
     loading: importOrderDetailLoading,
@@ -210,8 +219,36 @@ const ImportOrderDetail = () => {
     fetchAssignedStaff();
   }, [importOrderData]);
 
+  useEffect(() => {
+    console.log(latestNotification)
+    if (latestNotification) {
+      console.log(latestNotification.type)
+      const isImportOrderEvent = latestNotification.type === `import-order-counted-${importOrderId}`;
+
+      if (isImportOrderEvent) {
+        reloadImportOrderDetail();
+      }
+    }
+  }, [latestNotification]);
+
 
   // ========== UTILITY FUNCTIONS ==========
+  const reloadImportOrderDetail = () => {
+    // close all modal and refetch all data
+    setAssignModalVisible(false);
+    setConfirmCountingModalVisible(false);
+    setConfirmRequireCountingAgainModalVisible(false);
+    setCancelImportOrderModalVisible(false);
+    setExtendModalVisible(false);
+    setQrModalVisible(false);
+    setShowUpdateInventoryItemLocationModal(false);
+    fetchImportOrderData();
+    fetchImportOrderDetails();
+    fetchInventoryItemsData();
+    fetchAssignedStaff();
+    fetchActiveStaffs();
+  }
+
   const calculateRemainingTime = (totalExpectedTime: string, defaultWorkingMinutes: number): string => {
     try {
       const [hours, minutes] = totalExpectedTime.split(':').map(Number);
@@ -697,75 +734,19 @@ const ImportOrderDetail = () => {
             <Button
               type="primary"
               loading={importOrderLoading}
+              icon={<RedoOutlined />}
+              onClick={() => setConfirmRequireCountingAgainModalVisible(true)}
+            >
+              Yêu cầu kiểm đếm lại
+            </Button>
+            <Button
+              type="primary"
+              loading={importOrderLoading}
+              icon={<CheckCircleOutlined />}
               onClick={() => setConfirmCountingModalVisible(true)}
             >
               Xác nhận kiểm đếm
             </Button>
-            <Modal
-              title="Xác nhận kiểm đếm"
-              open={confirmCountingModalVisible}
-              onOk={async () => {
-                setConfirmCountingModalVisible(false);
-                setConfirmCountingResponsibilityChecked(false);
-                if (!importOrderData?.importOrderId) return;
-                await completeImportOrder(importOrderData.importOrderId);
-                await fetchImportOrderData();
-                await fetchInventoryItemsData();
-                setShowUpdateInventoryItemLocationModal(true)
-              }}
-              onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
-              okText="Tôi xác nhận kiểm đếm"
-              cancelText="Hủy"
-              okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
-              maskClosable={false}
-              width={480}
-            >
-              <div className="space-y-4">
-                <Table
-                  columns={[
-                    {
-                      title: "Tên sản phẩm",
-                      dataIndex: "itemName",
-                      key: "itemName",
-                      width: "50%",
-                      align: "left" as const,
-                      ellipsis: true,
-                      onHeaderCell: () => ({
-                        style: { textAlign: 'center' as const }
-                      })
-                    },
-                    {
-                      title: "Thực tế",
-                      key: "actualQuantity",
-                      dataIndex: "actualQuantity",
-                      width: "25%",
-                      align: "right" as const,
-                      onHeaderCell: () => ({
-                        style: { textAlign: 'center' as const }
-                      })
-                    },
-                    {
-                      title: "Dự kiến",
-                      key: "expectQuantity",
-                      dataIndex: "expectQuantity",
-                      width: "25%",
-                      align: "right" as const,
-                      onHeaderCell: () => ({
-                        style: { textAlign: 'center' as const }
-                      })
-                    }
-                  ]}
-                  dataSource={importOrderDetails}
-                  rowKey="importOrderDetailId"
-                  size="small"
-                  pagination={false}
-                >
-                </Table>
-                <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
-                  Tôi xác nhận những thông tin trên là đúng.
-                </Checkbox>
-              </div>
-            </Modal>
           </>
         )}
       </div>
@@ -787,7 +768,9 @@ const ImportOrderDetail = () => {
         }}
       />
 
-      {/* Modals */}
+
+      {/* ----------------------------- Modals ----------------------------- */}
+      {/* Modal phân công nhân viên */}
       <Modal
         title={
           <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
@@ -895,7 +878,7 @@ const ImportOrderDetail = () => {
         )}
       </Modal>
 
-
+      {/* Modal in QRCode */}
       <Modal
         title={<span className="text-lg font-bold">Danh sách QRCode sản phẩm</span>}
         open={qrModalVisible}
@@ -1041,6 +1024,7 @@ const ImportOrderDetail = () => {
         </div>
       </Modal>
 
+      {/* Modal cập nhật vị trí lưu kho */}
       <UpdateInventoryItemLocationModal
         loading={storedLocationLoading || inventoryItemLoading}
         importOrder={importOrderData}
@@ -1052,6 +1036,97 @@ const ImportOrderDetail = () => {
         onUpdateInventoryItemsLocation={updatedInventoryItems => setInventoryItemsData(updatedInventoryItems)}
         onUpdateInventoryItemsLocationConfirm={handleUpdateInventoryItemLocation}
       />
+
+      {/* Modal xác nhận kiểm đếm */}
+      <Modal
+        title="Xác nhận kiểm đếm"
+        open={confirmCountingModalVisible}
+        onOk={async () => {
+          setConfirmCountingModalVisible(false);
+          setConfirmCountingResponsibilityChecked(false);
+          if (!importOrderData?.importOrderId) return;
+          await completeImportOrder(importOrderData.importOrderId);
+          await fetchImportOrderData();
+          await fetchInventoryItemsData();
+          setShowUpdateInventoryItemLocationModal(true)
+        }}
+        onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
+        okText="Tôi xác nhận kiểm đếm"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
+        maskClosable={false}
+        width={480}
+      >
+        <div className="space-y-4">
+          <Table
+            columns={[
+              {
+                title: "Tên sản phẩm",
+                dataIndex: "itemName",
+                key: "itemName",
+                width: "50%",
+                align: "left" as const,
+                ellipsis: true,
+                onHeaderCell: () => ({
+                  style: { textAlign: 'center' as const }
+                })
+              },
+              {
+                title: "Thực tế",
+                key: "actualQuantity",
+                dataIndex: "actualQuantity",
+                width: "25%",
+                align: "right" as const,
+                onHeaderCell: () => ({
+                  style: { textAlign: 'center' as const }
+                })
+              },
+              {
+                title: "Dự kiến",
+                key: "expectQuantity",
+                dataIndex: "expectQuantity",
+                width: "25%",
+                align: "right" as const,
+                onHeaderCell: () => ({
+                  style: { textAlign: 'center' as const }
+                })
+              }
+            ]}
+            dataSource={importOrderDetails}
+            rowKey="importOrderDetailId"
+            size="small"
+            pagination={false}
+          >
+          </Table>
+          <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
+            Tôi xác nhận những thông tin trên là đúng.
+          </Checkbox>
+        </div>
+      </Modal>
+
+      {/* Modal yêu cầu kiểm đếm lại */}
+      <Modal
+        title="Yêu cầu kiểm đếm lại"
+        open={confirmRequireCountingAgainModalVisible}
+        onOk={async () => {
+          setConfirmRequireCountingAgainModalVisible(false);
+          setConfirmRequireCountingAgainResponsibilityChecked(false);
+          if (!importOrderData?.importOrderId) return;
+          await countAgainImportOrder(importOrderData.importOrderId);
+          await fetchImportOrderData();
+          await fetchInventoryItemsData();
+        }}
+        onCancel={() => { setConfirmRequireCountingAgainModalVisible(false); setConfirmRequireCountingAgainResponsibilityChecked(false); }}
+        okText="Tôi xác nhận yêu cầu kiểm đếm lại"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !confirmRequireCountingAgainResponsibilityChecked }}
+        maskClosable={false}
+        width={320}
+      >
+        <Checkbox checked={confirmRequireCountingAgainResponsibilityChecked} onChange={e => setConfirmRequireCountingAgainResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
+          Tôi xác nhận những thông tin trên là đúng.
+        </Checkbox>
+      </Modal>
     </div>
   );
 };

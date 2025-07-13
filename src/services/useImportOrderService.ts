@@ -163,6 +163,16 @@ const useImportOrderService = () => {
     }
   };
 
+  const countAgainImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", `/import-order/request-count-again/${importOrderId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể yêu cầu đếm lại đơn nhập");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllImportOrders,
@@ -174,7 +184,8 @@ const useImportOrderService = () => {
     completeImportOrder,
     cancelImportOrder,
     extendImportOrder,
-    updateImportOrderToReadyToStore
+    updateImportOrderToReadyToStore,
+    countAgainImportOrder
   };
 };
 
