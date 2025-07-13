@@ -42,6 +42,11 @@ export interface InventoryItemResponse {
   importOrderDetailId?: number;
   storedLocationId?: number;
   storedLocationName?: string;
+  isTrackingForExport?: boolean;
+}
+
+export interface AutoChangeInventoryItemRequest {
+  inventoryItemId: string;
 }
 
 const useInventoryItemService = () => {
@@ -185,6 +190,23 @@ const useInventoryItemService = () => {
     }
   };
 
+  // Auto change new suitable inventory item for export request detail
+  const autoChangeInventoryItem = async (
+    inventoryItemId: string
+  ): Promise<ResponseDTO<any>> => {
+    try {
+      const response = await callApi(
+        "put",
+        `/inventory-item/auto-change/${inventoryItemId}`
+      );
+      toast.success("Tự động đổi sản phẩm phù hợp thành công");
+      return response;
+    } catch (error) {
+      toast.error("Không thể tự động đổi sản phẩm");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllInventoryItems,
@@ -195,6 +217,7 @@ const useInventoryItemService = () => {
     getListQrCodes,
     updateStoredLocation,
     changeInventoryItemExportDetail,
+    autoChangeInventoryItem,
   };
 };
 
