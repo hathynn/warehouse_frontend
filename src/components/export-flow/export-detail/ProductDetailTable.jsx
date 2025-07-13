@@ -29,17 +29,15 @@ const ProductDetailTable = ({
   creating,
   onCancelCreateExport,
   onConfirmCreateExport,
+  items,
 }) => {
   const lastValidValuesRef = useRef({});
   const itemStatus = getItemStatus(allExportRequestDetails);
 
-  const totalEnough = allExportRequestDetails.filter(
-    (d) => d.status !== "LACK"
-  ).length;
-  const totalLack = allExportRequestDetails.filter(
-    (d) => d.status === "LACK"
-  ).length;
-  const totalItems = allExportRequestDetails.length;
+  const currentData = editMode ? editedDetails : allExportRequestDetails;
+  const totalEnough = currentData.filter((d) => d.status !== "LACK").length;
+  const totalLack = currentData.filter((d) => d.status === "LACK").length;
+  const totalItems = currentData.length;
 
   const handleQuantityChange = (value, recordId) => {
     console.log(`Quantity changed for ${recordId}:`, value);
@@ -98,19 +96,114 @@ const ProductDetailTable = ({
     );
   };
 
+  const handleMeasurementValueChange = (value, recordId) => {
+    setEditedDetails((prev) =>
+      prev.map((item) => {
+        if (item.id === recordId) {
+          let measurementError = "";
+          const finalValue = value;
+
+          // Validate measurementValue
+          if (value !== null && value !== undefined && value !== "") {
+            // ✅ SỬA: Lấy measurementValue từ thông tin item chính theo itemId
+            const itemInfo = items.find(
+              (i) => String(i.id) === String(item.itemId)
+            );
+            const originalMeasurementValue = itemInfo?.measurementValue || 0;
+            const maxAllowed = item.actualQuantity * originalMeasurementValue;
+
+            if (value <= 0) {
+              measurementError = "Phải lớn hơn 0";
+            } else if (value > maxAllowed) {
+              measurementError = `Phải ≤ ${maxAllowed}`;
+            } else {
+              // Lưu giá trị hợp lệ vào ref
+              lastValidValuesRef.current[`measurement_${recordId}`] = value;
+            }
+          }
+
+          return { ...item, measurementValue: finalValue, measurementError };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleMeasurementInputBlur = (recordId) => {
+    setEditedDetails((prev) =>
+      prev.map((item) => {
+        if (item.id === recordId) {
+          // ✅ SỬA: Lấy measurementValue từ thông tin item chính theo itemId
+          const itemInfo = items.find(
+            (i) => String(i.id) === String(item.itemId)
+          );
+          const originalMeasurementValue = itemInfo?.measurementValue || 0;
+          const maxAllowed = item.actualQuantity * originalMeasurementValue;
+
+          // Kiểm tra nếu measurementValue không hợp lệ
+          if (
+            item.measurementValue == null ||
+            item.measurementValue == undefined ||
+            item.measurementValue == "" ||
+            item.measurementValue <= 0 ||
+            item.measurementValue > maxAllowed
+          ) {
+            // Khôi phục về lastValidValue nếu có
+            const restoreValue =
+              lastValidValuesRef.current[`measurement_${recordId}`] ||
+              item.measurementValue;
+
+            return {
+              ...item,
+              measurementValue: restoreValue,
+              measurementError: "",
+            };
+          }
+          return item;
+        }
+        return item;
+      })
+    );
+  };
+
   const hasValidationError =
     editedDetails.length === 0 ||
     editedDetails.some((item) => {
       // Chỉ validate những item LACK với actualQuantity > 1 (những item có thể edit)
       if (item.status === "LACK" && item.actualQuantity > 1) {
-        // Chỉ kiểm tra error và giá trị hợp lệ (không check empty nữa)
-        return (
-          (item.error && item.error !== "") ||
-          (item.quantity !== null &&
-            item.quantity !== undefined &&
-            item.quantity !== "" &&
-            (item.quantity <= 0 || item.quantity > item.actualQuantity))
-        );
+        // Cho SELLING: validate quantity
+        if (exportRequest?.type === "SELLING") {
+          return (
+            (item.error && item.error !== "") ||
+            (item.quantity !== null &&
+              item.quantity !== undefined &&
+              item.quantity !== "" &&
+              (item.quantity <= 0 || item.quantity > item.actualQuantity))
+          );
+        }
+
+        // Cho PRODUCTION, BORROWING, LIQUIDATION: validate measurementValue
+        if (
+          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+            exportRequest?.type
+          )
+        ) {
+          // ✅ SỬA: Lấy measurementValue từ thông tin item chính
+          const itemInfo = items.find(
+            (i) => String(i.id) === String(item.itemId)
+          );
+          const originalMeasurementValue = itemInfo?.measurementValue || 0;
+          const maxAllowed = item.actualQuantity * originalMeasurementValue;
+
+          return (
+            (item.measurementError && item.measurementError !== "") ||
+            (item.measurementValue !== null &&
+              item.measurementValue !== undefined &&
+              item.measurementValue !== "" &&
+              (item.measurementValue <= 0 ||
+                item.measurementValue > maxAllowed))
+          );
+        }
       }
       return false;
     });
@@ -122,6 +215,7 @@ const ProductDetailTable = ({
   const actionColumn = {
     title: "Hành động",
     key: "action",
+    align: "center",
     width: 80,
     render: (_, record) =>
       record.status === "LACK" ? ( // ✅ THÊM điều kiện actualQuantity > 1
@@ -139,48 +233,160 @@ const ProductDetailTable = ({
   };
 
   const editableColumns = [
-    ...columns.map((col) => {
-      if (editMode && col.dataIndex === "quantity") {
-        return {
-          ...col,
-          render: (text, record) => {
-            const isLackWithQuantityOne =
-              record.status === "LACK" && record.actualQuantity === 1;
-            const isEnough = record.status !== "LACK";
+    ...columns
+      .map((col) => {
+        // Xử lý column "Số lượng cần" cho SELLING
+        if (
+          editMode &&
+          col.dataIndex === "quantity" &&
+          exportRequest?.type === "SELLING"
+        ) {
+          return {
+            ...col,
+            render: (text, record) => {
+              const isLackWithQuantityOne =
+                record.status === "LACK" && record.actualQuantity === 1;
+              const isEnough = record.status !== "LACK";
 
-            if (isEnough || isLackWithQuantityOne) {
-              return <div style={{ textAlign: "right" }}>{text}</div>;
-            }
-
-            return (
-              <div style={{ textAlign: "right" }}>
-                <InputNumber
-                  min={1}
-                  max={record.actualQuantity}
-                  value={record.quantity}
-                  onChange={(val) => handleQuantityChange(val, record.id)}
-                  onBlur={() => handleInputBlur(record.id)}
-                  style={{ width: 100 }}
-                />
-                {record.error && (
-                  <div
-                    style={{
-                      color: "#ff4d4f",
-                      fontSize: 12,
-                      fontWeight: "bold",
-                      marginTop: 4,
-                    }}
-                  >
-                    {record.error}
+              if (isEnough || isLackWithQuantityOne) {
+                return (
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontWeight: "600", fontSize: "18px" }}>
+                      {text}
+                    </span>{" "}
+                    {record.unitType && (
+                      <span className="text-gray-500">{record.unitType}</span>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          },
-        };
-      }
-      return col;
-    }),
+                );
+              }
+
+              return (
+                <div style={{ textAlign: "center" }}>
+                  <InputNumber
+                    min={1}
+                    max={record.actualQuantity}
+                    value={record.quantity}
+                    onChange={(val) => handleQuantityChange(val, record.id)}
+                    onBlur={() => handleInputBlur(record.id)}
+                    style={{ width: 100 }}
+                  />
+                  {record.error && (
+                    <div
+                      style={{
+                        color: "#ff4d4f",
+                        fontSize: 12,
+                        fontWeight: "bold",
+                        marginTop: 4,
+                      }}
+                    >
+                      {record.error}
+                    </div>
+                  )}
+                  {record.unitType && (
+                    <div className="text-gray-500 text-xs mt-1">
+                      {record.unitType}
+                    </div>
+                  )}
+                </div>
+              );
+            },
+          };
+        }
+
+        // Xử lý column "Giá trị cần xuất" cho PRODUCTION, BORROWING, LIQUIDATION
+        if (
+          editMode &&
+          col.dataIndex === "measurementValue" &&
+          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+            exportRequest?.type
+          )
+        ) {
+          return {
+            ...col,
+            render: (text, record) => {
+              const isLackWithQuantityOne =
+                record.status === "LACK" && record.actualQuantity === 1;
+              const isEnough = record.status !== "LACK";
+
+              if (isEnough || isLackWithQuantityOne) {
+                return (
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontWeight: "600", fontSize: "18px" }}>
+                      {text}
+                    </span>{" "}
+                    {record.measurementUnit && (
+                      <span className="text-gray-500">
+                        {record.measurementUnit}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+              const itemInfo = items.find(
+                (i) => String(i.id) === String(record.itemId)
+              );
+              const originalMeasurementValue = itemInfo?.measurementValue || 0;
+              const maxAllowed =
+                record.actualQuantity * originalMeasurementValue;
+              return (
+                <div style={{ textAlign: "center" }}>
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    max={maxAllowed} // ✅ SỬA
+                    value={record.measurementValue}
+                    onChange={(val) =>
+                      handleMeasurementValueChange(val, record.id)
+                    }
+                    onBlur={() => handleMeasurementInputBlur(record.id)}
+                    style={{ width: 120 }}
+                  />
+                  {record.measurementError && (
+                    <div
+                      style={{
+                        color: "#ff4d4f",
+                        fontSize: 12,
+                        fontWeight: "bold",
+                        marginTop: 4,
+                      }}
+                    >
+                      {record.measurementError}
+                    </div>
+                  )}
+                  {record.measurementUnit && (
+                    <div className="text-gray-500 text-xs mt-1">
+                      {record.measurementUnit}
+                    </div>
+                  )}
+                </div>
+              );
+            },
+          };
+        }
+
+        return col;
+      })
+      // Lọc bỏ cột "Trạng thái" và "Chi tiết" khi ở editMode
+      .filter((col) => {
+        // Ẩn cột "Trạng thái" và "Chi tiết" khi ở editMode
+        if (editMode && (col.key === "status" || col.key === "detail")) {
+          return false;
+        }
+
+        //Ẩn cột "Số lượng cần" cho PRODUCTION, BORROWING, LIQUIDATION khi ở editMode
+        if (
+          editMode &&
+          col.dataIndex === "quantity" &&
+          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+            exportRequest?.type
+          )
+        ) {
+          return false;
+        }
+
+        return true;
+      }),
     ...(editMode ? [actionColumn] : []),
   ];
 
@@ -235,20 +441,57 @@ const ProductDetailTable = ({
                   ...enoughItems,
                 ];
 
-                // ✅ THÊM: Khởi tạo lastValidValues với giá trị ban đầu trong ref
                 lastValidValuesRef.current = {};
                 sortedEditedDetails.forEach((item) => {
                   if (item.status === "LACK" && item.actualQuantity > 1) {
                     lastValidValuesRef.current[item.id] = item.actualQuantity;
+                    if (
+                      ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+                        exportRequest?.type
+                      )
+                    ) {
+                      const itemInfo = items.find(
+                        (i) => String(i.id) === String(item.itemId)
+                      );
+                      const originalMeasurementValue =
+                        itemInfo?.measurementValue || 0;
+                      const maxMeasurementAllowed =
+                        item.actualQuantity * originalMeasurementValue;
+                      lastValidValuesRef.current[`measurement_${item.id}`] =
+                        maxMeasurementAllowed;
+                    }
                   }
                 });
 
                 setEditedDetails(
                   sortedEditedDetails.map((item) => {
+                    // ✅ THÊM: Tính measurementValue hợp lệ lớn nhất
+                    let validMeasurementValue = item.measurementValue;
+                    if (
+                      ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+                        exportRequest?.type
+                      )
+                    ) {
+                      const itemInfo = items.find(
+                        (i) => String(i.id) === String(item.itemId)
+                      );
+                      const originalMeasurementValue =
+                        itemInfo?.measurementValue || 0;
+                      const maxMeasurementAllowed =
+                        item.actualQuantity * originalMeasurementValue;
+
+                      // Nếu measurementValue hiện tại > max cho phép, thì set về max
+                      if (item.measurementValue > maxMeasurementAllowed) {
+                        validMeasurementValue = maxMeasurementAllowed;
+                      }
+                    }
+
                     return {
                       ...item,
                       quantity: item.actualQuantity,
+                      measurementValue: validMeasurementValue, // ✅ THÊM
                       error: "",
+                      measurementError: "", // ✅ THÊM
                     };
                   })
                 );
@@ -317,7 +560,8 @@ const ProductDetailTable = ({
             </div>
 
             {exportRequest?.status === ExportStatus.COUNTED &&
-              userRole === AccountRole.WAREHOUSE_MANAGER && (
+              userRole === AccountRole.WAREHOUSE_MANAGER &&
+              !editMode && ( // ✅ THÊM điều kiện !editMode
                 <div className="mb-2">
                   <span className="ml-6 font-medium">Trạng thái hàng: </span>
                   {itemStatus === "LACK" ? (
@@ -332,14 +576,16 @@ const ProductDetailTable = ({
               <span className="ml-6">
                 Tổng số hàng: <span>{totalItems}</span>
               </span>
-              {[
-                ExportStatus.COUNTED,
-                ExportStatus.COUNT_CONFIRMED,
-                ExportStatus.WAITING_EXPORT,
-                ExportStatus.CONFIRMED,
-                ExportStatus.COMPLETED,
-              ].includes(exportRequest?.status) &&
-                // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
+
+              {/* ✅ SỬA: Chỉ hiện chi tiết khi không ở editMode */}
+              {!editMode &&
+                [
+                  ExportStatus.COUNTED,
+                  ExportStatus.COUNT_CONFIRMED,
+                  ExportStatus.WAITING_EXPORT,
+                  ExportStatus.CONFIRMED,
+                  ExportStatus.COMPLETED,
+                ].includes(exportRequest?.status) &&
                 !(
                   userRole === AccountRole.DEPARTMENT &&
                   [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
@@ -379,7 +625,7 @@ const ProductDetailTable = ({
         pagination={{
           current: pagination.current,
           pageSize: pagination.pageSize,
-          total: pagination.total,
+          total: editMode ? editedDetails.length : pagination.total, // ✅ SỬA
           showSizeChanger: true,
           pageSizeOptions: ["10", "50"],
           showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
@@ -403,6 +649,7 @@ ProductDetailTable.propTypes = {
   userRole: PropTypes.string.isRequired,
   exportRequest: PropTypes.shape({
     status: PropTypes.string,
+    type: PropTypes.string,
   }),
   setConfirmModalVisible: PropTypes.func.isRequired,
   editMode: PropTypes.bool,
@@ -412,6 +659,7 @@ ProductDetailTable.propTypes = {
   creating: PropTypes.bool,
   onCancelCreateExport: PropTypes.func,
   onConfirmCreateExport: PropTypes.func,
+  items: PropTypes.array.isRequired,
 };
 
 export default ProductDetailTable;

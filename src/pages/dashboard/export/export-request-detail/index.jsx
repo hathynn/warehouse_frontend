@@ -36,6 +36,8 @@ import useDepartmentService from "@/services/useDepartmentService";
 import useInventoryItemService from "@/services/useInventoryItemService";
 import useProviderService from "@/services/useProviderService";
 import { SwapOutlined } from "@ant-design/icons";
+// Constants
+import { ROUTES } from "@/constants/routes";
 
 function enrichWithItemMeta(details, items) {
   return details.map((row) => {
@@ -423,6 +425,7 @@ const ExportRequestDetail = () => {
       // Có thể gọi lại fetch data nếu muốn
       await fetchExportRequestData();
       fetchDetails();
+      navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
     } catch (error) {
       message.error("Không thể gia hạn phiếu xuất.");
     }
@@ -488,6 +491,8 @@ const ExportRequestDetail = () => {
     if (type === "PRODUCTION") return "Xuất sản xuất";
     else if (type === "SELLING") return "Xuất bán";
     else if (type === "RETURN") return "Xuất trả nhà cung cấp";
+    else if (type === "BORROWING") return "Xuất mượn";
+    else if (type === "LIQUIDATION") return "Xuất thanh lý";
     return "";
   };
 
@@ -1119,6 +1124,7 @@ const ExportRequestDetail = () => {
         onConfirmCreateExport={() => setConfirmCreateExportModalVisible(true)}
         setRecountModalVisible={setRecountModalVisible}
         recountModalVisible={recountModalVisible}
+        items={items}
       />
       {/* Modal chọn Warehouse Keeper */}
       <Modal
@@ -1675,6 +1681,8 @@ const ExportRequestDetail = () => {
           receivingDepartment: {
             name: departmentInfo?.departmentName,
           },
+          departmentRepresentative: exportRequest?.receiverName,
+          departmentRepresentativePhone: exportRequest?.receiverPhone,
           receiverName: exportRequest?.receiverName,
           receiverPhone: exportRequest?.receiverPhone,
           receiverAddress: exportRequest?.receiverAddress,
