@@ -62,6 +62,7 @@ const ExportRequestDetail = () => {
     updateExportDateTime,
     assignConfirmimgStaff,
     renewExportRequest,
+    confirmCountedExportRequest,
     loading: exportRequestLoading,
   } = useExportRequestService();
   const { getExportRequestDetails, loading: exportRequestDetailLoading } =
@@ -113,8 +114,13 @@ const ExportRequestDetail = () => {
   const [viewedPages, setViewedPages] = useState(new Set([1])); // Track các trang đã xem
   const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
     useState(null);
-  const { getByExportRequestDetailId, loading: inventoryLoading } =
-    useInventoryItemService();
+  const {
+    getByExportRequestDetailId,
+    autoChangeInventoryItem,
+    getAllInventoryItems,
+    changeInventoryItemExportDetail,
+    loading: inventoryLoading,
+  } = useInventoryItemService();
   const [inventorySearchText, setInventorySearchText] = useState("");
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
@@ -125,8 +131,9 @@ const ExportRequestDetail = () => {
   const [selectedOldItem, setSelectedOldItem] = useState(null);
   const [confirmSwapModalVisible, setConfirmSwapModalVisible] = useState(false);
   const [availableItemsLoading, setAvailableItemsLoading] = useState(false);
-  const { getAllInventoryItems, changeInventoryItemExportDetail } =
-    useInventoryItemService();
+  const [confirmAutoChangeModalVisible, setConfirmAutoChangeModalVisible] =
+    useState(false);
+  const [selectedAutoChangeItem, setSelectedAutoChangeItem] = useState(null);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -384,17 +391,38 @@ const ExportRequestDetail = () => {
     }
   };
 
+  const handleAutoChangeItem = async () => {
+    try {
+      await autoChangeInventoryItem(selectedAutoChangeItem.id);
+      // Refresh data
+      await fetchInventoryItems(selectedExportRequestDetail.id);
+      setConfirmAutoChangeModalVisible(false);
+      setSelectedAutoChangeItem(null);
+    } catch (error) {
+      console.error("Error auto changing item:", error);
+    }
+  };
+
   // Function filter inventory items theo search text
   const getFilteredInventoryItems = () => {
-    if (!inventorySearchText.trim()) {
-      return inventoryItems;
+    let filteredItems = inventoryItems;
+
+    if (inventorySearchText.trim()) {
+      filteredItems = inventoryItems.filter((item) =>
+        item.id
+          .toString()
+          .toLowerCase()
+          .includes(inventorySearchText.toLowerCase())
+      );
     }
-    return inventoryItems.filter((item) =>
-      item.id
-        .toString()
-        .toLowerCase()
-        .includes(inventorySearchText.toLowerCase())
-    );
+
+    // Sort: isTrackingForExport = false lên trên, isTrackingForExport = true xuống dưới
+    return filteredItems.sort((a, b) => {
+      if (a.isTrackingForExport === b.isTrackingForExport) {
+        return 0; // Giữ nguyên thứ tự nếu cùng trạng thái
+      }
+      return a.isTrackingForExport ? 1 : -1; // false lên trên, true xuống dưới
+    });
   };
 
   // Xác nhận tạo phiếu xuất mới (có gọi cả API chi tiết)
@@ -778,10 +806,7 @@ const ExportRequestDetail = () => {
 
   const handleConfirmCounted = async () => {
     try {
-      await updateExportRequestStatus(
-        exportRequestId,
-        ExportStatus.COUNT_CONFIRMED
-      );
+      await confirmCountedExportRequest(exportRequestId);
       message.success("Đã xác nhận kiểm đếm");
 
       // Gọi lại dữ liệu để cập nhật giao diện
@@ -1046,7 +1071,7 @@ const ExportRequestDetail = () => {
                     : ""
                 }
               >
-                Phân công nhân viên kiểm đếm
+                Phân công lại nhân viên kiểm đếm
               </Button>
             )}
           </>
@@ -1059,7 +1084,7 @@ const ExportRequestDetail = () => {
               className="ml-4"
               onClick={handleOpenAssignKeeperModal}
             >
-              Phân công nhân viên xuất hàng
+              Phân công lại nhân viên xuất hàng
             </Button>
           )}
 
@@ -1708,7 +1733,7 @@ const ExportRequestDetail = () => {
           </span>
         }
         footer={null}
-        width={expandedModal ? 1200 : 600}
+        width={expandedModal ? 1200 : 630}
         style={{ transition: "all 0.3s ease" }}
       >
         <div style={{ display: "flex", gap: "20px" }}>
@@ -1743,6 +1768,16 @@ const ExportRequestDetail = () => {
                     dataIndex: "id",
                     key: "id",
                     ellipsis: true,
+                    render: (id, record) => (
+                      <div>
+                        <div>{id}</div>
+                        {record.isTrackingForExport && (
+                          <div className="text-xs text-blue-500 mt-1">
+                            Đã được đóng gói
+                          </div>
+                        )}
+                      </div>
+                    ),
                   },
                   // Chỉ thêm cột "Thao tác" khi đúng điều kiện
                   ...(userRole === AccountRole.WAREHOUSE_MANAGER &&
@@ -1753,23 +1788,48 @@ const ExportRequestDetail = () => {
                         {
                           title: "Thao tác",
                           key: "action",
-                          width: 80,
-                          render: (_, record) => (
-                            <Button
-                              size="small"
-                              icon={<SwapOutlined />}
-                              onClick={() => {
-                                setSelectedOldItem(record);
-                                setExpandedModal(true);
-                                fetchAvailableInventoryItems(
-                                  selectedExportRequestDetail?.itemId
-                                );
-                              }}
-                              className="hover:bg-blue-50"
-                            >
-                              Đổi
-                            </Button>
-                          ),
+                          width: 212,
+                          align: "center",
+                          render: (_, record) =>
+                            !record.isTrackingForExport ? (
+                              <div className="flex gap-2">
+                                <Button
+                                  size="small"
+                                  icon={<SwapOutlined />}
+                                  onClick={() => {
+                                    setSelectedAutoChangeItem(record);
+                                    setConfirmAutoChangeModalVisible(true);
+                                  }}
+                                  style={{
+                                    backgroundColor: "#f6ffed",
+                                    color: "#52c41a",
+                                    borderColor: "#52c41a",
+                                  }}
+                                  className="hover:bg-green-50"
+                                >
+                                  Đổi
+                                </Button>
+                                <Button
+                                  size="small"
+                                  icon={<SwapOutlined />}
+                                  onClick={() => {
+                                    setSelectedOldItem(record);
+                                    setExpandedModal(true);
+                                    fetchAvailableInventoryItems(
+                                      selectedExportRequestDetail?.itemId
+                                    );
+                                  }}
+                                  style={{
+                                    backgroundColor: "#fffbe6",
+                                    color: "#d4a017",
+                                    borderColor: "#d4a017",
+                                  }}
+                                  className="hover:bg-blue-50"
+                                >
+                                  Chọn thủ công
+                                </Button>
+                              </div>
+                            ) : null,
                         },
                       ]
                     : []),
@@ -1905,6 +1965,39 @@ const ExportRequestDetail = () => {
             <p className="text-sm">
               Hành động này sẽ thay thế sản phẩm trong phiếu xuất. Vui lòng kiểm
               tra kỹ thông tin trước khi xác nhận.
+            </p>
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={confirmAutoChangeModalVisible}
+        onCancel={() => {
+          setConfirmAutoChangeModalVisible(false);
+          setSelectedAutoChangeItem(null);
+        }}
+        onOk={handleAutoChangeItem}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px" }}>
+            Xác nhận đổi sản phẩm
+          </span>
+        }
+        okText="Đổi"
+        cancelText="Hủy"
+        confirmLoading={inventoryLoading}
+        width={470}
+        centered
+      >
+        <div className="flex items-start gap-3">
+          <ExclamationCircleOutlined
+            style={{ fontSize: 20, color: "#1890ff", marginTop: 2 }}
+          />
+          <div>
+            <p style={{ fontSize: 16, marginBottom: 8 }}>
+              Bạn có chắc chắn muốn đổi sản phẩm tồn kho
+              <br /> <strong>{selectedAutoChangeItem?.id}</strong> này?
+            </p>
+            <p className="text-sm text-blue-600">
+              Hệ thống sẽ tự động chọn sản phẩm phù hợp để thay thế.
             </p>
           </div>
         </div>
