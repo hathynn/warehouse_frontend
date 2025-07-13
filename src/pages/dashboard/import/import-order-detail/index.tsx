@@ -220,7 +220,6 @@ const ImportOrderDetail = () => {
   }, [importOrderData]);
 
   useEffect(() => {
-    console.log(latestNotification)
     if (latestNotification) {
       console.log(latestNotification.type)
       const isImportOrderEvent = latestNotification.type === `import-order-counted-${importOrderId}`;
@@ -662,7 +661,7 @@ const ImportOrderDetail = () => {
       </div>
       <div className="flex items-center mb-4">
         <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrderData?.importOrderId}</h1>
-        {importOrderData?.status === ImportStatus.IN_PROGRESS || importOrderData?.status === ImportStatus.EXTENDED && (
+        {(importOrderData?.status === ImportStatus.IN_PROGRESS || importOrderData?.status === ImportStatus.EXTENDED) && (
           <>
             {userRole === AccountRole.WAREHOUSE_MANAGER && (
               <Button
