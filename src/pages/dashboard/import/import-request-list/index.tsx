@@ -11,6 +11,8 @@ import { ROUTES } from "@/constants/routes";
 import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ImportRequestFilterState, useImportRequestFilter } from "@/hooks/useImportRequestFilter";
+import { legendItems } from "@/constants/legendItems";
+import { getStatusRowClass } from "@/utils/helpers";
 
 export interface ImportRequestData extends ImportRequestResponse {
   totalExpectQuantityInRequest?: number;
@@ -59,20 +61,6 @@ const ImportRequestList: React.FC = () => {
     return diffInDays >= 0 && diffInDays <= 2; // Gần đến ngày hết hạn trong vòng 3 ngày
   };
 
-  const getStatusRowClass = (status: string): string => {
-    switch (status) {
-      case 'NOT_STARTED':
-        return 'bg-[rgba(107,114,128,0.08)]'; // Gray with opacity
-      case 'IN_PROGRESS':
-        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
-      case 'COMPLETED':
-        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
-      case 'CANCELLED':
-        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
-      default:
-        return 'no-bg-row';
-    }
-  };
 
   // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importRequestsData.filter((importRequest) => {
@@ -85,19 +73,19 @@ const ImportRequestList: React.FC = () => {
     let matchesStatusFilter = true;
     if (selectedStatusFilter) {
       switch (selectedStatusFilter) {
-        case 'not-started':
-          matchesStatusFilter = importRequest.status === 'NOT_STARTED';
-          break;
-        case 'in-progress':
-          matchesStatusFilter = importRequest.status === 'IN_PROGRESS';
-          break;
-        case 'near-end-date':
+        case 'near-time':
           matchesStatusFilter = isNearEndDate(importRequest.endDate) &&
           importRequest.status !== 'COMPLETED' &&
           importRequest.status !== 'CANCELLED';
           break;
+        case 'in-progress':
+          matchesStatusFilter = importRequest.status === 'IN_PROGRESS';
+          break;
         case 'completed':
           matchesStatusFilter = importRequest.status === 'COMPLETED';
+          break;
+        case 'cancelled':
+          matchesStatusFilter = importRequest.status === 'CANCELLED';
           break;
         default:
           matchesStatusFilter = true;
@@ -415,42 +403,20 @@ const ImportRequestList: React.FC = () => {
             ]}
           />
           <Space size="large">
-            <LegendItem
-              color="rgba(220, 38, 38, 0.1)"
-              borderColor="rgba(220, 38, 38, 0.5)"
-              title="Gần đến ngày hết hạn"
-              description="Phiếu nhập sắp hết hạn trong vòng 2 ngày tới"
-              clickable={true}
-              isSelected={selectedStatusFilter === 'near-end-date'}
-              onClick={() => handleStatusFilterClick('near-end-date')}
-            />
-            <LegendItem
-              color="rgba(107, 114, 128, 0.1)"
-              borderColor="rgba(107, 114, 128, 0.5)"
-              title="Chưa bắt đầu"
-              description="Phiếu nhập chưa bắt đầu xử lý"
-              clickable={true}
-              isSelected={selectedStatusFilter === 'not-started'}
-              onClick={() => handleStatusFilterClick('not-started')}
-            />
-            <LegendItem
-              color="rgba(59, 130, 246, 0.1)"
-              borderColor="rgba(59, 130, 246, 0.5)"
-              title="Đang xử lý"
-              description="Phiếu nhập đang trong quá trình xử lý"
-              clickable={true}
-              isSelected={selectedStatusFilter === 'in-progress'}
-              onClick={() => handleStatusFilterClick('in-progress')}
-            />
-            <LegendItem
-              color="rgba(34, 197, 94, 0.1)"
-              borderColor="rgba(34, 197, 94, 0.5)"
-              title="Đã hoàn tất"
-              description="Phiếu nhập đã hoàn tất"
-              clickable={true}
-              isSelected={selectedStatusFilter === 'completed'}
-              onClick={() => handleStatusFilterClick('completed')}
-            />
+            {legendItems.filter(item => 
+              ['near-time', 'in-progress', 'completed', 'cancelled'].includes(item.key)
+            ).map((item) => (
+              <LegendItem
+                key={item.key}
+                color={item.color}
+                borderColor={item.borderColor}
+                title={item.title}
+                description={item.description}
+                clickable={true}
+                isSelected={selectedStatusFilter === item.key}
+                onClick={() => handleStatusFilterClick(item.key)}
+              />
+            ))}
           </Space>
         </div>
       </div>

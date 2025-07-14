@@ -16,6 +16,8 @@ import { LegendItem } from "@/components/commons/LegendItem";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
 import { ImportOrderFilterState, useImportOrderFilter } from "@/hooks/useImportOrderFilter";
 import dayjs from "dayjs";
+import { legendItems } from "@/constants/legendItems";
+import { getStatusRowClass } from "@/utils/helpers";
 
 interface RouteParams extends Record<string, string | undefined> {
   importRequestId?: string;
@@ -77,23 +79,6 @@ const ImportOrderList: React.FC = () => {
     return diffInHours > 0 && diffInHours <= 6;
   };
 
-  const getStatusRowClass = (status: ImportStatus): string => {
-    switch (status) {
-      case ImportStatus.IN_PROGRESS:
-        return 'bg-[rgba(59,130,246,0.06)]'; // Blue with opacity
-      case ImportStatus.COUNTED:
-        return 'bg-[rgba(59,130,246,0.14)]'; // Blue with opacity
-      case ImportStatus.EXTENDED:
-        return 'bg-[rgba(245,158,11,0.08)]'; // Amber with opacity
-      case ImportStatus.COMPLETED:
-        return 'bg-[rgba(34,197,94,0.08)]'; // Green with opacity
-      case ImportStatus.CANCELLED:
-        return 'bg-[rgba(107,114,128,0.12)]'; // Gray with opacity
-      default:
-        return 'no-bg-row';
-    }
-  };
-
   // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importOrdersData.filter((importOrder) => {
     const matchesImportRequestSearch = selectedImportRequest.length > 0 ?
@@ -113,6 +98,9 @@ const ImportOrderList: React.FC = () => {
             importOrder.status !== ImportStatus.CANCELLED &&
             importOrder.status !== ImportStatus.COMPLETED &&
             importOrder.status !== ImportStatus.COUNTED;
+          importOrder.status !== ImportStatus.READY_TO_STORE;
+          importOrder.status !== ImportStatus.STORED;
+          importOrder.status !== ImportStatus.COUNT_AGAIN_REQUESTED;
           break;
         case 'in-progress':
           matchesStatusFilter = importOrder.status === ImportStatus.IN_PROGRESS;
@@ -125,6 +113,15 @@ const ImportOrderList: React.FC = () => {
           break;
         case 'completed':
           matchesStatusFilter = importOrder.status === ImportStatus.COMPLETED;
+          break;
+        case 'ready-to-store':
+          matchesStatusFilter = importOrder.status === ImportStatus.READY_TO_STORE;
+          break;
+        case 'stored':
+          matchesStatusFilter = importOrder.status === ImportStatus.STORED;
+          break;
+        case 'count-again-requested':
+          matchesStatusFilter = importOrder.status === ImportStatus.COUNT_AGAIN_REQUESTED;
           break;
         case 'cancelled':
           matchesStatusFilter = importOrder.status === ImportStatus.CANCELLED;
@@ -222,9 +219,6 @@ const ImportOrderList: React.FC = () => {
   };
 
   // ========== EVENT HANDLERS ==========
-  const handleImportRequestSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    updateFilter({ selectedImportRequest: [e.target.value] });
-  };
 
   const handleImportOrderSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     updateFilter({ searchImportOrderTerm: e.target.value });
@@ -268,7 +262,7 @@ const ImportOrderList: React.FC = () => {
       key: "importOrderDetailsCount",
       align: "center" as const,
       render: (count: number) => (
-        <div className="text-right text-lg">{count}</div>
+        <div className="text-lg text-right">{count}</div>
       ),
     },
     {
@@ -279,9 +273,9 @@ const ImportOrderList: React.FC = () => {
       align: "center" as const,
       render: (count: number, record: ImportOrderData) => (
         record.totalActualQuantityInOrder === 0 ? (
-          <div className="text-right font-bold text-gray-600">Chưa nhập</div>
+          <div className="font-bold text-right text-gray-600">Chưa nhập</div>
         ) : (
-          <div className="text-right font-bold">{count}</div>
+          <div className="font-bold text-right">{count}</div>
         )
       ),
     },
@@ -371,7 +365,7 @@ const ImportOrderList: React.FC = () => {
       render: (_: unknown, record: ImportOrderData) => (
         <Tooltip title="Xem chi tiết đơn nhập" placement="top">
           <Link to={ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(record.importOrderId.toString())}>
-            <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
+            <span className="inline-flex items-center justify-center text-blue-900 border-2 border-blue-900 rounded-full cursor-pointer hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg" style={{ width: 32, height: 32 }}>
               <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
             </span>
           </Link>
@@ -382,7 +376,7 @@ const ImportOrderList: React.FC = () => {
 
   return (
     <div className={`mx-auto`}>
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex items-center justify-between mb-3">
         {userRole === AccountRole.DEPARTMENT && (
           <Button
             type="primary"
@@ -395,71 +389,15 @@ const ImportOrderList: React.FC = () => {
           </Button>
         )}
       </div>
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">
           {importRequestId
             ? `Danh sách đơn nhập - Phiếu nhập #${importRequestId}`
             : 'Danh sách tất cả đơn nhập'}
         </h1>
-        <Space size="large">
-          <LegendItem
-            color="rgba(220, 38, 38, 0.1)"
-            borderColor="rgba(220, 38, 38, 0.5)"
-            title="Gần đến giờ nhận hàng"
-            description="Đơn nhập có thời điểm nhận hàng trong vòng 6 tiếng tới so với bây giờ"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'near-time'}
-            onClick={() => handleStatusFilterClick('near-time')}
-          />
-          <LegendItem
-            color="rgba(59, 130, 246, 0.1)"
-            borderColor="rgba(59, 130, 246, 0.5)"
-            title="Đang xử lý"
-            description="Đơn nhập đang trong quá trình xử lý"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'in-progress'}
-            onClick={() => handleStatusFilterClick('in-progress')}
-          />
-          <LegendItem
-            color="rgba(59, 130, 246, 0.3)"
-            borderColor="rgba(59, 130, 246, 0.7)"
-            title="Đã kiểm đếm"
-            description="Đơn nhập đã kiểm đếm"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'counted'}
-            onClick={() => handleStatusFilterClick('counted')}
-          />
-          <LegendItem
-            color="rgba(245,158,11,0.1)"
-            borderColor="rgba(245,158,11,0.5)"
-            title="Đã gia hạn"
-            description="Đơn nhập đã gia hạn"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'extended'}
-            onClick={() => handleStatusFilterClick('extended')}
-          />
-          <LegendItem
-            color="rgba(34, 197, 94, 0.1)"
-            borderColor="rgba(34, 197, 94, 0.5)"
-            title="Đã hoàn tất"
-            description="Đơn nhập đã hoàn tất"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'completed'}
-            onClick={() => handleStatusFilterClick('completed')}
-          />
-          <LegendItem
-            color="rgba(107, 114, 128, 0.1)"
-            borderColor="rgba(107, 114, 128, 0.5)"
-            title="Đã hủy"
-            description="Đơn nhập đã bị hủy"
-            clickable={true}
-            isSelected={selectedStatusFilter === 'cancelled'}
-            onClick={() => handleStatusFilterClick('cancelled')}
-          />
-        </Space>
       </div>
-
-      <div className="mb-4 flex flex-wrap gap-2 items-center">
+      
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="min-w-[240px]">
           <Input
             placeholder="Tìm theo mã đơn nhập"
@@ -514,7 +452,24 @@ const ImportOrderList: React.FC = () => {
           listHeight={160}
         />
       </div>
-
+      
+      <div className="flex justify-end mb-4">
+        <Space size="large">
+          {legendItems.map((item) => (
+            <LegendItem
+              key={item.key}
+              color={item.color}
+              borderColor={item.borderColor}
+              title={item.title}
+              description={item.description}
+              clickable={true}
+              isSelected={selectedStatusFilter === item.key}
+              onClick={() => handleStatusFilterClick(item.key)}
+            />
+          ))}
+        </Space>
+      </div>
+      
       <Table
         columns={columns}
         loading={loading}
@@ -524,7 +479,14 @@ const ImportOrderList: React.FC = () => {
           const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
           const statusClass = getStatusRowClass(record.status);
 
-          // Priority: COMPLETED and CANCELLED > near time > other status colors
+          if (record.status === ImportStatus.STORED) {
+            return `${statusClass} status-green-heavy`;
+          }
+
+          if (record.status === ImportStatus.READY_TO_STORE) {
+            return `${statusClass} status-green-medium`;
+          }
+
           if (record.status === ImportStatus.COMPLETED) {
             return `${statusClass} status-green`;
           }
@@ -543,7 +505,11 @@ const ImportOrderList: React.FC = () => {
               ? 'status-blue'
               : record.status === ImportStatus.COUNTED
                 ? 'status-blue-heavy'
-                : '';
+                : record.status === ImportStatus.COUNT_AGAIN_REQUESTED
+                  ? 'status-amber-heavy'
+                  : record.status === ImportStatus.EXTENDED
+                    ? 'status-amber'
+                    : '';
             return `${statusClass} ${statusType}`;
           }
 
@@ -554,8 +520,11 @@ const ImportOrderList: React.FC = () => {
           '[&_.ant-table-tbody_tr.status-blue:hover_td]:!bg-[rgba(59,130,246,0.08)] ' +
           '[&_.ant-table-tbody_tr.status-blue-heavy:hover_td]:!bg-[rgba(59,130,246,0.16)] ' +
           '[&_.ant-table-tbody_tr.status-green:hover_td]:!bg-[rgba(34,197,94,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-green-medium:hover_td]:!bg-[rgba(34,197,94,0.12)] ' +
+          '[&_.ant-table-tbody_tr.status-green-heavy:hover_td]:!bg-[rgba(34,197,94,0.15)] ' +
           '[&_.ant-table-tbody_tr.status-gray:hover_td]:!bg-[rgba(107,114,128,0.08)] ' +
-          '[&_.ant-table-tbody_tr.status-amber:hover_td]:!bg-[rgba(245,158,11,0.08)]'
+          '[&_.ant-table-tbody_tr.status-amber:hover_td]:!bg-[rgba(245,158,11,0.08)] ' +
+          '[&_.ant-table-tbody_tr.status-amber-heavy:hover_td]:!bg-[rgba(245,158,11,0.15)]'
           : ''}`}
         onChange={handleTableChange}
         pagination={{
