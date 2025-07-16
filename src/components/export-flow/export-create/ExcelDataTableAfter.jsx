@@ -225,6 +225,7 @@ const ExcelDataTableAfter = ({
       {/* Bảng dữ liệu - giống ExcelDataTable nhưng không có input */}
       <Table
         columns={columns}
+        rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
         dataSource={consolidatedData}
         rowKey={(record) => String(record?.itemId)}
         pagination={pagination.total > pagination.pageSize ? pagination : false}

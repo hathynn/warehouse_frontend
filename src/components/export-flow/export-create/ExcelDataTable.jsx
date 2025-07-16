@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Input, Select } from "antd";
 import PropTypes from "prop-types";
-import { InfoCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
+import { InfoCircleFilled } from "@ant-design/icons";
 
 const ExcelDataTable = ({
   data,
@@ -13,18 +13,21 @@ const ExcelDataTable = ({
   setPagination,
   exportType,
   providers,
-  onRemovedItemsReset, // Thêm prop để reset từ parent
+  onRemovedItemsReset,
   onRemovedItemsNotification,
 }) => {
   const [originalData, setOriginalData] = useState([]);
   const [hasProcessed, setHasProcessed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [removedItems, setRemovedItems] = useState([]); // Lưu danh sách item bị xóa
+  const [removedItems, setRemovedItems] = useState([]);
+  const [persistentRemovedItems, setPersistentRemovedItems] = useState([]); // ✅ THÊM state này để lưu permanent
   const pendingScrollItemId = useRef(null);
+  const [showRemovedItemsWarning, setShowRemovedItemsWarning] = useState(true);
 
   // Thêm function để reset removedItems từ bên ngoài
   const resetRemovedItems = () => {
     setRemovedItems([]);
+    setPersistentRemovedItems([]); // ✅ RESET cả persistent
   };
 
   // Validate số lượng
@@ -34,10 +37,23 @@ const ExcelDataTable = ({
     if (!/^\d+$/.test(value)) return "Không nhập chữ!";
     const num = Number(value);
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
+
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
-    const maxValue = itemMeta?.quantity ?? Infinity;
-    if (num > maxValue)
+
+    // Tính maxValue = numberOfAvailableItems - minimumStockQuantity
+    const availableItems = itemMeta?.numberOfAvailableItems ?? 0;
+    const minimumStock = itemMeta?.minimumStockQuantity ?? 0;
+    const maxValue = availableItems - minimumStock;
+
+    // Nếu maxValue <= 0 thì không đủ tồn kho để xuất
+    if (maxValue <= 0) {
+      return "Không đủ tồn kho khả dụng để xuất!";
+    }
+
+    if (num > maxValue) {
       return `Tối đa có thể xuất ${maxValue} ${itemMeta?.unitType || ""}!`;
+    }
+
     return "";
   };
 
@@ -52,7 +68,6 @@ const ExcelDataTable = ({
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
     const maxValue = itemMeta?.totalMeasurementValue;
 
-    // ✅ CHỈ validate max nếu có totalMeasurementValue và > 0
     if (maxValue && maxValue > 0 && num > maxValue) {
       return `Tối đa có thể xuất ${maxValue} ${
         itemMeta?.measurementUnit || ""
@@ -73,20 +88,20 @@ const ExcelDataTable = ({
     setFieldErrors({});
     setHasProcessed(false);
     setOriginalData([]);
-    //setRemovedItems([]);
+    setPersistentRemovedItems([]); // ✅ RESET persistent khi đổi export type
     if (onTableErrorChange) {
       onTableErrorChange(false);
     }
   }, [exportType, onTableErrorChange]);
 
+  // ✅ EFFECT RIÊNG để xử lý việc tìm và lưu persistentRemovedItems CHỈ MỘT LẦN
   useEffect(() => {
     if (!items || items.length === 0 || !data || data.length === 0) return;
 
-    // Reset khi exportType thay đổi
+    // Reset khi exportType thay đổi hoặc data thay đổi hoàn toàn
     if (JSON.stringify(data) !== JSON.stringify(originalData)) {
       setOriginalData(data);
       setHasProcessed(false);
-      //setRemovedItems([]); // Reset removed items khi data mới
     }
 
     if (!hasProcessed) {
@@ -129,6 +144,10 @@ const ExcelDataTable = ({
         });
 
         setRemovedItems(itemsToRemove);
+        // ✅ CHỈ SET persistent khi lần đầu xử lý, không bị ghi đè bởi data changes
+        if (itemsToRemove.length > 0) {
+          setPersistentRemovedItems(itemsToRemove);
+        }
 
         if (itemsToRemove.length > 0) {
           onDataChange(itemsToKeep);
@@ -138,7 +157,7 @@ const ExcelDataTable = ({
         }
 
         setHasProcessed(true);
-      }, 100); // Delay 100ms để đảm bảo render xong
+      }, 100);
 
       return () => clearTimeout(timeoutId);
     }
@@ -146,10 +165,10 @@ const ExcelDataTable = ({
     data,
     items,
     exportType,
-    // hasProcessed,
-    // originalData,
-    // onDataChange,
-    // onRemovedItemsNotification,
+    hasProcessed,
+    originalData,
+    onDataChange,
+    onRemovedItemsNotification,
   ]);
 
   useEffect(() => {
@@ -175,7 +194,6 @@ const ExcelDataTable = ({
           );
         }
       }
-      // RETURN có logic riêng (có thể validate cả hai)
 
       if (error) newErrors[item.itemId] = error;
     });
@@ -190,19 +208,16 @@ const ExcelDataTable = ({
     // Reset removed items khi không còn data
     if (!data || data.length === 0) {
       setRemovedItems([]);
+      setPersistentRemovedItems([]); // ✅ RESET cả persistent
     }
   }, [data?.length]);
 
-  // Trong ExcelDataTable
+  // ✅ EFFECT để reset showRemovedItemsWarning khi có persistentRemovedItems mới
   useEffect(() => {
-    data.forEach((item) => {
-      const itemMeta = items.find((i) => String(i.id) === String(item.itemId));
-      console.log(`Item ${item.itemId}:`, {
-        stockQuantity: itemMeta?.quantity,
-        hasStock: (itemMeta?.quantity ?? 0) > 0,
-      });
-    });
-  }, [data, items]);
+    if (persistentRemovedItems.length > 0) {
+      setShowRemovedItemsWarning(true);
+    }
+  }, [persistentRemovedItems.length]);
 
   // Hàm này chỉ xử lý provider
   const handleCellChange = (value, record, field) => {
@@ -238,7 +253,6 @@ const ExcelDataTable = ({
     onDataChange(updatedData);
   };
 
-  // Đây là cách tốt nhất: chuyển trang và sau đó scroll đúng dòng
   const handleScrollToRow = (itemId) => {
     const index = data.findIndex(
       (item) => String(item.itemId) === String(itemId)
@@ -247,7 +261,6 @@ const ExcelDataTable = ({
     const page = Math.floor(index / pagination.pageSize) + 1;
     if (pagination.current !== page) {
       pendingScrollItemId.current = itemId;
-      // Gọi setPagination để chuyển trang
       if (setPagination) setPagination((prev) => ({ ...prev, current: page }));
       if (onPaginationChange)
         onPaginationChange({ ...pagination, current: page });
@@ -256,17 +269,15 @@ const ExcelDataTable = ({
     }
   };
 
-  // Sau khi Table render lại (pagination.current thay đổi), scroll nếu cần
   useEffect(() => {
     if (pendingScrollItemId.current) {
       setTimeout(() => {
         doScroll(pendingScrollItemId.current);
         pendingScrollItemId.current = null;
-      }, 100); // Table Antd cần thời gian để render xong
+      }, 100);
     }
   }, [pagination.current]);
 
-  // Hàm scroll và highlight
   const doScroll = (itemId) => {
     const el = document.getElementById(`row-${itemId}`);
     if (el) {
@@ -376,11 +387,6 @@ const ExcelDataTable = ({
     }).isRequired,
   };
 
-  const getItemInfo = (record, field) => {
-    const itemMeta = items.find((i) => String(i.id) === String(record.itemId));
-    return record[field] || itemMeta?.[field] || "";
-  };
-
   const columns = [
     {
       width: "10%",
@@ -454,7 +460,6 @@ const ExcelDataTable = ({
         style: { textAlign: "center" },
       }),
       render: (_, record) => {
-        // ✅ LẤY measurementValue từ item metadata (database), KHÔNG phải từ input
         const itemMeta = items.find(
           (i) => String(i.id) === String(record.itemId)
         );
@@ -468,7 +473,6 @@ const ExcelDataTable = ({
         );
       },
     },
-    // Điều kiện column Nhà cung cấp
     exportType === "RETURN"
       ? {
           width: "35%",
@@ -532,7 +536,9 @@ const ExcelDataTable = ({
           Thông tin xuất kho
         </div>
         <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
-        {(removedItems.length > 0 || Object.keys(fieldErrors).length > 0) && (
+        {/* ✅ SỬA: Dùng persistentRemovedItems thay vì removedItems */}
+        {(persistentRemovedItems.length > 0 ||
+          Object.keys(fieldErrors).length > 0) && (
           <div
             style={{
               marginTop: 12,
@@ -542,7 +548,8 @@ const ExcelDataTable = ({
               alignItems: "stretch",
             }}
           >
-            {removedItems.length > 0 && (
+            {/* ✅ SỬA: Dùng persistentRemovedItems */}
+            {persistentRemovedItems.length > 0 && showRemovedItemsWarning && (
               <div
                 style={{
                   padding: 16,
@@ -556,13 +563,46 @@ const ExcelDataTable = ({
                       : "100%",
                   display: "flex",
                   flexDirection: "column",
+                  position: "relative",
                 }}
               >
+                <button
+                  onClick={() => setShowRemovedItemsWarning(false)}
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    background: "none",
+                    border: "none",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    color: "#ad6800",
+                    padding: "4px",
+                    borderRadius: "50%",
+                    width: "24px",
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "background-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = "#f0f0f0";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = "transparent";
+                  }}
+                  title="Đóng thông báo"
+                >
+                  ×
+                </button>
+
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     marginBottom: 5,
+                    paddingRight: 30,
                   }}
                 >
                   <div
@@ -585,7 +625,7 @@ const ExcelDataTable = ({
                       fontWeight: "bold",
                     }}
                   >
-                    {removedItems.length}
+                    {persistentRemovedItems.length}
                   </div>
                 </div>
 
@@ -611,7 +651,8 @@ const ExcelDataTable = ({
                     maxHeight: "8rem",
                   }}
                 >
-                  {removedItems.map((item, index) => (
+                  {/* ✅ SỬA: Dùng persistentRemovedItems */}
+                  {persistentRemovedItems.map((item, index) => (
                     <div
                       key={`${item.itemId}-${index}`}
                       style={{
@@ -619,7 +660,7 @@ const ExcelDataTable = ({
                         alignItems: "center",
                         padding: "6px 0",
                         borderBottom:
-                          index < removedItems.length - 1
+                          index < persistentRemovedItems.length - 1
                             ? "1px solid #f0f0f0"
                             : "none",
                       }}
@@ -679,7 +720,10 @@ const ExcelDataTable = ({
                   border: "1px solid #ff7875",
                   borderRadius: 8,
                   borderLeft: "4px solid #ff4d4f",
-                  width: removedItems.length > 0 ? "calc(50% - 6px)" : "100%",
+                  width:
+                    persistentRemovedItems.length > 0
+                      ? "calc(50% - 6px)"
+                      : "100%",
                   display: "flex",
                   flexDirection: "column",
                 }}
@@ -799,6 +843,7 @@ const ExcelDataTable = ({
         rowKey={(record) => String(record?.itemId)}
         pagination={pagination.total > pagination.pageSize ? pagination : false}
         onChange={onPaginationChange}
+        rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
         components={{
           body: {
             row: ({ children, ...restProps }) => (
