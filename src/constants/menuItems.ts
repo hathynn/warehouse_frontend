@@ -63,31 +63,6 @@ const exportMenuItems: MenuItem[] = [
     ],
   },
 ];
-
-// Item management menu items
-const itemMenuItems: MenuItem[] = [
-  {
-    key: "items",
-    icon: AiOutlineInbox,
-    label: "Quản lý vật phẩm",
-    path: ROUTES.PROTECTED.ITEM.LIST,
-  },
-  {
-    key: "inventory-items",
-    icon: AiOutlineInbox,
-    label: "Quản lý hàng tồn kho",
-    path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
-    children: [
-      {
-        key: "warehouse-section",
-        icon: AiOutlineCompass,
-        label: "Sơ đồ kho",
-        path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
-      },
-    ],
-  },
-];
-
 // Configuration menu items
 const configurationMenuItems: MenuItem[] = [
   {
@@ -133,8 +108,14 @@ export const menuItems: RoleMenuConfig = {
       key: "inventory-items",
       icon: AiOutlineInbox,
       label: "Quản lý hàng tồn kho",
-      path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+      path: "",
       children: [
+        {
+          key: "inventory-item-list",
+          icon: AiOutlineInbox,
+          label: "Danh sách hàng hoá",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+        },
         {
           key: "warehouse-section",
           icon: AiOutlineCompass,
@@ -169,8 +150,14 @@ export const menuItems: RoleMenuConfig = {
       key: "inventory-items",
       icon: AiOutlineInbox,
       label: "Quản lý hàng tồn kho",
-      path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+      path: "",
       children: [
+        {
+          key: "inventory-item-list",
+          icon: AiOutlineInbox,
+          label: "Danh sách hàng hoá",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+        },
         {
           key: "warehouse-section",
           icon: AiOutlineCompass,

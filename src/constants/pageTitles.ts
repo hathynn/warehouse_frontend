@@ -24,6 +24,10 @@ export const pageTitles: PageTitlesType = {
   [ROUTES.PROTECTED.ITEM.LIST]: "Danh sách vật phẩm",
   [ROUTES.PROTECTED.ITEM.CREATE]: "Tạo vật phẩm",
   [ROUTES.PROTECTED.ITEM.DETAIL(':id')]: "Chi tiết vật phẩm",
+
+  // Inventory item pages
+  [ROUTES.PROTECTED.INVENTORY_ITEM.LIST]: "Danh sách hàng hoá trong kho",
+  [ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION]: "Khu vực kho",
   
   // Default pages
   [ROUTES.PROTECTED.OVERVIEW]: "Tổng quan",

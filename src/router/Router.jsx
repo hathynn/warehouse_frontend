@@ -23,7 +23,7 @@ import ImportOrderCreate from '@/pages/dashboard/import/import-order-create';
 import ExportRequestList from '@/pages/dashboard/export/export-request-list';
 import ExportRequestDetail from '@/pages/dashboard/export/export-request-detail';
 import ExportRequestCreate from '@/pages/dashboard/export/export-request-create';
-import InventoryItemList from '@/pages/dashboard/inventory-item';
+import InventoryItemList from '@/pages/dashboard/inventory-item/inventory-item-list';
 import ConfigurationPage from '@/pages/dashboard/configuration';
 import ImportTransactionHistory from '@/pages/dashboard/transaction/import';
 import WarehouseSection from '@/pages/dashboard/inventory-item/warehouse-section';

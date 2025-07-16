@@ -96,6 +96,7 @@ const InventoryItemList: React.FC = () => {
     {
       title: "Giá trị đo lường",
       key: "measurementValue",
+      align: "right" as const,
       render: (_, record: InventoryItemResponse) => {
         const itemDetails = getIventoryItemInfoFromItem(record);
         return itemDetails?.totalMeasurementValue || 'N/A';
@@ -136,7 +137,7 @@ const InventoryItemList: React.FC = () => {
   ];
 
   return (
-    <div className="container mx-auto p-5">
+    <div className="container mx-auto p-2">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Quản lý hàng tồn kho</h1>
       </div>

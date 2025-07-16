@@ -36,7 +36,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     "/export/create-request",
 
     // Inventory item routes
-    "/inventory-item/list",
+    "/inventory-item/inventory-item-list",
     "/inventory-item/warehouse-section",
 
     // Item routes
@@ -60,7 +60,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     "/export/request-detail/:id",
 
     // Inventory item routes
-    "/inventory-item/list",
+    "/inventory-item/inventory-item-list",
     "/inventory-item/warehouse-section",
   ],
   [AccountRole.ACCOUNTING]: [
@@ -118,7 +118,7 @@ export const ROUTES = {
     },
 
     INVENTORY_ITEM: {
-      LIST: "/inventory-item/list",
+      LIST: "/inventory-item/inventory-item-list",
       WAREHOUSE_SECTION: "/inventory-item/warehouse-section",
     },
 
