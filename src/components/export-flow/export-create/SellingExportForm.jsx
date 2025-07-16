@@ -178,7 +178,7 @@ const SellingExportForm = ({
       {/* Ngày xuất và Hạn kiểm đếm dự kiến */}
       <div className="mb-4 flex gap-4">
         {/* Ngày xuất */}
-        <div className="w-1/2">
+        <div className={"w-1/2"}>
           <label className="block mb-1">
             Ngày xuất <span className="text-red-500">*</span>
           </label>
@@ -195,10 +195,23 @@ const SellingExportForm = ({
                     ? date.format("YYYY-MM-DD")
                     : null;
 
-                  // Tính toán hạn kiểm đếm dự kiến và lưu vào formData
-                  const inspectionDateTime = newDate
-                    ? calculateMinExportDate()
-                    : null;
+                  // Tính toán hạn kiểm đếm dự kiến
+                  let inspectionDateTime = null;
+                  if (newDate) {
+                    const minExportDate = calculateMinExportDate();
+                    const selectedDate = dayjs(newDate);
+
+                    // Nếu chọn ngày sớm nhất có thể
+                    if (selectedDate.isSame(minExportDate, "day")) {
+                      inspectionDateTime = minExportDate; // Dùng logic cũ
+                    } else {
+                      // Nếu chọn ngày sau đó, set giờ cố định 07:00
+                      inspectionDateTime = selectedDate
+                        .hour(7)
+                        .minute(0)
+                        .second(0);
+                    }
+                  }
 
                   setFormData({
                     ...formData,
@@ -217,20 +230,28 @@ const SellingExportForm = ({
             </div>
           </ConfigProvider>
           {!formData.exportDate && (
-            <div className="text-red-500 text-xs mt-1">
-              Vui lòng chọn ngày xuất tối thiểu sau 24h kiểm đếm trong giờ hành
+            <div className="text-red-800 text-xs mt-1">
+              Vui lòng chọn ngày xuất tối thiểu sau 12h kiểm đếm trong giờ hành
               chính.
             </div>
           )}
         </div>
 
-        {/* Hạn kiểm đếm dự kiến */}
+        {/* Hạn kiểm đếm dự kiến - CHỈ HIỂN THỊ KHI ĐÃ CHỌN NGÀY XUẤT */}
+
         <div className="w-1/2">
           <label className="block mb-1">Hạn kiểm đếm dự kiến</label>
           <div>
             <Input
-              value={calculateMinExportDate().format("DD-MM-YYYY HH:mm")}
-              placeholder="Hạn kiểm đếm dự kiến"
+              value={
+                formData.exportDate &&
+                (formData.inspectionDateTime
+                  ? dayjs(formData.inspectionDateTime).format(
+                      "DD-MM-YYYY HH:mm"
+                    )
+                  : calculateMinExportDate().format("DD-MM-YYYY HH:mm"))
+              }
+              placeholder="-"
               disabled
               size="large"
               className="w-full bg-gray-50 text-right"
