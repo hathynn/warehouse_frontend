@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Table, Input, Select } from "antd";
 import PropTypes from "prop-types";
-import { InfoCircleFilled } from "@ant-design/icons";
+import { InfoCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
 
 const ExcelDataTable = ({
   data,
@@ -532,82 +532,263 @@ const ExcelDataTable = ({
           Thông tin xuất kho
         </div>
         <div style={{ marginTop: 4 }}>Tổng số mặt hàng xuất: {data.length}</div>
-        {removedItems.length > 0 && (
+        {(removedItems.length > 0 || Object.keys(fieldErrors).length > 0) && (
           <div
             style={{
-              marginTop: 8,
-              padding: 8,
-              backgroundColor: "#ffffe0",
-              border: "1px solid #ffccc7",
-              borderRadius: 4,
+              marginTop: 12,
+              display: "flex",
+              gap: 12,
+              maxHeight: "15rem",
+              alignItems: "stretch",
             }}
           >
-            <div
-              style={{ color: "black", fontWeight: "bold", marginBottom: 4 }}
-            >
-              Tổng cộng có{" "}
-              <span style={{ color: "red" }}>{removedItems.length}</span> sản
-              phẩm không xuất được (không đủ tồn kho khả dụng):
-            </div>
-            <div style={{ color: "#d32029", fontSize: "14px" }}>
-              {removedItems.map((item, index) => (
-                <div key={`${item.itemId}-${index}`}>
-                  • {item.itemId} - Đã yêu cầu: {item.requestedQuantity}{" "}
-                  {exportType === "SELLING"
-                    ? item.unitType
-                    : item.measurementUnit}
-                </div>
-              ))}
-            </div>
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: "14px",
-                fontStyle: "italic",
-                color: "red",
-                fontWeight: "600",
-              }}
-            >
-              Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất kho
-            </div>
-          </div>
-        )}
-
-        {Object.keys(fieldErrors).length > 0 && (
-          <>
-            <div
-              style={{
-                marginTop: 8,
-                padding: 8,
-                backgroundColor: "#fff1f0",
-                border: "1px solid #ffccc7",
-                borderRadius: 4,
-              }}
-            >
-              <div style={{ marginTop: 4, color: "red", fontWeight: "bold" }}>
-                Tổng số mặt hàng vượt số lượng được xuất:{" "}
-                {Object.keys(fieldErrors).length}
-              </div>
-              <div style={{ marginTop: 4, color: "red" }}>
-                • Các mặt hàng lỗi:{" "}
-                {Object.keys(fieldErrors).map((id, idx) => (
-                  <span
-                    key={id}
-                    onClick={() => handleScrollToRow(id)}
+            {removedItems.length > 0 && (
+              <div
+                style={{
+                  padding: 16,
+                  backgroundColor: "#fef3cd",
+                  border: "1px solid #faad14",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #faad14",
+                  width:
+                    Object.keys(fieldErrors).length > 0
+                      ? "calc(50% - 6px)"
+                      : "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: 5,
+                  }}
+                >
+                  <div
                     style={{
-                      cursor: "pointer",
-                      color: "#1890ff",
-                      textDecoration: "underline",
-                      marginRight: 4,
+                      fontSize: "15px",
+                      fontWeight: "600",
+                      color: "#ad6800",
                     }}
                   >
-                    #{id}
-                    {idx < Object.keys(fieldErrors).length - 1 ? "," : ""}
-                  </span>
-                ))}
+                    Sản phẩm không xuất được
+                  </div>
+                  <div
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: "#faad14",
+                      color: "white",
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {removedItems.length}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    color: "#ad6800",
+                    fontSize: "13px",
+                    lineHeight: "1.5",
+                    marginBottom: 8,
+                  }}
+                >
+                  Các sản phẩm sau không có tồn kho khả dụng:
+                </div>
+
+                <div
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid #faad14",
+                    borderRadius: 6,
+                    padding: 12,
+                    flex: 1,
+                    overflowY: "auto",
+                    maxHeight: "8rem",
+                  }}
+                >
+                  {removedItems.map((item, index) => (
+                    <div
+                      key={`${item.itemId}-${index}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "6px 0",
+                        borderBottom:
+                          index < removedItems.length - 1
+                            ? "1px solid #f0f0f0"
+                            : "none",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 6,
+                          height: 6,
+                          backgroundColor: "#faad14",
+                          borderRadius: "50%",
+                          marginRight: 10,
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          fontWeight: "500",
+                          color: "#262626",
+                          marginRight: 8,
+                          fontSize: "13px",
+                        }}
+                      >
+                        {item.itemId}
+                      </div>
+                      <div
+                        style={{
+                          color: "#595959",
+                          fontSize: "13px",
+                        }}
+                      >
+                        Yêu cầu: {item.requestedQuantity}{" "}
+                        {exportType === "SELLING"
+                          ? item.unitType
+                          : item.measurementUnit}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  * Các sản phẩm này đã được tự động loại bỏ khỏi danh sách xuất
+                  kho
+                </div>
               </div>
-            </div>
-          </>
+            )}
+
+            {Object.keys(fieldErrors).length > 0 && (
+              <div
+                style={{
+                  padding: 16,
+                  backgroundColor: "#fff1f0",
+                  border: "1px solid #ff7875",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #ff4d4f",
+                  width: removedItems.length > 0 ? "calc(50% - 6px)" : "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginBottom: 5,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: "600",
+                      color: "#cf1322",
+                    }}
+                  >
+                    Mặt hàng vượt số lượng
+                  </div>
+                  <div
+                    style={{
+                      marginLeft: 8,
+                      backgroundColor: "#ff4d4f",
+                      color: "white",
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {Object.keys(fieldErrors).length}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    color: "#cf1322",
+                    fontSize: "13px",
+                    lineHeight: "1.5",
+                    marginBottom: 8,
+                  }}
+                >
+                  Các mặt hàng sau đã vượt quá số lượng cho phép:
+                </div>
+
+                <div
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid #ff7875",
+                    borderRadius: 6,
+                    padding: 12,
+                    flex: 1,
+                    overflowY: "auto",
+                    maxHeight: "8rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 8,
+                    }}
+                  >
+                    {Object.keys(fieldErrors).map((id, idx) => (
+                      <span
+                        key={id}
+                        onClick={() => handleScrollToRow(id)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "4px 8px",
+                          backgroundColor: "#e6f7ff",
+                          border: "1px solid #91d5ff",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          color: "#1890ff",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                          transition: "all 0.2s",
+                          textDecoration: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = "#bae7ff";
+                          e.target.style.borderColor = "#69c0ff";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "#e6f7ff";
+                          e.target.style.borderColor = "#91d5ff";
+                        }}
+                      >
+                        #{id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    fontWeight: "600",
+                  }}
+                >
+                  * Nhấp vào mã sản phẩm để di chuyển đến dòng tương ứng
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
