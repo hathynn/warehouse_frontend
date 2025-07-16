@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Table, TablePaginationConfig, Tag, Space, Drawer, Descriptions, Timeline, Input, DatePicker, Select } from "antd";
-import { ClockCircleOutlined, UserOutlined, FileTextOutlined, EyeOutlined, SearchOutlined } from "@ant-design/icons";
+import { Table, TablePaginationConfig, Tag, Drawer, Timeline, Input, DatePicker, Select } from "antd";
+import { ClockCircleOutlined, UserOutlined, EyeOutlined, SearchOutlined, CheckCircleOutlined, PlusCircleOutlined, EditOutlined, StopOutlined, UserSwitchOutlined, RedoOutlined } from "@ant-design/icons";
 import useTransactionLogService from "@/services/useTransactionLogService";
 import useAccountService, { AccountResponse } from "@/services/useAccountService";
 import { AccountRoleForRequest } from "@/utils/enums";
@@ -8,6 +8,7 @@ import { ImportRequestTransactionLog, ImportOrderTransactionLog, TransactionLogR
 import { ImportOrderResponse } from "@/services/useImportOrderService";
 import { ImportRequestResponse } from "@/services/useImportRequestService";
 import dayjs from "dayjs";
+import { FilePlus, FilePlus2, WarehouseIcon } from "lucide-react";
 
 // ========== INTERFACES ==========
 interface ImportRequestSummary {
@@ -17,6 +18,7 @@ interface ImportRequestSummary {
   executorFullName: string;
   importReason?: string;
   importType?: string;
+  importOrderCount?: number;
 }
 
 interface TransactionDetail {
@@ -73,17 +75,63 @@ const ImportTransactionHistory: React.FC = () => {
   const getActionColor = (action: string): string => {
     switch (action) {
       case 'CREATE':
-        return 'green';
+        return 'default';
       case 'ASSIGN_STAFF':
         return 'blue';
       case 'EXTEND':
+      case 'REQUEST_COUNT_AGAIN':
         return 'orange';
       case 'COMPLETE':
-        return 'purple';
+      case 'UPDATE_STORED':
+        return 'green';
       case 'CANCEL':
         return 'red';
       default:
         return 'default';
+    }
+  };
+
+  const getActionIconColor = (action: string): string => {
+    switch (action) {
+      case 'CREATE':
+        return '#6B7280'; // gray-500
+      case 'ASSIGN_STAFF':
+        return '#3B82F6'; // blue-500
+      case 'EXTEND':
+      case 'REQUEST_COUNT_AGAIN':
+        return '#F97316'; // orange-500
+      case 'COMPLETE':
+      case 'UPDATE_STORED':
+        return '#10B981'; // green-500
+      case 'CANCEL':
+        return '#EF4444'; // red-500
+      default:
+        return '#6B7280'; // gray-500
+    }
+  };
+
+  const getActionIcon = (action: string, type: string) => {
+    const iconProps = {
+      style: { fontSize: '20px', color: getActionIconColor(action) }
+    };
+
+    switch (action) {
+      case 'CREATE':
+        return <FilePlus {...iconProps} />;
+      case 'ASSIGN_STAFF':
+        return <UserSwitchOutlined {...iconProps} />;
+      case 'EXTEND':
+        return <EditOutlined {...iconProps} />;
+      case 'REQUEST_COUNT_AGAIN':
+        return <RedoOutlined {...iconProps} />;
+      case 'COMPLETE':
+        return <CheckCircleOutlined {...iconProps} />;
+      case 'CANCEL':
+        return <StopOutlined {...iconProps} />;
+      case 'UPDATE_STORED':
+        return <WarehouseIcon {...iconProps} />;
+      default:
+        return <ClockCircleOutlined {...iconProps} />;
     }
   };
 
@@ -95,10 +143,14 @@ const ImportTransactionHistory: React.FC = () => {
         return 'Phân công';
       case 'EXTEND':
         return 'Gia hạn';
+      case 'REQUEST_COUNT_AGAIN':
+        return 'Kiểm đếm lại';
       case 'COMPLETE':
         return 'Hoàn thành';
+      case 'UPDATE_STORED':
+        return 'Đã lưu kho';
       case 'CANCEL':
-        return 'Hủy';
+        return 'Đã hủy';
       default:
         return action;
     }
@@ -175,6 +227,7 @@ const ImportTransactionHistory: React.FC = () => {
                   executorFullName: log.executorFullName,
                   importReason: importRequest.importReason,
                   importType: importRequest.importType,
+                  importOrderCount: 0,
                 });
               }
             });
@@ -188,10 +241,42 @@ const ImportTransactionHistory: React.FC = () => {
                 executorFullName: log.executorFullName,
                 importReason: importRequest.importReason,
                 importType: importRequest.importType,
+                importOrderCount: 0,
               });
             }
           }
         }
+      });
+
+      // Count unique import orders for each import request
+      const importOrderCounts = new Map<string, Set<string>>();
+      
+      allLogs.forEach((log) => {
+        if (log.type !== 'IMPORT_ORDER') return;
+        
+        const importOrderLog = log as ImportOrderTransactionLog;
+        const importOrder = importOrderLog.responseContent as ImportOrderResponse;
+        
+        const requestId = importOrder.importRequestId;
+        const orderId = importOrder.importOrderId;
+        
+        if (!requestId || !orderId) return;
+        
+        // Initialize set if not exists
+        if (!importOrderCounts.has(requestId)) {
+          importOrderCounts.set(requestId, new Set<string>());
+        }
+        
+        // Add unique order ID to the set
+        const orderSet = importOrderCounts.get(requestId);
+        orderSet.add(orderId);
+      });
+
+      // Update import request summaries with order counts
+      importRequestMap.forEach((summary, requestId) => {
+        const orderSet = importOrderCounts.get(requestId);
+        const orderCount = orderSet ? orderSet.size : 0;
+        summary.importOrderCount = orderCount;
       });
 
       const summaries = Array.from(importRequestMap.values()).sort((a, b) => {
@@ -271,7 +356,7 @@ const ImportTransactionHistory: React.FC = () => {
             });
           }
         }
-      } 
+      }
       else if (log.type === 'IMPORT_ORDER') {
         const importOrderLog = log as ImportOrderTransactionLog;
         const importOrder = importOrderLog.responseContent as ImportOrderResponse;
@@ -317,10 +402,11 @@ const ImportTransactionHistory: React.FC = () => {
       title: "Mã phiếu nhập",
       dataIndex: "importRequestId",
       key: "importRequestId",
-      width: "25%",
+      width: "20%",
+      align: "center" as const,
       render: (importRequestId: string) => (
         <div>
-          <span className="text-lg">#{importRequestId}</span>
+          <span className="text-base text-left">#{importRequestId}</span>
         </div>
       ),
     },
@@ -328,7 +414,7 @@ const ImportTransactionHistory: React.FC = () => {
       title: "Ngày giờ tạo",
       dataIndex: "createdDate",
       key: "createdDate",
-      width: "20%",
+      width: "15%",
       align: "center" as const,
       sorter: (a: ImportRequestSummary, b: ImportRequestSummary) => {
         const dateA = dayjs(a.createdDate);
@@ -355,7 +441,7 @@ const ImportTransactionHistory: React.FC = () => {
       render: (executorFullName: string) => (
         <div className="flex items-center justify-center gap-2">
           <UserOutlined className="text-blue-600" style={{ fontSize: 20 }} />
-          <span className="font-medium text-lg">{executorFullName}</span>
+          <span className="font-medium text-base">{executorFullName}</span>
         </div>
       ),
     },
@@ -363,20 +449,30 @@ const ImportTransactionHistory: React.FC = () => {
       title: "Loại nhập",
       dataIndex: "importType",
       key: "importType",
-      width: "15%",
+      width: "20%",
       align: "center" as const,
       render: (importType: string) => (
         importType ? (
-          <span className="text-sm font-bold">{getImportTypeText(importType)}</span>
+          <span className="text-base text-left">{getImportTypeText(importType)}</span>
         ) : (
           <span className="text-gray-500">-</span>
         )
       ),
     },
     {
+      title: "Số đơn nhập đã tạo",
+      dataIndex: "importOrderCount",
+      key: "importOrderCount",
+      width: "15%",
+      align: "center" as const,
+      render: (importOrderCount: number) => (
+        <div className="text-right text-base">{importOrderCount || 0}</div>
+      ),
+    },
+    {
       title: "Chi tiết",
       key: "actions",
-      width: "20%",
+      width: "10%",
       align: "center" as const,
       render: (_: unknown, record: ImportRequestSummary) => (
         <div className="flex justify-center">
@@ -480,67 +576,151 @@ const ImportTransactionHistory: React.FC = () => {
         className="[&_.ant-drawer-header]:!bg-blue-50 [&_.ant-drawer-title]:!text-blue-800 [&_.ant-drawer-title]:!font-bold [&_.ant-drawer-title]:!text-lg"
       >
         {transactionDetails.length > 0 && (
-          <div className="space-y-6">
+          <div className="m-4">
+            <style>
+              {`
+                .timeline-vertical-center .ant-timeline-item-head {
+                  top: 60px !important;
+                }
+                .timeline-vertical-center .ant-timeline-item-tail {
+                  top: 72px !important;
+                }
+              `}
+            </style>
             <Timeline
               mode="left"
+              className="timeline-vertical-center"
               items={transactionDetails.map((detail, index) => ({
-                dot: detail.type === 'IMPORT_REQUEST' ? (
-                  <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>
-                ) : (
-                  <div className="w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow-lg"></div>
+                dot: (
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2"
+                      style={{
+                        backgroundColor: 'transparent',
+                        borderColor: getActionIconColor(detail.action)
+                      }}
+                    >
+                      {getActionIcon(detail.action, detail.type)}
+                    </div>
+                    <div className="mt-2 text-center text-sm text-gray-600">
+                      <div className="font-medium">
+                        {dayjs(detail.createdDate).format("DD/MM")}
+                      </div>
+                      <div className="text-gray-500">
+                        {dayjs(detail.createdDate).format("HH:mm")}
+                      </div>
+                    </div>
+                  </div>
                 ),
                 children: (
-                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-lg transition-all duration-200">
-                    {/* Header với thời gian */}
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <Tag
-                          color={detail.type === 'IMPORT_REQUEST' ? 'blue' : 'purple'}
-                          className="!text-sm !px-3 !py-1 !font-medium"
-                        >
-                          {detail.type === 'IMPORT_REQUEST' ? 'Phiếu nhập' : 'Đơn nhập'}
-                        </Tag>
-                        <span className="text-lg font-bold text-gray-800">
-                          {detail.type === 'IMPORT_REQUEST' ? (
-                            <span className="text-blue-600">#{detail.importRequestId}</span>
-                          ) : (
-                            <span className="text-purple-600">#{detail.importOrderId}</span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-base font-semibold text-gray-800">
-                          Ngày: {dayjs(detail.createdDate).format("DD-MM-YYYY")}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Giờ: {dayjs(detail.createdDate).format("HH:mm")}
-                        </div>
-                      </div>
+                  <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-lg transition-all duration-200 ml-4">
+                    {/* Header without time */}
+                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
+                      <Tag
+                        color={detail.type === 'IMPORT_REQUEST' ? 'blue-inverse' : 'blue'}
+                        className="!text-sm !px-3 !py-1 !font-medium"
+                      >
+                        {detail.type === 'IMPORT_REQUEST' ? 'PHIẾU NHẬP' : 'ĐƠN NHẬP'}
+                      </Tag>
+                      <span className="text-sm font-bold text-gray-800">
+                        {detail.type === 'IMPORT_REQUEST' ? (
+                          <span className="text-blue-600">#{detail.importRequestId}</span>
+                        ) : (
+                          <span className="text-blue-600">#{detail.importOrderId}</span>
+                        )}
+                      </span>
                     </div>
 
                     {/* Content */}
                     <div className="space-y-3">
                       {/* Người thực hiện và hành động */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <UserOutlined className="text-blue-500" />
-                          <span className="text-base font-medium text-gray-800">{detail.executorFullName}</span>
+                      {detail.action === 'CREATE' && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.executorFullName}</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
                         </div>
-                        <div className="w-px h-5 bg-gray-300"></div>
-                        <Tag color={getActionColor(detail.action)} className="!text-sm !px-3 !py-1 !font-medium !m-0">
-                          {getActionText(detail.action)}
-                        </Tag>
-                        {detail.action === 'ASSIGN_STAFF' && detail.assignedStaffName && (
-                          <>
-                            <div className="w-px h-5 bg-gray-300"></div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-600">cho</span>
-                              <UserOutlined className="!text-blue-500" />
-                              <span className="text-base text-blue-600">{detail.assignedStaffName}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      )}
+                      {detail.action === 'ASSIGN_STAFF' && detail.assignedStaffName && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.assignedStaffName}</span>
+                            <span className="text-base">đã được</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+
+                        </div>
+                      )}
+                      {detail.action === 'EXTEND' && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.executorFullName}</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+                        </div>
+                      )}
+                      {detail.action === 'REQUEST_COUNT_AGAIN' && detail.assignedStaffName && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.assignedStaffName}</span>
+                            <span className="text-base">đã được yêu cầu</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+                        </div>
+                      )}
+                      {detail.action === 'COMPLETE' && detail.assignedStaffName && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.assignedStaffName}</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+                        </div>
+                      )}
+                      {detail.action === 'UPDATE_STORED' && detail.assignedStaffName && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.assignedStaffName}</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+                        </div>
+                      )}
+                      {detail.action === 'CANCEL' && (
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="!text-blue-800" />
+                            <span className="text-base font-medium text-blue-800">{detail.executorFullName}</span>
+                          </div>
+                          <div className="w-px h-5 bg-gray-300"></div>
+                          <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
+                            {getActionText(detail.action)}
+                          </Tag>
+                        </div>
+                      )}
 
                       {/* Chi tiết theo loại */}
                       {detail.type === 'IMPORT_REQUEST' ? (
@@ -554,23 +734,19 @@ const ImportTransactionHistory: React.FC = () => {
                           {detail.importType && (
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-gray-600">Loại nhập:</span>
-                              <span className="text-sm font-bold text-blue-600">{getImportTypeText(detail.importType)}</span>
+                              <span className="text-sm text-blue-600">{getImportTypeText(detail.importType)}</span>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div className="space-y-2 bg-blue-50 p-3 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <span className="text-sm font-medium text-gray-600 min-w-fit">Thuộc phiếu nhập:</span>
-                            <span className="text-sm font-bold text-blue-600">#{detail.importRequestId}</span>
-                          </div>
+                        <>
                           {detail.note && (
                             <div className="flex items-start gap-2">
                               <span className="text-sm font-medium text-gray-600 min-w-fit">Ghi chú:</span>
                               <span className="text-sm text-gray-800">{detail.note}</span>
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>

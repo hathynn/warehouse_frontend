@@ -568,6 +568,8 @@ const ImportOrderDetail = () => {
             // Order not extended
             (importOrderData?.status !== ImportStatus.CANCELLED &&
               importOrderData?.status !== ImportStatus.COMPLETED &&
+              importOrderData?.status !== ImportStatus.READY_TO_STORE &&
+              importOrderData?.status !== ImportStatus.STORED &&
               importOrderData?.status !== ImportStatus.COUNTED) ? (
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -594,6 +596,8 @@ const ImportOrderDetail = () => {
             // Order extended
             (importOrderData?.status !== ImportStatus.CANCELLED &&
               importOrderData?.status !== ImportStatus.COMPLETED &&
+              importOrderData?.status !== ImportStatus.READY_TO_STORE &&
+              importOrderData?.status !== ImportStatus.STORED &&
               importOrderData?.status !== ImportStatus.COUNTED) ? (
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -712,8 +716,8 @@ const ImportOrderDetail = () => {
 
       {userRole === AccountRole.WAREHOUSE_MANAGER && (
         <div className="flex justify-end items-center mt-16 mb-4 gap-4">
-          {importOrderData?.status === ImportStatus.COMPLETED && (
-            <>
+          <>
+            {importOrderData?.status === ImportStatus.COMPLETED && (
               <Button
                 type="primary"
                 icon={<MdApartment />}
@@ -721,6 +725,8 @@ const ImportOrderDetail = () => {
               >
                 Cập nhật vị trí lưu kho
               </Button>
+            )}
+            {importOrderData?.status === ImportStatus.COMPLETED || importOrderData?.status === ImportStatus.READY_TO_STORE || importOrderData?.status === ImportStatus.STORED && (
               <Button
                 type="default"
                 className="!text-blue-500 !border-blue-500"
@@ -729,8 +735,9 @@ const ImportOrderDetail = () => {
               >
                 In QRCode
               </Button>
-            </>
-          )}
+            )}
+          </>
+
           {importOrderData?.status === ImportStatus.COUNTED && (
             <>
               <Button
