@@ -42,20 +42,35 @@ const SellingExportForm = ({
     fetchConfiguration();
   }, []);
 
+  // useEffect(() => {
+  //   if (excelFormData && !hasAutoFilled) {
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       exportReason: prev.exportReason || excelFormData.exportReason || "",
+  //       receiverName: prev.receiverName || excelFormData.receiverName || "",
+  //       receiverPhone: prev.receiverPhone || excelFormData.receiverPhone || "",
+  //       receiverAddress:
+  //         prev.receiverAddress || excelFormData.receiverAddress || "",
+  //     }));
+
+  //     setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
+  //   }
+  // }, [excelFormData, hasAutoFilled]);
   useEffect(() => {
     if (excelFormData && !hasAutoFilled) {
       setFormData((prev) => ({
         ...prev,
-        exportReason: prev.exportReason || excelFormData.exportReason || "",
-        receiverName: prev.receiverName || excelFormData.receiverName || "",
-        receiverPhone: prev.receiverPhone || excelFormData.receiverPhone || "",
+        // Ưu tiên data từ Excel nếu có, nếu không thì giữ nguyên giá trị hiện tại
+        exportReason: excelFormData.exportReason || prev.exportReason || "",
+        receiverName: excelFormData.receiverName || prev.receiverName || "",
+        receiverPhone: excelFormData.receiverPhone || prev.receiverPhone || "",
         receiverAddress:
-          prev.receiverAddress || excelFormData.receiverAddress || "",
+          excelFormData.receiverAddress || prev.receiverAddress || "",
       }));
 
-      setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
+      setHasAutoFilled(true);
     }
-  }, [excelFormData, hasAutoFilled]);
+  }, [excelFormData, hasAutoFilled, setFormData]);
 
   useEffect(() => {
     setHasAutoFilled(false);
