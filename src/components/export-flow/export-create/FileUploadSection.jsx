@@ -16,6 +16,15 @@ const EXPORT_TYPE_LABELS = {
   LIQUIDATION: "xuất thanh lý",
 };
 
+// Thêm mapping cho file templates
+const TEMPLATE_FILES = {
+  SELLING: "/export-templates/template_xuat_ban.xlsx",
+  RETURN: "/export-templates/template_xuat_tra_NCC.xlsx",
+  PRODUCTION: "/export-templates/template_xuat_san_xuat.xlsx",
+  BORROWING: "/export-templates/template_xuat_muon.xlsx",
+  LIQUIDATION: "/export-templates/template_xuat_thanh_ly.xlsx",
+};
+
 const FileUploadSection = ({
   fileName,
   exportType,
@@ -25,6 +34,25 @@ const FileUploadSection = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleDownloadTemplate = () => {
+    const templatePath = TEMPLATE_FILES[exportType];
+
+    if (!templatePath) {
+      console.error("Không tìm thấy template cho loại xuất:", exportType);
+      // Fallback về logic cũ nếu không có file template
+      handleDownloadTemplateOld();
+      return;
+    }
+
+    // Tạo link download từ public folder
+    const link = document.createElement("a");
+    link.href = templatePath;
+    link.download = templatePath.split("/").pop();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadTemplateOld = () => {
     let template = [];
     const wb = XLSX.utils.book_new();
 

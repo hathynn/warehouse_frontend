@@ -343,33 +343,24 @@ const ExportRequestCreate = () => {
 
         // Xử lý đặc biệt cho SELLING
         if (finalExportType === "SELLING") {
-          if (jsonData.length < 10) {
+          // Kiểm tra cấu trúc file
+          if (jsonData.length < 12) {
             throw new Error("File Excel không đúng định dạng cho xuất bán");
           }
 
-          // EXTRACT FORM DATA TỪ EXCEL
+          // EXTRACT FORM DATA TỪ EXCEL - Đọc từ cột B
           extractedFormData = {
-            exportReason:
-              jsonData[1]?.[1]?.replace?.("{Điền lý do xuất}", "")?.trim() ||
-              "",
-            receiverName:
-              jsonData[2]?.[1]
-                ?.replace?.("{Điền tên người nhận}", "")
-                ?.trim() || "",
-            receiverPhone:
-              jsonData[3]?.[1]
-                ?.replace?.("{Điền SĐT người nhận}", "")
-                ?.trim() || "",
-            receiverAddress:
-              jsonData[4]?.[1]
-                ?.replace?.("{Điền địa chỉ người nhận}", "")
-                ?.trim() || "",
+            exportType: "SELLING", // Luôn là SELLING cho loại xuất bán
+            exportReason: jsonData[5]?.[1]?.trim() || "", // B6 (row index 5)
+            receiverName: jsonData[6]?.[1]?.trim() || "", // B7 (row index 6)
+            receiverPhone: jsonData[7]?.[1]?.trim() || "", // B8 (row index 7)
+            receiverAddress: jsonData[8]?.[1]?.trim() || "", // B9 (row index 8)
           };
 
           // LƯU EXCEL FORM DATA VÀO STATE
           setExcelFormData(extractedFormData);
 
-          // Update form data với thông tin từ Excel (giữ nguyên như cũ)
+          // Update form data với thông tin từ Excel
           setFormData((prev) => ({
             ...prev,
             exportType: finalExportType,
@@ -381,28 +372,44 @@ const ExportRequestCreate = () => {
               extractedFormData.receiverAddress || prev.receiverAddress,
           }));
 
-          startRow = 8;
-          const headers = jsonData[7];
+          // ✅ SỬA: Đọc dữ liệu sản phẩm từ row 12 (index 11)
+          startRow = 11; // Bắt đầu từ row 12 (index 11)
           const dataRows = jsonData.slice(startRow);
 
           transformedData = dataRows
-            .filter((row) => row && row.length > 0 && row[0])
+            .filter((row) => {
+              // Chỉ lấy các row có data ở cột B (itemId) và C (quantity)
+              // Kiểm tra cột B phải có giá trị và không phải là header
+              return (
+                row &&
+                row.length >= 3 &&
+                row[1] &&
+                row[2] &&
+                row[1] !== "Tên hàng"
+              );
+            })
             .map((row, index) => {
-              const itemId = row[0];
-              const quantity = row[1];
-              const measurementValue = row[2] || "";
+              const itemId = row[1]; // Cột B - itemId (tên hàng trong ảnh nhưng thực tế là mã hàng)
+              const quantity = row[2]; // Cột C - quantity
 
-              if (!itemId || !quantity) {
+              // Validate dữ liệu
+              if (!itemId || itemId.toString().trim() === "") {
+                throw new Error(`Dòng ${startRow + index + 1}: Thiếu mã hàng`);
+              }
+
+              // ✅ SỬA: Chuyển đổi quantity sang số và validate
+              const numQuantity = Number(quantity);
+              if (!quantity || isNaN(numQuantity) || numQuantity <= 0) {
                 throw new Error(
                   `Dòng ${
                     startRow + index + 1
-                  }: Thiếu thông tin Mã hàng hoặc Số lượng`
+                  }: Số lượng phải là số dương (nhận được: "${quantity}")`
                 );
               }
 
-              // ✅ TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
+              // TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
               const foundItem = items.content?.find(
-                (i) => String(i.id) === String(itemId)
+                (i) => String(i.id) === String(itemId).trim()
               );
 
               if (!foundItem) {
@@ -415,8 +422,7 @@ const ExportRequestCreate = () => {
 
               return {
                 itemId: String(itemId).trim(),
-                quantity: Number(quantity),
-                measurementValue: measurementValue,
+                quantity: numQuantity,
                 itemName: foundItem.name,
                 unitType: foundItem.unitType,
                 measurementUnit: foundItem.measurementUnit || "Không xác định",
@@ -877,18 +883,85 @@ const ExportRequestCreate = () => {
     }
 
     // Selling validation
+    // Trong validateFormData function, cập nhật phần validation cho SELLING:
+
+    // Selling validation
     if (formData.exportType === "SELLING") {
-      if (
-        !formData.exportDate ||
-        !formData.exportReason ||
-        !formData.receiverName ||
-        !formData.receiverPhone
-      ) {
+      // Validate thông tin cơ bản
+      if (!formData.exportDate) {
         return {
           isValid: false,
-          errorMessage:
-            "Vui lòng nhập đầy đủ các trường bắt buộc cho phiếu xuất bán",
+          errorMessage: "Vui lòng chọn ngày xuất",
         };
+      }
+
+      if (!formData.exportReason || formData.exportReason.trim() === "") {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập lý do xuất",
+        };
+      }
+
+      if (!formData.receiverName || formData.receiverName.trim() === "") {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập tên người nhận",
+        };
+      }
+
+      if (!formData.receiverPhone || formData.receiverPhone.trim() === "") {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập số điện thoại người nhận",
+        };
+      }
+
+      // Validate phone number format (optional)
+      const phoneRegex = /^[0-9]{10,11}$/;
+      const cleanPhone = formData.receiverPhone.replace(/[^0-9]/g, "");
+      if (!phoneRegex.test(cleanPhone)) {
+        return {
+          isValid: false,
+          errorMessage: "Số điện thoại không hợp lệ (10-11 số)",
+        };
+      }
+
+      // Validate có data sản phẩm
+      if (!data || data.length === 0) {
+        return {
+          isValid: false,
+          errorMessage: "Vui lòng nhập ít nhất một sản phẩm để xuất",
+        };
+      }
+
+      // Validate từng sản phẩm
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+
+        if (!item.itemId) {
+          return {
+            isValid: false,
+            errorMessage: `Sản phẩm dòng ${i + 1}: Thiếu mã hàng`,
+          };
+        }
+
+        if (!item.quantity || item.quantity <= 0) {
+          return {
+            isValid: false,
+            errorMessage: `Sản phẩm dòng ${i + 1}: Số lượng phải lớn hơn 0`,
+          };
+        }
+
+        // Kiểm tra tồn kho nếu cần
+        if (
+          item.inventoryQuantity !== undefined &&
+          item.quantity > item.inventoryQuantity
+        ) {
+          return {
+            isValid: false,
+            errorMessage: `Sản phẩm ${item.itemId}: Số lượng xuất (${item.quantity}) vượt quá tồn kho (${item.inventoryQuantity})`,
+          };
+        }
       }
     }
 
