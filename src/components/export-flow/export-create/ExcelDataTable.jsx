@@ -116,7 +116,22 @@ const ExcelDataTable = ({
           );
           const stockQuantity = itemMeta?.quantity ?? 0;
 
-          if (stockQuantity === 0) {
+          // Tính maxValue để kiểm tra có đủ tồn kho khả dụng không (chỉ cho SELLING)
+          let shouldRemoveItem = false;
+
+          if (exportType === "SELLING") {
+            const availableItems = itemMeta?.numberOfAvailableItems ?? 0;
+            const minimumStock = itemMeta?.minimumStockQuantity ?? 0;
+            const maxValue = availableItems - minimumStock;
+
+            // Loại bỏ nếu hết tồn kho HOẶC không đủ tồn kho khả dụng
+            shouldRemoveItem = stockQuantity === 0 || maxValue <= 0;
+          } else {
+            // Các export type khác chỉ loại bỏ khi hết tồn kho
+            shouldRemoveItem = stockQuantity === 0;
+          }
+
+          if (shouldRemoveItem) {
             // Lấy requested amount dựa trên export type
             let requestedAmount;
             if (
