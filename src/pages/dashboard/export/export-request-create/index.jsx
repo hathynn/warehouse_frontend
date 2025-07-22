@@ -306,10 +306,17 @@ const ExportRequestCreate = () => {
         const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
         // ĐỌC EXPORT TYPE TỪ DÒNG ĐẦU CỦA FILE EXCEL
-        const detectedExportType = jsonData[0]?.[1]; // Dòng 1, cột B
+        // ĐỌC EXPORT TYPE TỪ Ô B6 CỦA FILE EXCEL
+        const detectedExportType = jsonData[5]?.[1]; // Dòng 6 (index 5), cột B
 
-        // MAPPING CÁC GIÁ TRỊ CÓ THỂ CÓ TRONG EXCEL VỚI CÁC GIÁ TRỊ TRONG HỆ THỐNG
+        // MAPPING TỪ TIẾNG VIỆT SANG MÃ HỆ THỐNG
         const exportTypeMapping = {
+          "XUẤT BÁN": "SELLING",
+          "XUẤT TRẢ NHÀ CUNG CẤP": "RETURN",
+          "XUẤT SẢN XUẤT": "PRODUCTION",
+          "XUẤT MƯỢN": "BORROWING",
+          "XUẤT THANH LÝ": "LIQUIDATION",
+          // Giữ lại mapping cũ để tương thích
           SELLING: "SELLING",
           RETURN: "RETURN",
           PRODUCTION: "PRODUCTION",
@@ -320,201 +327,288 @@ const ExportRequestCreate = () => {
         let transformedData = [];
         let startRow = 0;
         let finalExportType = formData.exportType;
-        let extractedFormData = null; // THÊM BIẾN NÀY ĐỂ LƯU EXCEL FORM DATA
+        let extractedFormData = null;
 
-        // Nếu detect được export type từ Excel và nó khác với hiện tại
-        if (detectedExportType && exportTypeMapping[detectedExportType]) {
-          finalExportType = exportTypeMapping[detectedExportType];
+        // Nếu detect được export type từ Excel
+        if (detectedExportType) {
+          // Chuẩn hóa chuỗi: trim và uppercase
+          const normalizedType = String(detectedExportType)
+            .trim()
+            .toUpperCase();
 
-          // Tự động update export type nếu khác với hiện tại
-          if (finalExportType !== formData.exportType) {
-            setFormData((prev) => ({
-              ...prev,
-              exportType: finalExportType,
-            }));
+          // Tìm mapping
+          const mappedType = exportTypeMapping[normalizedType];
 
-            toast.info(
-              `Đã tự động chuyển sang loại phiếu xuất: ${getExportTypeDisplayName(
-                finalExportType
-              )}`
+          if (mappedType) {
+            finalExportType = mappedType;
+
+            // Tự động update export type nếu khác với hiện tại
+            if (finalExportType !== formData.exportType) {
+              setFormData((prev) => ({
+                ...prev,
+                exportType: finalExportType,
+              }));
+
+              toast.info(
+                `Đã tự động chuyển sang loại phiếu xuất: ${getExportTypeDisplayName(
+                  finalExportType
+                )}`
+              );
+            }
+          } else {
+            // Nếu không tìm thấy mapping, thông báo lỗi
+            console.warn(
+              `Không nhận diện được loại xuất: "${detectedExportType}"`
             );
           }
         }
 
-        // Xử lý đặc biệt cho SELLING
         if (finalExportType === "SELLING") {
-          // Kiểm tra cấu trúc file
-          if (jsonData.length < 12) {
-            throw new Error("File Excel không đúng định dạng cho xuất bán");
-          }
+          try {
+            if (!jsonData || !Array.isArray(jsonData) || jsonData.length < 13) {
+              throw new Error("File không đúng định dạng");
+            }
 
-          // EXTRACT FORM DATA TỪ EXCEL - Đọc từ cột B
-          extractedFormData = {
-            exportType: "SELLING", // Luôn là SELLING cho loại xuất bán
-            exportReason: jsonData[5]?.[1]?.trim() || "", // B6 (row index 5)
-            receiverName: jsonData[6]?.[1]?.trim() || "", // B7 (row index 6)
-            receiverPhone: jsonData[7]?.[1]?.trim() || "", // B8 (row index 7)
-            receiverAddress: jsonData[8]?.[1]?.trim() || "", // B9 (row index 8)
-          };
+            const requiredCells = [
+              { row: 5, col: 0, name: "Loại xuất" },
+              { row: 6, col: 0, name: "Lí do xuất" },
+              { row: 7, col: 0, name: "Tên người nhận" },
+              { row: 8, col: 0, name: "SĐT người nhận" },
+              { row: 9, col: 0, name: "Địa chỉ người nhận" },
+            ];
 
-          // LƯU EXCEL FORM DATA VÀO STATE
-          setExcelFormData(extractedFormData);
+            for (const cell of requiredCells) {
+              if (!jsonData[cell.row] || !Array.isArray(jsonData[cell.row])) {
+                throw new Error("File không đúng định dạng");
+              }
+            }
 
-          // Update form data với thông tin từ Excel
-          setFormData((prev) => ({
-            ...prev,
-            exportType: finalExportType,
-            exportReason: extractedFormData.exportReason || prev.exportReason,
-            receiverName: extractedFormData.receiverName || prev.receiverName,
-            receiverPhone:
-              extractedFormData.receiverPhone || prev.receiverPhone,
-            receiverAddress:
-              extractedFormData.receiverAddress || prev.receiverAddress,
-          }));
+            extractedFormData = {
+              exportType: "SELLING",
+              exportReason: "",
+              receiverName: "",
+              receiverPhone: "",
+              receiverAddress: "",
+            };
+            // Safely extract form data
+            try {
+              const getValue = (row, col) => {
+                if (jsonData[row] && jsonData[row][col] != null) {
+                  return String(jsonData[row][col]).trim();
+                }
+                return "";
+              };
 
-          // ✅ SỬA: Đọc dữ liệu sản phẩm từ row 12 (index 11)
-          startRow = 11; // Bắt đầu từ row 12 (index 11)
-          const dataRows = jsonData.slice(startRow);
+              extractedFormData.exportReason = getValue(6, 1);
+              extractedFormData.receiverName = getValue(7, 1);
+              extractedFormData.receiverPhone = getValue(8, 1);
+              extractedFormData.receiverAddress = getValue(9, 1);
+            } catch (e) {
+              console.warn("Lỗi khi đọc thông tin form từ Excel:", e);
+            }
 
-          transformedData = dataRows
-            .filter((row) => {
-              // Chỉ lấy các row có data ở cột B (itemId) và C (quantity)
-              // Kiểm tra cột B phải có giá trị và không phải là header
+            setExcelFormData(extractedFormData);
+
+            setFormData((prev) => ({
+              ...prev,
+              exportType: finalExportType,
+              exportReason: extractedFormData.exportReason || prev.exportReason,
+              receiverName: extractedFormData.receiverName || prev.receiverName,
+              receiverPhone:
+                extractedFormData.receiverPhone || prev.receiverPhone,
+              receiverAddress:
+                extractedFormData.receiverAddress || prev.receiverAddress,
+            }));
+
+            startRow = 12;
+            let dataRows = [];
+
+            if (jsonData.length > startRow) {
+              dataRows = jsonData.slice(startRow);
+            }
+
+            const validRows = dataRows.filter((row) => {
               return (
                 row &&
+                Array.isArray(row) &&
                 row.length >= 3 &&
-                row[1] &&
-                row[2] &&
-                row[1] !== "Tên hàng"
+                row[1] != null &&
+                row[2] != null &&
+                String(row[1]).trim() !== "" &&
+                String(row[1]).trim() !== "Tên hàng" // Loại bỏ header nếu có
               );
-            })
-            .map((row, index) => {
-              const itemId = row[1]; // Cột B - itemId (tên hàng trong ảnh nhưng thực tế là mã hàng)
-              const quantity = row[2]; // Cột C - quantity
-
-              // Validate dữ liệu
-              if (!itemId || itemId.toString().trim() === "") {
-                throw new Error(`Dòng ${startRow + index + 1}: Thiếu mã hàng`);
-              }
-
-              // ✅ SỬA: Chuyển đổi quantity sang số và validate
-              const numQuantity = Number(quantity);
-              if (!quantity || isNaN(numQuantity) || numQuantity <= 0) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Số lượng phải là số dương (nhận được: "${quantity}")`
-                );
-              }
-
-              // TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
-              const foundItem = items.content?.find(
-                (i) => String(i.id) === String(itemId).trim()
-              );
-
-              if (!foundItem) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Không tìm thấy mặt hàng với mã ${itemId}`
-                );
-              }
-
-              return {
-                itemId: String(itemId).trim(),
-                quantity: numQuantity,
-                itemName: foundItem.name,
-                unitType: foundItem.unitType,
-                measurementUnit: foundItem.measurementUnit || "Không xác định",
-                totalMeasurementValue: foundItem.totalMeasurementValue || "",
-              };
             });
-        } else if (finalExportType === "PRODUCTION") {
-          if (jsonData.length < 8) {
-            throw new Error(
-              "File Excel không đúng định dạng cho xuất sản xuất"
-            );
+
+            if (validRows.length === 0) {
+              throw new Error("Không có dữ liệu sản phẩm trong file");
+            }
+
+            transformedData = validRows.map((row, index) => {
+              try {
+                const itemId = String(row[1]).trim();
+                const quantityStr = String(row[2]).trim();
+
+                if (!itemId) {
+                  throw new Error(
+                    `Dòng ${startRow + index + 1}: Thiếu mã hàng`
+                  );
+                }
+
+                const numQuantity = Number(quantityStr);
+                if (isNaN(numQuantity) || numQuantity <= 0) {
+                  throw new Error(
+                    `Dòng ${startRow + index + 1}: Số lượng phải là số dương`
+                  );
+                }
+
+                const foundItem = items.content?.find(
+                  (i) => String(i.id) === itemId
+                );
+
+                if (!foundItem) {
+                  throw new Error(
+                    `Dòng ${
+                      startRow + index + 1
+                    }: Không tìm thấy mặt hàng với mã ${itemId}`
+                  );
+                }
+
+                return {
+                  itemId: itemId,
+                  quantity: numQuantity,
+                  itemName: foundItem.name,
+                  unitType: foundItem.unitType,
+                  measurementUnit:
+                    foundItem.measurementUnit || "Không xác định",
+                  totalMeasurementValue: foundItem.totalMeasurementValue || "",
+                };
+              } catch (rowError) {
+                throw new Error(rowError.message);
+              }
+            });
+          } catch (sellingError) {
+            if (sellingError.message.includes("Không có dữ liệu")) {
+              throw new Error("Không có dữ liệu sản phẩm trong file");
+            } else if (sellingError.message.includes("Dòng")) {
+              throw sellingError;
+            } else {
+              throw new Error("File không đúng định dạng");
+            }
           }
+        } else if (finalExportType === "PRODUCTION") {
+          try {
+            // Kiểm tra cấu trúc file
+            if (!jsonData || !Array.isArray(jsonData) || jsonData.length < 13) {
+              throw new Error("File không đúng định dạng cho xuất sản xuất");
+            }
 
-          // EXTRACT FORM DATA TỪ EXCEL
-          extractedFormData = {
-            exportReason:
-              jsonData[1]?.[1]
-                ?.replace?.("{Điền lý do xuất sản xuất}", "")
-                ?.trim() || "",
-            departmentId:
-              jsonData[2]?.[1]?.replace?.("{Điền mã phòng ban}", "")?.trim() ||
-              "",
-          };
+            // EXTRACT FORM DATA TỪ EXCEL - giả sử template mới có cấu trúc tương tự
+            extractedFormData = {
+              exportType: "PRODUCTION",
+              exportReason: "",
+              departmentId: "",
+            };
 
-          // LƯU EXCEL FORM DATA VÀO STATE
-          setExcelFormData(extractedFormData);
-
-          // Update form data với thông tin từ Excel
-          setFormData((prev) => ({
-            ...prev,
-            exportType: finalExportType,
-            exportReason: extractedFormData.exportReason || prev.exportReason,
-            // Lưu ý: departmentId sẽ được xử lý riêng trong form vì cần validate với danh sách departments
-          }));
-
-          startRow = 6; // Dữ liệu sản phẩm bắt đầu từ dòng 7 (index 6)
-          const headers = jsonData[5]; // Header ở dòng 6 (index 5)
-          const dataRows = jsonData.slice(startRow);
-
-          transformedData = dataRows
-            .filter((row) => row && row.length > 0 && row[0])
-            .map((row, index) => {
-              const itemId = row[0];
-              const measurementValue = row[1];
-
-              if (
-                !itemId ||
-                measurementValue === undefined ||
-                measurementValue === ""
-              ) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Thiếu thông tin Mã hàng hoặc Giá trị đo lường`
-                );
-              }
-
-              // Validate measurementValue là số dương
-              const numericMeasurementValue = Number(measurementValue);
-              if (
-                isNaN(numericMeasurementValue) ||
-                numericMeasurementValue <= 0
-              ) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Giá trị đo lường phải là số dương`
-                );
-              }
-
-              // ✅ TÌM ITEM METADATA ĐỂ LẤY ĐẦY ĐỦ THÔNG TIN
-              const foundItem = items.content?.find(
-                (i) => String(i.id) === String(itemId)
-              );
-
-              if (!foundItem) {
-                throw new Error(
-                  `Dòng ${
-                    startRow + index + 1
-                  }: Không tìm thấy mặt hàng với mã ${itemId}`
-                );
-              }
-
-              return {
-                itemId: String(itemId).trim(),
-                measurementValue: numericMeasurementValue, // CHỈ có measurementValue
-                itemName: foundItem.name,
-                unitType: foundItem.unitType,
-                measurementUnit: foundItem.measurementUnit || "Không xác định",
-                totalMeasurementValue: foundItem.totalMeasurementValue || "",
+            // Safely extract form data
+            try {
+              const getValue = (row, col) => {
+                if (jsonData[row] && jsonData[row][col] != null) {
+                  return String(jsonData[row][col]).trim();
+                }
+                return "";
               };
+
+              extractedFormData.exportReason = getValue(6, 1); // Lý do xuất ở B7
+              extractedFormData.departmentId = getValue(7, 1); // Mã phòng ban ở B8
+            } catch (e) {
+              console.warn("Lỗi khi đọc thông tin form từ Excel:", e);
+            }
+
+            setExcelFormData(extractedFormData);
+
+            setFormData((prev) => ({
+              ...prev,
+              exportType: finalExportType,
+              exportReason: extractedFormData.exportReason || prev.exportReason,
+            }));
+
+            // Đọc dữ liệu sản phẩm - điều chỉnh theo template mới
+            startRow = 9; // Giống như SELLING
+            let dataRows = [];
+
+            if (jsonData.length > startRow) {
+              dataRows = jsonData.slice(startRow);
+            }
+
+            const validRows = dataRows.filter((row) => {
+              return (
+                row &&
+                Array.isArray(row) &&
+                row.length >= 3 &&
+                row[1] != null &&
+                row[2] != null &&
+                String(row[1]).trim() !== ""
+              );
             });
+
+            if (validRows.length === 0) {
+              throw new Error("Không có dữ liệu sản phẩm trong file");
+            }
+
+            transformedData = validRows.map((row, index) => {
+              try {
+                const itemId = String(row[1]).trim(); // Cột B
+                const measurementValueStr = String(row[2]).trim(); // Cột C
+
+                if (!itemId) {
+                  throw new Error(
+                    `Dòng ${startRow + index + 1}: Thiếu mã hàng`
+                  );
+                }
+
+                const numMeasurementValue = Number(measurementValueStr);
+                if (isNaN(numMeasurementValue) || numMeasurementValue <= 0) {
+                  throw new Error(
+                    `Dòng ${
+                      startRow + index + 1
+                    }: Giá trị đo lường phải là số dương`
+                  );
+                }
+
+                const foundItem = items.content?.find(
+                  (i) => String(i.id) === itemId
+                );
+
+                if (!foundItem) {
+                  throw new Error(
+                    `Dòng ${
+                      startRow + index + 1
+                    }: Không tìm thấy mặt hàng với mã ${itemId}`
+                  );
+                }
+
+                return {
+                  itemId: itemId,
+                  measurementValue: numMeasurementValue,
+                  itemName: foundItem.name,
+                  unitType: foundItem.unitType,
+                  measurementUnit:
+                    foundItem.measurementUnit || "Không xác định",
+                  totalMeasurementValue: foundItem.totalMeasurementValue || "",
+                };
+              } catch (rowError) {
+                throw new Error(rowError.message);
+              }
+            });
+          } catch (productionError) {
+            if (productionError.message.includes("Không có dữ liệu")) {
+              throw new Error("Không có dữ liệu sản phẩm trong file");
+            } else if (productionError.message.includes("Dòng")) {
+              throw productionError;
+            } else {
+              throw new Error("File không đúng định dạng");
+            }
+          }
         } else {
           setExcelFormData(null);
           const jsonDataObjects = XLSX.utils.sheet_to_json(ws);
@@ -647,7 +741,7 @@ const ExportRequestCreate = () => {
     setData([]);
     setValidationError("");
     setFileConfirmed(false);
-    setExcelFormData(null); // ✅ Reset Excel data
+    setExcelFormData(null);
     setReturnImportData(null);
     setHasTableError(false);
 
@@ -706,7 +800,6 @@ const ExportRequestCreate = () => {
   const buildReturnPayload = () => {
     let providerId = null;
 
-    // ✅ ƯU TIÊN LẤY providerId TỪ returnImportData
     if (returnImportData && returnImportData.providerId) {
       providerId = returnImportData.providerId;
     } else if (returnImportData && returnImportData.importOrder) {
@@ -719,9 +812,9 @@ const ExportRequestCreate = () => {
       countingDate: formData.exportDate,
       countingTime: "23:59:59",
       exportDate: formData.exportDate,
-      importOrderId: returnImportData?.importOrderId || null, // ✅ THÊM importOrderId
+      importOrderId: returnImportData?.importOrderId || null,
       exportReason: formData.exportReason,
-      providerId: providerId, // ✅ providerId từ API
+      providerId: providerId,
       type: "RETURN",
     };
   };
@@ -803,7 +896,6 @@ const ExportRequestCreate = () => {
   };
 
   const validateFormData = () => {
-    // Common validation
     if (!formData.exportDate) {
       return {
         isValid: false,
@@ -881,9 +973,6 @@ const ExportRequestCreate = () => {
         }
       }
     }
-
-    // Selling validation
-    // Trong validateFormData function, cập nhật phần validation cho SELLING:
 
     // Selling validation
     if (formData.exportType === "SELLING") {
@@ -1029,31 +1118,6 @@ const ExportRequestCreate = () => {
 
     return createdExport;
   };
-
-  // const createExportDetails = async (exportRequestId) => {
-  //   const exportDetailsPayload = data.map((item) => {
-  //     const { itemId, quantity, measurementValue, inventoryItemId } = item;
-
-  //     const detail = { itemId };
-
-  //     // Chỉ thêm quantity nếu có (SELLING)
-  //     if (quantity !== undefined) {
-  //       detail.quantity = quantity;
-  //     }
-  //     // Chỉ thêm measurementValue nếu có (PRODUCTION, BORROWING, LIQUIDATION)
-  //     if (measurementValue !== undefined) {
-  //       detail.measurementValue = measurementValue;
-  //     }
-
-  //     if (inventoryItemId !== undefined) {
-  //       detail.inventoryItemId = inventoryItemId;
-  //     }
-
-  //     return detail;
-  //   });
-
-  //   await createExportRequestDetail(exportDetailsPayload, exportRequestId);
-  // };
 
   const createExportDetails = async (exportRequestId) => {
     const exportDetailsPayload = data.map((item) => {
