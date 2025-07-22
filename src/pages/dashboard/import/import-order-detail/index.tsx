@@ -512,7 +512,7 @@ const ImportOrderDetail = () => {
       }),
     },
     {
-      width: '30%',
+      width: '25%',
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
@@ -524,7 +524,39 @@ const ImportOrderDetail = () => {
     },
     {
       width: '20%',
-      title: "Số lượng nhập dự tính của đơn",
+      title: "Vị trí hiện tại",
+      key: "currentLocation",
+      align: 'center' as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (record: ImportOrderDetailResponse) => {
+        // Tìm inventory items của sản phẩm này
+        const itemInventories = inventoryItemsData.filter(inv =>
+          inv.itemId === record.itemId.toString()
+        );
+
+        if (itemInventories.length === 0) {
+          return <span className="text-gray-500">Không có dữ liệu</span>;
+        }
+
+        // Lấy vị trí của item đầu tiên (vì tất cả cùng itemId sẽ ở cùng vị trí)
+        const firstItem = itemInventories[0];
+
+        if (!firstItem.storedLocationId || !firstItem.storedLocationName) {
+          return <span className="text-orange-600">Chưa có vị trí</span>;
+        }
+
+        return (
+          <div className="font-medium">
+            {firstItem.storedLocationName}
+          </div>
+        );
+      },
+    },
+    {
+      width: '15%',
+      title: "Số lượng dự tính của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: 'right' as const,
@@ -533,8 +565,8 @@ const ImportOrderDetail = () => {
       }),
     },
     {
-      width: '20%',
-      title: "Số lượng nhập thực tế của đơn",
+      width: '15%',
+      title: "Số lượng thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: 'right' as const,
@@ -543,7 +575,7 @@ const ImportOrderDetail = () => {
       }),
     },
     {
-      width: '15%',
+      width: '10%',
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
@@ -601,8 +633,8 @@ const ImportOrderDetail = () => {
               importOrderData?.status !== ImportStatus.COUNTED) ? (
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-orange-600 font-medium"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
-                  <div className="text-orange-600 font-medium"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                  <div className="font-medium text-orange-600"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                  <div className="font-medium text-orange-600"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
                 </div>
                 <Button
                   className="[.ant-btn-primary]:!p-2"
@@ -616,8 +648,8 @@ const ImportOrderDetail = () => {
             ) : (
               // Order extended and in a final state - show info only
               <div>
-                <div className="text-orange-600 font-medium"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
-                <div className="text-orange-600 font-medium"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+                <div className="font-medium text-orange-600"> Ngày <strong>{importOrderData?.extendedDate ? dayjs(importOrderData.extendedDate).format("DD-MM-YYYY") : "-"}</strong> </div>
+                <div className="font-medium text-orange-600"> Lúc {importOrderData?.extendedTime ? <strong>{importOrderData?.extendedTime?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
               </div>
             )
           )}
@@ -635,8 +667,8 @@ const ImportOrderDetail = () => {
       value: (
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-green-600 font-medium"> Ngày <strong>{importOrderData?.actualDateReceived ? dayjs(importOrderData.actualDateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
-            <div className="text-green-600 font-medium"> Lúc {importOrderData?.actualTimeReceived ? <strong>{importOrderData?.actualTimeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
+            <div className="font-medium text-green-600"> Ngày <strong>{importOrderData?.actualDateReceived ? dayjs(importOrderData.actualDateReceived).format("DD-MM-YYYY") : "-"}</strong> </div>
+            <div className="font-medium text-green-600"> Lúc {importOrderData?.actualTimeReceived ? <strong>{importOrderData?.actualTimeReceived?.split(':').slice(0, 2).join(':')}</strong> : "-"}</div>
           </div>
         </div>
       )
@@ -648,14 +680,14 @@ const ImportOrderDetail = () => {
   // Show loading spinner when initially loading the page
   if (!importOrderData) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex items-center justify-center h-screen">
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto p-3 pt-0">
+    <div className="p-3 pt-0 mx-auto">
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -666,7 +698,7 @@ const ImportOrderDetail = () => {
         </Button>
       </div>
       <div className="flex items-center mb-4">
-        <h1 className="text-xl font-bold mr-4">Chi tiết đơn nhập #{importOrderData?.importOrderId}</h1>
+        <h1 className="mr-4 text-xl font-bold">Chi tiết đơn nhập #{importOrderData?.importOrderId}</h1>
         {(importOrderData?.status === ImportStatus.IN_PROGRESS || importOrderData?.status === ImportStatus.EXTENDED) && (
           <>
             {userRole === AccountRole.WAREHOUSE_MANAGER && (
@@ -680,7 +712,7 @@ const ImportOrderDetail = () => {
                 Phân công nhân viên
               </Button>
             )}
-            <div className="ml-auto flex gap-2">
+            <div className="flex gap-2 ml-auto">
               {userRole === AccountRole.DEPARTMENT && (
                 <>
                   <Button
@@ -715,7 +747,7 @@ const ImportOrderDetail = () => {
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
 
       {userRole === AccountRole.WAREHOUSE_MANAGER && (
-        <div className="flex justify-end items-center mt-16 mb-4 gap-4">
+        <div className="flex items-center justify-end gap-4 mt-16 mb-4">
           <>
             {importOrderData?.status === ImportStatus.COMPLETED && (
               <Button
@@ -784,8 +816,8 @@ const ImportOrderDetail = () => {
         title={
           <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
             <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
-            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrderData?.importOrderId}</p>
-            <p className="text-sm text-gray-700 mt-2 flex items-center">
+            <p className="mt-1 text-lg text-blue-700">Đơn nhập #{importOrderData?.importOrderId}</p>
+            <p className="flex items-center mt-2 text-sm text-gray-700">
               <InfoCircleOutlined className="mr-2 text-blue-500" />
               Sau {getRemainingAssignTime() || "..."},
               bạn sẽ không thể phân công lại nhân viên
@@ -812,14 +844,14 @@ const ImportOrderDetail = () => {
         className="!top-[50px]"
       >
         {accountLoading ? (
-          <div className="flex justify-center items-center py-8">
+          <div className="flex items-center justify-center py-8">
             <Spin size="large" />
           </div>
         ) : (
           <div className="space-y-6">
             {/* Current Assignment Info */}
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h4 className="text-base font-medium text-gray-700 mb-3">Nhân viên đang được phân công</h4>
+            <div className="p-4 border rounded-lg bg-gray-50">
+              <h4 className="mb-3 text-base font-medium text-gray-700">Nhân viên đang được phân công</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Mã nhân viên</p>
@@ -834,7 +866,7 @@ const ImportOrderDetail = () => {
 
             {/* Staff List */}
             <div>
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center justify-between mb-3">
                 <h4 className="text-base font-medium text-gray-700">Danh sách nhân viên có thể phân công</h4>
                 <Input.Search
                   placeholder="Tìm theo tên hoặc mã nhân viên"
@@ -899,20 +931,20 @@ const ImportOrderDetail = () => {
         width={900}
         className="!top-[50px] print:!block"
       >
-        <div id="qr-print-area" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4 print:grid-cols-3 print:gap-4">
+        <div id="qr-print-area" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 print:gap-4">
           {inventoryItemLoading ? (
-            <div className="col-span-3 flex justify-center items-center py-8">
+            <div className="flex items-center justify-center col-span-3 py-8">
               <Spin size="large" />
             </div>
           ) : inventoryItemsData.length === 0 ? (
-            <div className="col-span-3 text-center text-gray-500 py-8">Không có QRCode nào để in</div>
+            <div className="col-span-3 py-8 text-center text-gray-500">Không có QRCode nào để in</div>
           ) : (
             inventoryItemsData.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 flex flex-col items-center bg-white print:shadow-none print:border print:p-2">
+              <div key={item.id} className="flex flex-col items-center p-4 bg-white border rounded-lg print:shadow-none print:border print:p-2">
                 <QRCode value={item.id.toString()} size={128} />
                 <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{item.itemId || '-'}</span></div>
                 <div className="text-sm text-gray-700">Tên sản phẩm: {item.itemName || '-'}</div>
-                <div className="text-xs text-gray-500 mt-1">ID QR: {item.id}</div>
+                <div className="mt-1 text-xs text-gray-500">ID QR: {item.id}</div>
               </div>
             ))
           )}
@@ -924,8 +956,8 @@ const ImportOrderDetail = () => {
         title={
           <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
             <h3 className="text-xl font-semibold text-blue-900">Gia hạn đơn nhập</h3>
-            <p className="text-lg text-blue-700 mt-1">Đơn nhập #{importOrderData?.importOrderId}</p>
-            <p className="text-sm text-gray-700 mt-2 flex items-center">
+            <p className="mt-1 text-lg text-blue-700">Đơn nhập #{importOrderData?.importOrderId}</p>
+            <p className="flex items-center mt-2 text-sm text-gray-700">
               <InfoCircleOutlined className="mr-2 text-blue-500" />
               Thời gian gia hạn phải cách thời điểm hiện tại ít nhất {configuration?.daysToAllowExtend} ngày
             </p>
@@ -951,10 +983,10 @@ const ImportOrderDetail = () => {
         className="!top-[50px]"
         maskClosable={false}
       >
-        <div className="space-y-6 pt-4">
+        <div className="pt-4 space-y-6">
           {/* Thông tin hiện tại */}
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <h4 className="text-base font-medium text-gray-700 mb-3">Thông tin hiện tại</h4>
+          <div className="p-4 border rounded-lg bg-gray-50">
+            <h4 className="mb-3 text-base font-medium text-gray-700">Thông tin hiện tại</h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Ngày nhận hiện tại</p>
