@@ -100,7 +100,7 @@ const ExportRequestDetail = () => {
   const [allExportRequestDetails, setAllExportRequestDetails] = useState([]);
   const { getDepartmentById } = useDepartmentService();
   const [departmentInfo, setDepartmentInfo] = useState(null);
-  const { getItems } = useItemService();
+  const { getItems, getItemById } = useItemService();
   const [items, setItems] = useState([]);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -125,7 +125,7 @@ const ExportRequestDetail = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
   const [itemsLoading, setItemsLoading] = useState(true);
-  const [expandedModal, setExpandedModal] = useState(false);
+  // const [expandedModal, setExpandedModal] = useState(false);
   const [availableInventoryItems, setAvailableInventoryItems] = useState([]);
   const [selectedNewItem, setSelectedNewItem] = useState(null);
   const [selectedOldItem, setSelectedOldItem] = useState(null);
@@ -134,6 +134,8 @@ const ExportRequestDetail = () => {
   const [confirmAutoChangeModalVisible, setConfirmAutoChangeModalVisible] =
     useState(false);
   const [selectedAutoChangeItem, setSelectedAutoChangeItem] = useState(null);
+  const [itemMetadata, setItemMetadata] = useState(null);
+  const [loadingItemMetadata, setLoadingItemMetadata] = useState(false);
 
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
@@ -213,8 +215,26 @@ const ExportRequestDetail = () => {
         1000
       );
       setInventoryItems(response.content || []);
+
+      // Lấy metadata của item nếu có data
+      if (response.content && response.content.length > 0) {
+        const firstItem = response.content[0];
+        if (firstItem.itemId) {
+          setLoadingItemMetadata(true);
+          try {
+            const itemResponse = await getItemById(firstItem.itemId);
+            setItemMetadata(itemResponse.content);
+          } catch (error) {
+            console.error("Error fetching item metadata:", error);
+            setItemMetadata(null);
+          } finally {
+            setLoadingItemMetadata(false);
+          }
+        }
+      }
     } catch (error) {
       setInventoryItems([]);
+      setItemMetadata(null);
     }
   };
 
@@ -385,7 +405,7 @@ const ExportRequestDetail = () => {
       setConfirmSwapModalVisible(false);
       setSelectedOldItem(null);
       setSelectedNewItem(null);
-      setExpandedModal(false);
+      // setExpandedModal(false);
     } catch (error) {
       console.error("Error swapping items:", error);
     }
@@ -885,7 +905,6 @@ const ExportRequestDetail = () => {
       }),
       width: 200,
       render: (text, record) => {
-        // ✅ THÊM: Information hiding cho DEPARTMENT ở IN_PROGRESS và COUNTED
         if (
           userRole === AccountRole.DEPARTMENT &&
           [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
@@ -1715,16 +1734,17 @@ const ExportRequestDetail = () => {
         }}
         details={enrichWithItemMeta(editedDetails, items)}
         items={items}
-        // details={editedDetails}
       />
       <Modal
         open={detailModalVisible}
         onCancel={() => {
           setDetailModalVisible(false);
           setInventorySearchText("");
-          setExpandedModal(false);
+          // setExpandedModal(false);
           setSelectedOldItem(null);
           setSelectedNewItem(null);
+          setItemMetadata(null);
+          setLoadingItemMetadata(false);
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
@@ -1733,14 +1753,14 @@ const ExportRequestDetail = () => {
           </span>
         }
         footer={null}
-        width={expandedModal ? 1200 : 630}
+        width={selectedOldItem ? 1400 : 690}
         style={{ transition: "all 0.3s ease" }}
       >
         <div style={{ display: "flex", gap: "20px" }}>
           {/* Phần bên trái - Danh sách hiện tại */}
           <div
             style={{
-              flex: expandedModal ? "0 0 48%" : "1",
+              flex: selectedOldItem ? "0 0 48%" : "1",
               transition: "all 0.3s ease",
             }}
           >
@@ -1775,6 +1795,31 @@ const ExportRequestDetail = () => {
                           <div className="text-xs text-blue-500 mt-1">
                             Đã được đóng gói
                           </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Giá trị đo lường",
+                    dataIndex: "measurementValue",
+                    key: "measurementValue",
+                    width: 120,
+                    align: "center",
+                    render: (measurementValue) => (
+                      <div style={{ textAlign: "center" }}>
+                        {loadingItemMetadata ? (
+                          <Spin size="small" />
+                        ) : (
+                          <span>
+                            <span style={{ fontWeight: "600" }}>
+                              {measurementValue}
+                            </span>
+                            {itemMetadata?.measurementUnit && (
+                              <span className="text-gray-500 ml-1">
+                                {itemMetadata.measurementUnit}
+                              </span>
+                            )}
+                          </span>
                         )}
                       </div>
                     ),
@@ -1814,7 +1859,7 @@ const ExportRequestDetail = () => {
                                   icon={<SwapOutlined />}
                                   onClick={() => {
                                     setSelectedOldItem(record);
-                                    setExpandedModal(true);
+                                    // setExpandedModal(true);
                                     fetchAvailableInventoryItems(
                                       selectedExportRequestDetail?.itemId
                                     );
@@ -1835,16 +1880,15 @@ const ExportRequestDetail = () => {
                     : []),
                 ]}
                 size="small"
-                rowClassName={(record, index) => {
-                  if (record.id === selectedOldItem?.id) return "bg-blue-100";
-                  return index % 2 === 1 ? "bg-gray-50" : "";
-                }}
+                rowClassName={(_, index) =>
+                  index % 2 === 0 ? "bg-gray-100" : ""
+                }
               />
             </div>
           </div>
 
           {/* Phần bên phải - Danh sách available items (chỉ hiện khi expand) */}
-          {expandedModal && (
+          {selectedOldItem && (
             <div
               style={{
                 flex: "0 0 48%",
@@ -1861,6 +1905,16 @@ const ExportRequestDetail = () => {
                   <strong>{selectedOldItem?.id}</strong>
                 </p>
               </div>
+              <Button
+                size="small"
+                onClick={() => {
+                  setSelectedOldItem(null);
+                  setAvailableInventoryItems([]);
+                }}
+                style={{ color: "#666", marginBottom: "12px" }}
+              >
+                ✕ Hủy
+              </Button>
 
               <div style={{ maxHeight: 400, overflowY: "auto" }}>
                 {availableItemsLoading ? (
