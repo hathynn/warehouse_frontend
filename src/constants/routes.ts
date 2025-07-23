@@ -20,7 +20,7 @@ export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
 export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   [AccountRole.DEPARTMENT]: [
     "/overview",
-    
+
     // Import routes
     "/import/request-list",
     "/import/request-detail/:id",
@@ -68,9 +68,9 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   ],
   [AccountRole.ADMIN]: [
     // Add admin specific routes here
-    "/configuration/list"
+    "/configuration/list",
   ],
-}
+};
 
 // Route definitions
 export const ROUTES = {
@@ -88,7 +88,8 @@ export const ROUTES = {
     IMPORT: {
       REQUEST: {
         LIST: "/import/request-list",
-        DETAIL: (id: string = ":importRequestId") => `/import/request-detail/${id}`,
+        DETAIL: (id: string = ":importRequestId") =>
+          `/import/request-detail/${id}`,
         CREATE: "/import/create-request",
       },
       ORDER: {
@@ -105,8 +106,19 @@ export const ROUTES = {
     EXPORT: {
       REQUEST: {
         LIST: "/export/request-list",
-        DETAIL: (id: string = ":exportRequestId") => `/export/request-detail/${id}`,
+        DETAIL: (id: string = ":exportRequestId") =>
+          `/export/request-detail/${id}`,
         CREATE: "/export/create-request",
+      },
+    },
+
+    // Stock-check routes
+    STOCK_CHECK: {
+      REQUEST: {
+        LIST: "/stock-check/request-list",
+        DETAIL: (id: string = ":exportRequestId") =>
+          `/stock-check/request-detail/${id}`,
+        CREATE: "/stock-check/create-request",
       },
     },
 
@@ -132,4 +144,4 @@ export const ROUTES = {
       EXPORT: "/transaction-logs/export",
     },
   },
-} as const; 
+} as const;

@@ -39,6 +39,8 @@ export interface ItemResponse {
   importRequestDetailIds: number[];
   exportRequestDetailIds: number[];
   inventoryItemIds: number[];
+  numberOfAvailableItems: number;
+  numberOfAvailableMeasurementValues: number;
 }
 
 const useItemService = () => {

@@ -7,7 +7,8 @@ import {
   AiOutlineInbox,
   AiOutlineSetting,
   AiOutlineHistory,
-  AiOutlineCompass
+  AiOutlineCompass,
+  AiOutlineFileText,
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -42,7 +43,7 @@ const importMenuItems: MenuItem[] = [
         key: "import-order",
         label: "Danh sách đơn nhập",
         path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
-      }
+      },
     ],
   },
 ];
@@ -63,6 +64,24 @@ const exportMenuItems: MenuItem[] = [
     ],
   },
 ];
+
+// Stock-check related menu items
+const stockcheckMenuItems: MenuItem[] = [
+  {
+    key: "stock-check",
+    icon: AiOutlineFileText,
+    label: "Quản lý kiểm kho",
+    path: "",
+    children: [
+      {
+        key: "stock-check-request",
+        label: "Danh sách phiếu kiểm kho",
+        path: ROUTES.PROTECTED.STOCK_CHECK.REQUEST.LIST,
+      },
+    ],
+  },
+];
+
 // Configuration menu items
 const configurationMenuItems: MenuItem[] = [
   {
@@ -95,14 +114,13 @@ const transactionLogMenuItems: MenuItem[] = [
   },
 ];
 
-
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
-
   [AccountRole.DEPARTMENT]: [
     ...baseMenuItems,
     ...importMenuItems,
     ...exportMenuItems,
+    ...stockcheckMenuItems,
     ...transactionLogMenuItems,
     {
       key: "inventory-items",
@@ -126,9 +144,7 @@ export const menuItems: RoleMenuConfig = {
     },
   ],
 
-  [AccountRole.STAFF]: [
-
-  ],
+  [AccountRole.STAFF]: [],
 
   [AccountRole.WAREHOUSE_MANAGER]: [
     ...baseMenuItems,
@@ -142,10 +158,11 @@ export const menuItems: RoleMenuConfig = {
           key: "import-order",
           label: "Danh sách đơn nhập",
           path: ROUTES.PROTECTED.IMPORT.ORDER.LIST,
-        }
+        },
       ],
     },
     ...exportMenuItems,
+    ...stockcheckMenuItems,
     {
       key: "inventory-items",
       icon: AiOutlineInbox,
@@ -168,12 +185,7 @@ export const menuItems: RoleMenuConfig = {
     },
   ],
 
-  [AccountRole.ACCOUNTING]: [
-    ...baseMenuItems,
-  ],
+  [AccountRole.ACCOUNTING]: [...baseMenuItems],
 
-  [AccountRole.ADMIN]: [
-    ...baseMenuItems,
-    ...configurationMenuItems
-  ],
+  [AccountRole.ADMIN]: [...baseMenuItems, ...configurationMenuItems],
 };

@@ -223,9 +223,9 @@ const UseExportForm = ({
             </div>
           </ConfigProvider>
           {!formData.exportDate && (
-            <div className="text-red-800 text-xs mt-1">
-              Vui lòng chọn ngày xuất tối thiểu sau 12h kiểm đếm trong giờ hành
-              chính.
+            <div className="text-blue-800 text-xs mt-1">
+              <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
+              <span className="font-bold text-red-800">12h</span> kiểm đếm.
             </div>
           )}
         </div>
