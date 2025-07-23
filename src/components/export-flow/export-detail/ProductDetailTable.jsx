@@ -105,12 +105,18 @@ const ProductDetailTable = ({
 
           // Validate measurementValue
           if (value !== null && value !== undefined && value !== "") {
-            // ✅ SỬA: Lấy measurementValue từ thông tin item chính theo itemId
+            // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
             const itemInfo = items.find(
               (i) => String(i.id) === String(item.itemId)
             );
-            const originalMeasurementValue = itemInfo?.measurementValue || 0;
-            const maxAllowed = item.actualQuantity * originalMeasurementValue;
+            const measurementValue = itemInfo?.measurementValue || 0;
+            const numberOfAvailableMeasurementValues =
+              itemInfo?.numberOfAvailableMeasurementValues || 0;
+            const minimumStockQuantity = itemInfo?.minimumStockQuantity || 0;
+
+            const maxAllowed =
+              numberOfAvailableMeasurementValues -
+              minimumStockQuantity * measurementValue;
 
             if (value <= 0) {
               measurementError = "Phải lớn hơn 0";
@@ -133,12 +139,18 @@ const ProductDetailTable = ({
     setEditedDetails((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
-          // ✅ SỬA: Lấy measurementValue từ thông tin item chính theo itemId
+          // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
           const itemInfo = items.find(
             (i) => String(i.id) === String(item.itemId)
           );
-          const originalMeasurementValue = itemInfo?.measurementValue || 0;
-          const maxAllowed = item.actualQuantity * originalMeasurementValue;
+          const measurementValue = itemInfo?.measurementValue || 0;
+          const numberOfAvailableMeasurementValues =
+            itemInfo?.numberOfAvailableMeasurementValues || 0;
+          const minimumStockQuantity = itemInfo?.minimumStockQuantity || 0;
+
+          const maxAllowed =
+            numberOfAvailableMeasurementValues -
+            minimumStockQuantity * measurementValue;
 
           // Kiểm tra nếu measurementValue không hợp lệ
           if (
@@ -188,12 +200,18 @@ const ProductDetailTable = ({
             exportRequest?.type
           )
         ) {
-          // ✅ SỬA: Lấy measurementValue từ thông tin item chính
+          //Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
           const itemInfo = items.find(
             (i) => String(i.id) === String(item.itemId)
           );
-          const originalMeasurementValue = itemInfo?.measurementValue || 0;
-          const maxAllowed = item.actualQuantity * originalMeasurementValue;
+          const measurementValue = itemInfo?.measurementValue || 0;
+          const numberOfAvailableMeasurementValues =
+            itemInfo?.numberOfAvailableMeasurementValues || 0;
+          const minimumStockQuantity = itemInfo?.minimumStockQuantity || 0;
+
+          const maxAllowed =
+            numberOfAvailableMeasurementValues -
+            minimumStockQuantity * measurementValue;
 
           return (
             (item.measurementError && item.measurementError !== "") ||
@@ -323,12 +341,20 @@ const ProductDetailTable = ({
                   </div>
                 );
               }
+
+              // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
               const itemInfo = items.find(
                 (i) => String(i.id) === String(record.itemId)
               );
-              const originalMeasurementValue = itemInfo?.measurementValue || 0;
+              const measurementValue = itemInfo?.measurementValue || 0;
+              const numberOfAvailableMeasurementValues =
+                itemInfo?.numberOfAvailableMeasurementValues || 0;
+              const minimumStockQuantity = itemInfo?.minimumStockQuantity || 0;
+
               const maxAllowed =
-                record.actualQuantity * originalMeasurementValue;
+                numberOfAvailableMeasurementValues -
+                minimumStockQuantity * measurementValue;
+
               return (
                 <div style={{ textAlign: "center" }}>
                   <InputNumber
@@ -413,16 +439,41 @@ const ProductDetailTable = ({
         {!editMode &&
           userRole === AccountRole.DEPARTMENT &&
           exportRequest?.status === ExportStatus.COUNT_CONFIRMED &&
+          exportRequest?.type === "SELLING" &&
           allExportRequestDetails.some((item) => item.status === "LACK") && (
             <Button
               type="primary"
               onClick={() => {
                 setEditMode(true);
 
-                // Lọc các sản phẩm có actualQuantity > 0
-                const filteredItems = allExportRequestDetails.filter(
-                  (item) => item.actualQuantity > 0
-                );
+                // ✅ THÊM: Lọc các sản phẩm có actualQuantity > 0 VÀ maxAllowed > 0
+                const filteredItems = allExportRequestDetails.filter((item) => {
+                  if (item.actualQuantity === 0) return false;
+
+                  // Kiểm tra thêm maxAllowed cho measurementValue types
+                  if (
+                    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+                      exportRequest?.type
+                    )
+                  ) {
+                    const itemInfo = items.find(
+                      (i) => String(i.id) === String(item.itemId)
+                    );
+                    const measurementValue = itemInfo?.measurementValue || 0;
+                    const numberOfAvailableMeasurementValues =
+                      itemInfo?.numberOfAvailableMeasurementValues || 0;
+                    const minimumStockQuantity =
+                      itemInfo?.minimumStockQuantity || 0;
+
+                    const maxAllowed =
+                      numberOfAvailableMeasurementValues -
+                      minimumStockQuantity * measurementValue;
+
+                    if (maxAllowed <= 0) return false;
+                  }
+
+                  return true;
+                });
 
                 // Tách thành 3 nhóm...
                 const lackItemsEditable = filteredItems.filter(
@@ -450,13 +501,19 @@ const ProductDetailTable = ({
                         exportRequest?.type
                       )
                     ) {
+                      // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
                       const itemInfo = items.find(
                         (i) => String(i.id) === String(item.itemId)
                       );
-                      const originalMeasurementValue =
-                        itemInfo?.measurementValue || 0;
+                      const measurementValue = itemInfo?.measurementValue || 0;
+                      const numberOfAvailableMeasurementValues =
+                        itemInfo?.numberOfAvailableMeasurementValues || 0;
+                      const minimumStockQuantity =
+                        itemInfo?.minimumStockQuantity || 0;
+
                       const maxMeasurementAllowed =
-                        item.actualQuantity * originalMeasurementValue;
+                        numberOfAvailableMeasurementValues -
+                        minimumStockQuantity * measurementValue;
                       lastValidValuesRef.current[`measurement_${item.id}`] =
                         maxMeasurementAllowed;
                     }
@@ -465,7 +522,7 @@ const ProductDetailTable = ({
 
                 setEditedDetails(
                   sortedEditedDetails.map((item) => {
-                    // ✅ THÊM: Tính measurementValue hợp lệ lớn nhất
+                    // ✅ SỬA: Tính measurementValue hợp lệ lớn nhất
                     let validMeasurementValue = item.measurementValue;
                     if (
                       ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
@@ -475,10 +532,15 @@ const ProductDetailTable = ({
                       const itemInfo = items.find(
                         (i) => String(i.id) === String(item.itemId)
                       );
-                      const originalMeasurementValue =
-                        itemInfo?.measurementValue || 0;
+                      const measurementValue = itemInfo?.measurementValue || 0;
+                      const numberOfAvailableMeasurementValues =
+                        itemInfo?.numberOfAvailableMeasurementValues || 0;
+                      const minimumStockQuantity =
+                        itemInfo?.minimumStockQuantity || 0;
+
                       const maxMeasurementAllowed =
-                        item.actualQuantity * originalMeasurementValue;
+                        numberOfAvailableMeasurementValues -
+                        minimumStockQuantity * measurementValue;
 
                       // Nếu measurementValue hiện tại > max cho phép, thì set về max
                       if (item.measurementValue > maxMeasurementAllowed) {
@@ -489,9 +551,9 @@ const ProductDetailTable = ({
                     return {
                       ...item,
                       quantity: item.actualQuantity,
-                      measurementValue: validMeasurementValue, // ✅ THÊM
+                      measurementValue: validMeasurementValue,
                       error: "",
-                      measurementError: "", // ✅ THÊM
+                      measurementError: "",
                     };
                   })
                 );
