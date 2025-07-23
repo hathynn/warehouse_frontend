@@ -66,13 +66,28 @@ const ExcelDataTable = ({
     if (isNaN(num) || num <= 0) return "Phải lớn hơn 0!";
 
     const itemMeta = items?.find((item) => String(item.id) === String(itemId));
-    const maxValue = itemMeta?.totalMeasurementValue;
 
-    if (maxValue && maxValue > 0 && num > maxValue) {
+    // ✅ SỬA: Sử dụng công thức mới
+    const numberOfAvailableMeasurementValues =
+      itemMeta?.numberOfAvailableMeasurementValues ?? 0;
+    const minimumStockQuantity = itemMeta?.minimumStockQuantity ?? 0;
+    const measurementValue = itemMeta?.measurementValue ?? 0;
+
+    const maxValue =
+      numberOfAvailableMeasurementValues -
+      minimumStockQuantity * measurementValue;
+
+    // Nếu maxValue <= 0 thì không đủ tồn kho để xuất
+    if (maxValue <= 0) {
+      return "Không đủ tồn kho khả dụng để xuất!";
+    }
+
+    if (num > maxValue) {
       return `Tối đa có thể xuất ${maxValue} ${
         itemMeta?.measurementUnit || ""
       }!`;
     }
+
     return "";
   };
 
@@ -116,7 +131,7 @@ const ExcelDataTable = ({
           );
           const stockQuantity = itemMeta?.quantity ?? 0;
 
-          // Tính maxValue để kiểm tra có đủ tồn kho khả dụng không (chỉ cho SELLING)
+          // Tính maxValue để kiểm tra có đủ tồn kho khả dụng không
           let shouldRemoveItem = false;
 
           if (exportType === "SELLING") {
@@ -125,6 +140,21 @@ const ExcelDataTable = ({
             const maxValue = availableItems - minimumStock;
 
             // Loại bỏ nếu hết tồn kho HOẶC không đủ tồn kho khả dụng
+            shouldRemoveItem = stockQuantity === 0 || maxValue <= 0;
+          } else if (
+            ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+          ) {
+            // ✅ SỬA: Thêm logic kiểm tra cho measurement value types
+            const numberOfAvailableMeasurementValues =
+              itemMeta?.numberOfAvailableMeasurementValues ?? 0;
+            const minimumStockQuantity = itemMeta?.minimumStockQuantity ?? 0;
+            const measurementValue = itemMeta?.measurementValue ?? 0;
+
+            const maxValue =
+              numberOfAvailableMeasurementValues -
+              minimumStockQuantity * measurementValue;
+
+            // Loại bỏ nếu hết tồn kho HOẶC không đủ measurement value khả dụng
             shouldRemoveItem = stockQuantity === 0 || maxValue <= 0;
           } else {
             // Các export type khác chỉ loại bỏ khi hết tồn kho
@@ -757,7 +787,7 @@ const ExcelDataTable = ({
                       color: "#cf1322",
                     }}
                   >
-                    Mặt hàng vượt số lượng
+                    Mặt hàng vượt số lượng / Sai định dạng
                   </div>
                   <div
                     style={{
@@ -782,7 +812,8 @@ const ExcelDataTable = ({
                     marginBottom: 8,
                   }}
                 >
-                  Các mặt hàng sau đã vượt quá số lượng cho phép:
+                  Các mặt hàng sau đã vượt quá số lượng cho phép / Nhập sai định
+                  dạng:
                 </div>
 
                 <div
