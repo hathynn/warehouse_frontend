@@ -38,7 +38,7 @@ import { usePusherContext } from "@/contexts/pusher/PusherContext";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
-import UpdateInventoryItemLocationModal from "@/components/commons/UpdateInventoryItemLocationModal";
+import UpdateInventoryItemLocationModal from "@/components/import-flow/UpdateInventoryItemLocationModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import {
   getDefaultAssignedDateTimeForAction,

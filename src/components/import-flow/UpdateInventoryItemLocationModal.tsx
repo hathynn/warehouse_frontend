@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Button, Table, Tag, Card, Space, Checkbox, InputNumber, Radio } from 'antd';
-import { EditOutlined, CheckOutlined, WarningOutlined } from '@ant-design/icons';
-import { InventoryItemResponse, UpdateInventoryLocationRequest } from '@/services/useInventoryItemService';
+import React, { useState } from 'react';
+import { Modal, Button, Table, Checkbox } from 'antd';
+import { InventoryItemResponse } from '@/services/useInventoryItemService';
 import { StoredLocationResponse } from '@/services/useStoredLocationService';
 import { ImportOrderResponse } from '@/services/useImportOrderService';
 import { ImportOrderDetailResponse } from '@/services/useImportOrderDetailService';
 import { MapPinHouseIcon } from 'lucide-react';
+import { getItemColor } from '@/utils/helpers';
 
 interface UpdateInventoryItemLocationModalProps {
   importOrder: ImportOrderResponse | undefined;
@@ -43,26 +43,17 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   const [inventoryItemsLocationConfirmModalOpen, setInventoryItemsLocationConfirmModalOpen] = useState(false);
   const [inventoryItemsLocationResponsibilityChecked, setInventoryItemsLocationResponsibilityChecked] = useState(false);
 
-  // Hàm lấy những vị trí phù hợp
-  const getSuitableLocations = (itemId: string) => {
-    if (!itemId) return [];
-    const totalItemCount = inventoryItems.filter(inv => inv.itemId === itemId).length
-    if (totalItemCount === 0) return [];
-
-    return storedLocationData.filter(location => {
-      if (location.itemId != itemId) return false;
-      return location.maximumCapacityForItem >= totalItemCount;
-    })
-
-  }
-
-  // Hàm tính số lượng inventory items đã có vị trí cho từng itemId
-  const getInventoryQuantityByItemId = (itemId: string) => {
-    const itemInventories = inventoryItems.filter(inv => inv.itemId === itemId);
-    const positioned = itemInventories.filter(inv => inv.storedLocationId).length;
-    // const unpositioned = itemInventories.filter(inv => !inv.storedLocationId).length;
-    return { positioned, total: itemInventories.length };
+  // Hàm kiểm tra vị trí có thể tương tác (highlight + click)
+  const isLocationInteractable = (location: StoredLocationResponse | undefined) => {
+    if (!location || !highlightedItemId || location.itemId !== highlightedItemId) return false;
+    
+    const totalItemCount = inventoryItems.filter(inv => inv.itemId === highlightedItemId).length;
+    if (totalItemCount === 0) return false;
+    
+    const currentQuantityInLocation = getInventoryQuantityInLocation(highlightedItemId, location.id);
+    return currentQuantityInLocation < totalItemCount && location.maximumCapacityForItem >= totalItemCount;
   };
+
 
   // Hàm tính số lượng inventory items trong một vị trí cụ thể cho một itemId
   const getInventoryQuantityInLocation = (itemId: string, locationId: number) => {
@@ -111,43 +102,43 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   const rows = ['R1', 'R2', 'R3', 'R4'];
   const lines = ['L1', 'L2', 'L3', 'L4'];
 
-  // Hàm xác định màu sắc cho từng ô
-  const getCellColor = (location: StoredLocationResponse | undefined) => {
-    if (!location) return 'bg-gray-300';
+  // Hàm tạo props cho cell
+  const getCellProps = (location: StoredLocationResponse | undefined) => {
+    if (!location) {
+      return {
+        color: 'bg-gray-300',
+        isSuitable: false,
+        onClick: undefined,
+        title: undefined
+      };
+    }
 
-    // Kiểm tra nếu vị trí này đang được chọn (selecting)
     const isSelecting = selectingLocationId === location.id;
-
-    // Kiểm tra nếu vị trí này cần được highlight
-    const isHighlighted = highlightedItemId && location.itemId === highlightedItemId;
-
-    // Kiểm tra vị trí có phù hợp để chọn không
-    const isSuitable = highlightedItemId ?
-      getSuitableLocations(highlightedItemId).some(loc => loc.id === location.id) :
-      false;
-
-    // Luôn luôn sử dụng dữ liệu thực tế từ inventoryItems
+    const isSuitable = isLocationInteractable(location);
     const actualQuantityInLocation = location.itemId ?
-      getInventoryQuantityInLocation(location.itemId, location.id) :
-      0;
+      getInventoryQuantityInLocation(location.itemId, location.id) : 0;
 
-    // Hiệu ứng selecting (ưu tiên cao nhất)
+    let color = 'bg-gray-50';
+    
     if (isSelecting) {
-      return 'bg-blue-400 ring-4 ring-blue-600 ring-opacity-90 shadow-xl shadow-blue-400 transform scale-105 z-20 relative border-2 border-blue-700';
-    }
-
-    if (actualQuantityInLocation > 0) {
-      if (isHighlighted && isSuitable) {
-        return 'bg-green-300 ring-4 ring-orange-500 ring-opacity-90 shadow-xl shadow-orange-400 transform scale-105 z-10 relative border-2 border-orange-600 cursor-pointer hover:scale-110';
+      color = 'bg-blue-300 ring-4 ring-blue-600 ring-opacity-90 transform scale-105 z-20 relative border-2';
+    } 
+    else if (actualQuantityInLocation > 0) {
+      if (location.itemId) {
+        const itemColors = getItemColor(location.itemId);
+        color = isSuitable ? itemColors.highlight : itemColors.normal;
       }
-      return 'bg-green-300';
+    } 
+    else if (isSuitable) {
+      color = getItemColor(location.itemId).highlight;
     }
 
-    if (isHighlighted && isSuitable) {
-      return 'bg-gray-50 ring-4 ring-orange-500 ring-opacity-90 shadow-xl shadow-orange-400 transform scale-105 z-10 relative border-2 border-orange-600 cursor-pointer hover:scale-110';
-    }
-
-    return 'bg-gray-50';
+    return {
+      color,
+      isSuitable,
+      onClick: isSuitable ? () => handleLocationClick(location) : undefined,
+      title: isSuitable ? "Click để chọn vị trí" : undefined
+    };
   };
 
   // Hàm xác định text cho từng ô
@@ -217,29 +208,25 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
           }}
         >
           {relevantLocations.map(({ row, line, location }) => {
-            const isHighlighted = highlightedItemId && location?.itemId === highlightedItemId;
-            const isSuitable = highlightedItemId ? getSuitableLocations(highlightedItemId).some(loc => loc.id === location.id) : false;
+            const cellProps = getCellProps(location);
+            
             return (
               <div
                 key={`${zone}-${floor}-${row}-${line}`}
-                className={`w-14 h-12 border border-gray-300 flex items-center justify-center text-xs font-medium transition-all duration-300 relative group ${getCellColor(location)} ${isHighlighted && isSuitable ? 'cursor-pointer hover:transform hover:scale-105 hover:brightness-110' : ''
-                  }`}
-                style={isHighlighted ? {
-                  boxShadow: '0 0 20px rgba(249, 115, 22, 0.8), inset 0 0 15px rgba(249, 115, 22, 0.3)',
-                } : {}}
-                onClick={isHighlighted && isSuitable ? () => handleLocationClick(location) : undefined}
-                title={isHighlighted && isSuitable ? "Click để chọn vị trí" : undefined}
+                className={`w-14 h-12 border border-gray-300 flex items-center justify-center text-xs font-medium transition-all duration-300 relative group ${cellProps.color} ${cellProps.isSuitable ? 'cursor-pointer hover:transform hover:scale-105 hover:brightness-110' : ''}`}
+                onClick={cellProps.onClick}
+                title={cellProps.title}
               >
                 <div className="leading-tight text-center">
                   <div className="text-[8px]">{`${row}-${line}`}</div>
                   <div className="text-[8px]">{getCellText(location)}</div>
                 </div>
 
-                {/* Tooltip chỉ hiện khi highlighted và hover */}
-                {isHighlighted && isSuitable && (
+                {/* Tooltip chỉ hiện khi suitable và hover */}
+                {cellProps.isSuitable && (
                   <div className="absolute z-20 px-2 py-1 mb-2 text-xs text-white transition-opacity duration-200 transform -translate-x-1/2 bg-gray-800 rounded opacity-0 pointer-events-none bottom-full left-1/2 group-hover:opacity-100 whitespace-nowrap">
                     Chọn vị trí để di chuyển
-                    <div className="absolute transform -translate-x-1/2 border-t-4 border-l-4 border-r-4 border-transparent top-full left-1/2 border-t-gray-800"></div>
+                    <div className="absolute transform -translate-x-1/2 top-full left-1/2"></div>
                   </div>
                 )}
               </div>
@@ -302,9 +289,9 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
           return <span className="text-orange-600">Chưa có vị trí</span>;
         }
         return (
-            <div className="font-medium">
-              {firstItem.storedLocationName}
-            </div>
+          <div className="font-medium">
+            {firstItem.storedLocationName}
+          </div>
         );
       },
     },
@@ -425,16 +412,14 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     // Reset các state
     setSelectedImportOrderDetail(null);
     setHighlightedItemId(null);
-    setSelectingLocationId(null); // Thêm dòng này
+    setSelectingLocationId(null);
     setInventoryItemsBeforeUpdate([]);
   };
 
   const handleLocationClick = (location: StoredLocationResponse) => {
     if (!selectedImportOrderDetail || !highlightedItemId) return;
 
-    const suitableLocations = getSuitableLocations(highlightedItemId);
-    const isSuitable = suitableLocations.some(loc => loc.id === location.id);
-    if (!isSuitable) return;
+    if (!isLocationInteractable(location)) return;
 
     if (selectingLocationId === location.id) {
       // Nếu click lại vị trí đã chọn thì bỏ chọn
@@ -529,7 +514,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
           />
 
           {/* Chú giải */}
-          <div className="p-2 mb-1 bg-gray-200 rounded-lg">
+          {/* <div className="p-2 mb-1 bg-gray-200 rounded-lg">
             <div className="grid grid-cols-2 gap-4 text-sm justify-items-center">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-green-300 border border-gray-300"></div>
@@ -540,7 +525,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
                 <span>Vị trí đang trống</span>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Sơ đồ kho */}
           <div className="space-y-4" data-warehouse-map>

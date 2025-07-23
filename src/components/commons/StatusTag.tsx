@@ -34,7 +34,7 @@ const exportStatusMap: Record<ExportStatus, { color: string; text: string }> = {
 
 const detailStatusMap: Record<DetailStatus, { color: string; text: string }> = {
   LACK: { color: "error", text: "THIẾU" },
-  EXCESS: { color: "error", text: "THỪA" },
+  EXCESS: { color: "warning", text: "THỪA" },
   MATCH: { color: "success", text: "ĐỦ" },
 };
 
