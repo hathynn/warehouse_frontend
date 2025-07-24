@@ -248,11 +248,11 @@ const useExportRequestService = () => {
         data
       );
       if (response && response.content) {
-        toast.success("Cập nhật ngày giờ xuất thành công");
+        toast.success("Cập nhật ngày xuất thành công");
       }
       return response.content;
     } catch (error) {
-      toast.error("Không thể cập nhật ngày giờ xuất");
+      toast.error("Không thể cập nhật ngày xuất");
       console.error("Error updating export date/time:", error);
       throw error;
     }

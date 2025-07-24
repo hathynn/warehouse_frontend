@@ -137,6 +137,25 @@ const ExportRequestDetail = () => {
   const [itemMetadata, setItemMetadata] = useState(null);
   const [loadingItemMetadata, setLoadingItemMetadata] = useState(false);
 
+  const getLocalStorageKey = () => `export_waiting_start_${exportRequestId}`;
+
+  const getWaitingExportStartTime = () => {
+    const key = getLocalStorageKey();
+    const stored = localStorage.getItem(key);
+    return stored ? new Date(stored) : null;
+  };
+
+  const setWaitingExportStartTime = () => {
+    const key = getLocalStorageKey();
+    const now = new Date();
+    localStorage.setItem(key, now.toISOString());
+    return now;
+  };
+
+  const clearWaitingExportStartTime = () => {
+    const key = getLocalStorageKey();
+    localStorage.removeItem(key);
+  };
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
     if (!exportRequestId) return;
@@ -312,6 +331,24 @@ const ExportRequestDetail = () => {
       setAssignedKeeper(null);
     }
   }, [exportRequest?.assignedWareHouseKeeperId, findAccountById]);
+
+  useEffect(() => {
+    if (exportRequest?.status === ExportStatus.WAITING_EXPORT) {
+      // Kiểm tra xem đã có timestamp trong localStorage chưa
+      const existingStartTime = getWaitingExportStartTime();
+
+      if (!existingStartTime) {
+        // Nếu chưa có thì lưu thời gian hiện tại
+        setWaitingExportStartTime();
+      }
+    } else if (
+      exportRequest?.status &&
+      exportRequest.status !== ExportStatus.WAITING_EXPORT
+    ) {
+      // Nếu status không phải WAITING_EXPORT thì clear localStorage
+      clearWaitingExportStartTime();
+    }
+  }, [exportRequest?.status, exportRequestId]);
 
   useEffect(() => {
     fetchExportRequestData();
@@ -638,6 +675,43 @@ const ExportRequestDetail = () => {
     message.success("Phân công nhân viên xuất hàng thành công");
     setAssignKeeperModalVisible(false);
     setSelectedKeeperId(null);
+  };
+
+  // Thêm function kiểm tra thời gian 3 tiếng
+  const canUpdateExportDate = () => {
+    const startTime = getWaitingExportStartTime();
+    if (!startTime) {
+      return true; // Nếu chưa có thời gian bắt đầu thì cho phép
+    }
+
+    // Thời gian hiện tại
+    const now = new Date();
+
+    // 3 tiếng = 3 * 60 * 60 * 1000 milliseconds
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+
+    // Kiểm tra đã quá 3 tiếng chưa
+    return now.getTime() - startTime.getTime() <= threeHoursMs;
+  };
+
+  const getRemainingUpdateTime = () => {
+    const startTime = getWaitingExportStartTime();
+    if (!startTime) {
+      return "Không xác định";
+    }
+
+    const now = new Date();
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+    const deadline = new Date(startTime.getTime() + threeHoursMs);
+
+    const diffMs = deadline.getTime() - now.getTime();
+    if (diffMs <= 0) return "Đã hết hạn";
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+
+    return `${diffHours} tiếng ${diffMins} phút`;
   };
 
   const getFilteredAndSortedStaffs = () => {
@@ -1109,12 +1183,13 @@ const ExportRequestDetail = () => {
 
         {/* Nút cập nhật ngày khách nhận hàng */}
         {userRole === AccountRole.DEPARTMENT &&
-          exportRequest?.status === ExportStatus.COUNT_CONFIRMED && (
+          exportRequest?.status === ExportStatus.WAITING_EXPORT && // ✅ SỬA: Đổi từ COUNT_CONFIRMED sang WAITING_EXPORT
+          getItemStatus() === "ENOUGH" && // ✅ GIỮ NGUYÊN: Hàng phải đủ
+          canUpdateExportDate() && ( // ✅ THÊM: Kiểm tra thời gian 3 tiếng
             <Button
               type="primary"
               className="ml-4"
               onClick={() => setUpdateDateTimeModalOpen(true)}
-              disabled={getItemStatus() === "LACK"} // Disable nếu thiếu hàng
             >
               Cập nhật ngày khách nhận hàng
             </Button>
@@ -1705,6 +1780,8 @@ const ExportRequestDetail = () => {
         updateExportDateTime={updateExportDateTime}
         updateExportRequestStatus={updateExportRequestStatus}
         loading={exportRequestLoading}
+        exportDate={exportRequest?.exportDate}
+        getWaitingExportStartTime={getWaitingExportStartTime} // ✅ SỬA: Truyền function thay vì state
         onSuccess={async () => {
           setUpdateDateTimeModalOpen(false);
           await fetchExportRequestData();
