@@ -573,10 +573,9 @@ const ExportRequestDetail = () => {
   };
 
   const getExportTypeText = (type) => {
-    if (type === "PRODUCTION") return "Xuất sản xuất";
+    if (type === "PRODUCTION") return "Xuất nội bộ";
     else if (type === "SELLING") return "Xuất bán";
     else if (type === "RETURN") return "Xuất trả nhà cung cấp";
-    else if (type === "BORROWING") return "Xuất mượn";
     else if (type === "LIQUIDATION") return "Xuất thanh lý";
     return "";
   };
@@ -821,53 +820,6 @@ const ExportRequestDetail = () => {
           {exportRequest.exportReason || "-"}
         </Descriptions.Item>
       );
-    } else if (exportRequest.type === "BORROWING") {
-      if (exportRequest.receiverAddress) {
-        items.push(
-          <Descriptions.Item label="Loại phiếu xuất" key="exportType">
-            Xuất mượn (bên ngoài)
-          </Descriptions.Item>,
-          <Descriptions.Item label="Tên công ty/Người mượn" key="receiverName">
-            {exportRequest.receiverName || "-"}
-          </Descriptions.Item>,
-          <Descriptions.Item label="Số điện thoại" key="receiverPhone">
-            {exportRequest.receiverPhone || "-"}
-          </Descriptions.Item>,
-          <Descriptions.Item label="Địa chỉ" key="receiverAddress">
-            {exportRequest.receiverAddress || "-"}
-          </Descriptions.Item>,
-          <Descriptions.Item label="Lý do mượn" key="exportReason">
-            {exportRequest.exportReason || "-"}
-          </Descriptions.Item>
-        );
-      } else {
-        items.push(
-          <Descriptions.Item label="Loại phiếu xuất" key="exportType">
-            Xuất mượn (nội bộ)
-          </Descriptions.Item>,
-          <Descriptions.Item label="Người nhận hàng" key="receiverName">
-            {exportRequest.receiverName || "-"}
-          </Descriptions.Item>,
-          <Descriptions.Item
-            label="Số điện thoại nhận hàng"
-            key="receiverPhone"
-          >
-            {exportRequest.receiverPhone || "-"}
-          </Descriptions.Item>,
-          <Descriptions.Item label="Lý do mượn" key="exportReason">
-            {exportRequest.exportReason || "-"}
-          </Descriptions.Item>
-        );
-      }
-      if (exportRequest.expectedReturnDate) {
-        items.push(
-          <Descriptions.Item label="Ngày trả dự kiến" key="expectedReturnDate">
-            {new Date(exportRequest.expectedReturnDate).toLocaleDateString(
-              "vi-VN"
-            )}
-          </Descriptions.Item>
-        );
-      }
     }
     if (exportRequest.type === "RETURN") {
       items.push(

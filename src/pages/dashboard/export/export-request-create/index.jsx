@@ -313,14 +313,12 @@ const ExportRequestCreate = () => {
         const exportTypeMapping = {
           "XUẤT BÁN": "SELLING",
           "XUẤT TRẢ NHÀ CUNG CẤP": "RETURN",
-          "XUẤT SẢN XUẤT": "PRODUCTION",
-          "XUẤT MƯỢN": "BORROWING",
+          "XUẤT NỘI BỘ": "PRODUCTION",
           "XUẤT THANH LÝ": "LIQUIDATION",
           // Giữ lại mapping cũ để tương thích
           SELLING: "SELLING",
           RETURN: "RETURN",
           PRODUCTION: "PRODUCTION",
-          BORROWING: "BORROWING",
           LIQUIDATION: "LIQUIDATION",
         };
 
@@ -499,7 +497,7 @@ const ExportRequestCreate = () => {
           try {
             // Kiểm tra cấu trúc file
             if (!jsonData || !Array.isArray(jsonData) || jsonData.length < 13) {
-              throw new Error("File không đúng định dạng cho xuất sản xuất");
+              throw new Error("File không đúng định dạng cho xuất nội bộ");
             }
 
             // EXTRACT FORM DATA TỪ EXCEL - giả sử template mới có cấu trúc tương tự
@@ -698,13 +696,11 @@ const ExportRequestCreate = () => {
     reader.readAsArrayBuffer(uploadedFile);
   };
 
-  // HELPER FUNCTION (giữ nguyên)
   const getExportTypeDisplayName = (exportType) => {
     const displayNames = {
       SELLING: "Xuất bán",
       RETURN: "Xuất trả nhà cung cấp",
-      PRODUCTION: "Xuất sản xuất",
-      BORROWING: "Xuất mượn",
+      PRODUCTION: "Xuất nội bộ",
       LIQUIDATION: "Xuất thanh lý",
     };
     return displayNames[exportType] || exportType;
@@ -923,54 +919,6 @@ const ExportRequestCreate = () => {
           errorMessage:
             "Vui lòng điền đầy đủ thông tin cho phiếu xuất Production",
         };
-      }
-    }
-
-    // Loan validation
-    if (formData.exportType === "LOAN") {
-      if (!formData.returnDate || !formData.loanReason) {
-        return {
-          isValid: false,
-          errorMessage: "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn",
-        };
-      }
-
-      if (
-        moment(formData.returnDate, "YYYY-MM-DD").isSameOrBefore(
-          moment(),
-          "day"
-        )
-      ) {
-        return {
-          isValid: false,
-          errorMessage: "Ngày trả phải lớn hơn ngày hôm nay",
-        };
-      }
-
-      if (formData.loanType === "INTERNAL") {
-        if (
-          !formData.receivingDepartment ||
-          !formData.departmentRepresentative ||
-          !formData.departmentRepresentativePhone
-        ) {
-          return {
-            isValid: false,
-            errorMessage:
-              "Vui lòng chọn phòng ban và thông tin đại diện cho phiếu xuất mượn nội bộ",
-          };
-        }
-      } else if (formData.loanType === "EXTERNAL") {
-        if (
-          !formData.borrowerName ||
-          !formData.borrowerPhone ||
-          !formData.borrowerAddress
-        ) {
-          return {
-            isValid: false,
-            errorMessage:
-              "Vui lòng điền đầy đủ thông tin cho phiếu xuất mượn bên ngoài",
-          };
-        }
       }
     }
 

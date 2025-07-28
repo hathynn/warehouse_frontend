@@ -268,20 +268,13 @@ const ExportRequestList = () => {
               },
               {
                 key: "PRODUCTION",
-                label: "Xuất sản xuất",
-              },
-              {
-                key: "BORROWING",
-                label: "Xuất mượn",
+                label: "Xuất nội bộ",
               },
               {
                 key: "LIQUIDATION",
                 label: "Xuất thanh lý",
               },
-              // {
-              //   key: "ALL",
-              //   label: "Tất cả",
-              // }
+
             ]}
           />
           <Space size="large">
