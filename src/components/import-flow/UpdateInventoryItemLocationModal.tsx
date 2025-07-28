@@ -284,7 +284,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
 
         // Lấy vị trí của item đầu tiên (vì tất cả cùng itemId sẽ ở cùng vị trí)
         const firstItem = itemInventories[0];
-        console.log(firstItem.storedLocationName)
         if (!firstItem.storedLocationId || !firstItem.storedLocationName) {
           return <span className="text-orange-600">Chưa có vị trí</span>;
         }

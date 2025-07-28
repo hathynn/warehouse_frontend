@@ -40,7 +40,6 @@ const ProductDetailTable = ({
   const totalItems = currentData.length;
 
   const handleQuantityChange = (value, recordId) => {
-    console.log(`Quantity changed for ${recordId}:`, value);
 
     setEditedDetails((prev) =>
       prev.map((item) => {

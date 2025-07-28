@@ -221,7 +221,6 @@ const ImportOrderDetail = () => {
 
   useEffect(() => {
     if (latestNotification) {
-      console.log(latestNotification.type)
       const isImportOrderEvent = latestNotification.type === `import-order-counted-${importOrderId}`;
 
       if (isImportOrderEvent) {

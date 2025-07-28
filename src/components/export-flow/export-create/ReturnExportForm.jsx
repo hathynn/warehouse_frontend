@@ -29,10 +29,6 @@ const ReturnExportForm = ({
             workingTimeStart: config.workingTimeStart,
             workingTimeEnd: config.workingTimeEnd,
           });
-          console.log("Working time config:", {
-            start: config.workingTimeStart,
-            end: config.workingTimeEnd,
-          });
         }
       } catch (error) {
         console.error("Error fetching configuration:", error);

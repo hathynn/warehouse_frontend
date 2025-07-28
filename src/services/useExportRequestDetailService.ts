@@ -52,7 +52,6 @@ const useExportRequestDetailService = () => {
       }
       return response.content;
     } catch (error: any) {
-      console.log("Error Request data:", details);
       if (error.message.includes("Inventory items not found for item ID")) {
         toast.error("Không tìm thấy hàng hóa trong kho");
       } else {
