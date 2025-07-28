@@ -24,8 +24,7 @@ interface RequestTypeSelectorProps {
 const EXPORT_OPTIONS: RequestOption[] = [
     { value: "SELLING", label: "Xuất bán" },
     { value: "RETURN", label: "Xuất trả nhà cung cấp" },
-    { value: "PRODUCTION", label: "Xuất sản xuất" },
-    { value: "BORROWING", label: "Xuất mượn" },
+    { value: "PRODUCTION", label: "Xuất nội bộ" },
     { value: "LIQUIDATION", label: "Xuất thanh lý" },
 ];
 

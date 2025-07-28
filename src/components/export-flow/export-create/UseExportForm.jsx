@@ -158,7 +158,7 @@ const UseExportForm = ({
   return (
     <>
       {/* Loại xuất */}
-      <span className="font-semibold">Loại xuất: Sản Xuất</span>
+      <span className="font-semibold">Loại xuất: Nội bộ</span>
       <div className="mb-2"></div>
 
       {/* THÊM thông báo nếu data được load từ Excel */}

@@ -11,8 +11,7 @@ import PropTypes from "prop-types";
 const EXPORT_TYPE_LABELS = {
   SELLING: "xuất bán",
   RETURN: "xuất trả nhà cung cấp",
-  PRODUCTION: "xuất sản xuất",
-  BORROWING: "xuất mượn",
+  PRODUCTION: "xuất nội bộ",
   LIQUIDATION: "xuất thanh lý",
 };
 
@@ -20,8 +19,7 @@ const EXPORT_TYPE_LABELS = {
 const TEMPLATE_FILES = {
   SELLING: "/export-templates/template_xuat_ban.xlsx",
   RETURN: "/export-templates/template_xuat_tra_NCC.xlsx",
-  PRODUCTION: "/export-templates/template_xuat_san_xuat.xlsx",
-  BORROWING: "/export-templates/template_xuat_muon.xlsx",
+  PRODUCTION: "/export-templates/template_xuat_noi_bo.xlsx",
   LIQUIDATION: "/export-templates/template_xuat_thanh_ly.xlsx",
 };
 
@@ -116,11 +114,11 @@ const FileUploadSection = ({
       XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất bán");
       XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
     } else if (exportType === "PRODUCTION") {
-      // Tạo sheet dữ liệu xuất sản xuất với thông tin form ở đầu
+      // Tạo sheet dữ liệu xuất nội bộ với thông tin form ở đầu
       const exportData = [
         // 3 dòng đầu chứa thông tin form
         ["exportType", "PRODUCTION"],
-        ["exportReason", "{Điền lý do xuất sản xuất}"],
+        ["exportReason", "{Điền lý do xuất nội bộ}"],
         ["departmentId", "{Điền mã phòng ban}"],
         [], // Dòng trống
         [], // Dòng trống
@@ -144,14 +142,12 @@ const FileUploadSection = ({
 
       // Thêm ghi chú/hướng dẫn
       const instructionWs = XLSX.utils.aoa_to_sheet([
-        ["HƯỚNG DẪN SỬ DỤNG FILE TEMPLATE XUẤT SẢN XUẤT"],
+        ["HƯỚNG DẪN SỬ DỤNG FILE TEMPLATE XUẤT NỘI BỘ"],
         [""],
         ["PHẦN 1: THÔNG TIN PHIẾU XUẤT (3 dòng đầu)"],
         ["'- exportType: Loại xuất (PRODUCTION - không thay đổi)"],
-        [
-          "'- exportReason: Lý do xuất sản xuất (ví dụ: Sản xuất áo thun, Gia công...)",
-        ],
-        ["'- departmentId: Mã phòng ban sản xuất"],
+        ["'- exportReason: Lý do xuất nội bộ"],
+        ["'- departmentId: Mã phòng ban nội bộ"],
         [""],
         ["PHẦN 2: DANH SÁCH SẢN PHẨM (từ dòng 7)"],
         ["'- itemId: Mã sản phẩm cần xuất"],
@@ -178,8 +174,8 @@ const FileUploadSection = ({
       // Set độ rộng cho sheet hướng dẫn
       instructionWs["!cols"] = [{ wch: 70 }];
 
-      // Thêm sheets vào workbook - Dữ liệu xuất sản xuất lên đầu, Hướng dẫn thứ 2
-      XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất sản xuất");
+      // Thêm sheets vào workbook - Dữ liệu xuất nội bộ lên đầu, Hướng dẫn thứ 2
+      XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất nội bộ");
       XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
     } else if (exportType === "RETURN") {
       template = [
@@ -207,8 +203,7 @@ const FileUploadSection = ({
     const fileNames = {
       RETURN: "template_xuat_tra_NCC.xlsx",
       SELLING: "template_xuat_ban.xlsx",
-      PRODUCTION: "template_xuat_san_xuat.xlsx",
-      BORROWING: "template_xuat_muon.xlsx",
+      PRODUCTION: "template_xuat_noi_bo.xlsx",
       LIQUIDATION: "template_xuat_thanh_ly.xlsx",
     };
 

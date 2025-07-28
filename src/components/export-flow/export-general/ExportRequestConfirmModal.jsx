@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 const { Title } = Typography;
 
 const EXPORT_TYPE_LABELS = {
-  PRODUCTION: "Sản xuất",
+  PRODUCTION: "Nội bộ",
   BORROWING: "Mượn",
   SELLING: "Bán",
   RETURN: "Trả nhà cung cấp",

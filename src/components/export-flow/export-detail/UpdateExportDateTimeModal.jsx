@@ -114,13 +114,11 @@ const UpdateExportDateTimeModal = ({
   const getExportTypeText = (type) => {
     switch (type) {
       case "PRODUCTION":
-        return "Xuất sản xuất";
+        return "Xuất nội bộ";
       case "SELLING":
         return "Xuất bán";
       case "RETURN":
         return "Xuất trả nhà cung cấp";
-      case "BORROWING":
-        return "Xuất mượn";
       case "LIQUIDATION":
         return "Xuất thanh lý";
       default:
