@@ -38,7 +38,7 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
     setRequestType,
     mode,
     className = "mb-4",
-    selectWidth = 300,
+    selectWidth = 240,
     disabled = false,
 }) => {
     const options = mode === "export" ? EXPORT_OPTIONS : IMPORT_OPTIONS;
@@ -50,6 +50,7 @@ const RequestTypeSelector: React.FC<RequestTypeSelectorProps> = ({
                 {label} <span className="text-red-500">*</span>
             </span>
             <Select
+                size="large"
                 value={requestType}
                 onChange={(value: RequestType) => setRequestType(value)}
                 style={{ width: selectWidth }}
