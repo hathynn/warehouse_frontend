@@ -3,7 +3,7 @@ import { Space, Select } from "antd";
 
 const { Option } = Select;
 
-export type ExportRequestType = "SELLING" | "RETURN" | "PRODUCTION" | "BORROWING" | "LIQUIDATION";
+export type ExportRequestType = "SELLING" | "RETURN" | "PRODUCTION" | "LIQUIDATION";
 export type ImportRequestType = "ORDER" | "RETURN";
 export type RequestType = ExportRequestType | ImportRequestType;
 

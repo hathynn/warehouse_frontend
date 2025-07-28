@@ -130,27 +130,6 @@ const useExportRequestService = () => {
     }
   };
 
-  // Tạo mới phiếu xuất cho Loan (borrow)
-  const createExportRequestLoan = async (
-    requestData: ExportRequestRequest
-  ): Promise<ExportRequestResponse | undefined> => {
-    try {
-      const response = await callApi(
-        "post",
-        "/export-request/borrow",
-        requestData
-      );
-      if (response && response.content) {
-        toast.success("Tạo phiếu xuất mượn thành công");
-      }
-      return response.content;
-    } catch (error) {
-      toast.error("Không thể tạo phiếu xuất mượn");
-      console.error("Error creating export request loan:", error);
-      throw error;
-    }
-  };
-
   // Assign warehouse keeper to count an export request
   const assignCountingStaff = async (
     exportRequestId: number,
@@ -327,7 +306,6 @@ const useExportRequestService = () => {
     getExportRequestById,
     getExportRequestsByPage,
     createExportRequestProduction,
-    createExportRequestLoan,
     assignCountingStaff,
     assignConfirmimgStaff,
     confirmCountedExportRequest,

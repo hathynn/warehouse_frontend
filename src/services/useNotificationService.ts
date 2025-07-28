@@ -1,4 +1,3 @@
-
 import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 import { ResponseDTO } from "@/utils/interfaces";
@@ -8,6 +7,7 @@ export interface NotificationResponse {
   id: number;
   receiverId: number;
   objectId: number;
+  eventType: string;
   content: string;
   createdDate: string;
   isViewed: boolean;
@@ -45,7 +45,10 @@ const useNotificationService = () => {
     notificationId: number
   ): Promise<ResponseDTO<NotificationResponse>> => {
     try {
-      const response = await callApi("delete", `/notification/${notificationId}`);
+      const response = await callApi(
+        "delete",
+        `/notification/${notificationId}`
+      );
       return response;
     } catch (error) {
       toast.error("Không thể xóa thông báo");

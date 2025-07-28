@@ -141,9 +141,7 @@ const ExcelDataTable = ({
 
             // Loại bỏ nếu hết tồn kho HOẶC không đủ tồn kho khả dụng
             shouldRemoveItem = stockQuantity === 0 || maxValue <= 0;
-          } else if (
-            ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
-          ) {
+          } else if (["PRODUCTION", "LIQUIDATION"].includes(exportType)) {
             // ✅ SỬA: Thêm logic kiểm tra cho measurement value types
             const numberOfAvailableMeasurementValues =
               itemMeta?.numberOfAvailableMeasurementValues ?? 0;
@@ -164,11 +162,7 @@ const ExcelDataTable = ({
           if (shouldRemoveItem) {
             // Lấy requested amount dựa trên export type
             let requestedAmount;
-            if (
-              exportType === "PRODUCTION" ||
-              exportType === "BORROWING" ||
-              exportType === "LIQUIDATION"
-            ) {
+            if (exportType === "PRODUCTION" || exportType === "LIQUIDATION") {
               requestedAmount = item.measurementValue || 0;
             } else {
               requestedAmount = item.quantity || 0;
@@ -228,10 +222,8 @@ const ExcelDataTable = ({
           error = validateQuantity(item?.quantity?.toString(), item.itemId);
         }
       }
-      // PRODUCTION, BORROWING, LIQUIDATION chỉ validate measurementValue
-      else if (
-        ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
-      ) {
+      // PRODUCTION, LIQUIDATION chỉ validate measurementValue
+      else if (["PRODUCTION", "LIQUIDATION"].includes(exportType)) {
         if (item.measurementValue !== undefined) {
           error = validateMeasurementValue(
             item?.measurementValue?.toString(),
@@ -451,7 +443,7 @@ const ExcelDataTable = ({
           render: (text, record) => <QuantityInput record={record} />,
         }
       : null,
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
       ? {
           title: "Giá trị cần xuất",
           dataIndex: "measurement",
@@ -477,7 +469,7 @@ const ExcelDataTable = ({
           ),
         }
       : null,
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
       ? {
           width: "12%",
           title: <span className="font-semibold">Đơn vị tính</span>,

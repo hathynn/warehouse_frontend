@@ -38,13 +38,6 @@ const INITIAL_FORM_DATA = {
   receivingDepartment: null,
   departmentRepresentative: "",
   departmentRepresentativePhone: "",
-  // Loan fields
-  loanType: "INTERNAL",
-  borrowerName: "",
-  borrowerPhone: "",
-  borrowerAddress: "",
-  returnDate: "",
-  loanReason: "",
   // Selling fields
   receiverName: "",
   receiverPhone: "",
@@ -94,7 +87,6 @@ const ExportRequestCreate = () => {
 
   const {
     createExportRequestProduction,
-    createExportRequestLoan,
     createExportRequestSelling,
     createExportRequestReturn,
   } = useExportRequestService();
@@ -614,9 +606,7 @@ const ExportRequestCreate = () => {
           transformedData = jsonDataObjects.map((item, index) => {
             const itemId = item["itemId"] || item["Mã hàng"];
 
-            // ✅ PHÂN BIỆT rõ ràng giữa quantity và measurementValue
-            if (["BORROWING", "LIQUIDATION"].includes(finalExportType)) {
-              // ✅ BORROWING và LIQUIDATION dùng measurementValue
+            if (["LIQUIDATION"].includes(finalExportType)) {
               const measurementValue =
                 item["measurementValue"] || item["Giá trị đo lường"];
 
@@ -838,36 +828,6 @@ const ExportRequestCreate = () => {
     };
   };
 
-  const buildLoanPayload = () => {
-    const basePayload = {
-      exportDate: formData.exportDate,
-      exportTime: formData.exportTime,
-      expectedReturnDate: formData.returnDate,
-      exportReason: formData.loanReason,
-      type: "BORROWING",
-      countingDate: moment(formData.exportDate, "YYYY-MM-DD")
-        .subtract(1, "day")
-        .format("YYYY-MM-DD"),
-      countingTime: formData.exportTime,
-    };
-
-    if (formData.loanType === "INTERNAL") {
-      return {
-        ...basePayload,
-        receiverName: formData.departmentRepresentative,
-        receiverPhone: formData.departmentRepresentativePhone,
-        departmentId: formData.receivingDepartment.id,
-      };
-    } else {
-      return {
-        ...basePayload,
-        receiverName: formData.borrowerName,
-        receiverPhone: formData.borrowerPhone,
-        receiverAddress: formData.borrowerAddress,
-      };
-    }
-  };
-
   const buildSellingPayload = () => {
     let countingDate = formData.exportDate;
     let countingTime = "12:00:00";
@@ -1048,10 +1008,6 @@ const ExportRequestCreate = () => {
         payload = buildProductionPayload();
         createdExport = await createExportRequestProduction(payload);
         break;
-      case "LOAN":
-        payload = buildLoanPayload();
-        createdExport = await createExportRequestLoan(payload);
-        break;
       case "SELLING":
         payload = buildSellingPayload();
         createdExport = await createExportRequestSelling(payload);
@@ -1084,10 +1040,9 @@ const ExportRequestCreate = () => {
         }
       } else if (
         formData.exportType === "PRODUCTION" ||
-        formData.exportType === "BORROWING" ||
         formData.exportType === "LIQUIDATION"
       ) {
-        // Chỉ thêm measurementValue nếu có (PRODUCTION, BORROWING, LIQUIDATION)
+        // Chỉ thêm measurementValue nếu có (PRODUCTION, LIQUIDATION)
         if (measurementValue !== undefined) {
           detail.measurementValue = measurementValue;
         }
@@ -1259,7 +1214,7 @@ const ExportRequestCreate = () => {
             mode="export"
           />
 
-          {["PRODUCTION", "BORROWING", "LIQUIDATION", "SELLING"].includes(
+          {["PRODUCTION", "LIQUIDATION", "SELLING"].includes(
             formData.exportType
           ) ? (
             <>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Button, Space, Card, Typography, Steps } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import UseExportForm from "@/components/export-flow/export-create/UseExportForm";
-import LoanExportForm from "@/components/export-flow/export-create/LoanExportForm";
 import ExcelDataTableAfter from "./ExcelDataTableAfter";
 import PropTypes from "prop-types";
 import ExportRequestConfirmModal from "../export-general/ExportRequestConfirmModal";
@@ -64,11 +63,6 @@ const ExportRequestInfoForm = ({
   const missingFields =
     (formData.exportType === "PRODUCTION" &&
       (!formData.exportDate ||
-        !formData.exportReason ||
-        !formData.receivingDepartment)) ||
-    (formData.exportType === "BORROWING" &&
-      (!formData.exportDate ||
-        !formData.exportTime ||
         !formData.exportReason ||
         !formData.receivingDepartment)) ||
     (formData.exportType === "SELLING" &&
@@ -151,18 +145,6 @@ const ExportRequestInfoForm = ({
           <Space direction="vertical" className="w-full">
             {formData.exportType === "PRODUCTION" && (
               <UseExportForm
-                formData={formData}
-                setFormData={setFormData}
-                openDepartmentModal={() => setDepartmentModalVisible(true)}
-                timeError={timeError}
-                setTimeError={setTimeError}
-                mandatoryError={mandatoryError}
-                setMandatoryError={setMandatoryError}
-                excelFormData={excelFormData} // TRUYỀN EXCEL DATA
-              />
-            )}
-            {formData.exportType === "BORROWING" && (
-              <LoanExportForm
                 formData={formData}
                 setFormData={setFormData}
                 openDepartmentModal={() => setDepartmentModalVisible(true)}

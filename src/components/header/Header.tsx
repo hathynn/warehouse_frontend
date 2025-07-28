@@ -55,6 +55,21 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   // Use Pusher context for notifications
   const { latestNotification } = usePusherContext();
 
+  // Define ROUTE type from eventType
+  const getRouteTypeFromEventType = (eventType: string): 'IMPORT-ORDER' | 'EXPORT' | 'UNKNOWN' => {
+    // Import events
+    if (eventType.includes('import-order')) {
+      return 'IMPORT-ORDER';
+    }
+
+    // Export events  
+    if (eventType.includes('export-request') || eventType.startsWith('export-')) {
+      return 'EXPORT';
+    }
+
+    return 'UNKNOWN';
+  };
+
   // Initialize audio system
   const initializeAudio = async () => {
     if (isAudioInitializedRef.current) return;
@@ -146,7 +161,21 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     await clickNotification(notification.id);
 
     if (notification.objectId) {
-      navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(notification.objectId.toString())}`);
+      const routeType = getRouteTypeFromEventType(notification.eventType);
+      switch (routeType) {
+        case 'IMPORT-ORDER':
+          navigate(`${ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(notification.objectId.toString())}`);
+          break;
+
+        case 'EXPORT':
+          navigate(`${ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(notification.objectId.toString())}`);
+          break;
+
+        default:
+          //Log if no defined type 
+          console.warn(`Unknown notification eventType: ${notification.eventType}`);
+          break;
+      }
     }
 
     setDropdownVisible(false);
