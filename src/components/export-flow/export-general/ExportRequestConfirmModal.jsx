@@ -8,7 +8,6 @@ const { Title } = Typography;
 
 const EXPORT_TYPE_LABELS = {
   PRODUCTION: "Nội bộ",
-  BORROWING: "Mượn",
   SELLING: "Bán",
   RETURN: "Trả nhà cung cấp",
   LIQUIDATION: "Thanh lý",
@@ -29,7 +28,7 @@ function getConsolidatedData(data = [], exportType) {
         grouped[key].quantity =
           Number(grouped[key].quantity || 0) + Number(row.quantity || 0);
       }
-      // Cộng measurementValue cho PRODUCTION, BORROWING, LIQUIDATION
+      // Cộng measurementValue cho PRODUCTION, LIQUIDATION
       if (row.measurementValue !== undefined && row.measurementValue !== "") {
         grouped[key].measurementValue =
           (Number(grouped[key].measurementValue) || 0) +
@@ -152,8 +151,8 @@ const ExportRequestConfirmModal = ({
           ),
         }
       : null,
-    // Cột Giá trị cần xuất cho PRODUCTION, BORROWING, LIQUIDATION
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+    // Cột Giá trị cần xuất cho PRODUCTION, LIQUIDATION
+    ["PRODUCTION", "LIQUIDATION"].includes(formData?.exportType)
       ? {
           title: "Giá trị cần xuất",
           dataIndex: "measurementValue",
@@ -185,8 +184,8 @@ const ExportRequestConfirmModal = ({
           ),
         }
       : null,
-    // Cột Đơn vị tính cho PRODUCTION, BORROWING, LIQUIDATION
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(formData?.exportType)
+    // Cột Đơn vị tính cho PRODUCTION, LIQUIDATION
+    ["PRODUCTION", "LIQUIDATION"].includes(formData?.exportType)
       ? {
           width: "10%",
           title: <span className="font-semibold">Đơn vị tính</span>,
@@ -304,10 +303,8 @@ const ExportRequestConfirmModal = ({
           </>
         )}
 
-        {/* Fields cho PRODUCTION, BORROWING, LIQUIDATION - mới */}
-        {["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-          formData.exportType
-        ) && (
+        {/* Fields cho PRODUCTION,  LIQUIDATION - mới */}
+        {["PRODUCTION", "LIQUIDATION"].includes(formData.exportType) && (
           <>
             <Descriptions.Item label="Phòng ban">
               {formData.receivingDepartment?.name || "-"}

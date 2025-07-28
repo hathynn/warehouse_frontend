@@ -194,12 +194,8 @@ const ProductDetailTable = ({
           );
         }
 
-        // Cho PRODUCTION, BORROWING, LIQUIDATION: validate measurementValue
-        if (
-          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-            exportRequest?.type
-          )
-        ) {
+        // Cho PRODUCTION, LIQUIDATION: validate measurementValue
+        if (["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)) {
           //Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
           const itemInfo = items.find(
             (i) => String(i.id) === String(item.itemId)
@@ -312,13 +308,11 @@ const ProductDetailTable = ({
           };
         }
 
-        // Xử lý column "Giá trị cần xuất" cho PRODUCTION, BORROWING, LIQUIDATION
+        // Xử lý column "Giá trị cần xuất" cho PRODUCTION, LIQUIDATION
         if (
           editMode &&
           col.dataIndex === "measurementValue" &&
-          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-            exportRequest?.type
-          )
+          ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
         ) {
           return {
             ...col,
@@ -400,13 +394,11 @@ const ProductDetailTable = ({
           return false;
         }
 
-        //Ẩn cột "Số lượng cần" cho PRODUCTION, BORROWING, LIQUIDATION khi ở editMode
+        //Ẩn cột "Số lượng cần" cho PRODUCTION, LIQUIDATION khi ở editMode
         if (
           editMode &&
           col.dataIndex === "quantity" &&
-          ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-            exportRequest?.type
-          )
+          ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
         ) {
           return false;
         }
@@ -452,9 +444,7 @@ const ProductDetailTable = ({
 
                   // Kiểm tra thêm maxAllowed cho measurementValue types
                   if (
-                    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-                      exportRequest?.type
-                    )
+                    ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
                   ) {
                     const itemInfo = items.find(
                       (i) => String(i.id) === String(item.itemId)
@@ -497,7 +487,7 @@ const ProductDetailTable = ({
                   if (item.status === "LACK" && item.actualQuantity > 1) {
                     lastValidValuesRef.current[item.id] = item.actualQuantity;
                     if (
-                      ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+                      ["PRODUCTION", "LIQUIDATION"].includes(
                         exportRequest?.type
                       )
                     ) {
@@ -525,7 +515,7 @@ const ProductDetailTable = ({
                     // ✅ SỬA: Tính measurementValue hợp lệ lớn nhất
                     let validMeasurementValue = item.measurementValue;
                     if (
-                      ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
+                      ["PRODUCTION", "LIQUIDATION"].includes(
                         exportRequest?.type
                       )
                     ) {

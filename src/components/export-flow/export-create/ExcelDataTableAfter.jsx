@@ -21,7 +21,7 @@ function getConsolidatedData(data = [], exportType) {
         grouped[key].quantity =
           Number(grouped[key].quantity || 0) + Number(row.quantity || 0);
       }
-      // Cộng measurementValue cho PRODUCTION, BORROWING, LIQUIDATION
+      // Cộng measurementValue cho PRODUCTION, LIQUIDATION
       if (row.measurementValue !== undefined && row.measurementValue !== "") {
         grouped[key].measurementValue =
           (Number(grouped[key].measurementValue) || 0) +
@@ -100,8 +100,8 @@ const ExcelDataTableAfter = ({
           ),
         }
       : null,
-    // Cột Giá trị cần xuất cho PRODUCTION, BORROWING, LIQUIDATION
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+    // Cột Giá trị cần xuất cho PRODUCTION, LIQUIDATION
+    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
       ? {
           title: "Giá trị cần xuất",
           dataIndex: "measurementValue",
@@ -130,8 +130,8 @@ const ExcelDataTableAfter = ({
           ),
         }
       : null,
-    // Cột Đơn vị tính cho PRODUCTION, BORROWING, LIQUIDATION
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportType)
+    // Cột Đơn vị tính cho PRODUCTION, LIQUIDATION
+    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
       ? {
           width: "12%",
           title: <span className="font-semibold">Đơn vị tính</span>,

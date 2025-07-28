@@ -36,6 +36,8 @@ import useDepartmentService from "@/services/useDepartmentService";
 import useInventoryItemService from "@/services/useInventoryItemService";
 import useProviderService from "@/services/useProviderService";
 import { SwapOutlined } from "@ant-design/icons";
+import AssignCountingStaffModal from "@/components/export-flow/export-detail/AssignCountingStaffModal";
+import AssignKeeperStaffModal from "@/components/export-flow/export-detail/AssignKeeperStaffModal";
 // Constants
 import { ROUTES } from "@/constants/routes";
 
@@ -554,10 +556,6 @@ const ExportRequestDetail = () => {
     setSelectedStaffId(null);
   };
 
-  const handleSelectStaff = (staffId) => {
-    setSelectedStaffId(staffId);
-  };
-
   const handleAssignCountingStaff = async () => {
     if (!selectedStaffId || !exportRequestId) {
       message.warning("Vui lòng chọn nhân viên để phân công");
@@ -580,60 +578,6 @@ const ExportRequestDetail = () => {
     return "";
   };
 
-  // Add new function to check if reassignment is allowed
-  const canReassignCountingStaff = () => {
-    if (
-      !exportRequest?.exportDate ||
-      !exportRequest?.exportTime ||
-      !configuration?.timeToAllowAssign
-    ) {
-      return true;
-    }
-
-    // Combine dateReceived and timeReceived into a Date object
-    const receivedDateTime = new Date(
-      `${exportRequest.exportDate}T${exportRequest.exportTime}`
-    );
-    const now = new Date();
-    // Convert timeToAllowAssign to milliseconds
-    const [hours, minutes, seconds] = configuration.timeToAllowAssign
-      .split(":")
-      .map(Number);
-    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
-
-    // If current time - received time < timeToAllowAssign, don't allow reassignment
-    return Date.now() - receivedDateTime.getTime() <= allowAssignMs;
-  };
-
-  const getRemainingAssignTime = () => {
-    if (
-      !exportRequest?.exportDate ||
-      !exportRequest?.exportTime ||
-      !configuration?.timeToAllowAssign
-    ) {
-      return null;
-    }
-
-    // 1. Thời điểm nhận hàng
-    const receivedDateTime = new Date(
-      `${exportRequest.exportDate}T${exportRequest.exportTime}`
-    );
-
-    // 2. Hạn chót = nhận hàng + timeToAllowAssign
-    const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
-    const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
-    const deadline = new Date(receivedDateTime.getTime() - allowAssignMs); //  **+**  ở đây
-
-    // 3. Còn lại bao lâu
-    const diffMs = deadline.getTime() - Date.now();
-    if (diffMs <= 0) return "0 tiếng 0 phút"; // đã quá hạn
-
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffMins = diffMinutes % 60;
-    return `${diffHours} tiếng ${diffMins} phút`;
-  };
-
   const calculateRemainingTime = (totalExpectedTime, defaultWorkingMinutes) => {
     try {
       const [hours, minutes] = totalExpectedTime.split(":").map(Number);
@@ -651,12 +595,64 @@ const ExportRequestDetail = () => {
   };
 
   const getDefaultWorkingMinutes = () => {
-    if (!configuration) return 480; // fallback
-    const [startH, startM] = configuration.workingTimeStart
+    // Assume làm việc cả ngày lẫn đêm (24h)
+    return 24 * 60; // 1440 phút
+  };
+  // Add new function to check if reassignment is allowed
+  const canReassignCountingStaff = () => {
+    if (
+      !exportRequest?.countingDate ||
+      !exportRequest?.countingTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return true;
+    }
+
+    // Combine countingDate and countingTime into a Date object
+    const countingDateTime = new Date(
+      `${exportRequest.countingDate}T${exportRequest.countingTime}`
+    );
+
+    // Convert timeToAllowAssign to milliseconds
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign
       .split(":")
       .map(Number);
-    const [endH, endM] = configuration.workingTimeEnd.split(":").map(Number);
-    return endH * 60 + endM - (startH * 60 + startM);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+
+    // Deadline = countingTime - timeToAllowAssign
+    const deadline = new Date(countingDateTime.getTime() - allowAssignMs);
+
+    // If current time < deadline, allow reassignment
+    return Date.now() < deadline.getTime();
+  };
+
+  const getRemainingAssignTime = () => {
+    if (
+      !exportRequest?.countingDate ||
+      !exportRequest?.countingTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return null;
+    }
+
+    // 1. Thời điểm counting
+    const countingDateTime = new Date(
+      `${exportRequest.countingDate}T${exportRequest.countingTime}`
+    );
+
+    // 2. Hạn chót = counting time - timeToAllowAssign
+    const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
+    const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
+    const deadline = new Date(countingDateTime.getTime() - allowAssignMs);
+
+    // 3. Còn lại bao lâu
+    const diffMs = deadline.getTime() - Date.now();
+    if (diffMs <= 0) return "0 tiếng 0 phút"; // đã quá hạn
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+    return `${diffHours} tiếng ${diffMins} phút`;
   };
 
   const handleSearch = (value) => {
@@ -713,36 +709,6 @@ const ExportRequestDetail = () => {
     return `${diffHours} tiếng ${diffMins} phút`;
   };
 
-  const getFilteredAndSortedStaffs = () => {
-    const defaultWorkingMinutes = getDefaultWorkingMinutes();
-    return staffs
-      .map((staff) => ({
-        ...staff,
-        remainingTime: calculateRemainingTime(
-          staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
-          defaultWorkingMinutes
-        ),
-      }))
-      .filter((staff) => {
-        const searchLower = searchText.toLowerCase();
-        return (
-          staff.fullName.toLowerCase().includes(searchLower) ||
-          staff.id.toString().includes(searchLower)
-        );
-      })
-      .sort((a, b) => {
-        // Convert remaining time to minutes for comparison
-        const getMinutes = (timeStr) => {
-          const [hours, minutes] = timeStr
-            .split(" tiếng ")
-            .map((part) => parseInt(part.replace(" phút", "")));
-          return hours * 60 + minutes;
-        };
-
-        return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
-      });
-  };
-
   const ITEM_STATUS_SHOW_STATUSES = [ExportStatus.COUNT_CONFIRMED];
 
   const getItemStatus = () => {
@@ -759,7 +725,7 @@ const ExportRequestDetail = () => {
         <StatusTag status={exportRequest.status} type="export" />
       </Descriptions.Item>,
     ];
-    //Hiển thị Trạng thái hàng với Tag của Ant Design
+
     if (ITEM_STATUS_SHOW_STATUSES.includes(exportRequest.status)) {
       const itemStatus = getItemStatus();
       if (itemStatus === "LACK") {
@@ -855,7 +821,6 @@ const ExportRequestDetail = () => {
       await confirmCountedExportRequest(exportRequestId);
       message.success("Đã xác nhận kiểm đếm");
 
-      // Gọi lại dữ liệu để cập nhật giao diện
       await fetchExportRequestData();
       fetchDetails();
     } catch (error) {
@@ -879,8 +844,8 @@ const ExportRequestDetail = () => {
       width: "18%",
       ellipsis: true,
     },
-    // Thêm cột "Giá trị cần xuất" - chỉ hiển thị cho PRODUCTION, BORROWING, LIQUIDATION
-    ...(["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(exportRequest?.type)
+    // Thêm cột "Giá trị cần xuất" - chỉ hiển thị cho PRODUCTION, LIQUIDATION
+    ...(["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
       ? [
           {
             title: "Giá trị cần xuất",
@@ -963,9 +928,7 @@ const ExportRequestDetail = () => {
       },
     },
     // Điều kiện column Quy cách
-    ["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-      exportRequest?.exportType
-    )
+    ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.exportType)
       ? {
           title: "Quy cách",
           dataIndex: "measurementValue",
@@ -1135,9 +1098,9 @@ const ExportRequestDetail = () => {
 
         {/* Nút cập nhật ngày khách nhận hàng */}
         {userRole === AccountRole.DEPARTMENT &&
-          exportRequest?.status === ExportStatus.WAITING_EXPORT && // ✅ SỬA: Đổi từ COUNT_CONFIRMED sang WAITING_EXPORT
-          getItemStatus() === "ENOUGH" && // ✅ GIỮ NGUYÊN: Hàng phải đủ
-          canUpdateExportDate() && ( // ✅ THÊM: Kiểm tra thời gian 3 tiếng
+          exportRequest?.status === ExportStatus.WAITING_EXPORT &&
+          getItemStatus() === "ENOUGH" &&
+          canUpdateExportDate() && (
             <Button
               type="primary"
               className="ml-4"
@@ -1197,252 +1160,41 @@ const ExportRequestDetail = () => {
         recountModalVisible={recountModalVisible}
         items={items}
       />
-      {/* Modal chọn Warehouse Keeper */}
-      <Modal
-        title={
-          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
-            <h3 className="text-xl font-semibold text-blue-900">
-              Phân công nhân viên kho kiểm đếm
-            </h3>
-            <p className="text-lg text-blue-700 mt-1">
-              Phiếu xuất #{exportRequest?.exportRequestId}
-            </p>
-            <p className="text-sm text-gray-700 mt-2 flex items-center">
-              <InfoCircleOutlined className="mr-2 text-blue-500" />
-              Sau {getRemainingAssignTime() || "..."}, bạn sẽ không thể phân
-              công lại nhân viên
-            </p>
-          </div>
-        }
-        open={assignModalVisible}
+      {/* Modal chọn Warehouse Keeper - Counting*/}
+      <AssignCountingStaffModal
+        visible={assignModalVisible}
         onCancel={handleCloseAssignModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseAssignModal}>
-            Đóng
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleAssignCountingStaff}
-            disabled={!selectedStaffId}
-            loading={exportRequestLoading}
-          >
-            Phân công
-          </Button>,
-        ]}
-        width={700}
-        className="!top-[50px]"
-      >
-        {loadingStaff ? (
-          <div className="flex justify-center items-center py-8">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Current Assignment Info */}
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h4 className="text-base font-medium text-gray-700 mb-3">
-                Nhân viên đang được phân công
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Mã nhân viên</p>
-                  <p className="text-base">#{assignedStaff?.id || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Họ tên</p>
-                  <p className="text-base">{assignedStaff?.fullName || "-"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Staff List */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-base font-medium text-gray-700">
-                  Danh sách nhân viên có thể phân công
-                </h4>
-                <Input.Search
-                  placeholder="Tìm theo tên hoặc mã nhân viên"
-                  allowClear
-                  onSearch={handleSearch}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  style={{ width: 300 }}
-                />
-              </div>
-              <Table
-                dataSource={getFilteredAndSortedStaffs()}
-                rowKey="id"
-                pagination={false}
-                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
-                onRow={(record) => ({
-                  onClick: () =>
-                    record.id !== exportRequest?.countingStaffId &&
-                    handleSelectStaff(record.id),
-                  className:
-                    selectedStaffId === record.id
-                      ? "!bg-blue-100"
-                      : record.id === exportRequest?.countingStaffId
-                      ? "!opacity-50 !cursor-not-allowed"
-                      : "",
-                })}
-                columns={[
-                  {
-                    title: "Mã nhân viên",
-                    dataIndex: "id",
-                    key: "id",
-                    render: (id) => `#${id}`,
-                    width: "25%",
-                  },
-                  {
-                    title: "Họ tên",
-                    dataIndex: "fullName",
-                    key: "fullName",
-                    width: "45%",
-                  },
-                  {
-                    title: "Thời gian rảnh còn lại",
-                    dataIndex: "remainingTime",
-                    key: "remainingTime",
-                    width: "30%",
-                    render: (time, record) => (
-                      <span
-                        className={`font-medium ${
-                          record.id === exportRequest?.countingStaffId
-                            ? "text-gray-400"
-                            : "text-blue-600"
-                        }`}
-                      >
-                        {time || "8 tiếng 0 phút"}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
-      <Modal
-        title={
-          <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
-            <h3 className="text-xl font-semibold text-blue-900">
-              Phân công nhân viên xuất hàng
-            </h3>
-            <p className="text-lg text-blue-700 mt-1">
-              Phiếu xuất #{exportRequest?.exportRequestId}
-            </p>
-          </div>
-        }
-        open={assignKeeperModalVisible}
-        onCancel={() => {
-          setAssignKeeperModalVisible(false);
-          setSelectedKeeperId(null);
-        }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => setAssignKeeperModalVisible(false)}
-          >
-            Đóng
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleAssignKeeper}
-            disabled={!selectedKeeperId}
-            loading={exportRequestLoading}
-          >
-            Phân công
-          </Button>,
-        ]}
-        width={700}
-        className="!top-[50px]"
-      >
-        {loadingStaff ? (
-          <div className="flex justify-center items-center py-8">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Current Assignment Info */}
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <h4 className="text-base font-medium text-gray-700 mb-3">
-                Nhân viên đang được phân công xuất hàng
-              </h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Mã nhân viên</p>
-                  <p className="text-base">#{assignedKeeper?.id || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Họ tên</p>
-                  <p className="text-base">{assignedKeeper?.fullName || "-"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Staff List */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h4 className="text-base font-medium text-gray-700">
-                  Danh sách nhân viên có thể phân công
-                </h4>
-                <Input.Search
-                  placeholder="Tìm theo tên hoặc mã nhân viên"
-                  allowClear
-                  onSearch={handleSearch}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  style={{ width: 300 }}
-                />
-              </div>
-              <Table
-                dataSource={keeperStaffs.map((staff) => ({
-                  ...staff,
-                  remainingTime: calculateRemainingTime(
-                    staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
-                    getDefaultWorkingMinutes()
-                  ),
-                }))}
-                rowKey="id"
-                pagination={false}
-                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
-                onRow={(record) => ({
-                  onClick: () => setSelectedKeeperId(record.id),
-                  className:
-                    selectedKeeperId === record.id ? "!bg-blue-100" : "",
-                })}
-                columns={[
-                  {
-                    title: "Mã nhân viên",
-                    dataIndex: "id",
-                    key: "id",
-                    render: (id) => `#${id}`,
-                    width: "25%",
-                  },
-                  {
-                    title: "Họ tên",
-                    dataIndex: "fullName",
-                    key: "fullName",
-                    width: "45%",
-                  },
-                  {
-                    title: "Thời gian rảnh còn lại",
-                    dataIndex: "remainingTime",
-                    key: "remainingTime",
-                    width: "30%",
-                    render: (time) => (
-                      <span className="font-medium text-blue-600">
-                        {time || "8 tiếng 0 phút"}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
+        onAssign={handleAssignCountingStaff}
+        selectedStaffId={selectedStaffId}
+        setSelectedStaffId={setSelectedStaffId}
+        staffs={staffs}
+        loadingStaff={loadingStaff}
+        assignedStaff={assignedStaff}
+        exportRequest={exportRequest}
+        exportRequestLoading={exportRequestLoading}
+        searchText={searchText}
+        onSearch={handleSearch}
+        getRemainingAssignTime={getRemainingAssignTime}
+        calculateRemainingTime={calculateRemainingTime}
+        getDefaultWorkingMinutes={getDefaultWorkingMinutes}
+      />
+      {/* Modal chọn Warehouse Keeper - Export Hand-over Step*/}
+      <AssignKeeperStaffModal
+        visible={assignKeeperModalVisible}
+        onCancel={() => setAssignKeeperModalVisible(false)}
+        onAssign={handleAssignKeeper}
+        selectedKeeperId={selectedKeeperId}
+        setSelectedKeeperId={setSelectedKeeperId}
+        keeperStaffs={keeperStaffs}
+        loadingStaff={loadingStaff}
+        assignedKeeper={assignedKeeper}
+        exportRequest={exportRequest}
+        exportRequestLoading={exportRequestLoading}
+        searchText={searchText}
+        onSearch={handleSearch}
+        calculateRemainingTime={calculateRemainingTime}
+        getDefaultWorkingMinutes={getDefaultWorkingMinutes}
+      />
       <Modal
         open={confirmModalVisible}
         onCancel={() => {
@@ -1531,10 +1283,8 @@ const ExportRequestDetail = () => {
               ellipsis: true,
               width: "22%",
             },
-            // Cột Giá trị cần xuất - chỉ hiển thị cho PRODUCTION, BORROWING, LIQUIDATION
-            ...(["PRODUCTION", "BORROWING", "LIQUIDATION"].includes(
-              exportRequest?.type
-            )
+            // Cột Giá trị cần xuất - chỉ hiển thị cho PRODUCTION, LIQUIDATION
+            ...(["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
               ? [
                   {
                     title: "Giá trị cần xuất",
@@ -1733,7 +1483,7 @@ const ExportRequestDetail = () => {
         updateExportRequestStatus={updateExportRequestStatus}
         loading={exportRequestLoading}
         exportDate={exportRequest?.exportDate}
-        getWaitingExportStartTime={getWaitingExportStartTime} // ✅ SỬA: Truyền function thay vì state
+        getWaitingExportStartTime={getWaitingExportStartTime}
         onSuccess={async () => {
           setUpdateDateTimeModalOpen(false);
           await fetchExportRequestData();
