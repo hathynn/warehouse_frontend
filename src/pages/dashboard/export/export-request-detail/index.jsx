@@ -571,7 +571,7 @@ const ExportRequestDetail = () => {
   };
 
   const getExportTypeText = (type) => {
-    if (type === "PRODUCTION") return "Xuất nội bộ";
+    if (type === "INTERNAL") return "Xuất nội bộ";
     else if (type === "SELLING") return "Xuất bán";
     else if (type === "RETURN") return "Xuất trả nhà cung cấp";
     else if (type === "LIQUIDATION") return "Xuất thanh lý";
@@ -760,7 +760,7 @@ const ExportRequestDetail = () => {
     );
 
     if (
-      exportRequest.type === "PRODUCTION" ||
+      exportRequest.type === "INTERNAL" ||
       exportRequest.type === "SELLING"
     ) {
       items.push(
@@ -844,8 +844,8 @@ const ExportRequestDetail = () => {
       width: "18%",
       ellipsis: true,
     },
-    // Thêm cột "Giá trị cần xuất" - chỉ hiển thị cho PRODUCTION, LIQUIDATION
-    ...(["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
+    // Thêm cột "Giá trị cần xuất" - chỉ hiển thị cho INTERNAL, LIQUIDATION
+    ...(["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
       ? [
           {
             title: "Giá trị cần xuất",
@@ -928,7 +928,7 @@ const ExportRequestDetail = () => {
       },
     },
     // Điều kiện column Quy cách
-    ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.exportType)
+    ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.exportType)
       ? {
           title: "Quy cách",
           dataIndex: "measurementValue",
@@ -1283,8 +1283,8 @@ const ExportRequestDetail = () => {
               ellipsis: true,
               width: "22%",
             },
-            // Cột Giá trị cần xuất - chỉ hiển thị cho PRODUCTION, LIQUIDATION
-            ...(["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
+            // Cột Giá trị cần xuất - chỉ hiển thị cho INTERNAL, LIQUIDATION
+            ...(["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
               ? [
                   {
                     title: "Giá trị cần xuất",

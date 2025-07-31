@@ -305,12 +305,12 @@ const ExportRequestCreate = () => {
         const exportTypeMapping = {
           "XUẤT BÁN": "SELLING",
           "XUẤT TRẢ NHÀ CUNG CẤP": "RETURN",
-          "XUẤT NỘI BỘ": "PRODUCTION",
+          "XUẤT NỘI BỘ": "INTERNAL",
           "XUẤT THANH LÝ": "LIQUIDATION",
           // Giữ lại mapping cũ để tương thích
           SELLING: "SELLING",
           RETURN: "RETURN",
-          PRODUCTION: "PRODUCTION",
+          INTERNAL: "INTERNAL",
           LIQUIDATION: "LIQUIDATION",
         };
 
@@ -485,7 +485,7 @@ const ExportRequestCreate = () => {
               throw new Error("File không đúng định dạng");
             }
           }
-        } else if (finalExportType === "PRODUCTION") {
+        } else if (finalExportType === "INTERNAL") {
           try {
             // Kiểm tra cấu trúc file
             if (!jsonData || !Array.isArray(jsonData) || jsonData.length < 13) {
@@ -494,7 +494,7 @@ const ExportRequestCreate = () => {
 
             // EXTRACT FORM DATA TỪ EXCEL - giả sử template mới có cấu trúc tương tự
             extractedFormData = {
-              exportType: "PRODUCTION",
+              exportType: "INTERNAL",
               exportReason: "",
               departmentId: "",
             };
@@ -690,7 +690,7 @@ const ExportRequestCreate = () => {
     const displayNames = {
       SELLING: "Xuất bán",
       RETURN: "Xuất trả nhà cung cấp",
-      PRODUCTION: "Xuất nội bộ",
+      INTERNAL: "Xuất nội bộ",
       LIQUIDATION: "Xuất thanh lý",
     };
     return displayNames[exportType] || exportType;
@@ -823,7 +823,7 @@ const ExportRequestCreate = () => {
       departmentId: formData.receivingDepartment.id,
       countingDate: countingDate,
       countingTime: countingTime,
-      type: "PRODUCTION",
+      type: "INTERNAL",
       exportDate: formData.exportDate,
     };
   };
@@ -867,7 +867,7 @@ const ExportRequestCreate = () => {
     }
 
     // Production validation
-    if (formData.exportType === "PRODUCTION") {
+    if (formData.exportType === "INTERNAL") {
       if (
         !formData.exportReason ||
         !formData.receivingDepartment ||
@@ -1004,7 +1004,7 @@ const ExportRequestCreate = () => {
     let createdExport;
 
     switch (exportType) {
-      case "PRODUCTION":
+      case "INTERNAL":
         payload = buildProductionPayload();
         createdExport = await createExportRequestProduction(payload);
         break;
@@ -1039,10 +1039,10 @@ const ExportRequestCreate = () => {
           detail.quantity = quantity;
         }
       } else if (
-        formData.exportType === "PRODUCTION" ||
+        formData.exportType === "INTERNAL" ||
         formData.exportType === "LIQUIDATION"
       ) {
-        // Chỉ thêm measurementValue nếu có (PRODUCTION, LIQUIDATION)
+        // Chỉ thêm measurementValue nếu có (INTERNAL, LIQUIDATION)
         if (measurementValue !== undefined) {
           detail.measurementValue = measurementValue;
         }
@@ -1214,7 +1214,7 @@ const ExportRequestCreate = () => {
             mode="export"
           />
 
-          {["PRODUCTION", "LIQUIDATION", "SELLING"].includes(
+          {["INTERNAL", "LIQUIDATION", "SELLING"].includes(
             formData.exportType
           ) ? (
             <>

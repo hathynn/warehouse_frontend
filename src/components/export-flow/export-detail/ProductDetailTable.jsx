@@ -193,8 +193,8 @@ const ProductDetailTable = ({
           );
         }
 
-        // Cho PRODUCTION, LIQUIDATION: validate measurementValue
-        if (["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)) {
+        // Cho INTERNAL, LIQUIDATION: validate measurementValue
+        if (["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)) {
           //Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
           const itemInfo = items.find(
             (i) => String(i.id) === String(item.itemId)
@@ -307,11 +307,11 @@ const ProductDetailTable = ({
           };
         }
 
-        // Xử lý column "Giá trị cần xuất" cho PRODUCTION, LIQUIDATION
+        // Xử lý column "Giá trị cần xuất" cho INTERNAL, LIQUIDATION
         if (
           editMode &&
           col.dataIndex === "measurementValue" &&
-          ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
+          ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
         ) {
           return {
             ...col,
@@ -393,11 +393,11 @@ const ProductDetailTable = ({
           return false;
         }
 
-        //Ẩn cột "Số lượng cần" cho PRODUCTION, LIQUIDATION khi ở editMode
+        //Ẩn cột "Số lượng cần" cho INTERNAL, LIQUIDATION khi ở editMode
         if (
           editMode &&
           col.dataIndex === "quantity" &&
-          ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
+          ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
         ) {
           return false;
         }
@@ -443,7 +443,7 @@ const ProductDetailTable = ({
 
                   // Kiểm tra thêm maxAllowed cho measurementValue types
                   if (
-                    ["PRODUCTION", "LIQUIDATION"].includes(exportRequest?.type)
+                    ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
                   ) {
                     const itemInfo = items.find(
                       (i) => String(i.id) === String(item.itemId)
@@ -486,7 +486,7 @@ const ProductDetailTable = ({
                   if (item.status === "LACK" && item.actualQuantity > 1) {
                     lastValidValuesRef.current[item.id] = item.actualQuantity;
                     if (
-                      ["PRODUCTION", "LIQUIDATION"].includes(
+                      ["INTERNAL", "LIQUIDATION"].includes(
                         exportRequest?.type
                       )
                     ) {
@@ -514,7 +514,7 @@ const ProductDetailTable = ({
                     // ✅ SỬA: Tính measurementValue hợp lệ lớn nhất
                     let validMeasurementValue = item.measurementValue;
                     if (
-                      ["PRODUCTION", "LIQUIDATION"].includes(
+                      ["INTERNAL", "LIQUIDATION"].includes(
                         exportRequest?.type
                       )
                     ) {

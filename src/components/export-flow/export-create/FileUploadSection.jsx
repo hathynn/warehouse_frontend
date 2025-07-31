@@ -11,7 +11,7 @@ import PropTypes from "prop-types";
 const EXPORT_TYPE_LABELS = {
   SELLING: "xuất bán",
   RETURN: "xuất trả nhà cung cấp",
-  PRODUCTION: "xuất nội bộ",
+  INTERNAL: "xuất nội bộ",
   LIQUIDATION: "xuất thanh lý",
 };
 
@@ -19,7 +19,7 @@ const EXPORT_TYPE_LABELS = {
 const TEMPLATE_FILES = {
   SELLING: "/export-templates/template_xuat_ban.xlsx",
   RETURN: "/export-templates/template_xuat_tra_NCC.xlsx",
-  PRODUCTION: "/export-templates/template_xuat_noi_bo.xlsx",
+  INTERNAL: "/export-templates/template_xuat_noi_bo.xlsx",
   LIQUIDATION: "/export-templates/template_xuat_thanh_ly.xlsx",
 };
 
@@ -113,11 +113,11 @@ const FileUploadSection = ({
       // Thêm sheets vào workbook - Dữ liệu xuất bán lên đầu, Hướng dẫn thứ 2
       XLSX.utils.book_append_sheet(wb, ws, "Dữ liệu xuất bán");
       XLSX.utils.book_append_sheet(wb, instructionWs, "Hướng dẫn");
-    } else if (exportType === "PRODUCTION") {
+    } else if (exportType === "INTERNAL") {
       // Tạo sheet dữ liệu xuất nội bộ với thông tin form ở đầu
       const exportData = [
         // 3 dòng đầu chứa thông tin form
-        ["exportType", "PRODUCTION"],
+        ["exportType", "INTERNAL"],
         ["exportReason", "{Điền lý do xuất nội bộ}"],
         ["departmentId", "{Điền mã phòng ban}"],
         [], // Dòng trống
@@ -145,7 +145,7 @@ const FileUploadSection = ({
         ["HƯỚNG DẪN SỬ DỤNG FILE TEMPLATE XUẤT NỘI BỘ"],
         [""],
         ["PHẦN 1: THÔNG TIN PHIẾU XUẤT (3 dòng đầu)"],
-        ["'- exportType: Loại xuất (PRODUCTION - không thay đổi)"],
+        ["'- exportType: Loại xuất (INTERNAL - không thay đổi)"],
         ["'- exportReason: Lý do xuất nội bộ"],
         ["'- departmentId: Mã phòng ban nội bộ"],
         [""],
@@ -203,7 +203,7 @@ const FileUploadSection = ({
     const fileNames = {
       RETURN: "template_xuat_tra_NCC.xlsx",
       SELLING: "template_xuat_ban.xlsx",
-      PRODUCTION: "template_xuat_noi_bo.xlsx",
+      INTERNAL: "template_xuat_noi_bo.xlsx",
       LIQUIDATION: "template_xuat_thanh_ly.xlsx",
     };
 

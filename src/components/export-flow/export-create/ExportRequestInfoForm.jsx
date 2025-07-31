@@ -61,7 +61,7 @@ const ExportRequestInfoForm = ({
   };
 
   const missingFields =
-    (formData.exportType === "PRODUCTION" &&
+    (formData.exportType === "INTERNAL" &&
       (!formData.exportDate ||
         !formData.exportReason ||
         !formData.receivingDepartment)) ||
@@ -143,7 +143,7 @@ const ExportRequestInfoForm = ({
       <div className="flex gap-6">
         <Card title="Thông tin phiếu xuất" className="w-1/3">
           <Space direction="vertical" className="w-full">
-            {formData.exportType === "PRODUCTION" && (
+            {formData.exportType === "INTERNAL" && (
               <UseExportForm
                 formData={formData}
                 setFormData={setFormData}

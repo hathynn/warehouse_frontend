@@ -121,7 +121,7 @@ const UpdateExportDateTimeModal = ({
 
   const getExportTypeText = (type) => {
     switch (type) {
-      case "PRODUCTION":
+      case "INTERNAL":
         return "Xuất nội bộ";
       case "SELLING":
         return "Xuất bán";

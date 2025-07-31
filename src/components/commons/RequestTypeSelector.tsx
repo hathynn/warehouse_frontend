@@ -3,7 +3,7 @@ import { Space, Select } from "antd";
 
 const { Option } = Select;
 
-export type ExportRequestType = "SELLING" | "RETURN" | "PRODUCTION" | "LIQUIDATION";
+export type ExportRequestType = "SELLING" | "RETURN" | "INTERNAL" | "LIQUIDATION";
 export type ImportRequestType = "ORDER" | "RETURN";
 export type RequestType = ExportRequestType | ImportRequestType;
 
@@ -24,7 +24,7 @@ interface RequestTypeSelectorProps {
 const EXPORT_OPTIONS: RequestOption[] = [
     { value: "SELLING", label: "Xuất bán" },
     { value: "RETURN", label: "Xuất trả nhà cung cấp" },
-    { value: "PRODUCTION", label: "Xuất nội bộ" },
+    { value: "INTERNAL", label: "Xuất nội bộ" },
     { value: "LIQUIDATION", label: "Xuất thanh lý" },
 ];
 

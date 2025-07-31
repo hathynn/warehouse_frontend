@@ -141,7 +141,7 @@ const ExcelDataTable = ({
 
             // Loại bỏ nếu hết tồn kho HOẶC không đủ tồn kho khả dụng
             shouldRemoveItem = stockQuantity === 0 || maxValue <= 0;
-          } else if (["PRODUCTION", "LIQUIDATION"].includes(exportType)) {
+          } else if (["INTERNAL", "LIQUIDATION"].includes(exportType)) {
             // ✅ SỬA: Thêm logic kiểm tra cho measurement value types
             const numberOfAvailableMeasurementValues =
               itemMeta?.numberOfAvailableMeasurementValues ?? 0;
@@ -162,7 +162,7 @@ const ExcelDataTable = ({
           if (shouldRemoveItem) {
             // Lấy requested amount dựa trên export type
             let requestedAmount;
-            if (exportType === "PRODUCTION" || exportType === "LIQUIDATION") {
+            if (exportType === "INTERNAL" || exportType === "LIQUIDATION") {
               requestedAmount = item.measurementValue || 0;
             } else {
               requestedAmount = item.quantity || 0;
@@ -222,8 +222,8 @@ const ExcelDataTable = ({
           error = validateQuantity(item?.quantity?.toString(), item.itemId);
         }
       }
-      // PRODUCTION, LIQUIDATION chỉ validate measurementValue
-      else if (["PRODUCTION", "LIQUIDATION"].includes(exportType)) {
+      // INTERNAL, LIQUIDATION chỉ validate measurementValue
+      else if (["INTERNAL", "LIQUIDATION"].includes(exportType)) {
         if (item.measurementValue !== undefined) {
           error = validateMeasurementValue(
             item?.measurementValue?.toString(),
@@ -443,7 +443,7 @@ const ExcelDataTable = ({
           render: (text, record) => <QuantityInput record={record} />,
         }
       : null,
-    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
+    ["INTERNAL", "LIQUIDATION"].includes(exportType)
       ? {
           title: "Giá trị cần xuất",
           dataIndex: "measurement",
@@ -469,7 +469,7 @@ const ExcelDataTable = ({
           ),
         }
       : null,
-    ["PRODUCTION", "LIQUIDATION"].includes(exportType)
+    ["INTERNAL", "LIQUIDATION"].includes(exportType)
       ? {
           width: "12%",
           title: <span className="font-semibold">Đơn vị tính</span>,
