@@ -27,7 +27,7 @@ const InventoryItemList: React.FC = () => {
         getAllInventoryItems(pagination.current || 1, pagination.pageSize || 10),
         getItems()
       ]);
-      
+
       if (inventoryResponse && itemsResponse?.content) {
         setInventoryItems(inventoryResponse.content);
         setItems(itemsResponse.content);
@@ -67,6 +67,8 @@ const InventoryItemList: React.FC = () => {
         return <Tag color="blue">An toàn</Tag>;
       case ItemStatus.ALMOST_OUT_OF_DATE:
         return <Tag color="warning">Sắp hết hạn</Tag>;
+      case ItemStatus.NEED_LIQUID:
+        return <Tag color="error">Thanh lý</Tag>;
       default:
         return <Tag color="default">{status}</Tag>;
     }

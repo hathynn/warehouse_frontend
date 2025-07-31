@@ -1,39 +1,40 @@
-import { createBrowserRouter, Outlet, Navigate } from 'react-router-dom';
-import DashboardLayout from '@/layouts/dashboard-layout';
-import AuthLayout from '@/layouts/auth-layout';
-import { ROUTES } from '@/constants/routes';
-import ProtectedRoute from '@/router/ProtectedRoute';
-import SomethingWrong from '@/components/something-wrong/SomethingWrong';
-import PublicRoute from '@/router/PublicRoute';
+import { createBrowserRouter, Outlet, Navigate } from "react-router-dom";
+import DashboardLayout from "@/layouts/dashboard-layout";
+import AuthLayout from "@/layouts/auth-layout";
+import { ROUTES } from "@/constants/routes";
+import ProtectedRoute from "@/router/ProtectedRoute";
+import SomethingWrong from "@/components/something-wrong/SomethingWrong";
+import PublicRoute from "@/router/PublicRoute";
 
 // Auth pages
-import Login from '@/pages/auth/login';
-import Register from '@/pages/auth/register';
+import Login from "@/pages/auth/login";
+import Register from "@/pages/auth/register";
 
 // Dashboard pages
-import Overview from '@/pages/dashboard/overview';
-import ItemList from '@/pages/dashboard/item/item-list';
-import ItemCreate from '@/pages/dashboard/item/item-create';
-import ImportRequestList from '@/pages/dashboard/import/import-request-list';
-import ImportRequestDetail from '@/pages/dashboard/import/import-request-detail';
-import ImportRequestCreate from '@/pages/dashboard/import/import-request-create';
-import ImportOrderList from '@/pages/dashboard/import/import-order-list';
-import ImportOrderDetail from '@/pages/dashboard/import/import-order-detail';
-import ImportOrderCreate from '@/pages/dashboard/import/import-order-create';
-import ExportRequestList from '@/pages/dashboard/export/export-request-list';
-import ExportRequestDetail from '@/pages/dashboard/export/export-request-detail';
-import ExportRequestCreate from '@/pages/dashboard/export/export-request-create';
-import InventoryItemList from '@/pages/dashboard/inventory-item/inventory-item-list';
-import ConfigurationPage from '@/pages/dashboard/configuration';
-import ImportTransactionHistory from '@/pages/dashboard/transaction/import';
-import WarehouseSection from '@/pages/dashboard/inventory-item/warehouse-section';
+import Overview from "@/pages/dashboard/overview";
+import ItemList from "@/pages/dashboard/item/item-list";
+import ItemCreate from "@/pages/dashboard/item/item-create";
+import ImportRequestList from "@/pages/dashboard/import/import-request-list";
+import ImportRequestDetail from "@/pages/dashboard/import/import-request-detail";
+import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
+import ImportOrderList from "@/pages/dashboard/import/import-order-list";
+import ImportOrderDetail from "@/pages/dashboard/import/import-order-detail";
+import ImportOrderCreate from "@/pages/dashboard/import/import-order-create";
+import ExportRequestList from "@/pages/dashboard/export/export-request-list";
+import ExportRequestDetail from "@/pages/dashboard/export/export-request-detail";
+import ExportRequestCreate from "@/pages/dashboard/export/export-request-create";
+import InventoryItemList from "@/pages/dashboard/inventory-item/inventory-item-list";
+import ConfigurationPage from "@/pages/dashboard/configuration";
+import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
+import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
+import ItemDetail from "@/pages/dashboard/item/item-detail";
 
 export const Router = createBrowserRouter([
   {
     errorElement: <SomethingWrong />,
     children: [
       {
-        path: '/',
+        path: "/",
         element: <Navigate to={ROUTES.PROTECTED.OVERVIEW} replace />,
       },
       // Public routes
@@ -82,6 +83,10 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.ITEM.CREATE,
             element: <ItemCreate />,
+          },
+          {
+            path: ROUTES.PROTECTED.ITEM.DETAIL(),
+            element: <ItemDetail />,
           },
           {
             path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,

@@ -85,9 +85,12 @@ const UpdateExportDateTimeModal = ({
       return;
     }
 
-    if (date.isBefore(minDate, "day")) {
+    if (
+      date.isBefore(dayjs(), "day") ||
+      date.isSame(dayjs(exportDate), "day")
+    ) {
       message.error(
-        "Ngày nhận hàng phải từ ngày: " + minDate.format("DD/MM/YYYY")
+        "Vui lòng chọn ngày từ ngày mai trở đi và khác ngày xuất hiện tại"
       );
       return;
     }
@@ -107,8 +110,13 @@ const UpdateExportDateTimeModal = ({
   };
 
   const isValidDate = () => {
-    if (!date || !minDate) return false;
-    return date.isSameOrAfter(minDate, "day");
+    if (!date) return false;
+    const today = dayjs().startOf("day");
+    const exportDateDay = dayjs(exportDate).startOf("day");
+
+    return (
+      date.isSameOrAfter(today, "day") && !date.isSame(exportDateDay, "day")
+    );
   };
 
   const getExportTypeText = (type) => {
@@ -208,16 +216,22 @@ const UpdateExportDateTimeModal = ({
                 style={{ width: "100%" }}
                 placeholder="Chọn ngày"
                 format="DD/MM/YYYY"
-                disabledDate={(current) =>
-                  current && current.isBefore(minDate, "day")
-                }
+                disabledDate={(current) => {
+                  if (!current) return false;
+                  const today = dayjs().startOf("day");
+
+                  // Disable ngày trong quá khứ và ngày xuất hiện tại
+                  return current.isBefore(today, "day");
+                }}
               />
-              {date && date.isBefore(minDate, "day") && (
-                <div className="text-red-500 text-sm mt-1">
-                  Ngày nhận hàng phải từ ngày {minDate.format("DD/MM/YYYY")} trở
-                  đi
-                </div>
-              )}
+              {date &&
+                (date.isBefore(dayjs(), "day") ||
+                  date.isSame(dayjs(exportDate), "day")) && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Vui lòng chọn ngày từ hôm nay trở đi và khác ngày xuất hiện
+                    tại
+                  </div>
+                )}
             </div>
 
             <div className="mb-2">

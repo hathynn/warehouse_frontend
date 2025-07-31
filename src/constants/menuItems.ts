@@ -9,6 +9,7 @@ import {
   AiOutlineHistory,
   AiOutlineCompass,
   AiOutlineFileText,
+  AiOutlineTag,
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -125,13 +126,19 @@ export const menuItems: RoleMenuConfig = {
     {
       key: "inventory-items",
       icon: AiOutlineInbox,
-      label: "Quản lý hàng tồn kho",
+      label: "Quản lý vật tư - hàng hóa",
       path: "",
       children: [
         {
+          key: "item-list",
+          icon: AiOutlineTag,
+          label: "Danh sách mặt hàng",
+          path: ROUTES.PROTECTED.ITEM.LIST,
+        },
+        {
           key: "inventory-item-list",
           icon: AiOutlineInbox,
-          label: "Danh sách hàng hoá",
+          label: "Danh sách tồn kho",
           path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
         },
         {
@@ -166,13 +173,19 @@ export const menuItems: RoleMenuConfig = {
     {
       key: "inventory-items",
       icon: AiOutlineInbox,
-      label: "Quản lý hàng tồn kho",
+      label: "Quản lý vật tư - hàng hóa",
       path: "",
       children: [
         {
+          key: "item-list",
+          icon: AiOutlineTag,
+          label: "Danh sách mặt hàng",
+          path: ROUTES.PROTECTED.ITEM.LIST,
+        },
+        {
           key: "inventory-item-list",
           icon: AiOutlineInbox,
-          label: "Danh sách hàng hoá",
+          label: "Danh sách tồn kho",
           path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
         },
         {
