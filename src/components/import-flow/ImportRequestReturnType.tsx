@@ -1,34 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { Button, Input, Space, Card, Alert, Table, DatePicker, Steps, Select } from "antd";
+import { Button, Input, Space, Card, Alert, Table, DatePicker, Steps, Select, Descriptions } from "antd";
 import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
-import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/services/useImportRequestDetailService";
 import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
+import useExportRequestDetailService from "@/services/useExportRequestDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
-import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { ImportRequestDetailRow } from "@/utils/interfaces";
+import { ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { FormData, ImportRequestDetailRow } from "@/utils/interfaces";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
-import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } from "@/utils/helpers";
+import { isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
+import useImportRequestService from "@/services/useImportRequestService";
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-interface FormData {
-  importReason: string;
-  importType: ImportRequestType;
-  exportRequestId: number | null;
-  startDate: string;
-  endDate: string;
+interface ImportRequestReturnTypeProps {
+  onStepChange?: (step: number) => void;
 }
 
-const ImportRequestReturnType: React.FC = () => {
+const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
+  onStepChange
+}) => {
   const importType: ImportRequestType = "RETURN";
   // ========== ROUTER & PARAMS ==========
   const navigate = useNavigate();
@@ -44,13 +43,17 @@ const ImportRequestReturnType: React.FC = () => {
     startDate: dayjs().format("YYYY-MM-DD"),
     endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
   });
-  const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [items, setItems] = useState<ItemResponse[]>([]);
   const [exportRequests, setExportRequests] = useState<ExportRequestResponse[]>([]);
   const [exportRequestDetails, setExportRequestDetails] = useState<ImportRequestDetailRow[]>([]);
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
+
+  // Notify parent component when step changes
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
@@ -61,14 +64,9 @@ const ImportRequestReturnType: React.FC = () => {
 
   // ========== SERVICES ==========
   const {
-    loading: importRequestDetailLoading,
-    createImportRequestDetail
-  } = useImportRequestDetailService();
-
-  const {
-    loading: providerLoading,
-    getAllProviders
-  } = useProviderService();
+    loading: importRequestLoading,
+    createReturnImportRequest
+  } = useImportRequestService();
 
   const {
     loading: itemLoading,
@@ -80,12 +78,15 @@ const ImportRequestReturnType: React.FC = () => {
     getAllExportRequests
   } = useExportRequestService();
 
+  const { getExportRequestDetails, loading: exportRequestDetailLoading } =
+    useExportRequestDetailService();
+
   const {
-    getConfiguration
+    getConfiguration,
   } = useConfigurationService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = providerLoading || itemLoading || importRequestDetailLoading || exportRequestLoading;
+  const loading = itemLoading || importRequestLoading || exportRequestLoading || exportRequestDetailLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
@@ -130,20 +131,47 @@ const ImportRequestReturnType: React.FC = () => {
 
   // Filter export requests by type (RETURN or BORROWING)
   const filteredExportRequests = exportRequests.filter(request =>
-    request.type === "RETURN" || request.type === "BORROWING"
+    request.type === "INTERNAL"
   );
+
+  // ========== UTILITY FUNCTIONS FOR EXPORT REQUEST DETAILS ==========
+  const enrichDetailsWithLocalData = (details: any[], itemsData: ItemResponse[]) => {
+    return details.map((detail) => {
+      const itemInfo = itemsData.find(
+        (item) => String(item.id) === String(detail.itemId)
+      );
+      return {
+        ...detail,
+        itemName: itemInfo?.name || detail.itemName || "Không xác định",
+        unitType: itemInfo?.unitType || "",
+        measurementUnit: itemInfo?.measurementUnit || "",
+        measurementValue: itemInfo?.totalMeasurementValue || detail.measurementValue || "",
+      };
+    });
+  };
+
+  const fetchExportRequestDetails = async (exportRequestId: string) => {
+    try {
+      const response = await getExportRequestDetails(exportRequestId, 1, 1000);
+      if (response && response.content && items.length > 0) {
+        const enriched = enrichDetailsWithLocalData(response.content, items);
+        setExportRequestDetails(enriched);
+      }
+    } catch (error) {
+      console.error("Error fetching export request details:", error);
+      setExportRequestDetails([]);
+    }
+  };
 
   // ========== USE EFFECTS ==========
   useEffect(() => {
     const fetchData = async () => {
-      const [providersResponse, itemsResponse, exportRequestsResponse] = await Promise.all([
-        getAllProviders(),
+      const [itemsResponse, exportRequestsResponse] = await Promise.all([
         getItems(),
         getAllExportRequests()
       ]);
 
-      if (providersResponse?.content && itemsResponse?.content) {
-        setProviders(providersResponse.content);
+      if (itemsResponse?.content) {
         setItems(itemsResponse.content);
       }
 
@@ -180,6 +208,13 @@ const ImportRequestReturnType: React.FC = () => {
     }));
   }, [importType]);
 
+  // Fetch export request details when items are loaded and an export request is selected
+  useEffect(() => {
+    if (selectedExportRequest && items.length > 0) {
+      fetchExportRequestDetails(selectedExportRequest.exportRequestId.toString());
+    }
+  }, [selectedExportRequest, items]);
+
 
   // ========== EVENT HANDLERS ==========
   const handleChangePage = (paginationObj: any) => {
@@ -214,41 +249,26 @@ const ImportRequestReturnType: React.FC = () => {
   };
 
   const handleExportRequestSelect = (exportRequestId: string) => {
+    console.log(exportRequestId);
     const selected = exportRequests.find(request => request.exportRequestId === exportRequestId);
     setSelectedExportRequest(selected || null);
-    setFormData({ ...formData, exportRequestId: Number(exportRequestId) });
+    setFormData({ ...formData, exportRequestId: exportRequestId });
 
-    // Here you would typically fetch the details of the selected export request
-    // For now, we'll create mock data based on the selected export request
-    if (selected) {
-      // TODO: Replace this with actual API call to get export request details
+    // Fetch the details of the selected export request
+    if (selected && items.length > 0) {
+      fetchExportRequestDetails(exportRequestId);
+    } else {
       setExportRequestDetails([]);
     }
   };
 
   const handleSubmit = async () => {
-    if (!selectedExportRequest || exportRequestDetails.length === 0) {
-      toast.error("Vui lòng chọn phiếu xuất và đảm bảo có dữ liệu hợp lệ");
-      return;
-    }
-
     if (!formData.startDate || !formData.endDate) {
       toast.error("Vui lòng nhập đầy đủ ngày bắt đầu và ngày kết thúc");
       return;
     }
 
-    const details: ImportRequestCreateWithDetailRequest[] = exportRequestDetails.map(row => ({
-      itemId: row.itemId,
-      quantity: row.quantity,
-      providerId: row.providerId,
-      importReason: formData.importReason,
-      importType: formData.importType,
-      exportRequestId: formData.exportRequestId,
-      startDate: formData.startDate,
-      endDate: formData.endDate
-    }));
-
-    await createImportRequestDetail(details);
+    await createReturnImportRequest(formData);
 
     navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
     setFormData({
@@ -269,38 +289,47 @@ const ImportRequestReturnType: React.FC = () => {
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
+      title: "Mã sản phẩm",
+      dataIndex: "itemId",
+      key: "itemId",
       width: "25%",
-      title: <span className="font-semibold">Tên hàng</span>,
+      onHeaderCell: () => ({
+        style: { textAlign: "center" as const },
+      }),
+      render: (id: string) => `${id}`,
+    },
+    {
+      title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
+      width: "30%",
+      ellipsis: true,
       onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
+        style: { textAlign: "center" as const },
       }),
     },
     {
-      width: "15%",
-      title: <span className="font-semibold">Số lượng</span>,
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "right" as const,
+      title: "Số lượng",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
+      width: "20%",
       onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
+        style: { textAlign: "center" as const },
       }),
+      render: (text: number, record: ImportRequestDetailRow) => (
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text || 0}</span>{" "}
+          {record.unitType && (
+            <span className="text-gray-500">{record.unitType}</span>
+          )}
+        </div>
+      ),
     },
     {
-      width: "12%",
-      title: <span className="font-semibold">Đơn vị</span>,
-      dataIndex: "unitType",
-      key: "unitType",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: "18%",
+      width: "25%",
       title: <span className="font-semibold">Quy cách</span>,
-      dataIndex: "unitType",
-      key: "unitType",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
       align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
@@ -308,26 +337,7 @@ const ImportRequestReturnType: React.FC = () => {
       render: (_: any, record: ImportRequestDetailRow) => {
         return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
       }
-    },
-    {
-      width: "30%",
-      title: <span className="font-semibold">Nhà cung cấp</span>,
-      dataIndex: "providerName",
-      key: "providerName",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      onCell: (record: ImportRequestDetailRow, index?: number) => {
-        const startIndex = (pagination.current - 1) * pagination.pageSize;
-        const endIndex = startIndex + pagination.pageSize;
-        const currentPageData = exportRequestDetails.slice(startIndex, endIndex);
-
-        const rowSpan = calculateRowSpanForItemHaveSameCompareValue(currentPageData, "providerName", index || 0)
-        return {
-          rowSpan: rowSpan
-        }
-      }
-    },
+    }
   ];
 
   return (
@@ -349,65 +359,97 @@ const ImportRequestReturnType: React.FC = () => {
       </div>
 
       {step === 0 && (
-        <div className="mt-4 flex gap-6">
-          <Card title={<span className="text-lg font-semibold">Chọn phiếu xuất mượn để tiến hành nhập trả</span>} className="w-2/5">
-            <Space direction="vertical" className="w-full">
-              <div className="mb-4">
-                <label className="text-base font-semibold">Mã phiếu xuất<span className="text-red-500">*</span></label>
-                <Select
-                  size="middle"
-                  className="w-full !mt-1"
-                  placeholder="Chọn phiếu xuất"
-                  value={selectedExportRequest?.exportRequestId || undefined}
-                  onChange={handleExportRequestSelect}
-                  loading={exportRequestLoading}
-                >
-                  {filteredExportRequests.map(request => (
-                    <Option key={request.exportRequestId} value={request.exportRequestId}>
-                      #{request.exportRequestId} - {request.type} - {dayjs(request.exportDate).format("DD/MM/YYYY")}
-                    </Option>
-                  ))}
-                </Select>
-              </div>
-            </Space>
-          </Card>
-
-          <div className="w-[85%]">
-            <Card title={<span className="text-lg font-semibold">Thông tin phiếu xuất</span>}>
-              {selectedExportRequest ? (
-                <div className="space-y-3">
-                  <div>
-                    <span className="font-semibold">Mã phiếu xuất:</span> #{selectedExportRequest.exportRequestId}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Loại phiếu xuất:</span> {selectedExportRequest.type}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Ngày xuất:</span> {dayjs(selectedExportRequest.exportDate).format("DD/MM/YYYY")}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Lý do xuất:</span> {selectedExportRequest.exportReason}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Người nhận:</span> {selectedExportRequest.receiverName}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Trạng thái:</span> {selectedExportRequest.status}
-                  </div>
-                  {selectedExportRequest.expectedReturnDate && (
-                    <div>
-                      <span className="font-semibold">Ngày trả dự kiến:</span> {dayjs(selectedExportRequest.expectedReturnDate).format("DD/MM/YYYY")}
-                    </div>
-                  )}
+        <>
+          <div className="mt-4 flex gap-6">
+            <Card title={<span className="text-lg font-semibold">Chọn phiếu xuất mượn / xuất nội bộ</span>} className="w-[25%]">
+              <Space direction="vertical" className="w-full">
+                <div className="mb-4">
+                  <label className="text-base font-semibold">Mã phiếu xuất<span className="text-red-500">*</span></label>
+                  <Select
+                    size="middle"
+                    className="w-full !mt-1"
+                    placeholder="Chọn phiếu xuất"
+                    value={selectedExportRequest?.exportRequestId || undefined}
+                    onChange={handleExportRequestSelect}
+                    loading={exportRequestLoading}
+                    showSearch
+                  >
+                    {filteredExportRequests.map(request => (
+                      <Option key={request.exportRequestId} value={request.exportRequestId}>
+                        #{request.exportRequestId} - {request.type}
+                      </Option>
+                    ))}
+                  </Select>
                 </div>
-              ) : (
-                <div className="text-gray-500 text-center py-8">
-                  Vui lòng chọn phiếu xuất để xem thông tin chi tiết
-                </div>
-              )}
+              </Space>
             </Card>
+
+            <div className="w-[75%]">
+              {selectedExportRequest ? (
+                <>
+                  <Card className="mb-6">
+                    <Descriptions title="Thông tin phiếu xuất" bordered>
+                      <Descriptions.Item label="Mã phiếu xuất" key="exportRequestId">
+                        #{selectedExportRequest.exportRequestId}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Loại phiếu xuất" key="exportType">
+                        Xuất nội bộ
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Ngày tạo phiếu" key="exportDate">
+                        {dayjs(selectedExportRequest.createdDate).format("DD-MM-YYYY")}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Ngày xuất" key="exportDate">
+                        {dayjs(selectedExportRequest.exportDate).format("DD-MM-YYYY")}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Người nhận hàng" key="receiverName">
+                        {selectedExportRequest.receiverName || "-"}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="SĐT" key="receiverPhone">
+                        {selectedExportRequest.receiverPhone || "-"}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Lý do xuất" key="exportReason">
+                        {selectedExportRequest.exportReason || "-"}
+                      </Descriptions.Item>
+                    </Descriptions>
+                    <div className="mt-8 mb-2">
+                      <label className="text-base font-semibold">Danh sách chi tiết sản phẩm xuất</label>
+                    </div>
+                    <Table
+                      className="[&_.ant-table-cell]:!p-3"
+                      columns={columns}
+                      dataSource={exportRequestDetails}
+                      rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
+                      loading={exportRequestDetailLoading}
+                      pagination={{
+                        ...pagination,
+                        showTotal: (total: number) => `Tổng ${total} mục`,
+                      }}
+                      onChange={handleChangePage}
+                      locale={{ emptyText: "Không có dữ liệu" }}
+                    />
+                  </Card>
+                </>
+              ) : (
+                <Card title={<span className="text-lg font-semibold">Thông tin phiếu xuất</span>}>
+                  <div className="text-gray-500 text-center py-8">
+                    Vui lòng chọn phiếu xuất để xem thông tin chi tiết
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
-        </div>
+          <div className="mt-4 w-[20%] mx-auto">
+            <Button
+              type="primary"
+              onClick={handleNextStep}
+              disabled={!selectedExportRequest}
+              className="w-full"
+            >
+              Tiếp tục nhập thông tin phiếu nhập
+              <ArrowRightOutlined />
+            </Button>
+          </div>
+        </>
       )}
 
       {step === 1 && (
@@ -473,63 +515,36 @@ const ImportRequestReturnType: React.FC = () => {
             </Space>
           </Card>
           <div className="w-7/10">
-            <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa từ phiếu xuất</span>}>
-              {exportRequestDetails.length > 0 ? (
-                <Alert
-                  message="Thông tin nhập kho"
-                  type="info"
-                  showIcon
-                  className="mb-4"
-                />
-              ) : (
-                <Alert
-                  message="Chưa có dữ liệu"
-                  description="Danh sách hàng hóa sẽ được hiển thị sau khi chọn phiếu xuất"
-                  type="warning"
-                  showIcon
-                  className="mb-4"
-                />
-              )}
+            <Card title={<span className="text-lg font-semibold">Danh sách hàng hóa sẽ nhập trả từ phiếu xuất #{selectedExportRequest?.exportRequestId}</span>}>
+              <Table
+                className="[&_.ant-table-cell]:!p-3"
+                columns={columns}
+                dataSource={exportRequestDetails}
+                rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
+                loading={exportRequestDetailLoading}
+                pagination={{
+                  ...pagination,
+                  showTotal: (total: number) => `Tổng ${total} mục`,
+                }}
+                onChange={handleChangePage}
+                locale={{ emptyText: "Không có dữ liệu" }}
+              />
             </Card>
-            <Table
-              className="[&_.ant-table-cell]:!p-3"
-              columns={columns}
-              dataSource={exportRequestDetails}
-              rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
-              loading={false}
-              pagination={{
-                ...pagination,
-                showTotal: (total: number) => `Tổng ${total} mục`,
-              }}
-              onChange={handleChangePage}
-              locale={{ emptyText: "Không có dữ liệu" }}
-            />
           </div>
         </div>
       )}
-      <div className="mt-4 w-[20%] mx-auto">
-      <Button
-        type="primary"
-        onClick={handleNextStep}
-        disabled={!selectedExportRequest}
-        className="w-full"
-      >
-        Tiếp tục nhập thông tin phiếu nhập
-        <ArrowRightOutlined />
-      </Button>
-      </div>
 
       <ImportRequestConfirmModal
         open={showConfirmModal}
         onOk={handleSubmit}
         onCancel={() => setShowConfirmModal(false)}
         confirmLoading={loading}
-        formData={formData}
+        formData={{
+          ...formData,
+          exportRequestId: formData.exportRequestId
+        }}
         details={exportRequestDetails}
-        providers={providers.reduce((providerNameMap, provider) => {
-          providerNameMap[provider.id] = provider.name;
-          return providerNameMap;
-        }, {} as Record<number, string>)}
+        providers={[]}
       />
     </>
   );

@@ -29,7 +29,7 @@ export interface ImportRequestCreateWithDetailRequest {
   importType: string;
   startDate: string;
   endDate: string;
-  exportRequestId?: number | null;
+  exportRequestId?: string | null;
 }
 
 const useImportRequestDetailService = () => {

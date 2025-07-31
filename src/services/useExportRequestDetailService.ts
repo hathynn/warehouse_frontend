@@ -69,7 +69,7 @@ const useExportRequestDetailService = () => {
    * @returns Đối tượng chứa mảng ExportRequestDetailResponse và metadata phân trang
    */
   const getExportRequestDetails = async (
-    exportRequestId: number,
+    exportRequestId: string,
     page = 1,
     limit = 10
   ): Promise<{

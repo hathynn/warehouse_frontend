@@ -10,9 +10,15 @@ import ImportRequestReturnType from "../../../../components/import-flow/ImportRe
 const ImportRequestCreate: React.FC = () => {
   const navigate = useNavigate();
   const [importType, setImportType] = useState<ImportRequestType>("ORDER");
+  const [currentStep, setCurrentStep] = useState<number>(0);
 
   const handleRequestTypeChange = (value: ImportRequestType) => {
     setImportType(value);
+    setCurrentStep(0);
+  };
+
+  const handleStepChange = (step: number) => {
+    setCurrentStep(step);
   };
 
   const handleBack = () => {
@@ -21,22 +27,24 @@ const ImportRequestCreate: React.FC = () => {
 
   return (
     <div className="container mx-auto p-3 pt-0">
-      <div className="flex items-center mb-2">
-        <Button
-          icon={<ArrowLeftOutlined />}
-          onClick={handleBack}
-          className="mr-4"
-        >
-          Quay lại
-        </Button>
-      </div>
+      {currentStep === 0 && (
+        <div className="flex items-center mb-2">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={handleBack}
+            className="mr-4"
+          >
+            Quay lại
+          </Button>
+        </div>
+      )}
       <RequestTypeSelector
         requestType={importType}
         setRequestType={handleRequestTypeChange}
         mode="import"
       />
-      {importType === "ORDER" && <ImportRequestOrderType />}
-      {importType === "RETURN" && <ImportRequestReturnType />}
+      {importType === "ORDER" && <ImportRequestOrderType onStepChange={handleStepChange} />}
+      {importType === "RETURN" && <ImportRequestReturnType onStepChange={handleStepChange} />}
     </div>
   );
 };

@@ -7,7 +7,9 @@ import { ImportRequestDetailResponse } from "./useImportRequestDetailService";
 export interface ImportRequestCreateRequest {
   importReason: string;
   importType: string;
-  exportRequestId?: number | null;
+  exportRequestId?: string | null;
+  startDate: string;
+  endDate: string;
 }
 
 // Interface to match ImportRequestResponse.java
@@ -17,7 +19,7 @@ export interface ImportRequestResponse {
   importType: string;
   status: string;
   providerId: number;
-  exportRequestId: number | null;
+  exportRequestId: string | null;
   importRequestDetails: ImportRequestDetailResponse[];
   importOrdersId: number[];
   createdBy: string;
@@ -71,11 +73,22 @@ const useImportRequestService = () => {
     }
   };
 
+  const createReturnImportRequest = async (request: ImportRequestCreateRequest): Promise<ResponseDTO<ImportRequestResponse>> => {
+    try {
+      const response = await callApi("post", "/import-request/return", request);
+      return response;
+    } catch (error) {
+      toast.error("Không thể tạo phiếu nhập");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllImportRequests,
     getImportRequestsByPage,
-    getImportRequestById
+    getImportRequestById,
+    createReturnImportRequest
   };
 };
 

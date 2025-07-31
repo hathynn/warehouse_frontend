@@ -267,7 +267,7 @@ const ExportRequestList = () => {
                 label: "Xuất trả nhà cung cấp",
               },
               {
-                key: "PRODUCTION",
+                key: "INTERNAL",
                 label: "Xuất nội bộ",
               },
               {

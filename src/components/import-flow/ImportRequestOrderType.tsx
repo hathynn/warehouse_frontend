@@ -10,8 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
-import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
-import { ImportRequestDetailRow } from "@/utils/interfaces";
+import { ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { FormData, ImportRequestDetailRow } from "@/utils/interfaces";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
@@ -22,15 +22,13 @@ import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
 
 const { TextArea } = Input;
 
-interface FormData {
-  importReason: string;
-  importType: ImportRequestType;
-  exportRequestId: number | null;
-  startDate: string;
-  endDate: string;
+interface ImportRequestOrderTypeProps {
+  onStepChange?: (step: number) => void;
 }
 
-const ImportRequestOrderType: React.FC = () => {
+const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
+  onStepChange
+}) => {
   const importType: ImportRequestType = "ORDER";
   // ========== ROUTER & PARAMS ==========
   const navigate = useNavigate();
@@ -64,6 +62,11 @@ const ImportRequestOrderType: React.FC = () => {
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
+
+  // Notify parent component when step changes
+  useEffect(() => {
+    onStepChange?.(step);
+  }, [step, onStepChange]);
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({

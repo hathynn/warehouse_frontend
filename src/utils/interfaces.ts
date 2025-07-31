@@ -1,6 +1,7 @@
 import { ExportRequestResponse } from "@/services/useExportRequestService";
 import { ImportOrderResponse } from "@/services/useImportOrderService";
 import { ImportRequestResponse } from "@/services/useImportRequestService";
+import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import { IconType } from "react-icons";
 
 /**
@@ -34,6 +35,17 @@ export interface MenuItem {
     label: string;
     path: string;
     children?: MenuItem[];
+}
+
+/**
+ * Interface for form data
+ */
+export interface FormData {
+    importReason: string;
+    importType: ImportRequestType;
+    exportRequestId: string | null;
+    startDate: string;
+    endDate: string;
 }
 
 /**
