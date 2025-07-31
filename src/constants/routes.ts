@@ -125,7 +125,7 @@ export const ROUTES = {
     // Item routes
     ITEM: {
       LIST: "/item/list",
-      DETAIL: (id: string = ":id") => `/item/detail/${id}`,
+      DETAIL: (id = ":id") => `/item/detail/${id}`, // Thay đổi pattern
       CREATE: "/item/create",
     },
 
