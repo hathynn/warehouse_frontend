@@ -34,7 +34,7 @@ const INITIAL_FORM_DATA = {
   exportReason: "",
   note: "",
   inspectionDateTime: null,
-  // Production fields
+  // INTERNAL fields
   receivingDepartment: null,
   departmentRepresentative: "",
   departmentRepresentativePhone: "",
@@ -866,7 +866,7 @@ const ExportRequestCreate = () => {
       };
     }
 
-    // Production validation
+    // INTERNAL validation
     if (formData.exportType === "INTERNAL") {
       if (
         !formData.exportReason ||
@@ -876,8 +876,7 @@ const ExportRequestCreate = () => {
       ) {
         return {
           isValid: false,
-          errorMessage:
-            "Vui lòng điền đầy đủ thông tin cho phiếu xuất Production",
+          errorMessage: "Vui lòng điền đầy đủ thông tin cho phiếu xuất nội bộ",
         };
       }
     }

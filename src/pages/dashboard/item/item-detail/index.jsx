@@ -175,30 +175,37 @@ const ItemDetail = () => {
 
   const renderProviders = () => {
     if (!item.providerIds || item.providerIds.length === 0) {
-      return "Không có nhà cung cấp";
+      return "Chưa có nhà cung cấp";
     }
 
-    const providerElements = item.providerIds.map((providerId, index) => {
-      const provider = providers[providerId];
-      return (
-        <span key={providerId} className="inline-block mr-2 ">
-          {provider ? provider.name : `Provider ${providerId}`}
-          {index < item.providerIds.length - 1 && ", "}
-        </span>
-      );
-    });
+    const formatProviderName = (name) => {
+      if (!name) return name;
 
-    // Group providers by 3 per row
-    const rows = [];
-    for (let i = 0; i < providerElements.length; i += 3) {
-      rows.push(
-        <div key={`row-${i}`} className="mb-1">
-          {providerElements.slice(i, i + 3)}
-        </div>
-      );
-    }
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes("công ty")) {
+        const parts = name.split(/công ty/i);
+        if (parts.length > 1) {
+          return (
+            <span>
+              Công ty <strong>{parts[1].trim()}</strong>
+            </span>
+          );
+        }
+      }
+      return name;
+    };
 
-    return <div>{rows}</div>;
+    return (
+      <div>
+        {item.providerIds.map((providerId) => {
+          const provider = providers[providerId];
+          const displayName = provider
+            ? formatProviderName(provider.name)
+            : `Provider ${providerId}`;
+          return <div key={providerId}>• {displayName}</div>;
+        })}
+      </div>
+    );
   };
 
   const handleSearchChange = (e) => {

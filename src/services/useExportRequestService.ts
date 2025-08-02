@@ -113,7 +113,7 @@ const useExportRequestService = () => {
     }
   };
 
-  // Tạo mới phiếu xuất cho Production
+  // Tạo mới phiếu xuất cho Internal
   const createExportRequestProduction = async (
     requestData: ExportRequestRequest
   ): Promise<ExportRequestResponse | undefined> => {

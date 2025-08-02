@@ -93,6 +93,16 @@ const configurationMenuItems: MenuItem[] = [
   },
 ];
 
+// Item management menu items
+const manageItemMenuItems: MenuItem[] = [
+  {
+    key: "item-list",
+    icon: AiOutlineTag,
+    label: "Quản lý các mặt hàng",
+    path: ROUTES.PROTECTED.ITEM.LIST,
+  },
+];
+
 // Transaction Log menu items
 const transactionLogMenuItems: MenuItem[] = [
   {
@@ -200,5 +210,9 @@ export const menuItems: RoleMenuConfig = {
 
   [AccountRole.ACCOUNTING]: [...baseMenuItems],
 
-  [AccountRole.ADMIN]: [...baseMenuItems, ...configurationMenuItems],
+  [AccountRole.ADMIN]: [
+    ...baseMenuItems,
+    ...configurationMenuItems,
+    ...manageItemMenuItems,
+  ],
 };
