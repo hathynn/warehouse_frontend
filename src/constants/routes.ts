@@ -42,7 +42,6 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Item routes
     "/item/list",
     "/item/detail/:id",
-    "/item/create",
 
     // Transaction log routes
     "/transaction-logs/import",
@@ -69,6 +68,9 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   [AccountRole.ADMIN]: [
     // Add admin specific routes here
     "/configuration/list",
+    "/item/list",
+    "/item/detail/:id",
+    "/item/create",
   ],
 };
 

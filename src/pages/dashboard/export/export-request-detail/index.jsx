@@ -17,7 +17,6 @@ import {
   ArrowLeftOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
-  InfoCircleOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
 import useExportRequestService from "@/services/useExportRequestService";
@@ -109,11 +108,11 @@ const ExportRequestDetail = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [modalPagination, setModalPagination] = useState({
     current: 1,
-    pageSize: 10, // Set cứng là 10
+    pageSize: 10,
     total: 0,
   });
   const [recountModalVisible, setRecountModalVisible] = useState(false);
-  const [viewedPages, setViewedPages] = useState(new Set([1])); // Track các trang đã xem
+  const [viewedPages, setViewedPages] = useState(new Set([1]));
   const [selectedExportRequestDetail, setSelectedExportRequestDetail] =
     useState(null);
   const {
@@ -127,7 +126,6 @@ const ExportRequestDetail = () => {
   const [providerInfo, setProviderInfo] = useState(null);
   const { loading: providerLoading, getProviderById } = useProviderService();
   const [itemsLoading, setItemsLoading] = useState(true);
-  // const [expandedModal, setExpandedModal] = useState(false);
   const [availableInventoryItems, setAvailableInventoryItems] = useState([]);
   const [selectedNewItem, setSelectedNewItem] = useState(null);
   const [selectedOldItem, setSelectedOldItem] = useState(null);
@@ -759,10 +757,7 @@ const ExportRequestDetail = () => {
       </Descriptions.Item>
     );
 
-    if (
-      exportRequest.type === "INTERNAL" ||
-      exportRequest.type === "SELLING"
-    ) {
+    if (exportRequest.type === "INTERNAL" || exportRequest.type === "SELLING") {
       items.push(
         <Descriptions.Item label="Loại phiếu xuất" key="exportType">
           {getExportTypeText(exportRequest.type)}
