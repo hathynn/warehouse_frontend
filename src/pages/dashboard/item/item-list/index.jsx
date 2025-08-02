@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { Table, Input, message } from "antd";
+import { Table, Input, message, Button } from "antd";
 import { Link } from "react-router-dom";
+import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { useSelector } from "react-redux";
+import { AccountRole } from "@/utils/enums";
+import { ROUTES } from "@/constants/routes";
 import useItemService from "@/services/useItemService";
 import useInventoryItemService from "@/services/useInventoryItemService";
-import { EyeOutlined } from "@ant-design/icons";
+import useCategoryService from "@/services/useCategoryService";
+import useProviderService from "@/services/useProviderService";
 
 const ItemList = () => {
   const [allItems, setAllItems] = useState([]); // Lưu toàn bộ data
@@ -16,9 +21,15 @@ const ItemList = () => {
     total: 0,
   });
   const [allInventoryItems, setAllInventoryItems] = useState([]);
+  const [categories, setCategories] = useState({});
+  const [providers, setProviders] = useState({});
+
+  const userRole = useSelector((state) => state.user.role);
 
   const { getItems } = useItemService();
   const { getAllInventoryItems } = useInventoryItemService();
+  const { getCategoryById } = useCategoryService();
+  const { getProviderById } = useProviderService();
 
   useEffect(() => {
     fetchAllItems();
@@ -35,23 +46,74 @@ const ItemList = () => {
         getAllInventoryItems(1, 9999),
       ]);
 
+      let itemsData = [];
       if (itemsResponse && itemsResponse.content) {
-        setAllItems(itemsResponse.content);
+        itemsData = itemsResponse.content;
         setPagination((prev) => ({
           ...prev,
           total: itemsResponse.content.length,
         }));
       } else if (Array.isArray(itemsResponse)) {
-        setAllItems(itemsResponse);
+        itemsData = itemsResponse;
         setPagination((prev) => ({
           ...prev,
           total: itemsResponse.length,
         }));
       }
 
+      setAllItems(itemsData);
+
       // Lưu inventory items để search
       if (inventoryResponse && inventoryResponse.content) {
         setAllInventoryItems(inventoryResponse.content);
+      }
+
+      // Nếu là ADMIN, fetch thêm categories và providers
+      if (userRole === AccountRole.ADMIN && itemsData.length > 0) {
+        // Fetch categories
+        const uniqueCategoryIds = [
+          ...new Set(itemsData.map((item) => item.categoryId).filter(Boolean)),
+        ];
+        const categoryPromises = uniqueCategoryIds.map(async (categoryId) => {
+          try {
+            const response = await getCategoryById(categoryId);
+            return { id: categoryId, data: response.content };
+          } catch (error) {
+            return { id: categoryId, data: null };
+          }
+        });
+
+        // Fetch providers
+        const allProviderIds = [
+          ...new Set(itemsData.flatMap((item) => item.providerIds || [])),
+        ];
+        const providerPromises = allProviderIds.map(async (providerId) => {
+          try {
+            const response = await getProviderById(providerId);
+            return { id: providerId, data: response.content };
+          } catch (error) {
+            return { id: providerId, data: null };
+          }
+        });
+
+        const [categoryResults, providerResults] = await Promise.all([
+          Promise.all(categoryPromises),
+          Promise.all(providerPromises),
+        ]);
+
+        // Build categories map
+        const categoriesMap = {};
+        categoryResults.forEach(({ id, data }) => {
+          categoriesMap[id] = data;
+        });
+        setCategories(categoriesMap);
+
+        // Build providers map
+        const providersMap = {};
+        providerResults.forEach(({ id, data }) => {
+          providersMap[id] = data;
+        });
+        setProviders(providersMap);
       }
     } catch (error) {
       message.error("Không thể tải danh sách hàng hóa");
@@ -135,99 +197,200 @@ const ItemList = () => {
     });
   };
 
-  const columns = [
-    {
-      title: "Mã hàng",
-      dataIndex: "id",
-      key: "id",
-      render: (text, record) => <span>#{text}</span>,
-    },
-    {
-      title: "Tên hàng",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
-      title: "Số lượng tồn kho",
-      dataIndex: "quantity",
-      key: "quantity",
-      align: "left",
-      render: (text, record) => (
-        <span>
-          <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
-          {record.unitType}
-        </span>
-      ),
-    },
-    {
-      title: "Số lượng khả dụng",
-      key: "availableQuantity",
-      align: "left",
-      render: (text, record) => {
-        const availableQty = Math.max(
-          0,
-          (record.numberOfAvailableItems || 0) -
-            (record.minimumStockQuantity || 0)
-        );
-        return (
-          <span>
-            <strong style={{ fontSize: "17px" }}>{availableQty}</strong>{" "}
-            {record.unitType}
-          </span>
-        );
-      },
-    },
-    {
-      title: "Giá trị tồn kho",
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
-      align: "left",
-      render: (text, record) => (
-        <span>
-          <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
-          {record.measurementUnit}
-        </span>
-      ),
-    },
-    {
-      title: "Giá trị khả dụng",
-      key: "availableValue",
-      align: "left",
-      render: (text, record) => {
-        const availableValue = Math.max(
-          0,
-          (record.numberOfAvailableMeasurementValues || 0) -
-            (record.minimumStockQuantity || 0) * (record.measurementValue || 0)
-        );
-        return (
-          <span>
-            <strong style={{ fontSize: "17px" }}>{availableValue}</strong>{" "}
-            {record.measurementUnit}
-          </span>
-        );
-      },
-    },
-    {
-      title: "Chi tiết",
-      key: "detail",
-      align: "center",
-      render: (text, record) => (
-        <Link to={`/item/detail/${record.id}`}>
-          <span
-            className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
-            style={{ width: 32, height: 32 }}
-          >
-            <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
-          </span>
-        </Link>
-      ),
-    },
-  ];
+  const renderProviders = (providerIds) => {
+    if (!providerIds || providerIds.length === 0) {
+      return "Chưa có nhà cung cấp";
+    }
+
+    const formatProviderName = (name) => {
+      if (!name) return name;
+
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes("công ty")) {
+        const parts = name.split(/công ty/i);
+        if (parts.length > 1) {
+          return (
+            <span>
+              Công ty <strong>{parts[1].trim()}</strong>
+            </span>
+          );
+        }
+      }
+      return name;
+    };
+
+    return (
+      <div>
+        {providerIds.map((providerId) => {
+          const provider = providers[providerId];
+          const displayName = provider
+            ? formatProviderName(provider.name)
+            : `Provider ${providerId}`;
+          return <div key={providerId}>• {displayName}</div>;
+        })}
+      </div>
+    );
+  };
+
+  const columns =
+    userRole === AccountRole.ADMIN
+      ? [
+          {
+            title: "Mã hàng",
+            dataIndex: "id",
+            key: "id",
+            render: (text, record) => <span>#{text}</span>,
+          },
+          {
+            title: "Tên hàng",
+            dataIndex: "name",
+            key: "name",
+          },
+          {
+            title: "Danh mục hàng",
+            dataIndex: "categoryId",
+            key: "categoryId",
+            align: "center",
+            render: (categoryId) => {
+              const category = categories[categoryId];
+              return category ? category.name : "Không xác định";
+            },
+          },
+          {
+            title: "Giá trị đo lường",
+            key: "measurementValue",
+            render: (text, record) => (
+              <span>
+                <strong style={{ fontSize: "16px" }}>
+                  {record.measurementValue || 0}
+                </strong>{" "}
+                {record?.measurementUnit} {"/"} {record?.unitType}
+              </span>
+            ),
+          },
+          {
+            title: "Nhà cung cấp",
+            dataIndex: "providerIds",
+            key: "providerIds",
+            render: (providerIds) => renderProviders(providerIds),
+          },
+          {
+            title: "Chi tiết",
+            key: "detail",
+            align: "center",
+            render: (text, record) => (
+              <Link to={`/item/detail/${record.id}`}>
+                <span
+                  className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
+                  style={{ width: 32, height: 32 }}
+                >
+                  <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+                </span>
+              </Link>
+            ),
+          },
+        ]
+      : [
+          {
+            title: "Mã hàng",
+            dataIndex: "id",
+            key: "id",
+            render: (text, record) => <span>#{text}</span>,
+          },
+          {
+            title: "Tên hàng",
+            dataIndex: "name",
+            key: "name",
+          },
+          {
+            title: "Số lượng tồn kho",
+            dataIndex: "quantity",
+            key: "quantity",
+            align: "left",
+            render: (text, record) => (
+              <span>
+                <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
+                {record.unitType}
+              </span>
+            ),
+          },
+          {
+            title: "Số lượng khả dụng",
+            key: "availableQuantity",
+            align: "left",
+            render: (text, record) => {
+              const availableQty = Math.max(
+                0,
+                (record.numberOfAvailableItems || 0) -
+                  (record.minimumStockQuantity || 0)
+              );
+              return (
+                <span>
+                  <strong style={{ fontSize: "17px" }}>{availableQty}</strong>{" "}
+                  {record.unitType}
+                </span>
+              );
+            },
+          },
+          {
+            title: "Giá trị tồn kho",
+            dataIndex: "totalMeasurementValue",
+            key: "totalMeasurementValue",
+            align: "left",
+            render: (text, record) => (
+              <span>
+                <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
+                {record.measurementUnit}
+              </span>
+            ),
+          },
+          {
+            title: "Giá trị khả dụng",
+            key: "availableValue",
+            align: "left",
+            render: (text, record) => {
+              const availableValue = Math.max(
+                0,
+                (record.numberOfAvailableMeasurementValues || 0) -
+                  (record.minimumStockQuantity || 0) *
+                    (record.measurementValue || 0)
+              );
+              return (
+                <span>
+                  <strong style={{ fontSize: "17px" }}>{availableValue}</strong>{" "}
+                  {record.measurementUnit}
+                </span>
+              );
+            },
+          },
+          {
+            title: "Chi tiết",
+            key: "detail",
+            align: "center",
+            render: (text, record) => (
+              <Link to={`/item/detail/${record.id}`}>
+                <span
+                  className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
+                  style={{ width: 32, height: 32 }}
+                >
+                  <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+                </span>
+              </Link>
+            ),
+          },
+        ];
 
   return (
     <div className="container mx-auto p-5">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold">Danh sách hàng hóa</h1>
+        {userRole === AccountRole.ADMIN && (
+          <Link to={ROUTES.PROTECTED.ITEM.CREATE}>
+            <Button type="primary" id="btn-create" icon={<PlusOutlined />}>
+              Tạo mặt hàng mới
+            </Button>
+          </Link>
+        )}
       </div>
 
       <Input

@@ -5,10 +5,10 @@ import { ResponseDTO } from "@/utils/interfaces";
 
 // Interface to match ItemRequest.java
 export interface ItemRequest {
-  id?: number;
+  id?: string;
   name: string;
   description: string;
-  measurementUnit: string;
+  measurementUnit: number;
   totalMeasurementValue?: number;
   unitType: string;
   daysUntilDue?: number;
@@ -16,6 +16,7 @@ export interface ItemRequest {
   maximumStockQuantity?: number;
   categoryId: number;
   providerId: number;
+  countingMinutes?: number;
 }
 
 // Interface to match ItemResponse.java
