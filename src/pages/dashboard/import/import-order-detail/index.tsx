@@ -5,16 +5,12 @@ import {
   Button,
   Spin,
   Modal,
-  Input,
   Checkbox,
-  DatePicker,
-  TimePicker,
 } from "antd";
 import {
   ArrowLeftOutlined,
   UserAddOutlined,
   PrinterOutlined,
-  InfoCircleOutlined,
   ClockCircleOutlined,
   RedoOutlined,
   CheckCircleOutlined,
@@ -29,25 +25,23 @@ import { ROUTES } from "@/constants/routes";
 import { useSelector } from "react-redux";
 import { UserState } from "@/contexts/redux/features/userSlice";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
-import dayjs, { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
-import QRCode from 'react-qr-code';
-import useInventoryItemService, { InventoryItemResponse, UpdateInventoryLocationRequest } from "@/services/useInventoryItemService";
+import useInventoryItemService, { InventoryItemResponse } from "@/services/useInventoryItemService";
 import useStoredLocationService, { StoredLocationResponse } from "@/services/useStoredLocationService";
 import { usePusherContext } from "@/contexts/pusher/PusherContext";
 dayjs.extend(duration);
 import DetailCard from "@/components/commons/DetailCard";
 import StatusTag from "@/components/commons/StatusTag";
 import UpdateInventoryItemLocationModal from "@/components/import-flow/UpdateInventoryItemLocationModal";
+import InventoryItemLocationConfirmModal from "@/components/import-flow/InventoryItemLocationConfirmModal";
+import CountingConfirmModal from "@/components/import-flow/CountingConfirmModal";
+import ExtendImportOrderModal from "@/components/import-flow/ExtendImportOrderModal";
+import ImportOrderAssignStaffModal from "@/components/import-flow/ImportOrderAssignStaffModal";
+import QrCodeListingModal from "@/components/import-flow/QrCodeListingModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
-import {
-  getDefaultAssignedDateTimeForAction,
-  isDateDisabledForAction,
-  getDisabledTimeConfigForAction
-} from "@/utils/helpers";
 import { toast } from "react-toastify";
-import { MdApartment } from "react-icons/md";
-const { TextArea } = Input;
+import { MdApartment, MdLocationSearching } from "react-icons/md";
 
 const ImportOrderDetail = () => {
   // ========== ROUTER & PARAMS ==========
@@ -75,23 +69,11 @@ const ImportOrderDetail = () => {
   const [extendModalVisible, setExtendModalVisible] = useState(false);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [showUpdateInventoryItemLocationModal, setShowUpdateInventoryItemLocationModal] = useState(false);
+  const [showInventoryItemsLocationConfirmModal, setShowInventoryItemsLocationConfirmModal] = useState(false);
 
   // ========== FORM & UI STATES ==========
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
-  const [searchText, setSearchText] = useState('');
-  const [confirmCountingResponsibilityChecked, setConfirmCountingResponsibilityChecked] = useState(false);
   const [confirmRequireCountingAgainResponsibilityChecked, setConfirmRequireCountingAgainResponsibilityChecked] = useState(false);
   const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
-  const [extendResponsibilityChecked, setExtendResponsibilityChecked] = useState(false);
-  const [extendFormData, setExtendFormData] = useState<{
-    extendedDate: string;
-    extendedTime: string;
-    extendedReason: string;
-  }>({
-    extendedDate: "",
-    extendedTime: "",
-    extendedReason: ""
-  });
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
@@ -247,26 +229,6 @@ const ImportOrderDetail = () => {
     fetchActiveStaffs();
   }
 
-  const calculateRemainingTime = (totalExpectedTime: string, defaultWorkingMinutes: number): string => {
-    try {
-      const [hours, minutes] = totalExpectedTime.split(':').map(Number);
-      const expectedMinutes = (hours * 60) + minutes;
-      const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
-      if (remainingMinutes <= 0) return "0 tiếng 0 phút";
-      const remainingHours = Math.floor(remainingMinutes / 60);
-      const remainingMins = Math.floor(remainingMinutes % 60);
-      return `${remainingHours} tiếng ${remainingMins} phút`;
-    } catch (error) {
-      return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${defaultWorkingMinutes % 60} phút`;
-    }
-  };
-
-  const getDefaultWorkingMinutes = () => {
-    if (!configuration) return 480; // fallback
-    const [startH, startM] = configuration.workingTimeStart.split(':').map(Number);
-    const [endH, endM] = configuration.workingTimeEnd.split(':').map(Number);
-    return (endH * 60 + endM) - (startH * 60 + startM);
-  };
 
   const getRemainingAssignTime = () => {
     if (!importOrderData?.dateReceived || !importOrderData?.timeReceived || !configuration?.timeToAllowAssign) {
@@ -316,36 +278,25 @@ const ImportOrderDetail = () => {
     }));
   };
 
-  const handleSearch = (value: string) => {
-    setSearchText(value);
-  };
 
   // ========== ASSIGN STAFF HANDLERS ==========
   const handleOpenAssignModal = () => {
-    setSelectedStaffId(null);
     fetchActiveStaffs();
     setAssignModalVisible(true);
   };
 
   const handleCloseAssignModal = () => {
     setAssignModalVisible(false);
-    setSelectedStaffId(null);
   };
 
-  const handleSelectStaff = (staffId: number) => {
-    setSelectedStaffId(staffId);
-  };
-
-  const handleAssignStaff = async () => {
+  const handleAssignStaff = async (selectedStaffId: number) => {
     if (!selectedStaffId || !importOrderId) {
       toast.warning("Vui lòng chọn nhân viên để phân công");
-      handleCloseAssignModal();
       return;
     }
 
     if (getRemainingAssignTime() === "0 tiếng 0 phút") {
       toast.error("Đã hết thời gian phân công nhân viên");
-      handleCloseAssignModal();
       return;
     }
 
@@ -357,7 +308,6 @@ const ImportOrderDetail = () => {
     if (response.statusCode === 200) {
       await fetchImportOrderData(); // Re-fetch order data, which will trigger useEffect for assigned staff
       await fetchActiveStaffs(); // Re-fetch list of available staff
-      setSelectedStaffId(null);
     } else {
       toast.error("Không thể phân công nhân viên");
     }
@@ -370,77 +320,11 @@ const ImportOrderDetail = () => {
     await fetchImportOrderData();
   };
 
-
-  // ========== EXTEND ORDER HANDLERS ==========
-  const handleOpenExtendModal = () => {
-    if (configuration) {
-      const defaultDateTime = getDefaultAssignedDateTimeForAction("extend-import-order", configuration);
-      setExtendFormData({
-        extendedDate: defaultDateTime.date,
-        extendedTime: defaultDateTime.time,
-        extendedReason: ""
-      });
-    }
-    setExtendModalVisible(true);
-  };
-
-  const handleCloseExtendModal = () => {
-    setExtendModalVisible(false);
-    setExtendResponsibilityChecked(false);
-    setExtendFormData({
-      extendedDate: "",
-      extendedTime: "",
-      extendedReason: ""
-    });
-  };
-
-  const handleExtendDateChange = (date: Dayjs | null) => {
-    if (!date) return;
-    const newDate = date.format("YYYY-MM-DD");
-    setExtendFormData(prev => ({
-      ...prev,
-      extendedDate: newDate
-    }));
-  };
-
-  const handleExtendTimeChange = (time: Dayjs | null) => {
-    if (!time) return;
-    const newTime = time.format("HH:mm");
-    setExtendFormData(prev => ({
-      ...prev,
-      extendedTime: newTime
-    }));
-  };
-
-  const handleExtendSubmit = async () => {
-    if (!importOrderId || !extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim()) {
-      return;
-    }
-
-    if (!extendResponsibilityChecked) {
-      return;
-    }
-
-    const extendRequest: ExtendImportOrderRequest = {
-      importOrderId: importOrderId,
-      extendedDate: extendFormData.extendedDate,
-      extendedTime: extendFormData.extendedTime,
-      extendedReason: extendFormData.extendedReason
-    };
+  const handleExtendSubmit = async (extendRequest: ExtendImportOrderRequest) => {
     await extendImportOrder(extendRequest);
     await fetchImportOrderData();
-    handleCloseExtendModal();
   };
-
-  // ========== QR CODE HANDLERS ==========
-  const handleOpenQrModal = () => {
-    setQrModalVisible(true);
-  };
-
-  const handleCloseQrModal = () => {
-    setQrModalVisible(false);
-  };
-
+  
   // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
   const handleUpdateInventoryItemLocation = async (changedInventoryItems: { inventoryItemId: string; storedLocationId: number; }[]) => {
     await updateStoredLocation(changedInventoryItems);
@@ -460,42 +344,10 @@ const ImportOrderDetail = () => {
       fetchImportOrderData(),
       fetchImportOrderDetails(),
     ]);
+    setShowUpdateInventoryItemLocationModal(false);
   };
 
-  // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
-  const handleOpenUpdateInventoryItemLocationModal = () => {
-    setShowUpdateInventoryItemLocationModal(true);
-  }
-  const handleCloseUpdateInventoryItemLocationModal = () => {
-    setShowUpdateInventoryItemLocationModal(false);
-  }
-
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
-  const filteredAndSortedStaffs = staffs
-    .map(staff => ({
-      ...staff,
-      remainingTime: calculateRemainingTime(
-        staff.totalExpectedWorkingTimeOfRequestInDay || "00:00:00",
-        getDefaultWorkingMinutes()
-      )
-    }))
-    .filter(staff => {
-      if (staff.id === importOrderData?.assignedStaffId) return false;
-      const searchLower = searchText.toLowerCase();
-      return (
-        staff.fullName.toLowerCase().includes(searchLower) ||
-        staff.id.toString().includes(searchLower)
-      );
-    })
-    .sort((a, b) => {
-      const getMinutes = (timeStr: string) => {
-        const [hours, minutes] = timeStr.split(' tiếng ').map(part =>
-          parseInt(part.replace(' phút', ''), 10)
-        );
-        return hours * 60 + minutes;
-      };
-      return getMinutes(b.remainingTime) - getMinutes(a.remainingTime);
-    });
 
   // Table columns definition
   const columns = [
@@ -520,38 +372,6 @@ const ImportOrderDetail = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-    },
-    {
-      width: '20%',
-      title: "Vị trí hiện tại",
-      key: "currentLocation",
-      align: 'center' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (record: ImportOrderDetailResponse) => {
-        // Tìm inventory items của sản phẩm này
-        const itemInventories = inventoryItemsData.filter(inv =>
-          inv.itemId === record.itemId.toString()
-        );
-
-        if (itemInventories.length === 0) {
-          return <span className="text-gray-500">Không có dữ liệu</span>;
-        }
-
-        // Lấy vị trí của item đầu tiên (vì tất cả cùng itemId sẽ ở cùng vị trí)
-        const firstItem = itemInventories[0];
-
-        if (!firstItem.storedLocationId || !firstItem.storedLocationName) {
-          return <span className="text-orange-600">Chưa có vị trí</span>;
-        }
-
-        return (
-          <div className="font-medium">
-            {firstItem.storedLocationName}
-          </div>
-        );
-      },
     },
     {
       width: '15%',
@@ -583,7 +403,31 @@ const ImportOrderDetail = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-    }
+    },
+    ...(importOrderData?.status === ImportStatus.COMPLETED ||
+      importOrderData?.status === ImportStatus.READY_TO_STORE ||
+      importOrderData?.status === ImportStatus.STORED ? [
+      {
+        width: '20%',
+        title: "Vị trí lưu kho",
+        key: "currentLocation",
+        align: 'center' as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (record: ImportOrderDetailResponse) => {
+          const inventoryItems = inventoryItemsData.filter(inv =>
+            inv.itemId === record.itemId.toString()
+          );
+          const firstItem = inventoryItems[0];
+          return (
+            <div className="font-medium">
+              {firstItem?.storedLocationName}
+            </div>
+          );
+        },
+      }
+    ] : [])
   ];
 
   // Prepare data for DetailCard
@@ -597,7 +441,8 @@ const ImportOrderDetail = () => {
         <>
           {!importOrderData?.isExtended ? (
             // Order not extended
-            (importOrderData?.status !== ImportStatus.CANCELLED &&
+            (userRole === AccountRole.WAREHOUSE_MANAGER &&
+              importOrderData?.status !== ImportStatus.CANCELLED &&
               importOrderData?.status !== ImportStatus.COMPLETED &&
               importOrderData?.status !== ImportStatus.READY_TO_STORE &&
               importOrderData?.status !== ImportStatus.STORED &&
@@ -611,7 +456,7 @@ const ImportOrderDetail = () => {
                   className="[.ant-btn-primary]:!p-2"
                   type="primary"
                   icon={<ClockCircleOutlined />}
-                  onClick={handleOpenExtendModal}
+                  onClick={() => setExtendModalVisible(true)}
                 >
                   Gia hạn
                 </Button>
@@ -749,20 +594,29 @@ const ImportOrderDetail = () => {
         <div className="flex items-center justify-end gap-4 mt-16 mb-4">
           <>
             {importOrderData?.status === ImportStatus.COMPLETED && (
-              <Button
-                type="primary"
-                icon={<MdApartment />}
-                onClick={handleOpenUpdateInventoryItemLocationModal}
-              >
-                Cập nhật vị trí lưu kho
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  icon={<MdLocationSearching />}
+                  onClick={() => setShowUpdateInventoryItemLocationModal(true)}
+                >
+                  Cập nhật vị trí lưu kho
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<MdApartment />}
+                  onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
+                >
+                  Xác nhận vị trí lưu kho
+                </Button>
+              </>
             )}
             {importOrderData?.status === ImportStatus.COMPLETED || importOrderData?.status === ImportStatus.READY_TO_STORE || importOrderData?.status === ImportStatus.STORED && (
               <Button
                 type="default"
                 className="!text-blue-500 !border-blue-500"
                 icon={<PrinterOutlined />}
-                onClick={handleOpenQrModal}
+                onClick={() => setQrModalVisible(true)}
               >
                 In QRCode
               </Button>
@@ -811,258 +665,35 @@ const ImportOrderDetail = () => {
 
       {/* ----------------------------- Modals ----------------------------- */}
       {/* Modal phân công nhân viên */}
-      <Modal
-        title={
-          <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
-            <h3 className="text-xl font-semibold text-blue-900">Phân công nhân viên kho</h3>
-            <p className="mt-1 text-lg text-blue-700">Đơn nhập #{importOrderData?.importOrderId}</p>
-            <p className="flex items-center mt-2 text-sm text-gray-700">
-              <InfoCircleOutlined className="mr-2 text-blue-500" />
-              Sau {getRemainingAssignTime() || "..."},
-              bạn sẽ không thể phân công lại nhân viên
-            </p>
-          </div>
-        }
+      <ImportOrderAssignStaffModal
         open={assignModalVisible}
-        onCancel={handleCloseAssignModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseAssignModal}>
-            Đóng
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleAssignStaff}
-            disabled={!selectedStaffId}
-            loading={importOrderLoading || accountLoading}
-          >
-            Phân công
-          </Button>,
-        ]}
-        width={700}
-        className="!top-[50px]"
-      >
-        {accountLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Spin size="large" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Current Assignment Info */}
-            <div className="p-4 border rounded-lg bg-gray-50">
-              <h4 className="mb-3 text-base font-medium text-gray-700">Nhân viên đang được phân công</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Mã nhân viên</p>
-                  <p className="text-base">#{assignedStaff?.id || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Họ tên</p>
-                  <p className="text-base">{assignedStaff?.fullName || "-"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Staff List */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-base font-medium text-gray-700">Danh sách nhân viên có thể phân công</h4>
-                <Input.Search
-                  placeholder="Tìm theo tên hoặc mã nhân viên"
-                  allowClear
-                  onSearch={handleSearch}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  style={{ width: 300 }}
-                />
-              </div>
-              <Table
-                dataSource={filteredAndSortedStaffs}
-                rowKey="id"
-                pagination={false}
-                className="!cursor-pointer [&_.ant-table-row:hover>td]:!bg-transparent"
-                onRow={(record) => ({
-                  onClick: () => handleSelectStaff(record.id),
-                  className: selectedStaffId === record.id
-                    ? '!bg-blue-100'
-                    : ''
-                })}
-                columns={[
-                  {
-                    title: "Mã nhân viên",
-                    dataIndex: "id",
-                    key: "id",
-                    render: (id) => `#${id}`,
-                    width: '25%',
-                  },
-                  {
-                    title: "Họ tên",
-                    dataIndex: "fullName",
-                    key: "fullName",
-                    width: '45%',
-                  },
-                  {
-                    title: "Thời gian rảnh còn lại",
-                    dataIndex: "remainingTime",
-                    key: "remainingTime",
-                    width: '30%',
-                    render: (time, record) => (
-                      <span className={`font-medium ${record.id === importOrderData?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
-                        {time || "8 tiếng 0 phút"}
-                      </span>
-                    )
-                  }
-                ]}
-              />
-            </div>
-          </div>
-        )}
-      </Modal>
+        loading={importOrderLoading}
+        accountLoading={accountLoading}
+        importOrderData={importOrderData}
+        assignedStaff={assignedStaff}
+        staffs={staffs}
+        remainingAssignTime={getRemainingAssignTime()}
+        onClose={handleCloseAssignModal}
+        onAssign={handleAssignStaff}
+      />
 
       {/* Modal in QRCode */}
-      <Modal
-        title={<span className="text-lg font-bold">Danh sách QRCode sản phẩm</span>}
+      <QrCodeListingModal
         open={qrModalVisible}
-        onCancel={handleCloseQrModal}
-        footer={[
-          <Button key="close" onClick={handleCloseQrModal}>Đóng</Button>,
-          <Button key="print" type="primary" onClick={() => window.print()} disabled={inventoryItemLoading || inventoryItemsData.length === 0}>In</Button>,
-        ]}
-        width={900}
-        className="!top-[50px] print:!block"
-      >
-        <div id="qr-print-area" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 print:gap-4">
-          {inventoryItemLoading ? (
-            <div className="flex items-center justify-center col-span-3 py-8">
-              <Spin size="large" />
-            </div>
-          ) : inventoryItemsData.length === 0 ? (
-            <div className="col-span-3 py-8 text-center text-gray-500">Không có QRCode nào để in</div>
-          ) : (
-            inventoryItemsData.map((item) => (
-              <div key={item.id} className="flex flex-col items-center p-4 bg-white border rounded-lg print:shadow-none print:border print:p-2">
-                <QRCode value={item.id.toString()} size={128} />
-                <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{item.itemId || '-'}</span></div>
-                <div className="text-sm text-gray-700">Tên sản phẩm: {item.itemName || '-'}</div>
-                <div className="mt-1 text-xs text-gray-500">ID QR: {item.id}</div>
-              </div>
-            ))
-          )}
-        </div>
-      </Modal>
+        loading={inventoryItemLoading}
+        inventoryItems={inventoryItemsData}
+        onClose={() => setQrModalVisible(false)}
+      />
 
       {/* Modal gia hạn đơn nhập */}
-      <Modal
-        title={
-          <div className="!bg-blue-50 -mx-6 -mt-6 px-6 py-4 border-b rounded-t-lg">
-            <h3 className="text-xl font-semibold text-blue-900">Gia hạn đơn nhập</h3>
-            <p className="mt-1 text-lg text-blue-700">Đơn nhập #{importOrderData?.importOrderId}</p>
-            <p className="flex items-center mt-2 text-sm text-gray-700">
-              <InfoCircleOutlined className="mr-2 text-blue-500" />
-              Thời gian gia hạn phải cách thời điểm hiện tại ít nhất {configuration?.daysToAllowExtend} ngày
-            </p>
-          </div>
-        }
+      <ExtendImportOrderModal
         open={extendModalVisible}
-        onCancel={handleCloseExtendModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseExtendModal}>
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleExtendSubmit}
-            loading={importOrderLoading}
-            disabled={!extendFormData.extendedDate || !extendFormData.extendedTime || !extendFormData.extendedReason.trim() || !extendResponsibilityChecked}
-          >
-            Xác nhận gia hạn
-          </Button>,
-        ]}
-        width={540}
-        className="!top-[50px]"
-        maskClosable={false}
-      >
-        <div className="pt-4 space-y-6">
-          {/* Thông tin hiện tại */}
-          <div className="p-4 border rounded-lg bg-gray-50">
-            <h4 className="mb-3 text-base font-medium text-gray-700">Thông tin hiện tại</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Ngày nhận hiện tại</p>
-                <p className="text-base font-medium">
-                  {importOrderData?.dateReceived ? dayjs(importOrderData.dateReceived).format("DD-MM-YYYY") : "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Giờ nhận hiện tại</p>
-                <p className="text-base font-medium">
-                  {importOrderData?.timeReceived?.split(':').slice(0, 2).join(':') || "-"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Form gia hạn */}
-          <div className="space-y-4">
-            <div>
-              <label className="mb-2 text-sm font-medium text-gray-700">
-                Ngày nhận mới <span className="text-red-500">*</span>
-              </label>
-              <DatePicker
-                className="w-full"
-                format="DD-MM-YYYY"
-                value={extendFormData.extendedDate ? dayjs(extendFormData.extendedDate) : null}
-                onChange={handleExtendDateChange}
-                disabledDate={(current) => isDateDisabledForAction(current, "extend-import-order", configuration)}
-                showNow={false}
-                placeholder="Chọn ngày nhận mới"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 text-sm font-medium text-gray-700">
-                Giờ nhận mới <span className="text-red-500">*</span>
-              </label>
-              <TimePicker
-                className="w-full"
-                value={extendFormData.extendedTime ? dayjs(`1970-01-01 ${extendFormData.extendedTime}`) : null}
-                onChange={handleExtendTimeChange}
-                format="HH:mm"
-                showNow={false}
-                needConfirm={false}
-                placeholder="Chọn giờ nhận mới"
-                disabledTime={() => getDisabledTimeConfigForAction(extendFormData.extendedDate, "extend-import-order", configuration)}
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700">
-                Lý do gia hạn <span className="text-red-500">*</span>
-              </label>
-              <TextArea
-                className="!mb-2"
-                rows={4}
-                placeholder="Nhập lý do gia hạn đơn nhập..."
-                value={extendFormData.extendedReason}
-                onChange={(e) => setExtendFormData(prev => ({
-                  ...prev,
-                  extendedReason: e.target.value.slice(0, 200)
-                }))}
-                maxLength={200}
-                showCount
-              />
-            </div>
-          </div>
-
-          <Checkbox
-            checked={extendResponsibilityChecked}
-            onChange={e => setExtendResponsibilityChecked(e.target.checked)}
-            style={{ fontSize: 14, fontWeight: "bold" }}
-          >
-            Tôi xác nhận đã điền đúng thông tin và đồng ý gia hạn.
-          </Checkbox>
-        </div>
-      </Modal>
+        loading={importOrderLoading}
+        importOrderData={importOrderData}
+        configuration={configuration}
+        onClose={() => setExtendModalVisible(false)}
+        onConfirm={handleExtendSubmit}
+      />
 
       {/* Modal cập nhật vị trí lưu kho */}
       <UpdateInventoryItemLocationModal
@@ -1071,78 +702,36 @@ const ImportOrderDetail = () => {
         inventoryItems={inventoryItemsData}
         storedLocationData={storedLocationData}
         open={showUpdateInventoryItemLocationModal}
-        onClose={handleCloseUpdateInventoryItemLocationModal}
-        onReadyToStoreConfirm={handleReadyToStoreConfirm}
+        onClose={() => setShowUpdateInventoryItemLocationModal(false)}
         onUpdateInventoryItemsLocation={updatedInventoryItems => setInventoryItemsData(updatedInventoryItems)}
         onUpdateInventoryItemsLocationConfirm={handleUpdateInventoryItemLocation}
       />
 
+      {/* Modal xác nhận vị trí lưu kho */}
+      <InventoryItemLocationConfirmModal
+        open={showInventoryItemsLocationConfirmModal}
+        loading={importOrderLoading}
+        onClose={() => setShowInventoryItemsLocationConfirmModal(false)}
+        onConfirm={handleReadyToStoreConfirm}
+      />
+
       {/* Modal xác nhận kiểm đếm */}
-      <Modal
-        title="Xác nhận kiểm đếm"
+      <CountingConfirmModal
         open={confirmCountingModalVisible}
-        onOk={async () => {
+        loading={importOrderLoading}
+        importOrderDetails={importOrderDetails}
+        onClose={() => {
           setConfirmCountingModalVisible(false);
-          setConfirmCountingResponsibilityChecked(false);
+        }}
+        onConfirm={async () => {
+          setConfirmCountingModalVisible(false);
           if (!importOrderData?.importOrderId) return;
           await completeImportOrder(importOrderData.importOrderId);
           await fetchImportOrderData();
           await fetchInventoryItemsData();
           setShowUpdateInventoryItemLocationModal(true)
         }}
-        onCancel={() => { setConfirmCountingModalVisible(false); setConfirmCountingResponsibilityChecked(false); }}
-        okText="Tôi xác nhận kiểm đếm"
-        cancelText="Hủy"
-        okButtonProps={{ disabled: !confirmCountingResponsibilityChecked }}
-        maskClosable={false}
-        width={480}
-      >
-        <div className="space-y-4">
-          <Table
-            columns={[
-              {
-                title: "Tên sản phẩm",
-                dataIndex: "itemName",
-                key: "itemName",
-                width: "50%",
-                align: "left" as const,
-                ellipsis: true,
-                onHeaderCell: () => ({
-                  style: { textAlign: 'center' as const }
-                })
-              },
-              {
-                title: "Thực tế",
-                key: "actualQuantity",
-                dataIndex: "actualQuantity",
-                width: "25%",
-                align: "right" as const,
-                onHeaderCell: () => ({
-                  style: { textAlign: 'center' as const }
-                })
-              },
-              {
-                title: "Dự kiến",
-                key: "expectQuantity",
-                dataIndex: "expectQuantity",
-                width: "25%",
-                align: "right" as const,
-                onHeaderCell: () => ({
-                  style: { textAlign: 'center' as const }
-                })
-              }
-            ]}
-            dataSource={importOrderDetails}
-            rowKey="importOrderDetailId"
-            size="small"
-            pagination={false}
-          >
-          </Table>
-          <Checkbox checked={confirmCountingResponsibilityChecked} onChange={e => setConfirmCountingResponsibilityChecked(e.target.checked)} style={{ fontSize: 14, fontWeight: "bold" }}>
-            Tôi xác nhận những thông tin trên là đúng.
-          </Checkbox>
-        </div>
-      </Modal>
+      />
 
       {/* Modal yêu cầu kiểm đếm lại */}
       <Modal

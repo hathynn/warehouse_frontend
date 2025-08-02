@@ -14,19 +14,17 @@ interface UpdateInventoryItemLocationModalProps {
   loading: boolean;
   open: boolean;
   onClose: () => void;
-  onReadyToStoreConfirm: () => Promise<void>;
   onUpdateInventoryItemsLocation: (updatedItems: InventoryItemResponse[]) => void;
   onUpdateInventoryItemsLocationConfirm: (changedItems: { inventoryItemId: string; storedLocationId: number }[]) => Promise<void>;
 }
 
 const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModalProps> = (
   { open,
-    onClose,
     importOrder,
     inventoryItems,
     storedLocationData,
     loading,
-    onReadyToStoreConfirm,
+    onClose,
     onUpdateInventoryItemsLocation,
     onUpdateInventoryItemsLocationConfirm }
 ) => {
@@ -334,12 +332,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     },
   ];
 
-  const handleOnReadyToStoreConfirm = async () => {
-    onClose();
-    await onReadyToStoreConfirm();
-    setReadyToStoreConfirmModalOpen(false);
-  }
-
   const handleOnUpdateInventoryItemsLocationConfirm = async () => {
     if (!selectingLocationId || !highlightedItemId) return;
 
@@ -429,16 +421,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     }
   };
 
-  const handleReadyToStoreConfirm = () => {
-    setReadyToStoreConfirmModalOpen(true);
-    setReadyToStoreResponsibilityChecked(false);
-  };
-
-  const handleCloseReadyToStoreConfirmModal = () => {
-    setReadyToStoreConfirmModalOpen(false);
-    setReadyToStoreResponsibilityChecked(false);
-  };
-
   const handleInventoryItemsLocationConfirm = () => {
     setInventoryItemsLocationConfirmModalOpen(true);
     setInventoryItemsLocationResponsibilityChecked(false);
@@ -480,14 +462,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
         footer={[
           <Button key="close" onClick={handleOnClose}>
             Đóng
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            onClick={handleReadyToStoreConfirm}
-            disabled={highlightedItemId !== null}
-          >
-            Xác nhận vị trí lưu kho
           </Button>
         ]}
         width={1180}
@@ -588,49 +562,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
                 <p className="mt-2 text-sm">Các sản phẩm trong đợt nhập này chưa được phân bổ vị trí lưu trữ</p>
               </div>
             )}
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal xác nhận vị trí lưu kho */}
-      <Modal
-        title={
-          <div className="text-center">
-            <h3 className="text-lg font-bold">Tiến hành xác nhận vị trí lưu kho</h3>
-          </div>
-        }
-        open={readyToStoreConfirmModalOpen}
-        onCancel={handleCloseReadyToStoreConfirmModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseReadyToStoreConfirmModal} disabled={loading}>
-            Hủy
-          </Button>,
-          <Button
-            key="confirm"
-            type="primary"
-            disabled={!readyToStoreResponsibilityChecked}
-            loading={loading}
-            onClick={handleOnReadyToStoreConfirm}
-          >
-            Tôi xác nhận vị trí lưu kho
-          </Button>
-        ]}
-        width={500}
-        centered
-        maskClosable={!loading}
-      >
-        <div className="py-4">
-          <div className="pt-4 border-t border-gray-200">
-            <Checkbox
-              checked={readyToStoreResponsibilityChecked}
-              onChange={(e) => setReadyToStoreResponsibilityChecked(e.target.checked)}
-              className="text-sm"
-              disabled={loading}
-            >
-              <span className='font-bold'>
-                Tôi đã kiểm tra kỹ và xác nhận các vị trí lưu kho là đúng.
-              </span>
-            </Checkbox>
           </div>
         </div>
       </Modal>
