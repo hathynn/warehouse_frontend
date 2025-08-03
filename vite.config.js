@@ -20,6 +20,7 @@ export default defineConfig({
     //   enableBuild: false                            // Không check lúc build
     // })
   ],
+  assetsInclude: ['**/*.xlsx'],                     // Treat .xlsx files as assets
   resolve: {
     alias: {                                        // Thiết lập import alias
       '@': path.resolve(__dirname,'./src')

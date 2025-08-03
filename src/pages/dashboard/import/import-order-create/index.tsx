@@ -334,36 +334,6 @@ const ImportOrderCreate = () => {
   };
 
   // ==================== EXCEL FUNCTIONS ====================
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
-
-    const ws: { [key: string]: any } = {};
-
-    ws["A1"] = { v: "dateReceived", t: "s" };
-    ws["B1"] = { v: "2025-04-30", t: "d" };
-
-    ws["A2"] = { v: "timeReceived", t: "s" };
-    ws["A2"] = { v: "timeReceived", t: "s" };
-    // Giá trị mẫu: 08:30 (Excel lưu time tốt nhất ở dạng text, hoặc số thập phân phần lẻ của ngày)
-    ws["B2"] = { v: "08:30", t: "s" };
-
-    // Dòng 3: note
-    ws["A3"] = { v: "note", t: "s" };
-    ws["B3"] = { v: "", t: "s" };
-
-    // Dòng 5: header bảng hàng hóa
-    ws["A5"] = { v: "itemId", t: "s" };
-    ws["B5"] = { v: "quantity", t: "s" };
-
-    ws["!ref"] = "A1:B5";
-    ws["!cols"] = [
-      { wpx: 90 }, { wpx: 100 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "import_order_template.xlsx");
-  };
-
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (!uploadedFile) return;
@@ -544,7 +514,7 @@ const ImportOrderCreate = () => {
         style: { textAlign: 'center' as const }
       }),
       render: (_: any, record: ImportOrderDetailRow) => (
-        <span className="font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-md inline-block" style={{ textAlign: 'right' }}>
+        <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
           {record.plannedQuantity}
         </span>
       ),
@@ -554,7 +524,7 @@ const ImportOrderCreate = () => {
 
   // ==================== RENDER ====================
   return (
-    <div className="container mx-auto p-3 pt-0">
+    <div className="container p-3 pt-0 mx-auto">
       <div className="flex items-center mb-2">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -588,7 +558,6 @@ const ImportOrderCreate = () => {
             <ExcelUploadSection
               fileName={fileName}
               onFileChange={handleExcelUpload}
-              onDownloadTemplate={downloadTemplate}
               onRemoveFile={handleRemoveFile}
               fileInputRef={fileInputRef}
               buttonLabel="Tải lên file Excel"
@@ -619,20 +588,20 @@ const ImportOrderCreate = () => {
 
       {/* Step 2: Show current form */}
       {step === 1 && (
-        <div className="mt-4 flex gap-6">
+        <div className="flex gap-6 mt-4">
           <Card
             title={<span className="text-xl font-semibold">Thông tin đơn nhập</span>}
             className="w-3/10"
           >
             <Space direction="vertical" className="w-full">
               <div className="mb-2">
-                <div className="text-sm text-blue-500 mb-1">
+                <div className="mb-1 text-sm text-blue-500">
                   <div>
                     <InfoCircleOutlined className="mr-1" />
                     Phiếu nhập <b>{importRequest?.importRequestId}</b>
                   </div> Có hiệu lực từ <b>{dayjs(importRequest?.startDate).format('DD-MM-YYYY')}</b> đến <b>{dayjs(importRequest?.endDate).format('DD-MM-YYYY')}</b>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex items-center gap-2">
                   <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
                   <ConfigProvider direction="rtl">
                     <DatePicker
@@ -649,11 +618,11 @@ const ImportOrderCreate = () => {
                 </div>
               </div>
               <div>
-                <div className="text-sm text-blue-500 mb-1">
+                <div className="mb-1 text-sm text-blue-500">
                   <InfoCircleOutlined className="mr-1" />
                   Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast.split(':')[0]!, 10)} giờ</span>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex items-center gap-2">
                   <label className="text-base font-semibold">Giờ nhận dự kiến<span className="text-red-500">*</span></label>
                   <ConfigProvider direction="rtl">
                     <TimePicker
@@ -715,7 +684,7 @@ const ImportOrderCreate = () => {
                   className="custom-table"
                 />
               ) : (
-                <div className="text-center py-10 text-gray-500">
+                <div className="py-10 text-center text-gray-500">
                   Không có dữ liệu
                 </div>
               )}
@@ -743,7 +712,7 @@ const ImportOrderCreate = () => {
         {plannedQuantityZeroRowsToDelete.length > 0 && (
           <div>
             {plannedQuantityZeroRowsToDelete.map(importOrderDetailRow => (
-              <div key={importOrderDetailRow.itemId} className="mb-2 border-b pb-2">
+              <div key={importOrderDetailRow.itemId} className="pb-2 mb-2 border-b">
                 <p><strong>Mã hàng:</strong> #{importOrderDetailRow.itemId}</p>
                 <p><strong>Tên hàng:</strong> {importOrderDetailRow.itemName}</p>
               </div>

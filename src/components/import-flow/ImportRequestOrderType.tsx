@@ -139,22 +139,6 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
     return true;
   };
 
-  const downloadTemplate = () => {
-    const ws = XLSX.utils.aoa_to_sheet([]);
-
-    XLSX.utils.sheet_add_aoa(ws, [
-      ["importType", importType],
-      ["importReason", "Nhập hàng từ nhà cung cấp"],
-      [],
-      ["itemId", "quantity", "providerId"],
-      ["{Mã hàng}", "{Số lượng - Ví dụ: 10}", "{Mã Nhà cung cấp}"]
-    ], { origin: "A1" });
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template");
-    XLSX.writeFile(wb, "import_request_template.xlsx");
-  };
-
   const getConsolidatedData = (originalData: ImportRequestDetailRow[]): ImportRequestDetailRow[] => {
     const groupedData: { [key: string]: ImportRequestDetailRow } = {};
 
@@ -274,33 +258,60 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
           const ws = wb.Sheets[wb.SheetNames[0]];
 
           try {
-            const importTypeCell = ws['B1'];
+            // Extract import type from B6 (row index 5)
+            const importTypeCell = ws['B6'];
             const importTypeFromFile = importTypeCell ? importTypeCell.v : null;
 
-            const importReasonCell = ws['B2'];
+            // Extract import reason from B7 (row index 6)  
+            const importReasonCell = ws['B7'];
             const importReason = importReasonCell ? importReasonCell.v : "";
 
-            if (importTypeFromFile && (importTypeFromFile === "ORDER" || importTypeFromFile === "RETURN")) {
-              setFormData(prev => ({
-                ...prev,
-                importType: importTypeFromFile as ImportRequestType,
-                importReason: importReason || prev.importReason
-              }));
+            // Map Vietnamese import types to system codes
+            const importTypeMapping = {
+              "NHẬP THEO KẾ HOẠCH": "ORDER",
+              "ORDER": "ORDER",
+            };
+
+            if (importTypeFromFile) {
+              const normalizedType = String(importTypeFromFile).trim().toUpperCase();
+              const mappedType = importTypeMapping[normalizedType];
+
+              if (mappedType) {
+                setFormData(prev => ({
+                  ...prev,
+                  importType: mappedType as ImportRequestType,
+                  importReason: importReason || prev.importReason
+                }));
+              } else {
+                console.warn(`Unrecognized import type: "${importTypeFromFile}"`);
+              }
             }
 
+            // Parse data rows starting from row 10 (index 9)
             const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
             const jsonData = [];
 
-            for (let rowNum = 4; rowNum <= range.e.r; rowNum++) {
+            for (let rowNum = 9; rowNum <= range.e.r; rowNum++) {
               const row: any = {};
-              const itemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })];
-              const quantityCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })];
-              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })];
+              const sttCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A - STT
+              const itemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B - Mã sản phẩm  
+              const quantityCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Số lượng cần nhập
+              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 3 })]; // Column D - Mã nhà cung cấp
 
-              if (itemIdCell && quantityCell && providerIdCell) {
-                row.itemId = itemIdCell.v;
-                row.quantity = quantityCell.v;
-                row.providerId = providerIdCell.v;
+              // Skip header row and empty rows
+              if (sttCell && String(sttCell.v).trim() === "Số thứ tự") continue;
+              if (!itemIdCell || !quantityCell) continue;
+
+              const itemId = String(itemIdCell.v).trim();
+              const quantity = String(quantityCell.v).trim();
+              const providerId = String(providerIdCell.v).trim();
+
+              if (itemId && quantity && providerId &&
+                !isNaN(Number(quantity)) &&
+                Number(quantity) >= 0) {
+                row.itemId = itemId;
+                row.quantity = Number(quantity);
+                row.providerId = Number(providerId);
                 jsonData.push(row);
               }
             }
@@ -311,22 +322,24 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
               const providerId = item.providerId;
 
               if (!itemId || !quantity || !providerId) {
-                throw new Error(`Dòng ${index + 5}: Thiếu thông tin Mã hàng, Số lượng hoặc Nhà cung cấp`);
+                throw new Error(`Row ${index + 10}: Missing item ID or quantity`);
               }
 
               const foundItem = items.find(i => i.id === itemId);
               if (!foundItem) {
-                throw new Error(`Dòng ${index + 5}: Không tìm thấy mặt hàng với mã ${itemId}`);
+                throw new Error(`Row ${index + 10}: Item with ID ${itemId} not found`);
               }
 
               const foundProvider = providers.find(p => p.id === Number(providerId));
               if (!foundProvider) {
-                throw new Error(`Dòng ${index + 5}: Không tìm thấy nhà cung cấp với ID ${providerId}`);
+                throw new Error(`Row ${index + 10}: Provider with ID ${providerId} not found`);
               }
 
+              // Validate that the provider is actually a provider for this item
               if (!Array.isArray(foundItem.providerIds) || !foundItem.providerIds.includes(Number(providerId))) {
-                throw new Error(`Dòng ${index + 5}: Nhà cung cấp ID ${providerId} không phải là nhà cung cấp của mặt hàng mã ${itemId}`);
+                throw new Error(`Row ${index + 10}: Provider ID ${providerId} is not a valid provider for item ${itemId}`);
               }
+
 
               return {
                 itemId: itemId,
@@ -512,15 +525,15 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
       </div>
 
       {step === 0 && (
-        <div className="mt-2 flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-6 mt-2">
           <div className="w-full">
             <ExcelUploadSection
               fileName={fileName}
               onFileChange={handleFileUpload}
-              onDownloadTemplate={downloadTemplate}
               onRemoveFile={handleRemoveFile}
               fileInputRef={fileInputRef}
               buttonLabel="Tải lên file Excel"
+              type="IMPORT_REQUEST"
             />
             <EditableImportRequestTableSection
               setIsAllPagesViewed={setIsAllPagesViewed}
@@ -560,7 +573,7 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
         </div>
       )}
       {step === 1 && (
-        <div className="mt-4 flex gap-6">
+        <div className="flex gap-6 mt-4">
           <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
             <Space direction="vertical" className="w-full">
               <div className="text-sm text-blue-500">
@@ -568,7 +581,7 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
                 Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
               </div>
               <div className="flex gap-6 mb-4">
-                <div className="mb-2 w-1/2">
+                <div className="w-1/2 mb-2">
                   <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
                   <DatePicker
                     locale={locale}
@@ -582,7 +595,7 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
                     allowClear
                   />
                 </div>
-                <div className="mb-2 w-1/2">
+                <div className="w-1/2 mb-2">
                   <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
                   <DatePicker
                     locale={locale}
@@ -678,14 +691,14 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
             <div
               ref={deleteModalScrollRef}
               onScroll={checkDeleteModalScroll}
-              style={{ 
-                height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto", 
+              style={{
+                height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto",
                 overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
                 marginBottom: 16
               }}
             >
               {quantityZeroRowsToDelete.map((item, index) => (
-                <div key={`${item.itemId}-${item.providerId}-${index}`} className="mb-2 border-b pb-2">
+                <div key={`${item.itemId}-${item.providerId}-${index}`} className="pb-2 mb-2 border-b">
                   <p><strong>Mã hàng:</strong> #{item.itemId}</p>
                   <p><strong>Tên hàng:</strong> {item.itemName}</p>
                   <p><strong>Nhà cung cấp:</strong> {item.providerName}</p>

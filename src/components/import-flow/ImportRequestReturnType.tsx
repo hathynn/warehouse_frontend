@@ -45,7 +45,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
   });
   const [items, setItems] = useState<ItemResponse[]>([]);
   const [exportRequests, setExportRequests] = useState<ExportRequestResponse[]>([]);
-  const [exportRequestDetails, setExportRequestDetails] = useState<ImportRequestDetailRow[]>([]);
+  const [exportRequestDetails, setExportRequestDetails] = useState<any[]>([]);
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
@@ -135,8 +135,8 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
   );
 
   // ========== UTILITY FUNCTIONS FOR EXPORT REQUEST DETAILS ==========
-  const enrichDetailsWithLocalData = (details: any[], itemsData: ItemResponse[]) => {
-    return details.map((detail) => {
+  const enrichWithItemsData = (exportRequestDetails: any[], itemsData: ItemResponse[]) => {
+    return exportRequestDetails.map((detail) => {
       const itemInfo = itemsData.find(
         (item) => String(item.id) === String(detail.itemId)
       );
@@ -145,7 +145,6 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
         itemName: itemInfo?.name || detail.itemName || "Không xác định",
         unitType: itemInfo?.unitType || "",
         measurementUnit: itemInfo?.measurementUnit || "",
-        measurementValue: itemInfo?.totalMeasurementValue || detail.measurementValue || "",
       };
     });
   };
@@ -154,7 +153,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
     try {
       const response = await getExportRequestDetails(exportRequestId, 1, 1000);
       if (response && response.content && items.length > 0) {
-        const enriched = enrichDetailsWithLocalData(response.content, items);
+        const enriched = enrichWithItemsData(response.content, items);
         setExportRequestDetails(enriched);
       }
     } catch (error) {
@@ -249,7 +248,6 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
   };
 
   const handleExportRequestSelect = (exportRequestId: string) => {
-    console.log(exportRequestId);
     const selected = exportRequests.find(request => request.exportRequestId === exportRequestId);
     setSelectedExportRequest(selected || null);
     setFormData({ ...formData, exportRequestId: exportRequestId });
@@ -309,34 +307,21 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
       }),
     },
     {
-      title: "Số lượng",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
+      title: "Số lượng đã xuất",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
       width: "20%",
       onHeaderCell: () => ({
         style: { textAlign: "center" as const },
       }),
-      render: (text: number, record: ImportRequestDetailRow) => (
+      render: (measurementValue: any, record: any) => (
         <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text || 0}</span>{" "}
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{measurementValue}</span>{" "}
           {record.unitType && (
-            <span className="text-gray-500">{record.unitType}</span>
+            <span className="text-gray-500">{record.measurementUnit}</span>
           )}
         </div>
       ),
-    },
-    {
-      width: "25%",
-      title: <span className="font-semibold">Quy cách</span>,
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-      align: "center" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (_: any, record: ImportRequestDetailRow) => {
-        return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
-      }
     }
   ];
 
@@ -360,7 +345,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
 
       {step === 0 && (
         <>
-          <div className="mt-4 flex gap-6">
+          <div className="flex gap-6 mt-4">
             <Card title={<span className="text-lg font-semibold">Chọn phiếu xuất mượn / xuất nội bộ</span>} className="w-[25%]">
               <Space direction="vertical" className="w-full">
                 <div className="mb-4">
@@ -412,7 +397,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
                       </Descriptions.Item>
                     </Descriptions>
                     <div className="mt-8 mb-2">
-                      <label className="text-base font-semibold">Danh sách chi tiết sản phẩm xuất</label>
+                      <label className="text-base font-semibold">Danh sách chi tiết sản phẩm cần nhập lại</label>
                     </div>
                     <Table
                       className="[&_.ant-table-cell]:!p-3"
@@ -431,7 +416,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
                 </>
               ) : (
                 <Card title={<span className="text-lg font-semibold">Thông tin phiếu xuất</span>}>
-                  <div className="text-gray-500 text-center py-8">
+                  <div className="py-8 text-center text-gray-500">
                     Vui lòng chọn phiếu xuất để xem thông tin chi tiết
                   </div>
                 </Card>
@@ -453,7 +438,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
       )}
 
       {step === 1 && (
-        <div className="mt-4 flex gap-6">
+        <div className="flex gap-6 mt-4">
           <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
             <Space direction="vertical" className="w-full">
               <div className="text-sm text-blue-500">
@@ -461,7 +446,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
                 Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
               </div>
               <div className="flex gap-6 mb-4">
-                <div className="mb-2 w-1/2">
+                <div className="w-1/2 mb-2">
                   <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
                   <DatePicker
                     locale={locale}
@@ -475,7 +460,7 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
                     allowClear
                   />
                 </div>
-                <div className="mb-2 w-1/2">
+                <div className="w-1/2 mb-2">
                   <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
                   <DatePicker
                     locale={locale}

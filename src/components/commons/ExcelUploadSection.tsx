@@ -1,29 +1,67 @@
 import React, { ChangeEvent, RefObject, useState } from "react";
 import { Button, Modal } from "antd";
 import { UploadOutlined, DownloadOutlined, CloseCircleOutlined } from "@ant-design/icons";
+import templateXuatBan from "@/assets/export-templates/template_xuat_ban.xlsx";
+import templateXuatNoiBo from "@/assets/export-templates/template_xuat_noi_bo.xlsx";
+import templatePhieuNhap from "@/assets/import-templates/template_phieu_nhap.xlsx";
+
+const TYPE_LABELS = {
+  SELLING: "xuất bán",
+  EXPORT_RETURN: "xuất trả nhà cung cấp",
+  INTERNAL: "xuất nội bộ",
+  LIQUIDATION: "xuất thanh lý",
+  IMPORT_REQUEST: "phiếu nhập",
+};
+
+const TEMPLATE_FILES = {
+  SELLING: templateXuatBan,
+  INTERNAL: templateXuatNoiBo,
+  IMPORT_REQUEST: templatePhieuNhap
+};
 
 interface ExcelUploadSectionProps {
   fileName: string;
   onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  onDownloadTemplate: () => void;
   onRemoveFile?: () => void;
   accept?: string;
   buttonLabel?: string;
   infoMessage?: React.ReactNode;
   fileInputRef?: RefObject<HTMLInputElement | null>;
+  type?: string;
 }
 
 const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
   fileName,
   onFileChange,
-  onDownloadTemplate,
   onRemoveFile,
   accept = ".xlsx,.xls",
   buttonLabel = "Tải lên file Excel",
   infoMessage,
   fileInputRef,
+  type,
 }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const handleDownloadTemplate = () => {
+    if (type && TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES]) {
+     const templatePath = TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES];
+
+      const link = document.createElement("a");
+      link.href = templatePath;
+      
+      const fileNames = {
+        SELLING: "template_xuat_ban.xlsx",
+        INTERNAL: "template_xuat_noi_bo.xlsx",
+        IMPORT_REQUEST: "template_phieu_nhap.xlsx",
+      };
+
+      link.download = fileNames[type as keyof typeof fileNames] || "template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
 
   const triggerFileInput = () => {
     fileInputRef?.current?.click();
@@ -45,11 +83,16 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
   };
 
   return (
-    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
       <div className="flex flex-col gap-3">
-        <div className="flex gap-3 justify-center">
-          <Button icon={<DownloadOutlined />} onClick={onDownloadTemplate}>
+        <div className="flex justify-center gap-3">
+          <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
             Tải mẫu Excel
+            {type && TYPE_LABELS[type as keyof typeof TYPE_LABELS] && (
+              <span className="font-semibold">
+                {TYPE_LABELS[type as keyof typeof TYPE_LABELS]}
+              </span>
+            )}
           </Button>
           <input
             type="file"
@@ -62,15 +105,15 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
             type="primary"
             icon={<UploadOutlined />}
             onClick={triggerFileInput}
-            className="bg-blue-100 hover:bg-blue-200 border-blue-300"
+            className="bg-blue-100 border-blue-300 hover:bg-blue-200"
           >
             {buttonLabel}
           </Button>
         </div>
         {fileName && (
           <div className="flex justify-center">
-            <div className="flex justify-between items-center bg-white px-3 py-2 rounded-md border border-gray-200 w-300">
-              <div className="flex-1 flex justify-center items-center">
+            <div className="flex items-center justify-between px-3 py-2 bg-white border border-gray-200 rounded-md w-300">
+              <div className="flex items-center justify-center flex-1">
                 <span className="text-gray-600 truncate" title={fileName}>
                   File đã chọn: <span className="font-medium text-gray-800">{fileName}</span>
                 </span>
@@ -89,12 +132,11 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         )}
       </div>
       {infoMessage && (
-        <div className="text-sm text-blue-600 mt-3 flex items-center">
+        <div className="flex items-center mt-3 text-sm text-blue-600">
           {infoMessage}
         </div>
       )}
 
-      {/* Modal xác nhận xóa file */}
       <Modal
         title="Xác nhận xóa file"
         open={showConfirmModal}
@@ -111,4 +153,4 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
   );
 };
 
-export default ExcelUploadSection; 
+export default ExcelUploadSection;
