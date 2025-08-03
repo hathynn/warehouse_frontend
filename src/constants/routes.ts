@@ -61,6 +61,10 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Inventory item routes
     "/inventory-item/inventory-item-list",
     "/inventory-item/warehouse-section",
+
+    // Item routes
+    "/item/list",
+    "/item/detail/:id",
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here

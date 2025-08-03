@@ -674,7 +674,7 @@ const ExcelDataTable = ({
                     marginBottom: 8,
                   }}
                 >
-                  Các sản phẩm sau không có tồn kho khả dụng:
+                  Các sản phẩm sau không đủ tồn kho khả dụng để xuất:
                 </div>
 
                 <div

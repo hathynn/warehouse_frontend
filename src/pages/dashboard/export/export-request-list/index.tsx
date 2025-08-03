@@ -24,7 +24,7 @@ const ExportRequestList = () => {
 
   // ========== DATA STATES ==========
   const [exportRequestsData, setExportRequestsData] = useState<ExportRequestResponse[]>([]);
-  const [providerNames, setProviderNames] = useState({}); // { providerId: providerName }
+  const [providerNames, setProviderNames] = useState({});
 
   // ========== SERVICES ==========
   const { getAllExportRequests, loading } = useExportRequestService();
