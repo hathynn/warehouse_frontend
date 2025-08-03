@@ -347,8 +347,6 @@ const ImportOrderDetail = () => {
     ]);
   };
 
-  // ========== COMPUTED VALUES & RENDER LOGIC ==========
-
   // Table columns definition
   const columns = [
     {

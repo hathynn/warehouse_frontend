@@ -350,13 +350,13 @@ const ImportOrderCreate = () => {
           const getCell = (cell: string) => ws[cell]?.v;
 
           // Get header fields
-          const dateReceived = getCell('B1');
-          const timeReceived = getCell('B2');
-          const note = getCell('B3');
+          const dateReceived = getCell('B6');
+          const timeReceived = getCell('B7');
+          const note = getCell('B8');
 
           // Validate header fields first
           if (!dateReceived || !timeReceived) {
-            toast.error("File Excel phải có đủ thông tin ngày nhận và giờ nhận ở B1, B2");
+            toast.error("File Excel phải có đủ thông tin ngày nhận và giờ nhận ở B6, B7");
             return;
           }
 
@@ -369,20 +369,27 @@ const ImportOrderCreate = () => {
           const range = XLSX.utils.decode_range(ws['!ref']);
 
           // Find headers in row 5
-          const headers = [getCell('A5'), getCell('B5')];
-          if (headers[0] !== 'itemId' || headers[1] !== 'quantity') {
-            toast.error("File Excel phải có header hàng hóa ở dòng 5: itemId, quantity");
+          const headers = [getCell('A10'), getCell('B10'), getCell('C10'), getCell('D10')];
+          if (headers[0] !== 'Số thứ tự' || headers[1] !== 'Mã sản phẩm' ||
+            headers[2] !== 'Số lượng cần nhập' || headers[3] !== 'Mã nhà cung cấp') {
+            toast.error("File Excel phải có header hàng hóa ở dòng 10: Số thứ tự, Mã sản phẩm, Số lượng cần nhập, Mã nhà cung cấp");
             return;
           }
 
-          // Parse data from row 6 onwards
-          const excelDetails: { itemId: number, quantity: number }[] = [];
-          for (let row = 6; row <= range.e.r + 1; row++) {
-            const itemId = getCell(`A${row}`);
-            const quantity = getCell(`B${row}`);
-            if (itemId && quantity) {
+          // Parse data from row 11 onwards
+          const excelDetails: { itemId: string, quantity: number }[] = [];
+          for (let row = 11; row <= range.e.r + 1; row++) {
+            const stt = getCell(`A${row}`);
+            const itemId = getCell(`B${row}`);
+            const quantity = getCell(`C${row}`);
+            const providerId = getCell(`D${row}`);
+
+            // Skip empty rows
+            if (!itemId || !quantity) continue;
+
+            if (itemId && quantity && !isNaN(Number(quantity)) && Number(quantity) >= 0) {
               excelDetails.push({
-                itemId: Number(itemId),
+                itemId: String(itemId).trim(),
                 quantity: Number(quantity)
               });
             }
@@ -403,9 +410,18 @@ const ImportOrderCreate = () => {
             note: note ? note.toString() : prev.note
           }));
 
-          // Khi import file Excel, chỉ cập nhật plannedQuantity cho các itemId có trong Excel, giữ nguyên các dòng khác
+          setFileName(uploadedFile.name);
+
+          setFormData(prev => ({
+            ...prev,
+            dateReceived: typeof dateReceived === 'number' ? excelDateToYMD(dateReceived) : dateReceived,
+            timeReceived: typeof timeReceived === 'number' ? excelTimeToHM(timeReceived) : timeReceived,
+            note: note ? note.toString() : prev.note
+          }));
+
+          // Update plannedQuantity for matching itemIds, keep others unchanged
           const updatedRows = editableRows.map(row => {
-            const match = excelDetails.find(d => d.itemId === row.itemId);
+            const match = excelDetails.find(d => String(d.itemId) === String(row.itemId));
             if (match) {
               return {
                 ...row,
