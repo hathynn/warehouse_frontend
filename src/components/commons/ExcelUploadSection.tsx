@@ -16,7 +16,7 @@ const TYPE_LABELS = {
 const TEMPLATE_FILES = {
   SELLING: templateXuatBan,
   INTERNAL: templateXuatNoiBo,
-  IMPORT_REQUEST: templatePhieuNhap
+  IMPORT_REQUEST: templatePhieuNhap,
 };
 
 interface ExcelUploadSectionProps {
@@ -44,11 +44,11 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
 
   const handleDownloadTemplate = () => {
     if (type && TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES]) {
-     const templatePath = TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES];
+      const templatePath = TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES];
 
       const link = document.createElement("a");
       link.href = templatePath;
-      
+
       const fileNames = {
         SELLING: "template_xuat_ban.xlsx",
         INTERNAL: "template_xuat_noi_bo.xlsx",
@@ -146,8 +146,12 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         cancelText="Hủy"
         okType="danger"
       >
-        <p>Bạn có chắc muốn xóa file đã chọn?</p>
-        <p>File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn.</p>
+        <p className="text-red-600 font-semibold">
+          Bạn có chắc muốn xóa file đã chọn?
+        </p>
+        <p>
+          File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn.
+        </p>
       </Modal>
     </div>
   );

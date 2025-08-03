@@ -11,7 +11,7 @@ import { ROUTES } from "@/constants/routes";
 // Components
 import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTable";
 import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
-import FileUploadSection from "@/components/export-flow/export-create/FileUploadSection";
+import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
 import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
 import Title from "antd/es/typography/Title";
@@ -1217,11 +1217,13 @@ const ExportRequestCreate = () => {
             formData.exportType
           ) ? (
             <>
-              <FileUploadSection
+              <ExcelUploadSection
                 fileName={fileName}
-                exportType={formData.exportType}
-                onTriggerFileInput={triggerFileInput}
+                type={formData.exportType}
+                onFileChange={handleFileUpload}
                 onRemoveFile={handleRemoveFile}
+                fileInputRef={fileInputRef}
+                buttonLabel="Tải lên file Excel"
               />
 
               <input
