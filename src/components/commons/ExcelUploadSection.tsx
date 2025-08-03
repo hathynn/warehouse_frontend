@@ -5,6 +5,7 @@ import templateXuatBan from "@/assets/export-templates/template_xuat_ban.xlsx";
 import templateXuatNoiBo from "@/assets/export-templates/template_xuat_noi_bo.xlsx";
 import templatePhieuNhap from "@/assets/import-templates/template_phieu_nhap.xlsx";
 import templatePhieuKiemKho from "@/assets/stock-check-templates/template_kiem_kho.xlsx";
+import templateDonNhap from "@/assets/import-templates/template_don_nhap.xlsx";
 
 const TYPE_LABELS = {
   SELLING: "xuất bán",
@@ -12,6 +13,7 @@ const TYPE_LABELS = {
   INTERNAL: "xuất nội bộ",
   LIQUIDATION: "xuất thanh lý",
   IMPORT_REQUEST: "phiếu nhập",
+  IMPORT_ORDER: "đơn nhập",
   STOCK_CHECK_REQUEST: "phiếu kiểm kho"
 };
 
@@ -19,6 +21,7 @@ const TEMPLATE_FILES = {
   SELLING: templateXuatBan,
   INTERNAL: templateXuatNoiBo,
   IMPORT_REQUEST: templatePhieuNhap,
+  IMPORT_ORDER: templateDonNhap,
   STOCK_CHECK_REQUEST: templatePhieuKiemKho
 };
 
@@ -56,6 +59,7 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         SELLING: "template_xuat_ban.xlsx",
         INTERNAL: "template_xuat_noi_bo.xlsx",
         IMPORT_REQUEST: "template_phieu_nhap.xlsx",
+        IMPORT_ORDER: "template_don_nhap.xlsx",
         STOCK_CHECK_REQUEST: "template_kiem_kho.xlsx",
       };
 
@@ -150,7 +154,7 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         cancelText="Hủy"
         okType="danger"
       >
-        <p className="text-red-600 font-semibold">
+        <p className="font-semibold text-red-600">
           Bạn có chắc muốn xóa file đã chọn?
         </p>
         <p>

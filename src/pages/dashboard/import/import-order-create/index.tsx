@@ -561,6 +561,7 @@ const ImportOrderCreate = () => {
               onRemoveFile={handleRemoveFile}
               fileInputRef={fileInputRef}
               buttonLabel="Tải lên file Excel"
+              type="IMPORT_ORDER"
             />
           </div>
           <div className="w-full">

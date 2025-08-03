@@ -339,12 +339,12 @@ const ImportOrderDetail = () => {
     await updateImportOrderToReadyToStore(importOrderId);
     // Fetch data in parallel for better performance.
     // fetchInventoryItemsData is not needed here as it's triggered by the change in importOrderDetails from fetchImportOrderDetails.
+    setShowInventoryItemsLocationConfirmModal(false);
     await Promise.all([
       getAllStoredLocations().then(res => setStoredLocationData(res?.content || [])),
       fetchImportOrderData(),
       fetchImportOrderDetails(),
     ]);
-    setShowUpdateInventoryItemLocationModal(false);
   };
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
