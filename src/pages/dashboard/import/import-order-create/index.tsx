@@ -13,8 +13,8 @@ import { ArrowLeftOutlined, ArrowRightOutlined, ExclamationCircleOutlined, InfoC
 import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
-import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/EditableImportOrderTableSection";
-import ImportOrderConfirmModal from "@/components/import-flow/ImportOrderConfirmModal";
+import EditableImportOrderTableSection, { ImportOrderDetailRow } from "@/components/import-flow/import-order/EditableImportOrderTableSection";
+import ImportOrderConfirmModal from "@/components/import-flow/import-order/ImportOrderConfirmModal";
 import {
   getDefaultAssignedDateTimeForAction,
   isDateDisabledForAction,

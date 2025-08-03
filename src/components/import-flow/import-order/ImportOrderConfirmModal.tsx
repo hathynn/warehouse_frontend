@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig } from "antd";
 import dayjs from "dayjs";
 import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
-import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
+import { usePaginationViewTracker } from "../../../hooks/usePaginationViewTracker";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
 
 interface ImportOrderConfirmModalProps {

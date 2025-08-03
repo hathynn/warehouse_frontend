@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Button, Input, Space, Card, Alert, Table, DatePicker, Steps, Select, Descriptions } from "antd";
-import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/services/useImportRequestDetailService";
 import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
@@ -17,6 +16,7 @@ import { isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import useImportRequestService from "@/services/useImportRequestService";
+import ImportRequestConfirmModal from "./ImportRequestConfirmModal";
 
 const { TextArea } = Input;
 const { Option } = Select;

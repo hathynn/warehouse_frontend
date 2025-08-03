@@ -3,7 +3,7 @@ import { Layout, Menu } from "antd";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import Header from "@/components/header/Header";
+import Header from "@/components/commons/Header";
 import { pageTitles } from "@/constants/pageTitles";
 import { RootState } from "@/contexts/redux/store";
 import { UserState } from "@/contexts/redux/features/userSlice";

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, Button } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
-import { usePaginationViewTracker } from "../../hooks/usePaginationViewTracker";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
 import { calculateRowSpanForItemHaveSameCompareValue } from "@/utils/helpers";
 import dayjs from "dayjs";

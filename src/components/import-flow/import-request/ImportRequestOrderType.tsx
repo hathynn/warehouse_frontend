@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { Button, Input, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps, Modal, Checkbox } from "antd";
-import ImportRequestConfirmModal from "@/components/import-flow/ImportRequestConfirmModal";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/services/useImportRequestDetailService";
@@ -9,7 +8,6 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
-import EditableImportRequestTableSection from "@/components/import-flow/EditableImportRequestTableSection";
 import { ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { FormData, ImportRequestDetailRow } from "@/utils/interfaces";
 import dayjs from "dayjs";
@@ -19,6 +17,8 @@ import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } 
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
+import EditableImportRequestTableSection from "./EditableImportRequestTableSection";
+import ImportRequestConfirmModal from "./ImportRequestConfirmModal";
 
 const { TextArea } = Input;
 

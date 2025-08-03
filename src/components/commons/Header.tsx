@@ -231,11 +231,11 @@ function Header({ title = "Dashboard" }: HeaderProps) {
 
   return (
     <>
-      <div className="flex justify-between pb-4 items-center">
+      <div className="flex items-center justify-between pb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex items-center gap-3">
           <Dropdown
             open={dropdownVisible}
             onOpenChange={(visible) => {
@@ -250,8 +250,8 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             }}
             dropdownRender={() => (
               <div className="w-[340px] max-h-[440px] overflow-y-auto bg-white rounded-xl shadow-lg p-0">
-                <div className="py-3 px-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                  <span className="font-bold text-base">Thông báo</span>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                  <span className="text-base font-bold">Thông báo</span>
                 </div>
 
                 {loading ? (
@@ -282,7 +282,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                             </span>
                           </div>
                           {item.createdDate && (
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="mt-1 text-xs text-gray-500">
                               Vào lúc {dayjs(item.createdDate).format('DD-MM-YYYY HH:mm')}
                             </div>
                           )}
@@ -316,15 +316,15 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             trigger={['click']}
             arrow
           >
-            <div className="flex items-center gap-3 cursor-pointer bg-white px-3 py-2 rounded-lg shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center gap-3 px-3 py-2 transition-all bg-white rounded-lg shadow-sm cursor-pointer hover:shadow-md">
               <Avatar
                 size={45}
                 icon={<UserOutlined />}
                 className="bg-blue-600"
               />
               <div className="flex flex-col">
-                <span className="font-medium text-lg text-gray-500">{fullName}</span>
-                <span className="font-medium text-s text-black">{getRoleDisplayName(role)}</span>
+                <span className="text-lg font-medium text-gray-500">{fullName}</span>
+                <span className="font-medium text-black text-s">{getRoleDisplayName(role)}</span>
               </div>
             </div>
           </Dropdown>

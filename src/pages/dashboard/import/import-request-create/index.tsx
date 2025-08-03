@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import RequestTypeSelector, { ImportRequestType } from "@/components/commons/RequestTypeSelector";
-import ImportRequestOrderType from "../../../../components/import-flow/ImportRequestOrderType";
-import ImportRequestReturnType from "../../../../components/import-flow/ImportRequestReturnType";
+import ImportRequestOrderType from "@/components/import-flow/import-request/ImportRequestOrderType";
+import ImportRequestReturnType from "@/components/import-flow/import-request/ImportRequestReturnType";
 
 const ImportRequestCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -26,7 +26,7 @@ const ImportRequestCreate: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-3 pt-0">
+    <div className="container p-3 pt-0 mx-auto">
       {currentStep === 0 && (
         <div className="flex items-center mb-2">
           <Button
