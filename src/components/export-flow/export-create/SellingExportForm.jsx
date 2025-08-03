@@ -2,60 +2,20 @@ import React, { useEffect, useState } from "react";
 import { Input, DatePicker, ConfigProvider } from "antd";
 import PropTypes from "prop-types";
 import dayjs from "dayjs";
-import useConfigurationService from "@/services/useConfigurationService"; // Cập nhật đường dẫn cho đúng
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
+import holidaysData from "@/assets/data/holidays-2025.json";
 
 const SellingExportForm = ({
   formData,
   setFormData,
   mandatoryError,
   setMandatoryError,
-  excelFormData, // THÊM PROP NÀY ĐỂ NHẬN DATA TỪ EXCEL
+  excelFormData,
 }) => {
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
-  const [workingTimeConfig, setWorkingTimeConfig] = useState({
-    workingTimeStart: null,
-    workingTimeEnd: null,
-  });
+  const [blockedDates, setBlockedDates] = useState([]);
 
-  // Sử dụng configuration service
-  const { getConfiguration, loading: configLoading } =
-    useConfigurationService();
-
-  // Lấy cấu hình working time khi component mount
-  useEffect(() => {
-    const fetchConfiguration = async () => {
-      try {
-        const config = await getConfiguration();
-        if (config) {
-          setWorkingTimeConfig({
-            workingTimeStart: config.workingTimeStart,
-            workingTimeEnd: config.workingTimeEnd,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching configuration:", error);
-      }
-    };
-
-    fetchConfiguration();
-  }, []);
-
-  // useEffect(() => {
-  //   if (excelFormData && !hasAutoFilled) {
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       exportReason: prev.exportReason || excelFormData.exportReason || "",
-  //       receiverName: prev.receiverName || excelFormData.receiverName || "",
-  //       receiverPhone: prev.receiverPhone || excelFormData.receiverPhone || "",
-  //       receiverAddress:
-  //         prev.receiverAddress || excelFormData.receiverAddress || "",
-  //     }));
-
-  //     setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
-  //   }
-  // }, [excelFormData, hasAutoFilled]);
   useEffect(() => {
     if (excelFormData && !hasAutoFilled) {
       setFormData((prev) => ({
@@ -76,6 +36,21 @@ const SellingExportForm = ({
     setHasAutoFilled(false);
   }, [formData.exportType]);
 
+  useEffect(() => {
+    try {
+      // Gộp tất cả ngày bị chặn
+      const allBlockedDates = [
+        ...holidaysData.fixedHolidays.map((h) => h.date),
+        ...holidaysData.lunarHolidays.map((h) => h.date),
+        ...holidaysData.sundays,
+      ];
+
+      setBlockedDates(allBlockedDates);
+    } catch (error) {
+      console.error("Error loading holidays data:", error);
+    }
+  }, []);
+
   // Chặn nhập quá 150 ký tự cho lí do xuất
   const handleReasonChange = (e) => {
     const value = e.target.value;
@@ -85,65 +60,37 @@ const SellingExportForm = ({
     }
   };
 
+  const isDateBlocked = (date) => {
+    const dateString = dayjs(date).format("YYYY-MM-DD");
+    return blockedDates.includes(dateString);
+  };
+
   // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
   const calculateMinExportDate = () => {
-    if (
-      !workingTimeConfig.workingTimeStart ||
-      !workingTimeConfig.workingTimeEnd
-    ) {
-      return dayjs().startOf("day"); // Fallback nếu chưa có config
-    }
-
     const now = dayjs();
-    const today = now.startOf("day");
-
-    // Parse working hours
-    const [startHour, startMin] = workingTimeConfig.workingTimeStart
-      .split(":")
-      .map(Number);
-    const [endHour, endMin] = workingTimeConfig.workingTimeEnd
-      .split(":")
-      .map(Number);
-
-    const todayWorkStart = today.hour(startHour).minute(startMin);
-    const todayWorkEnd = today.hour(endHour).minute(endMin);
-
-    // Thời gian kiểm đếm cố định 24h (sẽ config được sau)
     const INSPECTION_HOURS = 12;
-
-    let startCalculationTime;
-
-    // Case 1: Ngoài giờ hành chính
-    if (now.isBefore(todayWorkStart) || now.isAfter(todayWorkEnd)) {
-      // Nếu trước giờ làm việc hôm nay -> bắt đầu từ giờ làm việc hôm nay
-      // Nếu sau giờ làm việc hôm nay -> bắt đầu từ giờ làm việc ngày mai
-      if (now.isBefore(todayWorkStart)) {
-        startCalculationTime = todayWorkStart;
-      } else {
-        startCalculationTime = todayWorkStart.add(1, "day");
-      }
-    }
-    // Case 2: Trong giờ hành chính
-    else {
-      startCalculationTime = now;
-    }
-
-    // Tính toán thời gian sau khi cộng thêm INSPECTION_HOURS (chỉ tính giờ hành chính)
-    let calculationTime = startCalculationTime.clone();
+    let calculationTime = now;
     let remainingHours = INSPECTION_HOURS;
 
-    while (remainingHours > 0) {
-      const currentDay = calculationTime.startOf("day");
-      const workStart = currentDay.hour(startHour).minute(startMin);
-      const workEnd = currentDay.hour(endHour).minute(endMin);
+    // Nếu hiện tại đang ở ngày nghỉ, chuyển đến 0h ngày làm việc tiếp theo
+    if (isDateBlocked(calculationTime)) {
+      calculationTime = calculationTime.add(1, "day").startOf("day");
+      while (isDateBlocked(calculationTime)) {
+        calculationTime = calculationTime.add(1, "day").startOf("day");
+      }
+    }
 
-      // Nếu calculationTime trước giờ làm việc của ngày đó
-      if (calculationTime.isBefore(workStart)) {
-        calculationTime = workStart;
+    // Cộng dần từng giờ, bỏ qua ngày nghỉ
+    while (remainingHours > 0) {
+      // Kiểm tra nếu đang ở ngày nghỉ thì chuyển sang ngày làm việc tiếp theo
+      if (isDateBlocked(calculationTime)) {
+        calculationTime = calculationTime.add(1, "day").startOf("day");
+        continue;
       }
 
-      // Tính số giờ làm việc còn lại trong ngày
-      const hoursLeftInDay = workEnd.diff(calculationTime, "hour", true);
+      // Tính số giờ còn lại trong ngày hiện tại (từ thời điểm hiện tại đến hết ngày)
+      const endOfDay = calculationTime.endOf("day");
+      const hoursLeftInDay = endOfDay.diff(calculationTime, "hour", true);
 
       if (remainingHours <= hoursLeftInDay) {
         // Đủ giờ trong ngày hiện tại
@@ -152,29 +99,22 @@ const SellingExportForm = ({
       } else {
         // Không đủ giờ, chuyển sang ngày tiếp theo
         remainingHours -= hoursLeftInDay;
-        calculationTime = currentDay
-          .add(1, "day")
-          .hour(startHour)
-          .minute(startMin);
+        calculationTime = calculationTime.add(1, "day").startOf("day");
       }
     }
 
-    // Trả về ngày (không tính giờ phút)
     return calculationTime;
   };
 
-  // Disable các ngày trước ngày xuất sớm nhất được phép
-  // const getDisabledDate = (current) => {
-  //   if (!current) return false;
-
-  //   const minExportDate = calculateMinExportDate();
-  //   return current.isBefore(minExportDate);
-  // };
   const getDisabledDate = (current) => {
     if (!current) return false;
 
     const minExportDate = calculateMinExportDate();
-    return current.isBefore(minExportDate.startOf("day")); // So sánh theo ngày, bỏ qua giờ
+
+    // Disable nếu ngày < minExportDate HOẶC nằm trong danh sách ngày bị chặn
+    return (
+      current.isBefore(minExportDate.startOf("day")) || isDateBlocked(current)
+    );
   };
 
   return (
@@ -218,11 +158,11 @@ const SellingExportForm = ({
 
                     // Nếu chọn ngày sớm nhất có thể
                     if (selectedDate.isSame(minExportDate, "day")) {
-                      inspectionDateTime = minExportDate; // Dùng logic cũ
+                      inspectionDateTime = minExportDate; // Dùng thời gian chính xác từ logic tính toán
                     } else {
-                      // Nếu chọn ngày sau đó, set giờ cố định 07:00
+                      // Nếu chọn ngày sau đó, set giờ 00:00:00 (0h sáng)
                       inspectionDateTime = selectedDate
-                        .hour(7)
+                        .hour(0)
                         .minute(0)
                         .second(0);
                     }
