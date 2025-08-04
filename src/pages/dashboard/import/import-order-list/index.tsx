@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space, Select } from "antd";
+import { Table, Button, Input, Spin, TablePaginationConfig, Tooltip, Space, Select, Tabs } from "antd";
 import StatusTag from "@/components/commons/StatusTag";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import useImportOrderService, {
   ImportOrderResponse,
 } from "@/services/useImportOrderService";
+import useImportRequestService from "@/services/useImportRequestService";
+import useProviderService from "@/services/useProviderService";
+import useExportRequestService from "@/services/useExportRequestService";
+import useDepartmentService from "@/services/useDepartmentService";
 import { SearchOutlined, ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import { AccountRole, AccountRoleForRequest, ImportStatus } from "@/utils/enums";
@@ -28,6 +32,9 @@ interface ImportOrderData extends ImportOrderResponse {
   importOrderDetailsCompletedCount: number;
   totalExpectQuantityInOrder: number;
   totalActualQuantityInOrder: number;
+  importType?: string;
+  providerName?: string;
+  departmentName?: string;
 }
 
 const ImportOrderList: React.FC = () => {
@@ -46,6 +53,7 @@ const ImportOrderList: React.FC = () => {
     searchImportOrderTerm,
     selectedStatusFilter,
     selectedStaff,
+    selectedImportType,
     pagination
   } = filterState as ImportOrderFilterState;
 
@@ -64,6 +72,22 @@ const ImportOrderList: React.FC = () => {
     loading: accountLoading,
     getAccountsByRole
   } = useAccountService();
+
+  const {
+    getAllImportRequests
+  } = useImportRequestService();
+
+  const {
+    getAllProviders
+  } = useProviderService();
+
+  const {
+    getAllExportRequests
+  } = useExportRequestService();
+
+  const {
+    getAllDepartments
+  } = useDepartmentService();
 
   // ========== COMPUTED VALUES ==========
   const loading = importOrderLoading || accountLoading;
@@ -84,6 +108,9 @@ const ImportOrderList: React.FC = () => {
     const matchesImportRequestSearch = selectedImportRequest.length > 0 ?
       selectedImportRequest.includes(importOrder.importRequestId.toString()) : true;
     const matchesImportOrderSearch = importOrder.importOrderId.toString().toLowerCase().includes(searchImportOrderTerm.toLowerCase());
+    
+    // Filter by import type
+    const matchesImportType = importOrder.importType === selectedImportType;
 
     // Filter by assigned staff
     const matchesStaff = selectedStaff.length > 0 ?
@@ -131,7 +158,7 @@ const ImportOrderList: React.FC = () => {
       }
     }
 
-    return matchesImportRequestSearch && matchesImportOrderSearch && matchesStaff && matchesStatusFilter;
+    return matchesImportRequestSearch && matchesImportOrderSearch && matchesImportType && matchesStaff && matchesStatusFilter;
   });
 
   // ========== USE EFFECTS ==========
@@ -171,8 +198,39 @@ const ImportOrderList: React.FC = () => {
       response = await getAllImportOrders();
     }
 
+    // Fetch import requests to get import type information
+    const importRequestsResponse = await getAllImportRequests();
+    const providersResponse = await getAllProviders();
+    const exportRequestsResponse = await getAllExportRequests();
+    const departmentsResponse = await getAllDepartments(1, 100);
+
+    const importRequests = importRequestsResponse.content || [];
+    const providers = providersResponse.content || [];
+    const exportRequests = exportRequestsResponse.content || [];
+    const departments = departmentsResponse.content || [];
+
     const formatted: ImportOrderData[] = (response.content ?? []).map(order => {
       const importOrderDetails = order.importOrderDetails || [];
+      
+      // Find corresponding import request
+      const importRequest = importRequests.find(req => req.importRequestId === order.importRequestId);
+      
+      // Get provider name
+      let providerName = "";
+      let departmentName = "";
+      
+      if (importRequest) {
+        if (importRequest.importType === "ORDER") {
+          const provider = providers.find(p => p.id === importRequest.providerId);
+          providerName = provider?.name || "";
+        } else if (importRequest.importType === "RETURN" && importRequest.exportRequestId) {
+          const exportRequest = exportRequests.find(exp => exp.exportRequestId === importRequest.exportRequestId);
+          if (exportRequest && exportRequest.departmentId) {
+            const department = departments.find(dept => dept.id === exportRequest.departmentId);
+            departmentName = department?.departmentName || "";
+          }
+        }
+      }
 
       const totalExpectQuantityInOrder = importOrderDetails.reduce(
         (sum, d) => sum + d.expectQuantity,
@@ -192,7 +250,10 @@ const ImportOrderList: React.FC = () => {
         importOrderDetailsCount: importOrderDetails.length,
         importOrderDetailsCompletedCount,
         totalExpectQuantityInOrder,
-        totalActualQuantityInOrder
+        totalActualQuantityInOrder,
+        importType: importRequest?.importType || "",
+        providerName,
+        departmentName
       };
     });
 
@@ -453,21 +514,42 @@ const ImportOrderList: React.FC = () => {
         />
       </div>
       
-      <div className="flex justify-end mb-4">
-        <Space size="large">
-          {legendItems.map((item) => (
-            <LegendItem
-              key={item.key}
-              color={item.color}
-              borderColor={item.borderColor}
-              title={item.title}
-              description={item.description}
-              clickable={true}
-              isSelected={selectedStatusFilter === item.key}
-              onClick={() => handleStatusFilterClick(item.key)}
-            />
-          ))}
-        </Space>
+      <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
+        <div className="flex justify-between">
+          <Tabs
+            activeKey={selectedImportType || "ORDER"}
+            onChange={(value) => updateFilter({ 
+              selectedImportType: value,
+              pagination: { ...pagination, current: 1 }
+            })}
+            type="card"
+            size="middle"
+            items={[
+              {
+                key: "ORDER",
+                label: "Nhập hàng mới",
+              },
+              {
+                key: "RETURN",
+                label: "Nhập trả",
+              }
+            ]}
+          />
+          <Space size="large">
+            {legendItems.map((item) => (
+              <LegendItem
+                key={item.key}
+                color={item.color}
+                borderColor={item.borderColor}
+                title={item.title}
+                description={item.description}
+                clickable={true}
+                isSelected={selectedStatusFilter === item.key}
+                onClick={() => handleStatusFilterClick(item.key)}
+              />
+            ))}
+          </Space>
+        </div>
       </div>
       
       <Table

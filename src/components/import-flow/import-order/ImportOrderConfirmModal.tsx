@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { ImportOrderDetailRow } from "./EditableImportOrderTableSection";
 import { usePaginationViewTracker } from "../../../hooks/usePaginationViewTracker";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
+import { ItemResponse } from "@/services/useItemService";
 
 interface ImportOrderConfirmModalProps {
   open: boolean;
@@ -18,6 +19,8 @@ interface ImportOrderConfirmModalProps {
   };
   details: ImportOrderDetailRow[];
   importRequestProvider?: string;
+  importType?: string;
+  itemsData?: ItemResponse[];
 }
 
 const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
@@ -28,6 +31,8 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
   formData,
   details,
   importRequestProvider,
+  importType,
+  itemsData,
 }) => {
   const [confirmCreateImportOrderChecked, setConfirmCreateImportOrderChecked] = useState(false);
 
@@ -78,54 +83,133 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     }
   }, [open]);
 
-  const columns = [
-    {
-      title: "Mã hàng",
-      dataIndex: "itemId",
-      key: "itemId",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (id: number) => `#${id}`
-    },
-    {
-      width: "30%",
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập theo phiếu",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Thực tế đã nhập",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập đơn này",
-      dataIndex: "plannedQuantity",
-      key: "plannedQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      })
+  // Utility function to get item info
+  const getItemInfo = (itemId: string) => {
+    return itemsData?.find(item => String(item.id) === String(itemId));
+  };
+
+  const getColumns = () => {
+    const baseColumns: any[] = [
+      {
+        title: "Mã hàng",
+        dataIndex: "itemId",
+        key: "itemId",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (id: number) => `#${id}`
+      },
+      {
+        width: "30%",
+        title: "Tên hàng",
+        dataIndex: "itemName",
+        key: "itemName",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+    ];
+
+    if (importType === "RETURN") {
+      // For RETURN type, show measurement values with units
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectMeasurementValue",
+          key: "expectMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+                {itemInfo?.measurementUnit && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualMeasurementValue",
+          key: "actualMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+                {itemInfo?.measurementUnit && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedMeasurementValue",
+          key: "plannedMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_: any, record: ImportOrderDetailRow) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{record.plannedMeasurementValue || 0}</span>{" "}
+                {itemInfo?.measurementUnit && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        }
+      );
+    } else {
+      // For ORDER type, show quantities
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedQuantity",
+          key: "plannedQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          })
+        }
+      );
     }
-  ];
+
+    return baseColumns;
+  };
 
   const formattedDate = formData.dateReceived
     ? dayjs(formData.dateReceived).format("DD-MM-YYYY")
@@ -146,7 +230,9 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     >
       <Descriptions bordered column={2} size="small" labelStyle={{ fontWeight: "bold" }} style={{ marginBottom: 24 }} className="[&_.ant-descriptions-view]:!border-gray-400 [&_.ant-descriptions-view_table]:!border-gray-400 [&_.ant-descriptions-view_table_th]:!border-gray-400 [&_.ant-descriptions-view_table_td]:!border-gray-400 [&_.ant-descriptions-row]:!border-gray-400">
         <Descriptions.Item label="Mã phiếu nhập">#{formData.importRequestId}</Descriptions.Item>
-        <Descriptions.Item label="Nhà cung cấp (theo phiếu nhập)">{importRequestProvider || "-"}</Descriptions.Item>
+        {importType !== "RETURN" && (
+          <Descriptions.Item label="Nhà cung cấp (theo phiếu nhập)">{importRequestProvider || "-"}</Descriptions.Item>
+        )}
         <Descriptions.Item label="Ngày nhận hàng">{formattedDate}</Descriptions.Item>
         <Descriptions.Item label="Giờ nhận hàng">{formData.timeReceived || "-"}</Descriptions.Item>
         <Descriptions.Item label="Ghi chú" span={2}>{formData.note || "-"}</Descriptions.Item>
@@ -158,7 +244,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
         style={{ height: "350px", overflowY: "auto" }}
       >
         <Table
-          columns={columns}
+          columns={getColumns()}
           dataSource={details}
           rowKey={(record) => `${record.itemId}`}
           // pagination={{

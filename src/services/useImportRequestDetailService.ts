@@ -13,7 +13,7 @@ export interface ImportRequestDetailResponse {
   expectQuantity: number;
   actualMeasurementValue: number;
   expectMeasurementValue: number;
-  orderedMeasurementUnit: number;
+  orderedMeasurementValue: number;
   status: DetailStatus;
 }
 

@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import useProviderService, { ProviderResponse } from "@/services/useProviderService";
-import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider, Steps, Modal, Checkbox } from "antd";
+import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePaginationConfig, Table, ConfigProvider, Steps } from "antd";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
 import useImportOrderDetailService from "@/services/useImportOrderDetailService";
 import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
+import useItemService, { ItemResponse } from "@/services/useItemService";
 import { toast } from "react-toastify";
 import dayjs, { Dayjs } from "dayjs";
-import { ArrowLeftOutlined, ArrowRightOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import { ROUTES } from "@/constants/routes";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
@@ -62,19 +63,21 @@ const ImportOrderCreate = () => {
     loading: importOrderDetailLoading,
     createImportOrderDetails,
   } = useImportOrderDetailService();
+  const {
+    loading: itemLoading,
+    getItems
+  } = useItemService();
 
   // ==================== DATA STATES ====================
   const [providers, setProviders] = useState<ProviderResponse[]>([]);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [importRequest, setImportRequest] = useState<ImportRequestResponse | null>(null);
+  const [itemsData, setItemsData] = useState<ItemResponse[]>([]);
   const [editableRows, setEditableRows] = useState<ImportOrderDetailRow[]>([]);
-  const [plannedQuantityZeroRowsToDelete, setPlannedQuantityZeroRowsToDelete] = useState<ImportOrderDetailRow[]>([]);
-  const [deletePlannedQuantityZeroRowsResponsibilityChecked, setDeletePlannedQuantityZeroRowsResponsibilityChecked] = useState<boolean>(false);
 
   // ==================== UI & FORM STATES ====================
   const [step, setStep] = useState<number>(0); // 0 = upload/edit, 1 = confirm
   const [showImportOrderConfirmModal, setShowImportOrderConfirmModal] = useState(false);
-  const [isDeletePlannedQuantityZeroRowModalOpen, setIsDeletePlannedQuantityZeroRowModalOpen] = useState(false);
   const [excelImported, setExcelImported] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>("");
@@ -100,19 +103,31 @@ const ImportOrderCreate = () => {
   });
 
   // ==================== COMPUTED VALUES ====================
-  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading;
+  const loading = importOrderLoading || importRequestLoading || importOrderDetailLoading || itemLoading;
 
   // Validation flag for import order data
   const isImportOrderDataValid = editableRows.length > 0 && editableRows.every(row => {
-    if (row.actualQuantity === 0) {
-      return row.plannedQuantity >= 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
+    if (importRequest?.importType === "RETURN") {
+      const currentValue = row.plannedMeasurementValue || 0;
+      if (row.actualMeasurementValue === 0) {
+        return currentValue > 0 && currentValue <= (row.expectMeasurementValue - row.orderedMeasurementValue);
+      }
+      return currentValue > 0 && currentValue <= (row.expectMeasurementValue - row.actualMeasurementValue);
+    } else {
+      if (row.actualQuantity === 0) {
+        return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
+      }
+      return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
     }
-    return row.plannedQuantity >= 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
   });
 
   // ==================== UTILITY FUNCTIONS ====================
   const getDefaultDateTimeForComponent = () => {
     return getDefaultAssignedDateTimeForAction("import-order-create", configuration!, undefined, importRequest || undefined);
+  };
+
+  const getItemInfo = (itemId: string) => {
+    return itemsData.find(item => String(item.id) === String(itemId));
   };
   const disabledDate = (current: Dayjs) =>
     isDateDisabledForAction(current, "import-order-create", configuration, undefined, importRequest || undefined);
@@ -175,6 +190,14 @@ const ImportOrderCreate = () => {
     }
   };
 
+  // Fetch items data
+  const fetchItems = async () => {
+    const response = await getItems();
+    if (response?.content) {
+      setItemsData(response.content);
+    }
+  };
+
   // ==================== USE EFFECTS ====================
   useEffect(() => {
     fetchProviders();
@@ -186,6 +209,7 @@ const ImportOrderCreate = () => {
 
   useEffect(() => {
     fetchImportRequest();
+    fetchItems();
   }, [paramImportRequestId]);
 
   // Set default date time when configuration is loaded
@@ -208,30 +232,50 @@ const ImportOrderCreate = () => {
 
   // Initialize editable rows when import request details are loaded
   useEffect(() => {
-    if (importRequestDetails.length && !excelImported) {
+    if (importRequestDetails.length && !excelImported && itemsData.length > 0) {
       setEditableRows(
         importRequestDetails
           .filter(row => {
-            if (row.actualQuantity === 0) {
-              return row.expectQuantity !== row.orderedQuantity;
+            if (importRequest?.importType === "RETURN") {
+              if (row.actualMeasurementValue === 0) {
+                return row.expectMeasurementValue !== row.orderedMeasurementValue;
+              } else {
+                return row.expectMeasurementValue !== row.actualMeasurementValue;
+              }
             } else {
-              return row.expectQuantity !== row.actualQuantity;
+              if (row.actualQuantity === 0) {
+                return row.expectQuantity !== row.orderedQuantity;
+              } else {
+                return row.expectQuantity !== row.actualQuantity;
+              }
             }
           })
-          .map(row => ({
-            itemId: row.itemId,
-            itemName: row.itemName,
-            expectQuantity: row.expectQuantity,
-            orderedQuantity: row.orderedQuantity,
-            plannedQuantity: row.actualQuantity === 0
-              ? row.expectQuantity - row.orderedQuantity
-              : row.expectQuantity - row.actualQuantity,
-            actualQuantity: row.actualQuantity,
-            importRequestProviderId: importRequest?.providerId || 0,
-          }))
+          .map(row => {
+            const itemInfo = getItemInfo(row.itemId);
+            return {
+              itemId: row.itemId,
+              itemName: row.itemName,
+              expectQuantity: row.expectQuantity,
+              orderedQuantity: row.orderedQuantity,
+              plannedQuantity: row.actualQuantity === 0
+                ? row.expectQuantity - row.orderedQuantity
+                : row.expectQuantity - row.actualQuantity,
+              actualQuantity: row.actualQuantity,
+              expectMeasurementValue: row.expectMeasurementValue || 0,
+              orderedMeasurementValue: row.orderedMeasurementValue || 0,
+              actualMeasurementValue: row.actualMeasurementValue || 0,
+              plannedMeasurementValue: importRequest?.importType === "RETURN"
+                ? (row.actualMeasurementValue === 0
+                  ? row.expectMeasurementValue - row.orderedMeasurementValue
+                  : row.expectMeasurementValue - row.actualMeasurementValue)
+                : 0,
+              importRequestProviderId: importRequest?.providerId || 0,
+              measurementUnit: itemInfo?.measurementUnit,
+            };
+          })
       );
     }
-  }, [importRequestDetails, importRequest, excelImported]);
+  }, [importRequestDetails, importRequest, excelImported, itemsData]);
 
   // ==================== EVENT HANDLERS ====================
   const handleTableChange = (newPagination: TablePaginationConfig) => {
@@ -283,7 +327,8 @@ const ImportOrderCreate = () => {
       accountId: formData.accountId,
       dateReceived: formData.dateReceived,
       timeReceived: formData.timeReceived,
-      note: formData.note
+      note: formData.note,
+      exportRequestId: importRequest?.exportRequestId || undefined
     };
     const response = await createImportOrder(createOrderRequest);
     if (response?.content) {
@@ -291,7 +336,7 @@ const ImportOrderCreate = () => {
       const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
       const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
         itemId: row.itemId,
-        quantity: row.plannedQuantity
+        quantity: importRequest?.importType === "RETURN" ? (row.plannedMeasurementValue || 0) : row.plannedQuantity
       }));
       await createImportOrderDetails(
         { providerId: importRequest?.providerId!, importOrderItems },
@@ -309,29 +354,9 @@ const ImportOrderCreate = () => {
   };
 
   const handleNextStep = () => {
-    const plannedQuantityZeroRows = editableRows.filter(row => row.plannedQuantity === 0);
-    if (plannedQuantityZeroRows.length > 0) {
-      setPlannedQuantityZeroRowsToDelete(plannedQuantityZeroRows);
-      setIsDeletePlannedQuantityZeroRowModalOpen(true);
-    }
-    if (plannedQuantityZeroRows.length === 0) {
-      setStep(1);
-    }
-  };
-
-  const confirmDeletePlannedQuantityZeroRow = () => {
-    const newEditableRows = editableRows.filter(row => !plannedQuantityZeroRowsToDelete.includes(row));
-    setEditableRows(newEditableRows);
-    setPlannedQuantityZeroRowsToDelete([]);
-    setIsDeletePlannedQuantityZeroRowModalOpen(false);
     setStep(1);
   };
 
-  const cancelDeletePlannedQuantityZeroRow = () => {
-    setIsDeletePlannedQuantityZeroRowModalOpen(false);
-    setDeletePlannedQuantityZeroRowsResponsibilityChecked(false);
-    setPlannedQuantityZeroRowsToDelete([]);
-  };
 
   // ==================== EXCEL FUNCTIONS ====================
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -457,85 +482,174 @@ const ImportOrderCreate = () => {
       note: ""
     }));
     // Reset editable rows to original data
-    if (importRequestDetails.length) {
+    if (importRequestDetails.length && itemsData.length > 0) {
       setEditableRows(
         importRequestDetails
           .filter(row => {
-            if (row.actualQuantity === 0) {
-              return row.expectQuantity !== row.orderedQuantity;
+            if (importRequest?.importType === "RETURN") {
+              if (row.actualMeasurementValue === 0) {
+                return row.expectMeasurementValue !== row.orderedMeasurementValue;
+              } else {
+                return row.expectMeasurementValue !== row.actualMeasurementValue;
+              }
             } else {
-              return row.expectQuantity !== row.actualQuantity;
+              if (row.actualQuantity === 0) {
+                return row.expectQuantity !== row.orderedQuantity;
+              } else {
+                return row.expectQuantity !== row.actualQuantity;
+              }
             }
           })
-          .map(row => ({
-            itemId: row.itemId,
-            itemName: row.itemName,
-            expectQuantity: row.expectQuantity,
-            orderedQuantity: row.orderedQuantity,
-            plannedQuantity: row.actualQuantity === 0
-              ? row.expectQuantity - row.orderedQuantity
-              : row.expectQuantity - row.actualQuantity,
-            actualQuantity: row.actualQuantity,
-            importRequestProviderId: importRequest?.providerId || 0,
-          }))
+          .map(row => {
+            const itemInfo = getItemInfo(row.itemId);
+            return {
+              itemId: row.itemId,
+              itemName: row.itemName,
+              expectQuantity: row.expectQuantity,
+              orderedQuantity: row.orderedQuantity,
+              plannedQuantity: row.actualQuantity === 0
+                ? row.expectQuantity - row.orderedQuantity
+                : row.expectQuantity - row.actualQuantity,
+              actualQuantity: row.actualQuantity,
+              expectMeasurementValue: row.expectMeasurementValue || 0,
+              orderedMeasurementValue: row.orderedMeasurementValue || 0,
+              actualMeasurementValue: row.actualMeasurementValue || 0,
+              plannedMeasurementValue: importRequest?.importType === "RETURN"
+                ? (row.actualMeasurementValue === 0
+                  ? row.expectMeasurementValue - row.orderedMeasurementValue
+                  : row.expectMeasurementValue - row.actualMeasurementValue)
+                : 0,
+              importRequestProviderId: importRequest?.providerId || 0,
+              measurementUnit: itemInfo?.measurementUnit,
+            };
+          })
       );
     }
   };
 
   // ==================== TABLE CONFIGURATION ====================
-  const columns = [
-    {
-      title: "Mã hàng",
-      dataIndex: "itemId",
-      key: "itemId",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (id: number) => `#${id}`,
-    },
-    {
-      width: "30%",
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập theo phiếu",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Thực tế đã nhập",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập đơn này",
-      dataIndex: "plannedQuantity",
-      key: "plannedQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (_: any, record: ImportOrderDetailRow) => (
-        <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
-          {record.plannedQuantity}
-        </span>
-      ),
-    },
-  ];
+  const getConfirmationColumns = () => {
+    const baseColumns: any[] = [
+      {
+        title: "Mã hàng",
+        dataIndex: "itemId",
+        key: "itemId",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (id: number) => `#${id}`,
+      },
+      {
+        width: "30%",
+        title: "Tên hàng",
+        dataIndex: "itemName",
+        key: "itemName",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+    ];
+
+    if (importRequest?.importType === "RETURN") {
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectMeasurementValue",
+          key: "expectMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => {
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+                {record?.measurementUnit && (
+                  <span>{record.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualMeasurementValue",
+          key: "actualMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => {
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+                {record?.measurementUnit && (
+                  <span>{record.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedMeasurementValue",
+          key: "plannedMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_: any, record: ImportOrderDetailRow) => {
+            return (
+              <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
+                {record.plannedMeasurementValue || 0}{" "}
+                {record?.measurementUnit && (
+                  <span>{record.measurementUnit}</span>
+                )}
+              </span>
+            );
+          },
+        }
+      );
+    } else {
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedQuantity",
+          key: "plannedQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_: any, record: ImportOrderDetailRow) => (
+            <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
+              {record.plannedQuantity}
+            </span>
+          ),
+        }
+      );
+    }
+
+    return baseColumns;
+  };
 
 
   // ==================== RENDER ====================
@@ -570,24 +684,28 @@ const ImportOrderCreate = () => {
       {/* Step 1: Upload Excel + Editable Table */}
       {step === 0 && (
         <div className="flex flex-col items-center gap-2">
-          <div className="w-full">
-            <ExcelUploadSection
-              fileName={fileName}
-              onFileChange={handleExcelUpload}
-              onRemoveFile={handleRemoveFile}
-              fileInputRef={fileInputRef}
-              buttonLabel="Tải lên file Excel"
-              type="IMPORT_ORDER"
-            />
-          </div>
+          {importRequest?.importType !== "RETURN" && (
+            <div className="w-full">
+              <ExcelUploadSection
+                fileName={fileName}
+                onFileChange={handleExcelUpload}
+                onRemoveFile={handleRemoveFile}
+                fileInputRef={fileInputRef}
+                buttonLabel="Tải lên file Excel"
+                type="IMPORT_ORDER"
+              />
+            </div>
+          )}
           <div className="w-full">
             <EditableImportOrderTableSection
+              loading={itemLoading || importOrderDetailLoading}
               data={editableRows}
               onChange={setEditableRows}
               title="Danh sách hàng hóa cần nhập"
               emptyText="Chưa có dữ liệu từ file Excel"
               excelImported={excelImported}
               setIsAllPagesViewed={setIsAllPagesViewed}
+              importType={importRequest?.importType}
             />
           </div>
           <Button
@@ -620,18 +738,16 @@ const ImportOrderCreate = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
-                  <ConfigProvider direction="rtl">
-                    <DatePicker
-                      className="w-1/2 !ml-auto !p-[4px_8px]"
-                      size="large"
-                      format="DD-MM-YYYY"
-                      value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
-                      onChange={handleDateChange}
-                      disabledDate={disabledDate}
-                      showNow={false}
-                      allowClear
-                    />
-                  </ConfigProvider>
+                  <DatePicker
+                    className="w-1/2 !ml-auto !p-[4px_8px]"
+                    size="large"
+                    format="DD-MM-YYYY"
+                    value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
+                    onChange={handleDateChange}
+                    disabledDate={disabledDate}
+                    showNow={false}
+                    allowClear
+                  />
                 </div>
               </div>
               <div>
@@ -656,14 +772,16 @@ const ImportOrderCreate = () => {
                   </ConfigProvider>
                 </div>
               </div>
-              <div className="my-2">
-                <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
-                <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
-                  {importRequest?.providerId
-                    ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
-                    : "Chưa chọn"}
-                </Typography.Text>
-              </div>
+              {importRequest?.importType !== "RETURN" && (
+                <div className="my-2">
+                  <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
+                  <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
+                    {importRequest?.providerId
+                      ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
+                      : "Chưa chọn"}
+                  </Typography.Text>
+                </div>
+              )}
               <div>
                 <label className="text-base font-semibold">Ghi chú</label>
                 <TextArea
@@ -692,7 +810,7 @@ const ImportOrderCreate = () => {
             <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa cần nhập</span>}>
               {editableRows.length > 0 ? (
                 <Table
-                  columns={columns}
+                  columns={getConfirmationColumns()}
                   dataSource={editableRows}
                   rowKey="itemId"
                   loading={loading}
@@ -710,40 +828,6 @@ const ImportOrderCreate = () => {
         </div>
 
       )}
-      {/* All Row Delete Confirmation Modal */}
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
-            Những mã hàng sau sẽ bị loại bỏ do số lượng bằng 0
-          </div>
-        }
-        open={isDeletePlannedQuantityZeroRowModalOpen}
-        onOk={confirmDeletePlannedQuantityZeroRow}
-        onCancel={cancelDeletePlannedQuantityZeroRow}
-        okText="Xác nhận và tiếp tục"
-        cancelText="Hủy"
-        okButtonProps={{ disabled: !deletePlannedQuantityZeroRowsResponsibilityChecked }}
-        width={500}
-      >
-        {plannedQuantityZeroRowsToDelete.length > 0 && (
-          <div>
-            {plannedQuantityZeroRowsToDelete.map(importOrderDetailRow => (
-              <div key={importOrderDetailRow.itemId} className="pb-2 mb-2 border-b">
-                <p><strong>Mã hàng:</strong> #{importOrderDetailRow.itemId}</p>
-                <p><strong>Tên hàng:</strong> {importOrderDetailRow.itemName}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        <Checkbox
-          checked={deletePlannedQuantityZeroRowsResponsibilityChecked}
-          onChange={e => setDeletePlannedQuantityZeroRowsResponsibilityChecked(e.target.checked)}
-          style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
-        >
-          Tôi xác nhận số lượng là đúng và đồng ý tiếp tục.
-        </Checkbox>
-      </Modal>
 
       {/* Confirm Modal */}
       <ImportOrderConfirmModal
@@ -754,6 +838,8 @@ const ImportOrderCreate = () => {
         formData={formData}
         details={editableRows}
         importRequestProvider={providers.find(p => p.id === importRequest?.providerId)?.name}
+        importType={importRequest?.importType}
+        itemsData={itemsData}
       />
     </div>
   );

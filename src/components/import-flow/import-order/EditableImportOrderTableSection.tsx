@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from "react";
 import { Input, Alert, TablePaginationConfig, Card, Table, Button, Modal } from "antd";
-import { DeleteOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
-import { AiFillDelete } from "react-icons/ai";
 import { MdOutlineDeleteForever } from "react-icons/md";
 
 export interface ImportOrderDetailRow {
-  itemId: number;
+  itemId: string;
   itemName: string;
   expectQuantity: number;
   orderedQuantity: number;
   plannedQuantity: number;
   actualQuantity: number;
+  expectMeasurementValue: number;
+  orderedMeasurementValue: number;
+  actualMeasurementValue: number;
+  plannedMeasurementValue?: number;
   importRequestProviderId: number;
+  measurementUnit?: string;
 }
 
 export interface ProviderOption {
@@ -29,6 +33,7 @@ interface EditableImportOrderTableSectionProps {
   alertNode?: React.ReactNode;
   excelImported?: boolean;
   setIsAllPagesViewed?: (value: boolean) => void;
+  importType?: string;
 }
 
 const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionProps> = ({
@@ -38,7 +43,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   title,
   emptyText,
   setIsAllPagesViewed,
-  
+  importType,
 }) => {
 
   const [pagination, setPagination] = useState({
@@ -80,6 +85,13 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     onChange(newData);
   };
 
+  const handlePlannedMeasurementValueChange = (value: number | null, record: ImportOrderDetailRow) => {
+    const newData = data.map(row =>
+      row.itemId === record.itemId ? { ...row, plannedMeasurementValue: value ?? 0 } : row
+    );
+    onChange(newData);
+  };
+
   const handleDeleteRow = (record: ImportOrderDetailRow) => {
     setRecordToDelete(record);
     setIsDeleteModalOpen(true);
@@ -109,89 +121,192 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     setRecordToDelete(null);
   };
 
-  const columns = [
-    {
-      width: "12%",
-      title: "Mã hàng",
-      dataIndex: "itemId",
-      key: "itemId",
-      render: (id: number) => `#${id}`,
-      align: "left" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: "28%",
-      title: "Tên hàng",
-      dataIndex: "itemName",
-      key: "itemName",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-
-    {
-      title: "Dự nhập theo phiếu",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Đã lên đơn",
-      dataIndex: "orderedQuantity",
-      key: "orderedQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Thực tế đã nhập",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập đơn này",
-      dataIndex: "plannedQuantity",
-      key: "plannedQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (_: any, record: ImportOrderDetailRow) => {
-        let maxAllowed = 0;
-        if (record.actualQuantity === 0) {
-          maxAllowed = record.expectQuantity - record.orderedQuantity;
-        }
-        else {
-          maxAllowed = record.expectQuantity - record.actualQuantity;
-        }
-        const isInvalid = record.plannedQuantity > maxAllowed;
-        return (
-          <Input
-            inputMode="numeric"
-            pattern="[0-9]*"
-            max={maxAllowed}
-            value={record.plannedQuantity}
-            onChange={e => {
-              const val = e.target.value.replace(/\D/g, '');
-              handlePlannedQuantityChange(val ? Number(val) : 0, record);
-            }}
-            style={{ textAlign: 'right', width: 100, color: 'blue' }}
-            status={isInvalid ? 'error' : undefined}
-          />
-        );
+  const getColumns = () => {
+    const baseColumns: any[] = [
+      {
+        width: "12%",
+        title: "Mã hàng",
+        dataIndex: "itemId",
+        key: "itemId",
+        render: (id: string) => `#${id}`,
+        align: "left" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
       },
-    },
-    {
+      {
+        width: "28%",
+        title: "Tên hàng",
+        dataIndex: "itemName",
+        key: "itemName",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+    ];
+
+    if (importType === "RETURN") {
+      // For RETURN type, show measurement values with units
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectMeasurementValue",
+          key: "expectMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => (
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+              {record.measurementUnit && (
+                <span>{record.measurementUnit}</span>
+              )}
+            </div>
+          ),
+        },
+        {
+          title: "Đã lên đơn",
+          dataIndex: "orderedMeasurementValue",
+          key: "orderedMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => (
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+              {record.measurementUnit && (
+                <span>{record.measurementUnit}</span>
+              )}
+            </div>
+          ),
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualMeasurementValue",
+          key: "actualMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (value: number, record: ImportOrderDetailRow) => (
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
+              {record.measurementUnit && (
+                <span>{record.measurementUnit}</span>
+              )}
+            </div>
+          ),
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedMeasurementValue",
+          key: "plannedMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_: any, record: ImportOrderDetailRow) => {
+            let maxAllowed = 0;
+            if (record.actualMeasurementValue === 0) {
+              maxAllowed = record.expectMeasurementValue - record.orderedMeasurementValue;
+            }
+            else {
+              maxAllowed = record.expectMeasurementValue - record.actualMeasurementValue;
+            }
+            const currentValue = record.plannedMeasurementValue || 0;
+            const isInvalid = currentValue > maxAllowed;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                <Input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  max={maxAllowed}
+                  value={currentValue}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    handlePlannedMeasurementValueChange(val ? Number(val) : 0, record);
+                  }}
+                  style={{ textAlign: 'right', width: 100, color: 'blue' }}
+                  status={isInvalid ? 'error' : undefined}
+                />
+                {record.measurementUnit && (
+                  <span>{record.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        }
+      );
+    } else {
+      // For ORDER type, show quantities
+      baseColumns.push(
+        {
+          title: "Dự nhập theo phiếu",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Đã lên đơn",
+          dataIndex: "orderedQuantity",
+          key: "orderedQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Dự nhập đơn này",
+          dataIndex: "plannedQuantity",
+          key: "plannedQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_: any, record: ImportOrderDetailRow) => {
+            let maxAllowed = 0;
+            if (record.actualQuantity === 0) {
+              maxAllowed = record.expectQuantity - record.orderedQuantity;
+            }
+            else {
+              maxAllowed = record.expectQuantity - record.actualQuantity;
+            }
+            const isInvalid = record.plannedQuantity > maxAllowed;
+            return (
+              <Input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                max={maxAllowed}
+                value={record.plannedQuantity}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  handlePlannedQuantityChange(val ? Number(val) : 0, record);
+                }}
+                style={{ textAlign: 'right', width: 100, color: 'blue' }}
+                status={isInvalid ? 'error' : undefined}
+              />
+            );
+          },
+        }
+      );
+    }
+
+    // Add action column
+    baseColumns.push({
       title: "Hành động",
       key: "action",
       width: "10%",
@@ -208,25 +323,45 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
           title="Xóa dòng"
         />
       ),
-    },
-  ];
+    });
+
+    return baseColumns;
+  };
 
   // Tổng hợp lỗi
   const invalidRows = data
     .map((row, idx) => {
-      let maxAllowed = 0;
-      if (row.actualQuantity === 0) {
-        maxAllowed = row.expectQuantity - row.orderedQuantity;
-      }
-      else {
-        maxAllowed = row.expectQuantity - row.actualQuantity;
-      }
-      if (row.plannedQuantity > maxAllowed) {
-        return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
-      }
+      if (importType === "RETURN") {
+        let maxAllowed = 0;
+        if (row.actualMeasurementValue === 0) {
+          maxAllowed = row.expectMeasurementValue - row.orderedMeasurementValue;
+        }
+        else {
+          maxAllowed = row.expectMeasurementValue - row.actualMeasurementValue;
+        }
+        const currentValue = row.plannedMeasurementValue || 0;
+        if (currentValue > maxAllowed) {
+          return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed} ${row.measurementUnit || ''})`;
+        }
 
-      if (row.plannedQuantity <= 0) {
-        return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Nếu bạn tiếp tục, mã hàng này sẽ bị loại bỏ.`;
+        if (currentValue <= 0) {
+          return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
+        }
+      } else {
+        let maxAllowed = 0;
+        if (row.actualQuantity === 0) {
+          maxAllowed = row.expectQuantity - row.orderedQuantity;
+        }
+        else {
+          maxAllowed = row.expectQuantity - row.actualQuantity;
+        }
+        if (row.plannedQuantity > maxAllowed) {
+          return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
+        }
+
+        if (row.plannedQuantity <= 0) {
+          return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
+        }
       }
       return null;
     })
@@ -252,7 +387,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     <Card title={title!}>
       {validationAlertNode}
       <Table
-        columns={columns}
+        columns={getColumns()}
         dataSource={data}
         rowKey="itemId"
         loading={loading}

@@ -17,7 +17,7 @@ export interface ImportOrderDetailResponse {
 export interface ImportOrderDetailCreateRequest {
   providerId: number;
   importOrderItems: {
-    itemId: number;
+    itemId: string;
     quantity: number;
     measurementValue?: number;
   }[];

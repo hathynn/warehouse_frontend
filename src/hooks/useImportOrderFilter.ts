@@ -7,6 +7,7 @@ export interface ImportOrderFilterState {
     pagination: TablePaginationConfig;
     selectedStatusFilter: string | null;
     selectedStaff: string[];
+    selectedImportType: string | null;
 }
 
 const defaultImportOrderFilterState: ImportOrderFilterState = {
@@ -14,6 +15,7 @@ const defaultImportOrderFilterState: ImportOrderFilterState = {
     searchImportOrderTerm: '',
     selectedStaff: [],
     selectedStatusFilter: null,
+    selectedImportType: "ORDER",
     pagination: {
         current: 1,
         pageSize: 10,

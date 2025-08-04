@@ -541,7 +541,7 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
               setData={setImportedData}
               items={items}
               providers={providers}
-              loading={false}
+              loading={loading}
               alertNode={importedData.length > 0 ? (
                 <Alert
                   message="Thông tin nhập kho"

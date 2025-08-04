@@ -481,8 +481,8 @@ const ImportRequestDetail: React.FC = () => {
         },
         {
           title: "Đã lên đơn nhập",
-          dataIndex: "orderedMeasurementUnit",
-          key: "orderedMeasurementUnit",
+          dataIndex: "orderedMeasurementValue",
+          key: "orderedMeasurementValue",
           align: "right" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
