@@ -14,6 +14,8 @@ import Register from "@/pages/auth/register";
 import Overview from "@/pages/dashboard/overview";
 import ItemList from "@/pages/dashboard/item/item-list";
 import ItemCreate from "@/pages/dashboard/item/item-create";
+import ItemDetail from "@/pages/dashboard/item/item-detail";
+import InventoryItemList from "@/pages/dashboard/inventory-item/inventory-item-list";
 import ImportRequestList from "@/pages/dashboard/import/import-request-list";
 import ImportRequestDetail from "@/pages/dashboard/import/import-request-detail";
 import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
@@ -23,11 +25,10 @@ import ImportOrderCreate from "@/pages/dashboard/import/import-order-create";
 import ExportRequestList from "@/pages/dashboard/export/export-request-list";
 import ExportRequestDetail from "@/pages/dashboard/export/export-request-detail";
 import ExportRequestCreate from "@/pages/dashboard/export/export-request-create";
-import InventoryItemList from "@/pages/dashboard/inventory-item/inventory-item-list";
+import StockCheckRequestCreate from "@/pages/dashboard/stock-check/stock-check-create";
 import ConfigurationPage from "@/pages/dashboard/configuration";
 import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
 import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
-import ItemDetail from "@/pages/dashboard/item/item-detail";
 
 export const Router = createBrowserRouter([
   {
@@ -142,6 +143,12 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.CONFIGURATION.LIST,
             element: <ConfigurationPage />,
+          },
+
+          //Stock-check routes
+          {
+            path: ROUTES.PROTECTED.STOCK_CHECK.REQUEST.CREATE,
+            element: <StockCheckRequestCreate />,
           },
 
           // Transaction Log routes

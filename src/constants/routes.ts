@@ -46,6 +46,9 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Transaction log routes
     "/transaction-logs/import",
     "/transaction-logs/export",
+
+    // Stock-check routes
+    "/stock-check/create-request",
   ],
   [AccountRole.STAFF]: [],
   [AccountRole.WAREHOUSE_MANAGER]: [
@@ -65,6 +68,8 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Item routes
     "/item/list",
     "/item/detail/:id",
+
+    // Stock-check routes
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
