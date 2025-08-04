@@ -1136,24 +1136,22 @@ const ExportRequestCreate = () => {
   // Thêm function xử lý notification
   const handleRemovedItemsNotification = (removedItems) => {
     // Đảm bảo mỗi item có đủ thông tin measurementUnit
-    const enrichedItems = removedItems.map((item) => ({
-      ...item,
-      measurementUnit:
-        item.measurementUnit ||
-        items.content?.find((i) => String(i.id) === String(item.itemId))
-          ?.measurementUnit ||
-        "",
-    }));
-
-    setRemovedItemsNotification({
-      visible: true,
-      items: enrichedItems,
-    });
-
-    // Tự động đóng sau 2 phút 30 giây
-    setTimeout(() => {
-      setRemovedItemsNotification((prev) => ({ ...prev, visible: false }));
-    }, 150000);
+    // const enrichedItems = removedItems.map((item) => ({
+    //   ...item,
+    //   measurementUnit:
+    //     item.measurementUnit ||
+    //     items.content?.find((i) => String(i.id) === String(item.itemId))
+    //       ?.measurementUnit ||
+    //     "",
+    // }));
+    // setRemovedItemsNotification({
+    //   visible: true,
+    //   items: enrichedItems,
+    // });
+    // // Tự động đóng sau 2 phút 30 giây
+    // setTimeout(() => {
+    //   setRemovedItemsNotification((prev) => ({ ...prev, visible: false }));
+    // }, 150000);
   };
 
   return (

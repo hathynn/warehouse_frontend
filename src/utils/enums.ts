@@ -39,6 +39,16 @@ export enum ExportStatus {
   CANCELLED = "CANCELLED",
 }
 
+export enum StockcheckStatus {
+  NOT_STARTED = "NOT_STARTED",
+  IN_PROGRESS = "IN_PROGRESS",
+  COUNTED = "COUNTED",
+  COUNT_CONFIRMED = "COUNT_CONFIRMED",
+  CONFIRMED = "CONFIRMED",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+}
+
 export enum DetailStatus {
   LACK = "LACK",
   EXCESS = "EXCESS",
