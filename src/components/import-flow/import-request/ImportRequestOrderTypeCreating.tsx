@@ -26,7 +26,7 @@ interface ImportRequestOrderTypeProps {
   onStepChange?: (step: number) => void;
 }
 
-const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
+const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
   onStepChange
 }) => {
   const importType: ImportRequestType = "ORDER";
@@ -736,4 +736,4 @@ const ImportRequestOrderType: React.FC<ImportRequestOrderTypeProps> = ({
   );
 };
 
-export default ImportRequestOrderType;
+export default ImportRequestOrderTypeCreating;

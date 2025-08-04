@@ -15,7 +15,7 @@ const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
   COMPLETED: { color: "success", text: "Hoàn tất" },
   CANCELLED: { color: "error", text: "Đã hủy" },
   EXTENDED: { color: "warning", text: "Đã gia hạn" },
-  COUNT_AGAIN_REQUESTED: { color: "warning", text: "Đã yêu cầu đếm lại" },
+  COUNT_AGAIN_REQUESTED: { color: "warning", text: "Cần kiểm đếm lại" },
   READY_TO_STORE: { color: "success", text: "Sẵn sàng lưu kho" },
   STORED: { color: "success", text: "Đã lưu kho" },
 };

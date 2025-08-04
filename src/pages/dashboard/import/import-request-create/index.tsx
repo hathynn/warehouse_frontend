@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import RequestTypeSelector, { ImportRequestType } from "@/components/commons/RequestTypeSelector";
-import ImportRequestOrderType from "@/components/import-flow/import-request/ImportRequestOrderType";
-import ImportRequestReturnType from "@/components/import-flow/import-request/ImportRequestReturnType";
+import ImportRequestOrderTypeCreating from "@/components/import-flow/import-request/ImportRequestOrderTypeCreating";
+import ImportRequestReturnTypeCreating from "@/components/import-flow/import-request/ImportRequestReturnTypeCreating";
 
 const ImportRequestCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -43,8 +43,8 @@ const ImportRequestCreate: React.FC = () => {
         setRequestType={handleRequestTypeChange}
         mode="import"
       />
-      {importType === "ORDER" && <ImportRequestOrderType onStepChange={handleStepChange} />}
-      {importType === "RETURN" && <ImportRequestReturnType onStepChange={handleStepChange} />}
+      {importType === "ORDER" && <ImportRequestOrderTypeCreating onStepChange={handleStepChange} />}
+      {importType === "RETURN" && <ImportRequestReturnTypeCreating onStepChange={handleStepChange} />}
     </div>
   );
 };

@@ -6,6 +6,8 @@ import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
 import useProviderService from "@/services/useProviderService";
+import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
+import useDepartmentService, { DepartmentResponse } from "@/services/useDepartmentService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import dayjs from "dayjs";
@@ -19,6 +21,7 @@ export interface ImportRequestData extends ImportRequestResponse {
   totalOrderedQuantityInRequest?: number;
   totalActualQuantityInRequest?: number;
   providerName: string;
+  departmentName?: string;
 }
 
 const ImportRequestList: React.FC = () => {
@@ -47,8 +50,18 @@ const ImportRequestList: React.FC = () => {
     getAllProviders
   } = useProviderService();
 
+  const {
+    loading: exportRequestLoading,
+    getAllExportRequests
+  } = useExportRequestService();
+
+  const {
+    loading: departmentLoading,
+    getAllDepartments
+  } = useDepartmentService();
+
   // ========== COMPUTED VALUES ==========
-  const loading = importRequestLoading || providerLoading;
+  const loading = importRequestLoading || providerLoading || exportRequestLoading || departmentLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isNearEndDate = (endDate: string): boolean => {
@@ -75,8 +88,8 @@ const ImportRequestList: React.FC = () => {
       switch (selectedStatusFilter) {
         case 'near-time':
           matchesStatusFilter = isNearEndDate(importRequest.endDate) &&
-          importRequest.status !== 'COMPLETED' &&
-          importRequest.status !== 'CANCELLED';
+            importRequest.status !== 'COMPLETED' &&
+            importRequest.status !== 'CANCELLED';
           break;
         case 'in-progress':
           matchesStatusFilter = importRequest.status === 'IN_PROGRESS';
@@ -106,13 +119,15 @@ const ImportRequestList: React.FC = () => {
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportRequests = async (): Promise<void> => {
     const { content } = await getAllImportRequests();
-
     const { content: providerList = [] } = await getAllProviders();
+    const { content: exportRequestList = [] } = await getAllExportRequests();
+    const { content: departmentList = [] } = await getAllDepartments(1, 100);
+
 
     const formattedRequests: ImportRequestData[] = (content || []).map(request => {
       const importRequestDetails = request.importRequestDetails || [];
 
-      // Tính tổng bằng reduce
+      // For ORDER type - use quantity values
       const totalExpectQuantityInRequest = importRequestDetails.reduce(
         (runningTotal, detail) => runningTotal + detail.expectQuantity,
         0
@@ -126,10 +141,23 @@ const ImportRequestList: React.FC = () => {
         0
       );
 
-      // Tìm nhà cung cấp
       const provider = providerList.find(
         (provider) => provider.id === request.providerId
       );
+
+      // For RETURN type, find department name via exportRequestId
+      let departmentName = "";
+      if (request.importType === "RETURN" && request.exportRequestId) {
+        const exportRequest = exportRequestList.find(
+          (exp) => exp.exportRequestId === request.exportRequestId
+        );
+        if (exportRequest && exportRequest.departmentId) {
+          const department = departmentList.find(
+            (dept) => dept.id === exportRequest.departmentId
+          );
+          departmentName = department?.departmentName || "";
+        }
+      }
 
       return {
         ...request,
@@ -137,6 +165,7 @@ const ImportRequestList: React.FC = () => {
         totalOrderedQuantityInRequest,
         totalActualQuantityInRequest,
         providerName: provider?.name || "",
+        departmentName,
       };
     });
 
@@ -167,121 +196,133 @@ const ImportRequestList: React.FC = () => {
   };
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
-  const columns = [
-    {
-      title: "Mã phiếu nhập",
-      dataIndex: "importRequestId",
-      key: "importRequestId",
-      align: "left" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (importRequestId: string) => `#${importRequestId}`,
-    },
-    {
-      title: "Ngày bắt đầu",
-      dataIndex: "startDate",
-      key: "startDate",
-      align: "center" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      sorter: (a: ImportRequestData, b: ImportRequestData) => {
-        const dateA = dayjs(a.startDate);
-        const dateB = dayjs(b.startDate);
-        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+  const getColumns = (importType: string) => {
+    const baseColumns = [
+      {
+        title: "Mã phiếu nhập",
+        dataIndex: "importRequestId",
+        key: "importRequestId",
+        align: "left" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (importRequestId: string) => `#${importRequestId}`,
       },
-      showSorterTooltip: {
-        title: 'Sắp xếp theo ngày bắt đầu'
+      {
+        title: "Ngày bắt đầu",
+        dataIndex: "startDate",
+        key: "startDate",
+        align: "center" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        sorter: (a: ImportRequestData, b: ImportRequestData) => {
+          const dateA = dayjs(a.startDate);
+          const dateB = dayjs(b.startDate);
+          return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+        },
+        showSorterTooltip: {
+          title: 'Sắp xếp theo ngày bắt đầu'
+        },
+        render: (startDate: string) => {
+          const formattedStartDate = dayjs(startDate).format("DD-MM-YYYY");
+          return <strong>{formattedStartDate}</strong>;
+        },
       },
-      render: (startDate: string) => {
-        const formattedStartDate = dayjs(startDate).format("DD-MM-YYYY");
-        return <strong>{formattedStartDate}</strong>;
+      {
+        title: "Ngày hết hạn",
+        dataIndex: "endDate",
+        key: "endDate",
+        align: "center" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        sorter: (a: ImportRequestData, b: ImportRequestData) => {
+          if (!a.endDate && !b.endDate) return 0;
+          if (!a.endDate) return 1;
+          if (!b.endDate) return -1;
+          const dateA = dayjs(a.endDate);
+          const dateB = dayjs(b.endDate);
+          return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+        },
+        showSorterTooltip: {
+          title: 'Sắp xếp theo ngày hết hạn'
+        },
+        render: (endDate: string) => {
+          return endDate ? <strong>{dayjs(endDate).format("DD-MM-YYYY")}</strong> : <span
+            className="text-gray-400">Không có</span>;
+        },
       },
-    },
-    {
-      title: "Ngày hết hạn",
-      dataIndex: "endDate",
-      key: "endDate",
-      align: "center" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      sorter: (a: ImportRequestData, b: ImportRequestData) => {
-        if (!a.endDate && !b.endDate) return 0;
-        if (!a.endDate) return 1; // null values go to end
-        if (!b.endDate) return -1;
-        const dateA = dayjs(a.endDate);
-        const dateB = dayjs(b.endDate);
-        return dateA.isBefore(dateB) ? -1 : dateA.isAfter(dateB) ? 1 : 0;
+    ];
+
+    const summaryColumns = importType === 'ORDER' ? [
+      {
+        title: "Tổng dự nhập",
+        dataIndex: "totalExpectQuantityInRequest",
+        key: "totalExpectQuantityInRequest",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (quantity: number) => <div className="text-base">{quantity || 0}</div>,
       },
-      showSorterTooltip: {
-        title: 'Sắp xếp theo ngày hết hạn'
-      },
-      render: (endDate: string) => {
-        return endDate ? <strong>{dayjs(endDate).format("DD-MM-YYYY")}</strong> : <span className="text-gray-400">Không có</span>;
-      },
-    },
-    {
-      title: "Tổng dự nhập",
-      dataIndex: "totalExpectQuantityInRequest",
-      key: "totalExpectQuantityInRequest",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (quantity: number) => <div className="text-base">{quantity || 0}</div>,
-    },
-    {
-      title: "Tổng thực nhập",
-      dataIndex: "totalActualQuantityInRequest",
-      key: "totalActualQuantityInRequest",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (actual: number, record: ImportRequestData) => {
-        const expected = record.totalExpectQuantityInRequest || 0;
-        const isEnough = actual >= expected;
-        return (
-          <div className="text-right">
-            {actual === 0 ? (
-              <span className="font-bold text-gray-600">Chưa nhập</span>
-            ) : (
-              <>
+      {
+        title: "Tổng thực nhập",
+        dataIndex: "totalActualQuantityInRequest",
+        key: "totalActualQuantityInRequest",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (actual: number) => {
+          return (
+            <div className="text-right">
+              {actual === 0 ? (
+                <span className="font-bold text-gray-600">Chưa nhập</span>
+              ) : (
                 <div className="text-base">{actual}</div>
-                {/* {expected > 0 && (
-                  <span className={`${isEnough ? 'text-green-600' : 'text-red-600'}`}>
-                    {isEnough ? "" : `Thiếu ${expected - actual} trên dự nhập`}
-                  </span>
-                )} */}
-              </>
-            )}
-          </div>
-        );
+              )}
+            </div>
+          );
+        },
       },
-    },
-    {
-      title: "Tổng đã lên đơn",
-      dataIndex: "totalOrderedQuantityInRequest",
-      key: "totalOrderedQuantityInRequest",
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (ordered: number) => {
-        return (
-          <div className="text-right">
-            {ordered === 0 ? (
-              <span className="font-bold text-gray-600">Chưa lên đơn</span>
-            ) : (
-              <>
+      {
+        title: "Tổng đã lên đơn",
+        dataIndex: "totalOrderedQuantityInRequest",
+        key: "totalOrderedQuantityInRequest",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (ordered: number) => {
+          return (
+            <div className="text-right">
+              {ordered === 0 ? (
+                <span className="font-bold text-gray-600">Chưa lên đơn</span>
+              ) : (
                 <div className="text-base">{ordered}</div>
-              </>
-            )}
-          </div>
-        );
+              )}
+            </div>
+          );
+        },
       },
-    },
-    {
+    ] : [
+      {
+        title: "Phòng ban nhận phiếu xuất nội bộ",
+        dataIndex: "departmentName",
+        key: "departmentName",
+        align: "center" as const,
+        render: (departmentName: string) => {
+          return departmentName ? (
+            <div className="font-medium">
+              {departmentName}
+            </div>
+          ) : (
+            <span className="text-gray-400">Chưa xác định</span>
+          );
+        },
+      },
+    ];
+
+    const providerColumn = importType === 'ORDER' ? [{
       title: "Nhà cung cấp",
       dataIndex: "providerName",
       key: "providerName",
@@ -289,49 +330,58 @@ const ImportRequestList: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      align: "center" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (status: string) => <StatusTag status={status} type="import" />,
+    }] : [];
 
-    },
-    {
-      title: "Hành động",
-      key: "action",
-      align: "center" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-      render: (_: unknown, record: ImportRequestData) => (
-        <div className="flex gap-3 justify-center">
-          <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
-            <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId)}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
-                <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
-              </span>
-            </Link>
-          </Tooltip>
-          <Tooltip title="Xem danh sách đơn nhập" placement="top">
-            <Link to={ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(record.importRequestId)}>
-              <span className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 bg-blue-900 text-white hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg cursor-pointer" style={{ width: 32, height: 32 }}>
-                <UnorderedListOutlined style={{ fontSize: 20, fontWeight: 700 }} />
-              </span>
-            </Link>
-          </Tooltip>
-        </div>
-      ),
-    },
-  ];
+    const statusAndActionColumns = [
+      {
+        title: "Trạng thái",
+        dataIndex: "status",
+        key: "status",
+        align: "center" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (status: string) => <StatusTag status={status} type="import" />,
+      },
+      {
+        title: "Hành động",
+        key: "action",
+        align: "center" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (_: unknown, record: ImportRequestData) => (
+          <div className="flex justify-center gap-3">
+            <Tooltip title="Xem chi tiết phiếu nhập" placement="top">
+              <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.DETAIL(record.importRequestId)}>
+                <span className="inline-flex items-center justify-center text-blue-900 border-2 border-blue-900 rounded-full cursor-pointer hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg" style={{
+                  width: 32, height: 32
+                }}>
+                  <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+                </span>
+              </Link>
+            </Tooltip>
+            <Tooltip title="Xem danh sách đơn nhập" placement="top">
+              <Link to={ROUTES.PROTECTED.IMPORT.ORDER.LIST_FROM_REQUEST(record.importRequestId)}>
+                <span className="inline-flex items-center justify-center text-white bg-blue-900 border-2 border-blue-900 rounded-full cursor-pointer hover:bg-blue-700 hover:border-blue-700 hover:shadow-lg" style={{
+                  width: 32,
+                  height: 32
+                }}>
+                  <UnorderedListOutlined style={{ fontSize: 20, fontWeight: 700 }} />
+                </span>
+              </Link>
+            </Tooltip>
+          </div>
+        ),
+      },
+    ];
+
+    return [...baseColumns, ...summaryColumns, ...providerColumn, ...statusAndActionColumns];
+  };
 
   return (
     <div className={`mx-auto ImportRequestList`}>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Danh sách phiếu nhập</h1>
         <Link to={ROUTES.PROTECTED.IMPORT.REQUEST.CREATE}>
           <Button
@@ -345,7 +395,7 @@ const ImportRequestList: React.FC = () => {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-[240px]">
             <Input
               placeholder="Tìm theo mã phiếu nhập"
@@ -403,7 +453,7 @@ const ImportRequestList: React.FC = () => {
             ]}
           />
           <Space size="large">
-            {legendItems.filter(item => 
+            {legendItems.filter(item =>
               ['near-time', 'in-progress', 'completed', 'cancelled'].includes(item.key)
             ).map((item) => (
               <LegendItem
@@ -422,7 +472,7 @@ const ImportRequestList: React.FC = () => {
       </div>
 
       <Table
-        columns={columns}
+        columns={getColumns(selectedImportType)}
         dataSource={filteredItems}
         rowKey="importRequestId"
         loading={loading}

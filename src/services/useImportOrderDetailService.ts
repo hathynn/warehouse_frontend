@@ -13,12 +13,13 @@ export interface ImportOrderDetailResponse {
   status: string;
 }
 
-// Interface cho request tạo import order detail (đơn giản)
+// Interface cho request tạo import order detail
 export interface ImportOrderDetailCreateRequest {
   providerId: number;
   importOrderItems: {
     itemId: number;
     quantity: number;
+    measurementValue?: number;
   }[];
 }
 

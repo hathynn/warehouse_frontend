@@ -6,11 +6,14 @@ import { ResponseDTO } from "@/utils/interfaces";
 export interface ImportRequestDetailResponse {
   importRequestDetailId: string;
   importRequestId: string;
-  itemId: number;
+  itemId: string;
   itemName: string;
   actualQuantity: number;
   orderedQuantity: number;
   expectQuantity: number;
+  actualMeasurementValue: number;
+  expectMeasurementValue: number;
+  orderedMeasurementUnit: number;
   status: DetailStatus;
 }
 

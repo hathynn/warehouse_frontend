@@ -12,6 +12,7 @@ export interface ImportOrderCreateRequest {
   dateReceived: string;
   timeReceived: string;
   note?: string;
+  exportRequestId?: string;
 }
 
 export interface AssignStaffRequest {

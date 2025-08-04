@@ -80,7 +80,7 @@ const useExportRequestService = () => {
 
   // Lấy phiếu xuất theo ID
   const getExportRequestById = async (
-    id: number
+    id: String
   ): Promise<ExportRequestResponse | null> => {
     try {
       const response = await callApi("get", `/export-request/${id}`);

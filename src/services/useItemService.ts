@@ -98,7 +98,7 @@ const useItemService = () => {
 
   // Lấy sản phẩm theo ID
   const getItemById = async (
-    itemId: number
+    itemId: string
   ): Promise<ResponseDTO<ItemResponse>> => {
     try {
       const response = await callApi("get", `/item/${itemId}`);

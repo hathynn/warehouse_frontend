@@ -4,7 +4,7 @@ export const legendItems = [
       color: "rgba(220, 38, 38, 0.1)",
       borderColor: "rgba(220, 38, 38, 0.5)",
       title: "Gần đến giờ nhận hàng",
-      description: "Đơn nhập có thời điểm nhận hàng trong vòng 6 tiếng tới so với bây giờ"
+      description: "Đơn nhập có thời điểm nhận hàng trong vòng 2 tiếng tới"
     },
     {
       key: 'in-progress',
@@ -24,8 +24,8 @@ export const legendItems = [
       key: 'count-again-requested',
       color: "rgba(245, 158, 11, 0.15)",
       borderColor: "rgba(245, 158, 11, 0.6)",
-      title: "Yêu cầu kiểm đếm lại",
-      description: "Đơn nhập yêu cầu kiểm đếm lại"
+      title: "Cần kiểm đếm lại",
+      description: "Đơn nhập đã được yêu cầu kiểm đếm lại"
     },
     {
       key: 'extended',

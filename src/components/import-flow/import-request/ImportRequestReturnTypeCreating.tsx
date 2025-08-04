@@ -25,7 +25,7 @@ interface ImportRequestReturnTypeProps {
   onStepChange?: (step: number) => void;
 }
 
-const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
+const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = ({
   onStepChange
 }) => {
   const importType: ImportRequestType = "RETURN";
@@ -535,4 +535,4 @@ const ImportRequestReturnType: React.FC<ImportRequestReturnTypeProps> = ({
   );
 };
 
-export default ImportRequestReturnType;
+export default ImportRequestReturnTypeCreating;

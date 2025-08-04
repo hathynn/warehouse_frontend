@@ -76,7 +76,7 @@ const ImportOrderList: React.FC = () => {
     const now = new Date();
     const diffInHours = (receivingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    return diffInHours > 0 && diffInHours <= 6;
+    return diffInHours > 0 && diffInHours <= 2;
   };
 
   // ========== COMPUTED VALUES & FILTERING ==========

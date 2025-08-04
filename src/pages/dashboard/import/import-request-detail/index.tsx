@@ -15,6 +15,9 @@ import StatusTag from "@/components/commons/StatusTag";
 import { ImportRequestData } from "../import-request-list";
 import useProviderService from "@/services/useProviderService";
 import useImportOrderService, { ImportOrderResponse } from "@/services/useImportOrderService";
+import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
+import useDepartmentService, { DepartmentResponse } from "@/services/useDepartmentService";
+import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/services/useImportOrderDetailService";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { getMinDateTime } from "@/utils/helpers";
@@ -44,6 +47,9 @@ const ImportRequestDetail: React.FC = () => {
   const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
+  const [exportRequestData, setExportRequestData] = useState<ExportRequestResponse | null>(null);
+  const [departmentData, setDepartmentData] = useState<DepartmentResponse | null>(null);
+  const [itemsData, setItemsData] = useState<ItemResponse[]>([]);
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState<PaginationType>({
@@ -79,6 +85,21 @@ const ImportRequestDetail: React.FC = () => {
   const {
     getConfiguration
   } = useConfigurationService();
+
+  const {
+    loading: exportRequestLoading,
+    getExportRequestById
+  } = useExportRequestService();
+
+  const {
+    loading: departmentLoading,
+    getDepartmentById
+  } = useDepartmentService();
+
+  const {
+    loading: itemLoading,
+    getItems
+  } = useItemService();
 
   // ========== UTILITY FUNCTIONS ==========
   const getImportTypeText = (type: ImportType): string => {
@@ -141,26 +162,62 @@ const ImportRequestDetail: React.FC = () => {
     isAbleToCreateImportOrder = false;
   }
 
-  const infoItems: DetailInfoItem[] = [
-    { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
-    { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
-    { label: "Nhà cung cấp", value: importRequestData?.providerName },
-    { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
-    {
-      label: "Thời gian hiệu lực",
-      value: (
-        <span>
-          Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
-          {importRequestData?.endDate ? (
-            <> - Đến <strong>{dayjs(importRequestData.endDate).format("DD-MM-YYYY")}</strong></>
-          ) : null}
-        </span>
-      )
-    },
-    importRequestData?.exportRequestId ? { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` } : null,
-    { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
-    { label: "Lý do nhập", value: importRequestData?.importReason, span: 2 },
-  ].filter(Boolean) as DetailInfoItem[];
+  const getInfoItems = (): DetailInfoItem[] => {
+    const baseItems: DetailInfoItem[] = [
+      { label: "Mã phiếu nhập", value: `#${importRequestData?.importRequestId}` },
+      { label: "Loại nhập", value: importRequestData?.importType && getImportTypeText(importRequestData.importType as ImportType) },
+      { label: "Ngày tạo", value: importRequestData?.createdDate ? dayjs(importRequestData.createdDate).format("DD-MM-YYYY") : "-" },
+      {
+        label: "Thời gian hiệu lực",
+        value: (
+          <span>
+            Từ <strong>{importRequestData?.startDate ? dayjs(importRequestData.startDate).format("DD-MM-YYYY") : "-"}</strong>
+            {importRequestData?.endDate ? (
+              <> - Đến <strong>{dayjs(importRequestData.endDate).format("DD-MM-YYYY")}</strong></>
+            ) : null}
+          </span>
+        )
+      },
+      { label: "Trạng thái", value: <StatusTag status={importRequestData?.status || ""} type="import" /> },
+    ];
+
+    // For ORDER type, show provider information
+    if (importRequestData?.importType === "ORDER") {
+      baseItems.splice(2, 0, { label: "Nhà cung cấp", value: importRequestData?.providerName });
+    }
+
+    // For RETURN type, show export request related information
+    if (importRequestData?.importType === "RETURN") {
+      if (importRequestData?.exportRequestId) {
+        baseItems.splice(2, 0, { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` });
+      }
+
+      // Add related information section
+      if (exportRequestData || departmentData) {
+        baseItems.push({
+          label: "Thông tin liên hệ",
+          value: (
+            <div className="space-y-1">
+              {departmentData && (
+                <div><strong>Phòng ban:</strong> {departmentData.departmentName}</div>
+              )}
+              {exportRequestData && (
+                <>
+                  <div><strong>Cá nhân:</strong> {exportRequestData.receiverName || "-"}</div>
+                  <div><strong>Số điện thoại:</strong> {exportRequestData.receiverPhone || "-"}</div>
+                </>
+              )}
+            </div>
+          ),
+          span: 1
+        });
+      }
+    }
+
+    baseItems.push({ label: "Lý do nhập", value: importRequestData?.importReason, span: 2 });
+
+    return baseItems.filter(Boolean) as DetailInfoItem[];
+  };
 
   // ========== USE EFFECTS ==========
   useEffect(() => {
@@ -184,8 +241,15 @@ const ImportRequestDetail: React.FC = () => {
   }, [importRequestId]);
 
   useEffect(() => {
+    fetchItems();
     fetchConfiguration();
   }, []);
+
+  useEffect(() => {
+    if (importRequestData?.importType === "RETURN" && importRequestData?.exportRequestId) {
+      fetchExportRequestData();
+    }
+  }, [importRequestData?.exportRequestId, importRequestData?.importType]);
 
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportRequestData = async () => {
@@ -239,6 +303,29 @@ const ImportRequestDetail: React.FC = () => {
     if (config) {
       setConfiguration(config);
     }
+  };
+
+  const fetchExportRequestData = async () => {
+    if (!importRequestData?.exportRequestId) return;
+
+    const response = await getExportRequestById(importRequestData.exportRequestId);
+    setExportRequestData(response);
+
+    // Fetch department data if departmentId exists
+    if (response.departmentId) {
+      const deptResponse = await getDepartmentById(response.departmentId);
+      if (deptResponse?.content) {
+        setDepartmentData(deptResponse.content);
+      }
+    }
+  };
+
+  const fetchItems = async () => {
+    const response = await getItems();
+    if (response?.content) {
+      setItemsData(response.content);
+    }
+
   };
 
   // ========== NAVIGATION HANDLERS ==========
@@ -309,57 +396,133 @@ const ImportRequestDetail: React.FC = () => {
     }
   };
 
+  // ========== UTILITY FUNCTIONS FOR ITEM DATA ==========
+  const getItemInfo = (itemId: string) => {
+    return itemsData.find(item => String(item.id) === String(itemId));
+  };
+
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
-  const columns: ColumnsType<ImportRequestDetailResponse> = [
-    {
-      width: '15%',
-      title: "Mã sản phẩm",
-      dataIndex: "itemId",
-      key: "itemId",
-      render: (id: number) => `#${id}`,
-      align: "left" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: '25%',
-      title: "Tên sản phẩm",
-      dataIndex: "itemName",
-      key: "itemName",
-      ellipsis: true,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Dự nhập của phiếu",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Đã lên đơn nhập",
-      dataIndex: "orderedQuantity",
-      key: "orderedQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      title: "Thực tế đã nhập",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      align: "right" as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
+  const getColumns = (importType: string): ColumnsType<ImportRequestDetailResponse> => {
+    const baseColumns: ColumnsType<ImportRequestDetailResponse> = [
+      {
+        width: '15%',
+        title: "Mã sản phẩm",
+        dataIndex: "itemId",
+        key: "itemId",
+        render: (id: number) => `#${id}`,
+        align: "left" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+      {
+        width: '25%',
+        title: "Tên sản phẩm",
+        dataIndex: "itemName",
+        key: "itemName",
+        ellipsis: true,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      }
+    ];
+
+    if (importType === 'ORDER') {
+      baseColumns.push(
+        {
+          title: "Dự nhập của phiếu",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Đã lên đơn nhập",
+          dataIndex: "orderedQuantity",
+          key: "orderedQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        }
+      );
+    } else if (importType === 'RETURN') {
+      baseColumns.push(
+        {
+          title: "Dự nhập của phiếu",
+          dataIndex: "expectMeasurementValue",
+          key: "expectMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
+                {itemInfo?.unitType && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Đã lên đơn nhập",
+          dataIndex: "orderedMeasurementUnit",
+          key: "orderedMeasurementUnit",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
+                {itemInfo?.unitType && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualMeasurementValue",
+          key: "actualMeasurementValue",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
+            const itemInfo = getItemInfo(record.itemId);
+            return (
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
+                {itemInfo?.unitType && (
+                  <span>{itemInfo.measurementUnit}</span>
+                )}
+              </div>
+            );
+          },
+        }
+      );
+    }
+
+    baseColumns.push({
       width: '10%',
       title: "Trạng thái",
       dataIndex: "status",
@@ -369,20 +532,22 @@ const ImportRequestDetail: React.FC = () => {
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-    }
-  ];
+    });
+
+    return baseColumns;
+  };
 
   // Show loading spinner when initially loading the page
-  if ((importRequestLoading || providerLoading) && !importRequestData) {
+  if ((importRequestLoading || providerLoading || exportRequestLoading || departmentLoading || itemLoading) && !importRequestData) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex items-center justify-center h-screen">
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto p-3 pt-0">
+    <div className="p-3 pt-0 mx-auto">
       <div className="flex items-center mb-4">
         <Button
           icon={<ArrowLeftOutlined />}
@@ -393,7 +558,7 @@ const ImportRequestDetail: React.FC = () => {
         </Button>
       </div>
       <div className="flex items-center mb-4">
-        <h1 className="text-xl font-bold m-0">Chi tiết phiếu nhập #{importRequestData?.importRequestId}</h1>
+        <h1 className="m-0 text-xl font-bold">Chi tiết phiếu nhập #{importRequestData?.importRequestId}</h1>
         <div className="ml-auto space-x-3">
           {importRequestData?.importOrdersId && importRequestData.importOrdersId.length > 0 && (
             <Button
@@ -420,17 +585,17 @@ const ImportRequestDetail: React.FC = () => {
         </div>
       </div>
 
-      <DetailCard title="Thông tin phiếu nhập" items={infoItems} />
+      <DetailCard title="Thông tin phiếu nhập" items={getInfoItems()} />
 
-      <div className="flex justify-between items-center mt-12 mb-4">
+      <div className="flex items-center justify-between mt-12 mb-4">
         <h2 className="text-lg font-semibold">Danh sách chi tiết sản phẩm</h2>
       </div>
 
       <Table
-        columns={columns}
+        columns={getColumns(importRequestData?.importType || 'ORDER')}
         dataSource={importRequestDetails}
         rowKey="importRequestDetailId"
-        loading={importRequestDetailLoading}
+        loading={itemLoading}
         onChange={(pagination) => handleTableChange(pagination as PaginationType)}
         pagination={{
           ...pagination,
