@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { Button, Card, Alert, Steps } from "antd";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import Title from "antd/es/typography/Title";
 
 // Constants
 import { ROUTES } from "@/constants/routes";
@@ -10,16 +11,19 @@ import { ROUTES } from "@/constants/routes";
 import ExcelDataTable from "@/components/stock-check-flow/stock-check-create/ExcelDataTable";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import BackNavigationHeader from "@/components/export-flow/export-general/BackNavigationHeader";
-import Title from "antd/es/typography/Title";
+import StockCheckRequestInfoForm from "@/components/stock-check-flow/stock-check-create/StockCheckRequestInfoForm";
 // Services
 import useItemService from "@/services/useItemService";
+import useStockCheckService from "@/services/useStockCheckService";
+import useStockCheckDetailService from "@/services/useStockCheckDetailService";
 // Hooks
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 
 // Initial form data state
 const INITIAL_FORM_DATA = {
   stockCheckReason: "",
-  stockCheckDate: null,
+  startDate: null,
+  expectedCompletedDate: null,
   note: "",
 };
 
@@ -50,6 +54,8 @@ const StockCheckRequestCreate = () => {
   // SERVICE HOOKS
   const [items, setItems] = useState([]);
   const { loading: itemLoading, getItems } = useItemService();
+  const { createStockCheckRequest } = useStockCheckService();
+  const { createStockCheckDetail } = useStockCheckDetailService();
 
   // =============================================================================
   // COMPUTED VALUES
@@ -110,6 +116,7 @@ const StockCheckRequestCreate = () => {
         unitType: row.unitType || itemMeta.unitType || "",
         measurementUnit: row.measurementUnit || itemMeta.measurementUnit || "",
         totalMeasurementValue: itemMeta.totalMeasurementValue || "",
+        quantity: itemMeta.quantity || 0,
         inventoryQuantity: itemMeta.quantity || 0,
       };
     });
@@ -312,10 +319,17 @@ const StockCheckRequestCreate = () => {
   // FORM SUBMISSION
   // =============================================================================
   const validateFormData = () => {
-    if (!formData.stockCheckDate) {
+    if (!formData.startDate) {
       return {
         isValid: false,
-        errorMessage: "Vui lòng chọn ngày kiểm kho",
+        errorMessage: "Vui lòng chọn ngày bắt đầu kiểm kê",
+      };
+    }
+
+    if (!formData.expectedCompletedDate) {
+      return {
+        isValid: false,
+        errorMessage: "Vui lòng chọn ngày dự kiến hoàn tất",
       };
     }
 
@@ -333,7 +347,6 @@ const StockCheckRequestCreate = () => {
       };
     }
 
-    // Validate có ít nhất một sản phẩm để kiểm kho
     if (!data || data.length === 0) {
       return {
         isValid: false,
@@ -356,16 +369,40 @@ const StockCheckRequestCreate = () => {
         return;
       }
 
-      // TODO: Implement stock check request creation service calls
-      console.log("Stock check request data:", {
-        formData,
-        items: data,
-      });
+      // Prepare stock check request data
+      const stockCheckRequestData = {
+        stockCheckReason: formData.stockCheckReason,
+        status: "NOT_STARTED",
+        type: "SPOT_CHECK",
+        startDate: formData.startDate,
+        expectedCompletedDate: formData.expectedCompletedDate,
+        countingDate: formData.expectedCompletedDate, // Same as expected date
+        countingTime: "23:59:59", // 12h đêm
+        note: formData.note || "",
+      };
+
+      // Create stock check request
+      const createdStockCheck = await createStockCheckRequest(
+        stockCheckRequestData
+      );
+      if (!createdStockCheck) {
+        toast.error("Không tạo được phiếu kiểm kho");
+        return;
+      }
+
+      // Prepare stock check details data
+      const stockCheckDetailsData = data.map((item) => ({
+        itemId: item.itemId,
+        quantity: item.quantity || 0,
+        measurementValue: item.totalMeasurementValue || 0,
+      }));
+
+      // Create stock check details
+      await createStockCheckDetail(createdStockCheck.id, stockCheckDetailsData);
 
       toast.success("Đã tạo phiếu kiểm kho thành công");
 
-      // TODO: Navigate to stock check list page
-      // navigate(ROUTES.PROTECTED.STOCK_CHECK.REQUEST.LIST);
+      navigate(ROUTES.PROTECTED.STOCK_CHECK.REQUEST.LIST);
 
       // Reset states after successful submission
       resetAllStates();
@@ -502,18 +539,24 @@ const StockCheckRequestCreate = () => {
           </div>
         </>
       ) : (
-        // Form Input Step - TODO: Create StockCheckRequestInfoForm component
-        <div className="p-4">
-          <h3>Form nhập thông tin phiếu kiểm kho</h3>
-          <p>TODO: Implement StockCheckRequestInfoForm component</p>
-
-          <div className="flex gap-4 mt-4">
-            <Button onClick={handleBackToFileStep}>Quay lại</Button>
-            <Button type="primary" onClick={handleSubmit}>
-              Tạo phiếu kiểm kho
-            </Button>
-          </div>
-        </div>
+        // Form Input Step
+        <>
+          <StockCheckRequestInfoForm
+            formData={formData}
+            setFormData={setFormData}
+            data={data}
+            mappedData={mappedData}
+            validationError={validationError}
+            handleSubmit={handleSubmit}
+            setFileConfirmed={handleBackToFileStep}
+            fileName={fileName}
+            items={items.content || []}
+            pagination={pagination}
+            excelFormData={excelFormData}
+            allPagesViewed={allPagesViewed}
+            hasTableError={hasTableError}
+          />
+        </>
       )}
     </div>
   );
