@@ -13,7 +13,7 @@ import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTabl
 import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
-import ExportRequestHeader from "@/components/export-flow/export-general/ExportRequestHeader";
+import BackNavigationHeader from "@/components/export-flow/export-general/BackNavigationHeader";
 import Title from "antd/es/typography/Title";
 import RequestTypeSelector from "@/components/commons/RequestTypeSelector";
 import UseExportFirstStep from "@/components/export-flow/export-create/UseExportFirstStep";
@@ -1160,7 +1160,7 @@ const ExportRequestCreate = () => {
     <div className="container mx-auto p-3 pt-0">
       {!fileConfirmed ? (
         <>
-          <ExportRequestHeader
+          <BackNavigationHeader
             title=""
             onBack={() => navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST)}
           />
