@@ -115,28 +115,16 @@ const ExcelDataTable = ({
       render: (text) => <div>{text}</div>,
     },
     {
-      width: "25%",
+      width: "20%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
     },
     {
       width: "15%",
-      title: <span className="font-semibold">Đơn vị tính</span>,
-      dataIndex: "unitType",
-      key: "unitType",
-      onHeaderCell: () => ({
-        style: { textAlign: "center" },
-      }),
-      render: (text) => (
-        <span style={{ display: "block", textAlign: "center" }}>{text}</span>
-      ),
-    },
-    {
-      width: "45%",
       title: <span className="font-semibold">Quy cách</span>,
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
+      dataIndex: "measurementValue",
+      key: "measurementValue",
       align: "center",
       onHeaderCell: () => ({
         style: { textAlign: "center" },
@@ -149,11 +137,44 @@ const ExcelDataTable = ({
 
         return (
           <span>
-            {measurementValueFromDB} {record.measurementUnit} /{" "}
-            {record.unitType}
+            <strong style={{ fontSize: "17px" }}>
+              {measurementValueFromDB}
+            </strong>{" "}
+            {record.measurementUnit} / {record.unitType}
           </span>
         );
       },
+    },
+    {
+      width: "20%",
+      title: (
+        <span className="font-semibold">Tổng số lượng hàng trong kho</span>
+      ),
+      dataIndex: "quantity",
+      key: "quantity",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (text, record) => (
+        <span style={{ display: "block", textAlign: "center" }}>
+          <strong style={{ fontSize: "17px" }}>{text}</strong> {record.unitType}
+        </span>
+      ),
+    },
+    {
+      width: "20%",
+      title: <span className="font-semibold">Tổng giá trị hàng trong kho</span>,
+      dataIndex: "totalMeasurementValue",
+      key: "totalMeasurementValue",
+      onHeaderCell: () => ({
+        style: { textAlign: "center" },
+      }),
+      render: (text, record) => (
+        <span style={{ display: "block", textAlign: "center" }}>
+          <strong style={{ fontSize: "17px" }}>{text}</strong>{" "}
+          {record.measurementUnit}
+        </span>
+      ),
     },
   ];
 
@@ -310,7 +331,7 @@ const ExcelDataTable = ({
                       fontWeight: "500",
                       color: "#262626",
                       marginRight: 8,
-                      fontSize: "13px",
+                      fontSize: "15px",
                     }}
                   >
                     {item.itemId}
@@ -318,7 +339,7 @@ const ExcelDataTable = ({
                   <div
                     style={{
                       color: "#595959",
-                      fontSize: "13px",
+                      fontSize: "14px",
                     }}
                   >
                     {item.itemName}
@@ -330,7 +351,7 @@ const ExcelDataTable = ({
             <div
               style={{
                 marginTop: 8,
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: "600",
               }}
             >
