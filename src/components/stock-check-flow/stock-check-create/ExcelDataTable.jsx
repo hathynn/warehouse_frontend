@@ -115,13 +115,13 @@ const ExcelDataTable = ({
       render: (text) => <div>{text}</div>,
     },
     {
-      width: "20%",
+      width: "18%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
     },
     {
-      width: "15%",
+      width: "17%",
       title: <span className="font-semibold">Quy cách</span>,
       dataIndex: "measurementValue",
       key: "measurementValue",
@@ -146,12 +146,10 @@ const ExcelDataTable = ({
       },
     },
     {
-      width: "20%",
-      title: (
-        <span className="font-semibold">Tổng số lượng hàng trong kho</span>
-      ),
-      dataIndex: "quantity",
-      key: "quantity",
+      width: "22%",
+      title: <span className="font-semibold">Tổng số lượng khả dụng</span>,
+      dataIndex: "numberOfAvailableItems",
+      key: "numberOfAvailableItems",
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
@@ -163,9 +161,9 @@ const ExcelDataTable = ({
     },
     {
       width: "20%",
-      title: <span className="font-semibold">Tổng giá trị hàng trong kho</span>,
-      dataIndex: "totalMeasurementValue",
-      key: "totalMeasurementValue",
+      title: <span className="font-semibold">Tổng giá trị khả dụng</span>,
+      dataIndex: "numberOfAvailableMeasurementValues",
+      key: "numberOfAvailableMeasurementValues",
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
@@ -204,7 +202,7 @@ const ExcelDataTable = ({
           Thông tin kiểm kho
         </div>
         <div style={{ marginTop: 4 }}>
-          Tổng số mặt hàng cần kiểm kho: {data.length}
+          Tổng số mặt hàng yêu cầu kiểm kho: {data.length}
         </div>
 
         {/* Thông báo sản phẩm bị loại bỏ */}
