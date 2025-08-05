@@ -9,17 +9,17 @@ export interface StockCheckDetailRequest {
   measurementValue?: number;
 }
 
-// Response từ API (có thể tương tự như export request detail)
+// Response từ API GET /stock-check-detail/{stockCheckId}
 export interface StockCheckDetailResponse {
-  id: string;
+  id: number;
+  measurementValue: number;
+  quantity: number;
+  actualQuantity: number;
+  actualMeasurementValue: number;
+  status: string | null;
   stockCheckRequestId: string;
   itemId: string;
-  quantity?: number;
-  measurementValue?: number;
-  createdDate: string;
-  lastModifiedDate: string;
-  createdBy: string;
-  lastModifiedBy: string;
+  inventoryItemIds: string[];
 }
 
 const useStockCheckDetailService = () => {
@@ -56,9 +56,31 @@ const useStockCheckDetailService = () => {
     }
   };
 
+  // GET /stock-check-detail/{stockCheckId} - Lấy chi tiết phiếu kiểm kho theo ID
+  const getStockCheckDetailById = async (
+    stockCheckId: string
+  ): Promise<ResponseDTO<StockCheckDetailResponse[]>> => {
+    try {
+      if (!stockCheckId) {
+        throw new Error("ID phiếu kiểm kho không được để trống");
+      }
+
+      const response = await callApi(
+        "get",
+        `/stock-check-detail/${stockCheckId}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy chi tiết phiếu kiểm kho");
+      console.error("Error fetching stock check detail:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     createStockCheckDetail,
+    getStockCheckDetailById,
   };
 };
 

@@ -117,6 +117,9 @@ const StockCheckRequestCreate = () => {
         measurementUnit: row.measurementUnit || itemMeta.measurementUnit || "",
         totalMeasurementValue: itemMeta.totalMeasurementValue || "",
         quantity: itemMeta.quantity || 0,
+        numberOfAvailableItems: itemMeta.numberOfAvailableItems || 0,
+        numberOfAvailableMeasurementValues:
+          itemMeta.numberOfAvailableMeasurementValues || 0,
         inventoryQuantity: itemMeta.quantity || 0,
       };
     });
@@ -372,7 +375,6 @@ const StockCheckRequestCreate = () => {
       // Prepare stock check request data
       const stockCheckRequestData = {
         stockCheckReason: formData.stockCheckReason,
-        status: "NOT_STARTED",
         type: "SPOT_CHECK",
         startDate: formData.startDate,
         expectedCompletedDate: formData.expectedCompletedDate,
@@ -393,8 +395,8 @@ const StockCheckRequestCreate = () => {
       // Prepare stock check details data
       const stockCheckDetailsData = data.map((item) => ({
         itemId: item.itemId,
-        quantity: item.quantity || 0,
-        measurementValue: item.totalMeasurementValue || 0,
+        quantity: item.numberOfAvailableItems || 0,
+        measurementValue: item.numberOfAvailableMeasurementValues || 0,
       }));
 
       // Create stock check details

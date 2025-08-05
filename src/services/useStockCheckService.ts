@@ -30,7 +30,6 @@ export interface StockCheckRequestResponse {
 // Request body cho POST /stock-check/create
 export interface StockCheckRequestRequest {
   stockCheckReason?: string;
-  status: string; // default "NOT_STARTED"
   type: DetailType;
   startDate: string;
   expectedCompletedDate: string;

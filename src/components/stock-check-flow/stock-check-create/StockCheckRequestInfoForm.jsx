@@ -16,6 +16,7 @@ import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
 import holidaysData from "@/assets/data/holidays-2025.json";
 import ExcelDataTable from "@/components/stock-check-flow/stock-check-create/ExcelDataTable";
+import StockCheckRequestConfirmModal from "./StockCheckRequestConfirmModal";
 
 const { Title } = Typography;
 
@@ -43,6 +44,7 @@ const StockCheckRequestInfoForm = ({
   });
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [blockedDates, setBlockedDates] = useState([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Update table pagination when mappedData changes
   useEffect(() => {
@@ -102,9 +104,13 @@ const StockCheckRequestInfoForm = ({
   const getDisabledDateForExpectedDate = (current) => {
     if (!current) return false;
 
-    // Disable dates before start date and blocked dates
+    // Disable dates before start date + 1 day and blocked dates
     const startDate = formData.startDate ? dayjs(formData.startDate) : dayjs();
-    return current.isBefore(startDate.startOf("day")) || isDateBlocked(current);
+    const minExpectedDate = startDate.add(1, "day"); // Thêm 1 ngày
+
+    return (
+      current.isBefore(minExpectedDate.startOf("day")) || isDateBlocked(current)
+    );
   };
 
   const handleReasonChange = (e) => {
@@ -122,6 +128,13 @@ const StockCheckRequestInfoForm = ({
     }
   };
 
+  const handleConfirmModalOk = async () => {
+    setConfirmLoading(true);
+    await handleSubmit();
+    setConfirmLoading(false);
+    setShowConfirmModal(false);
+  };
+
   const missingFields =
     !formData.startDate ||
     !formData.expectedCompletedDate ||
@@ -133,9 +146,7 @@ const StockCheckRequestInfoForm = ({
       return;
     }
     setMandatoryError("");
-    setConfirmLoading(true);
-    await handleSubmit();
-    setConfirmLoading(false);
+    setShowConfirmModal(true);
   };
 
   return (
@@ -179,7 +190,7 @@ const StockCheckRequestInfoForm = ({
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <Title level={2}>Điền thông tin phiếu kiểm kho</Title>
+        <Title level={3}>Điền thông tin phiếu kiểm kho</Title>
         <Space>
           <b>File đã được tải lên:</b> {fileName}
         </Space>
@@ -201,85 +212,89 @@ const StockCheckRequestInfoForm = ({
               </div>
             )}
 
-            {/* Ngày bắt đầu kiểm kê */}
-            <div className="mb-4">
-              <label className="block mb-1">
-                Ngày bắt đầu kiểm kê <span className="text-red-500">*</span>
-              </label>
-              <ConfigProvider>
-                <div dir="rtl">
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    value={
-                      formData.startDate ? dayjs(formData.startDate) : null
-                    }
-                    onChange={(date) => {
-                      const newDate = date?.isValid()
-                        ? date.format("YYYY-MM-DD")
-                        : null;
-                      setFormData({
-                        ...formData,
-                        startDate: newDate,
-                        // Reset expected date if start date changes
-                        expectedCompletedDate: null,
-                      });
-                      setMandatoryError("");
-                    }}
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    allowClear
-                    placeholder="Chọn ngày bắt đầu"
-                    disabledDate={getDisabledDateForStartDate}
-                  />
-                </div>
-              </ConfigProvider>
-              {!formData.startDate && (
-                <div className="text-red-500 text-xs mt-1">
-                  Vui lòng chọn ngày bắt đầu kiểm kê.
-                </div>
-              )}
-            </div>
+            {/* Ngày bắt đầu kiểm kê và Dự kiến ngày hoàn tất */}
+            <div className="mb-4 flex gap-4">
+              {/* Ngày bắt đầu kiểm kê */}
+              <div className="w-1/2">
+                <label className="block mb-1">
+                  Ngày bắt đầu kiểm kê <span className="text-red-500">*</span>
+                </label>
+                <ConfigProvider>
+                  <div dir="rtl">
+                    <DatePicker
+                      locale={locale}
+                      format="DD-MM-YYYY"
+                      size="large"
+                      value={
+                        formData.startDate ? dayjs(formData.startDate) : null
+                      }
+                      onChange={(date) => {
+                        const newDate = date?.isValid()
+                          ? date.format("YYYY-MM-DD")
+                          : null;
+                        setFormData({
+                          ...formData,
+                          startDate: newDate,
+                          // Reset expected date if start date changes
+                          expectedCompletedDate: null,
+                        });
+                        setMandatoryError("");
+                      }}
+                      className="w-full !mt-1 !p-[4px_8px]"
+                      allowClear
+                      placeholder="Chọn ngày bắt đầu"
+                      disabledDate={getDisabledDateForStartDate}
+                    />
+                  </div>
+                </ConfigProvider>
+                {!formData.startDate && (
+                  <div className="text-red-500 text-xs mt-1">
+                    Chọn ngày bắt đầu kiểm kê.
+                  </div>
+                )}
+              </div>
 
-            {/* Dự kiến ngày hoàn tất */}
-            <div className="mb-4">
-              <label className="block mb-1">
-                Dự kiến ngày hoàn tất <span className="text-red-500">*</span>
-              </label>
-              <ConfigProvider>
-                <div dir="rtl">
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    value={
-                      formData.expectedCompletedDate
-                        ? dayjs(formData.expectedCompletedDate)
-                        : null
-                    }
-                    onChange={(date) => {
-                      const newDate = date?.isValid()
-                        ? date.format("YYYY-MM-DD")
-                        : null;
-                      setFormData({
-                        ...formData,
-                        expectedCompletedDate: newDate,
-                      });
-                      setMandatoryError("");
-                    }}
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    allowClear
-                    placeholder="Chọn ngày hoàn tất"
-                    disabledDate={getDisabledDateForExpectedDate}
-                    disabled={!formData.startDate}
-                  />
-                </div>
-              </ConfigProvider>
-              {!formData.expectedCompletedDate && (
-                <div className="text-red-500 text-xs mt-1">
-                  Vui lòng chọn ngày dự kiến hoàn tất.
-                </div>
-              )}
+              {/* Dự kiến ngày hoàn tất */}
+              <div className="w-1/2">
+                <label className="block mb-1">
+                  Ngày mong muốn hoàn tất{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <ConfigProvider>
+                  <div dir="rtl">
+                    <DatePicker
+                      locale={locale}
+                      format="DD-MM-YYYY"
+                      size="large"
+                      value={
+                        formData.expectedCompletedDate
+                          ? dayjs(formData.expectedCompletedDate)
+                          : null
+                      }
+                      onChange={(date) => {
+                        const newDate = date?.isValid()
+                          ? date.format("YYYY-MM-DD")
+                          : null;
+                        setFormData({
+                          ...formData,
+                          expectedCompletedDate: newDate,
+                        });
+                        setMandatoryError("");
+                      }}
+                      className="w-full !mt-1 !p-[4px_8px]"
+                      allowClear
+                      placeholder="Chọn ngày hoàn tất"
+                      disabledDate={getDisabledDateForExpectedDate}
+                      disabled={!formData.startDate}
+                    />
+                  </div>
+                </ConfigProvider>
+                {!formData.expectedCompletedDate && (
+                  <div className="text-red-500 text-xs mt-1">
+                    Chọn ngày mong muốn hoàn tất.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Lý do cần kiểm kê */}
@@ -362,6 +377,15 @@ const StockCheckRequestInfoForm = ({
           </Card>
         </div>
       </div>
+      <StockCheckRequestConfirmModal
+        open={showConfirmModal}
+        onOk={handleConfirmModalOk}
+        onCancel={() => setShowConfirmModal(false)}
+        confirmLoading={confirmLoading}
+        formData={formData}
+        details={mappedData}
+        items={items}
+      />
     </div>
   );
 };
