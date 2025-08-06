@@ -77,10 +77,36 @@ const useStockCheckDetailService = () => {
     }
   };
 
+  // GET /stock-check-detail/detail/{id} - Lấy chi tiết phiếu kiểm kho theo detail ID
+  const getStockCheckDetailByDetailId = async (
+    detailId: number
+  ): Promise<StockCheckDetailResponse | null> => {
+    try {
+      if (!detailId) {
+        throw new Error("ID chi tiết phiếu kiểm kho không được để trống");
+      }
+
+      const response = await callApi(
+        "get",
+        `/stock-check-detail/detail/${detailId}`
+      );
+
+      if (response && response.content) {
+        return response.content;
+      }
+      return null;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin chi tiết phiếu kiểm kho");
+      console.error("Error fetching stock check detail by detail ID:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     createStockCheckDetail,
     getStockCheckDetailById,
+    getStockCheckDetailByDetailId,
   };
 };
 
