@@ -131,7 +131,7 @@ export const ROUTES = {
     STOCK_CHECK: {
       REQUEST: {
         LIST: "/stock-check/request-list",
-        DETAIL: (id: string = ":exportRequestId") =>
+        DETAIL: (id: string = ":stockCheckId") =>
           `/stock-check/request-detail/${id}`,
         CREATE: "/stock-check/create-request",
       },
