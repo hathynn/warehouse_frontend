@@ -42,8 +42,8 @@ const ItemList = () => {
 
       // Lấy cả items và inventory items
       const [itemsResponse, inventoryResponse] = await Promise.all([
-        getItems(1, 9999),
-        getAllInventoryItems(1, 9999),
+        getItems(1, 200),
+        getAllInventoryItems(1, 5000),
       ]);
 
       let itemsData = [];

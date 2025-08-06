@@ -27,6 +27,7 @@ import ExportRequestDetail from "@/pages/dashboard/export/export-request-detail"
 import ExportRequestCreate from "@/pages/dashboard/export/export-request-create";
 import StockCheckRequestCreate from "@/pages/dashboard/stock-check/stock-check-create";
 import StockCheckRequestList from "@/pages/dashboard/stock-check/stock-check-list";
+import StockCheckRequestDetail from "@/pages/dashboard/stock-check/stock-check-detail";
 import ConfigurationPage from "@/pages/dashboard/configuration";
 import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
 import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
@@ -154,6 +155,10 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.STOCK_CHECK.REQUEST.LIST,
             element: <StockCheckRequestList />,
+          },
+          {
+            path: ROUTES.PROTECTED.STOCK_CHECK.REQUEST.DETAIL(),
+            element: <StockCheckRequestDetail />,
           },
 
           // Transaction Log routes
