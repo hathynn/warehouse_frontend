@@ -60,7 +60,6 @@ export interface ActiveAccountRequest {
   exportRequestId?: string;
 }
 
-
 const useAccountService = () => {
   const { callApi, loading } = useApi();
 
@@ -210,16 +209,17 @@ const useAccountService = () => {
    * @param username - The username to search for
    * @returns Promise resolving to AccountResponse
    */
-  const findAccountByUsername = async (username: string): Promise<AccountResponse> => {
-    try {
-      const response = await callApi("get", `/account/by-username?username=${username}`);
-      if (response && response.content) {
-        return response.content;
-      }
-      throw new Error("Account not found");
-    } catch (error) {
-      throw error;
+  const findAccountByUsername = async (
+    username: string
+  ): Promise<AccountResponse> => {
+    const response = await callApi(
+      "get",
+      `/account/by-username?username=${username}`
+    );
+    if (response && response.content) {
+      return response.content;
     }
+    throw new Error("Account not found");
   };
 
   /**

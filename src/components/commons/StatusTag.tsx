@@ -1,10 +1,10 @@
 import React from "react";
 import { Tag } from "antd";
-import { ImportStatus, ExportStatus, DetailStatus } from "@/utils/enums";
+import { ImportStatus, ExportStatus, DetailStatus, StockcheckStatus } from "@/utils/enums";
 
 interface StatusTagProps {
   status: string;
-  type: "import" | "export" | "detail";
+  type: "import" | "export" | "detail" | "stockcheck";
 }
 
 const importStatusMap: Record<ImportStatus, { color: string; text: string }> = {
@@ -38,6 +38,16 @@ const detailStatusMap: Record<DetailStatus, { color: string; text: string }> = {
   MATCH: { color: "success", text: "ĐỦ" },
 };
 
+const stockcheckStatusMap: Record<StockcheckStatus, { color: string; text: string }> = {
+  NOT_STARTED: { color: "default", text: "Chưa bắt đầu" },
+  IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
+  COUNTED: { color: "processing", text: "Đã đóng gói" },
+  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận đóng gói" },
+  CONFIRMED: { color: "processing", text: "Đã xuất kho" },
+  COMPLETED: { color: "green", text: "Hoàn tất" },
+  CANCELLED: { color: "default", text: "Đã hủy" },
+};
+
 const StatusTag: React.FC<StatusTagProps> = ({ status, type }) => {
   let color = "default";
   let text = status;
@@ -51,6 +61,9 @@ const StatusTag: React.FC<StatusTagProps> = ({ status, type }) => {
   } else if (type === "detail" && status in detailStatusMap) {
     color = detailStatusMap[status as DetailStatus].color;
     text = detailStatusMap[status as DetailStatus].text;
+  } else if (type === "stockcheck" && status in stockcheckStatusMap) {
+    color = stockcheckStatusMap[status as StockcheckStatus].color;
+    text = stockcheckStatusMap[status as StockcheckStatus].text;
   }
 
   return <Tag color={color}>{text}</Tag>;
