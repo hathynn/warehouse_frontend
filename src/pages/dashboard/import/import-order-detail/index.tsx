@@ -42,6 +42,7 @@ import QrCodeListingModal from "@/components/import-flow/import-order/QrCodeList
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import { toast } from "react-toastify";
 import { MdApartment, MdLocationSearching } from "react-icons/md";
+import { convertStoredLocationName } from "@/utils/helpers";
 
 const ImportOrderDetail = () => {
   // ========== ROUTER & PARAMS ==========
@@ -70,6 +71,7 @@ const ImportOrderDetail = () => {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [showUpdateInventoryItemLocationModal, setShowUpdateInventoryItemLocationModal] = useState(false);
   const [showInventoryItemsLocationConfirmModal, setShowInventoryItemsLocationConfirmModal] = useState(false);
+  const [selectedItemForLocationUpdate, setSelectedItemForLocationUpdate] = useState<ImportOrderDetailResponse | null>(null);
 
   // ========== FORM & UI STATES ==========
   const [confirmRequireCountingAgainResponsibilityChecked, setConfirmRequireCountingAgainResponsibilityChecked] = useState(false);
@@ -324,7 +326,7 @@ const ImportOrderDetail = () => {
     await extendImportOrder(extendRequest);
     await fetchImportOrderData();
   };
-  
+
   // ========== UPDATE INVENTORY ITEM LOCATION HANDLERS ==========
   const handleUpdateInventoryItemLocation = async (changedInventoryItems: { inventoryItemId: string; storedLocationId: number; }[]) => {
     await updateStoredLocation(changedInventoryItems);
@@ -347,6 +349,11 @@ const ImportOrderDetail = () => {
     ]);
   };
 
+  const handleUpdateItemLocation = (item: ImportOrderDetailResponse) => {
+    setSelectedItemForLocationUpdate(item);
+    setShowUpdateInventoryItemLocationModal(true);
+  };
+
   // Table columns definition
   const columns = [
     {
@@ -361,7 +368,7 @@ const ImportOrderDetail = () => {
       }),
     },
     {
-      width: '25%',
+      width: '20%',
       title: "Tên sản phẩm",
       dataIndex: "itemName",
       key: "itemName",
@@ -373,7 +380,7 @@ const ImportOrderDetail = () => {
     },
     {
       width: '15%',
-      title: "Số lượng dự tính của đơn",
+      title: "Dự nhập của đơn",
       dataIndex: "expectQuantity",
       key: "expectQuantity",
       align: 'right' as const,
@@ -383,7 +390,7 @@ const ImportOrderDetail = () => {
     },
     {
       width: '15%',
-      title: "Số lượng thực tế của đơn",
+      title: "Nhập thực tế của đơn",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       align: 'right' as const,
@@ -420,11 +427,34 @@ const ImportOrderDetail = () => {
           const firstItem = inventoryItems[0];
           return (
             <div className="font-medium">
-              {firstItem?.storedLocationName}
+              {convertStoredLocationName(firstItem?.storedLocationName)}
             </div>
           );
         },
-      }
+      },
+      ...(importOrderData?.status === ImportStatus.COMPLETED ? [
+        {
+          width: '15%',
+          title: "Hành động",
+          key: "action",
+          align: 'center' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (record: ImportOrderDetailResponse) => {
+            if (userRole !== AccountRole.WAREHOUSE_MANAGER) return null;
+            return (
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => handleUpdateItemLocation(record)}
+              >
+                Cập nhật vị trí
+              </Button>
+            );
+          },
+        }
+      ] : []),
     ] : [])
   ];
 
@@ -595,13 +625,6 @@ const ImportOrderDetail = () => {
               <>
                 <Button
                   type="primary"
-                  icon={<MdLocationSearching />}
-                  onClick={() => setShowUpdateInventoryItemLocationModal(true)}
-                >
-                  Cập nhật vị trí lưu kho
-                </Button>
-                <Button
-                  type="primary"
                   icon={<MdApartment />}
                   onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
                 >
@@ -696,12 +719,12 @@ const ImportOrderDetail = () => {
       {/* Modal cập nhật vị trí lưu kho */}
       <UpdateInventoryItemLocationModal
         loading={storedLocationLoading || inventoryItemLoading}
-        importOrder={importOrderData}
         inventoryItems={inventoryItemsData}
-        storedLocationData={storedLocationData}
         open={showUpdateInventoryItemLocationModal}
-        onClose={() => setShowUpdateInventoryItemLocationModal(false)}
-        onUpdateInventoryItemsLocation={updatedInventoryItems => setInventoryItemsData(updatedInventoryItems)}
+        selectedItem={selectedItemForLocationUpdate}
+        onClose={() => {
+          setShowUpdateInventoryItemLocationModal(false);
+        }}
         onUpdateInventoryItemsLocationConfirm={handleUpdateInventoryItemLocation}
       />
 

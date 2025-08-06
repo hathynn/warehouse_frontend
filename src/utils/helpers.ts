@@ -458,56 +458,18 @@ export const getStatusRowClass = (status: ImportStatus | string): string => {
   }
 };
 
-/**
- * Color palette for item locations with different tones
- */
-const COLOR_PALETTE = [
-  // Đỏ (Red)
-  { normal: 'bg-red-300', highlight: 'bg-red-100 ring-2 ring-red-500 ring-opacity-90 shadow-lg shadow-red-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Cam (Orange) 
-  { normal: 'bg-orange-300', highlight: 'bg-orange-100 ring-2 ring-orange-500 ring-opacity-90 shadow-lg shadow-orange-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Vàng (Yellow)
-  { normal: 'bg-yellow-300', highlight: 'bg-yellow-100 ring-2 ring-yellow-500 ring-opacity-90 shadow-lg shadow-yellow-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Lục (Green)
-  { normal: 'bg-green-300', highlight: 'bg-green-100 ring-2 ring-green-500 ring-opacity-90 shadow-lg shadow-green-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Lam (Blue)
-  { normal: 'bg-blue-300', highlight: 'bg-blue-100 ring-2 ring-blue-500 ring-opacity-90 shadow-lg shadow-blue-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Chàm (Indigo)
-  { normal: 'bg-indigo-300', highlight: 'bg-indigo-100 ring-2 ring-indigo-500 ring-opacity-90 shadow-lg shadow-indigo-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' },
-  // Tím (Purple/Violet)
-  { normal: 'bg-purple-300', highlight: 'bg-purple-100 ring-2 ring-purple-500 ring-opacity-90 shadow-lg shadow-purple-400 transform scale-105 z-10 relative border-1 cursor-pointer hover:scale-110' }
-];
+// Hàm chuyển đổi format storedLocationName từ "Zone: A, Floor: 1, Row: R1, Line: L2" sang format mới
+export const convertStoredLocationName = (storedLocationName: string): string => {
+  if (!storedLocationName) return '';
 
-/**
- * Cache for storing itemId to color mapping
- */
-const itemColorCache = new Map<string, { normal: string; highlight: string }>();
+  // Parse the old format
+  const parts = storedLocationName.split(', ');
+  const locationData: any = {};
 
-/**
- * Generates a consistent color for an itemId based on hash
- * @param itemId - The item ID to generate color for
- * @returns Object with normal and highlight color classes
- */
-export function getItemColor(itemId: string): { normal: string; highlight: string } {
-  // Check cache first
-  if (itemColorCache.has(itemId)) {
-    return itemColorCache.get(itemId)!;
-  }
+  parts.forEach(part => {
+    const [key, value] = part.split(': ');
+    locationData[key.toLowerCase()] = value;
+  });
 
-  // Simple hash function to get consistent color for same itemId
-  let hash = 0;
-  for (let i = 0; i < itemId.length; i++) {
-    const char = itemId.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  
-  // Get color from palette based on hash
-  const colorIndex = Math.abs(hash) % COLOR_PALETTE.length;
-  const color = COLOR_PALETTE[colorIndex];
-  
-  // Cache the result
-  itemColorCache.set(itemId, color);
-  
-  return color;
-}
+  return `Khu vực ${locationData.floor}, Khu ${locationData.zone}, Dãy ${locationData.row}, Hàng ${locationData.line}`;
+};

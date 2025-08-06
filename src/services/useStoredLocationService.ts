@@ -30,8 +30,20 @@ const useStoredLocationService = () => {
             throw error;
         }
     };
+
+    const suggestLocations = async (itemId: string, locationId: number): Promise<ResponseDTO<StoredLocationResponse[]>> => {
+        try {
+            const response = await callApi("get", `/stored-location/suggest-locations?itemId=${itemId}&locationId=${locationId}`);
+            return response;
+        } catch (error) {
+            toast.error("Không thể lấy danh sách vị trí gợi ý");
+            throw error;
+        }
+    };
+
     return {
         getAllStoredLocations,
+        suggestLocations,
         loading
     };
 };
