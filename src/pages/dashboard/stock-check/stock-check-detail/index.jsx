@@ -10,26 +10,48 @@ import {
   Modal,
   Tag,
   Tooltip,
+  Input,
 } from "antd";
 import { ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
-import useStockCheckService from "@/services/useStockCheckService";
-import useStockCheckDetailService from "@/services/useStockCheckDetailService";
-import useAccountService from "@/services/useAccountService";
 import StatusTag from "@/components/commons/StatusTag";
 import dayjs from "dayjs";
 
-const StockCheckRequestDetail = () => {
-  const { stockCheckId } = useParams(); // Dùng stockCheckId theo route definition
-  const navigate = useNavigate();
+//Services import
+import useStockCheckService from "@/services/useStockCheckService";
+import useStockCheckDetailService from "@/services/useStockCheckDetailService";
+import useAccountService from "@/services/useAccountService";
+import useItemService from "@/services/useItemService";
 
-  console.log("Route param stockCheckId:", stockCheckId); // Debug log
+const enrichDetailsWithLocalData = (details, itemsData) => {
+  return details.map((detail) => {
+    const itemInfo = itemsData.find(
+      (item) => String(item.id) === String(detail.itemId)
+    );
+    return {
+      ...detail,
+      itemName: itemInfo?.name || detail.itemName || "Không xác định",
+      unitType: itemInfo?.unitType || "",
+      measurementUnit: itemInfo?.measurementUnit || "",
+      // Thêm rõ ràng quy cách chuẩn từ item
+      standardMeasurementValue: itemInfo?.measurementValue || 0, // Quy cách chuẩn
+    };
+  });
+};
+
+const StockCheckRequestDetail = () => {
+  const { stockCheckId } = useParams();
+  const navigate = useNavigate();
 
   // Services
   const { getStockCheckRequestById, loading: stockCheckLoading } =
     useStockCheckService();
-  const { getStockCheckDetailById, loading: stockCheckDetailLoading } =
-    useStockCheckDetailService();
+  const {
+    getStockCheckDetailById,
+    getStockCheckDetailByDetailId,
+    loading: stockCheckDetailLoading,
+  } = useStockCheckDetailService();
   const { findAccountById } = useAccountService();
+  const { getItems } = useItemService();
 
   // States
   const [stockCheckRequest, setStockCheckRequest] = useState(null);
@@ -40,11 +62,15 @@ const StockCheckRequestDetail = () => {
     pageSize: 10,
     total: 0,
   });
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
 
   // Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [checkedInventoryItems, setCheckedInventoryItems] = useState([]);
+  const [inventorySearchText, setInventorySearchText] = useState("");
 
   // Fetch stock check request data
   const fetchStockCheckRequest = useCallback(async () => {
@@ -61,21 +87,24 @@ const StockCheckRequestDetail = () => {
 
   const fetchStockCheckDetails = useCallback(
     async (page = 1, pageSize = 10) => {
-      if (!stockCheckId) return;
+      if (!stockCheckId || items.length === 0) return;
 
       try {
         const response = await getStockCheckDetailById(stockCheckId);
 
-        if (response && response.content) {
+        if (response) {
           const startIndex = (page - 1) * pageSize;
           const endIndex = startIndex + pageSize;
-          const paginatedData = response.content.slice(startIndex, endIndex);
+
+          // Enrich data với items info
+          const enrichedData = enrichDetailsWithLocalData(response, items);
+          const paginatedData = enrichedData.slice(startIndex, endIndex);
 
           setStockCheckDetails(paginatedData);
           setPagination({
             current: page,
             pageSize: pageSize,
-            total: response.content.length,
+            total: response.length,
           });
         }
       } catch (error) {
@@ -83,7 +112,7 @@ const StockCheckRequestDetail = () => {
         message.error("Không thể tải chi tiết phiếu kiểm kho");
       }
     },
-    [stockCheckId] // ✅ CHỈ CẦN stockCheckId, BỎ getStockCheckDetailById
+    [stockCheckId, items] // Thêm items vào dependency
   );
 
   // Fetch assigned warehouse keeper info
@@ -110,10 +139,10 @@ const StockCheckRequestDetail = () => {
 
   // useEffect cho fetchStockCheckDetails
   useEffect(() => {
-    if (stockCheckId) {
+    if (items.length > 0 && stockCheckId) {
       fetchStockCheckDetails();
     }
-  }, [stockCheckId]);
+  }, [items, stockCheckId, fetchStockCheckDetails]);
 
   // useEffect cho fetchAssignedWarehouseKeeper
   useEffect(() => {
@@ -121,6 +150,23 @@ const StockCheckRequestDetail = () => {
       fetchAssignedWarehouseKeeper();
     }
   }, [stockCheckRequest?.assignedWareHouseKeeperId]);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      setItemsLoading(true);
+      try {
+        const res = await getItems();
+        setItems(res?.content || []);
+      } catch (error) {
+        console.error("Error loading items:", error);
+        setItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
+    loadItems();
+  }, []);
 
   // Handlers
   const handleBack = () => {
@@ -131,10 +177,46 @@ const StockCheckRequestDetail = () => {
     fetchStockCheckDetails(pag.current, pag.pageSize);
   };
 
-  const handleViewDetail = (record) => {
+  const handleViewDetail = async (record) => {
     setSelectedDetail(record);
-    setInventoryItems(record.inventoryItemIds || []);
+    setInventorySearchText("");
+
+    try {
+      const response = await getStockCheckDetailByDetailId(record.id);
+
+      if (response) {
+        const allInventoryItems = response.inventoryItemIds || [];
+        const checkedItems = response.checkedInventoryItemIds || [];
+
+        setInventoryItems(allInventoryItems);
+        setCheckedInventoryItems(checkedItems);
+      } else {
+        setInventoryItems(record.inventoryItemIds || []);
+        setCheckedInventoryItems([]);
+      }
+    } catch (error) {
+      console.error("Error fetching inventory detail:", error);
+      setInventoryItems(record.inventoryItemIds || []);
+      setCheckedInventoryItems([]);
+    }
+
     setDetailModalVisible(true);
+  };
+
+  // Function filter inventory items theo search text
+  const getFilteredInventoryItems = () => {
+    const itemsWithIndex = inventoryItems.map((item, originalIndex) => ({
+      item,
+      originalIndex,
+    }));
+
+    if (!inventorySearchText.trim()) {
+      return itemsWithIndex;
+    }
+
+    return itemsWithIndex.filter(({ item }) =>
+      item.toLowerCase().includes(inventorySearchText.toLowerCase())
+    );
   };
 
   // Get stock check type text
@@ -149,72 +231,85 @@ const StockCheckRequestDetail = () => {
     }
   };
 
-  //   // Get status for detail items (similar to export request detail)
-  //   const getDetailStatus = (actualQuantity, quantity) => {
-  //     if (actualQuantity === 0 && quantity > 0) return "NOT_COUNTED";
-  //     if (actualQuantity < quantity) return "LACK";
-  //     if (actualQuantity === quantity) return "MATCH";
-  //     if (actualQuantity > quantity) return "EXCESS";
-  //     return "UNKNOWN";
-  //   };
-
-  // Table columns
   const columns = [
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: "18%",
-      render: (id) => `${id}`,
-    },
-    {
-      title: "Giá trị đo lường",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-      width: "15%",
-      align: "center",
-      render: (text) => (
-        <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>
+      width: "16%",
+      render: (id, record) => (
+        <div>
+          <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
+          <div className="text-gray-500 mt-1" style={{ fontSize: "12px" }}>
+            (Quy cách chuẩn: {record.standardMeasurementValue || "-"}{" "}
+            {record.measurementUnit || ""}/{record.unitType || ""})
+          </div>
+        </div>
       ),
     },
     {
       title: "Số lượng cần kiểm",
       dataIndex: "quantity",
       key: "quantity",
-      width: "15%",
+      width: "13%",
       align: "center",
-      render: (text) => (
-        <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>
+      render: (text, record) => (
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+          {record.unitType && (
+            <span className="text-gray-500">{record.unitType}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: "Tổng giá trị đo lường",
+      dataIndex: "measurementValue", // Đây là giá trị cần kiểm từ stock check detail
+      key: "measurementValue",
+      width: "13%",
+      align: "center",
+      render: (text, record) => (
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+          {record.measurementUnit && (
+            <span className="text-gray-500">{record.measurementUnit}</span>
+          )}
+        </div>
       ),
     },
     {
       title: "Số lượng thực tế",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
-      width: "15%",
+      width: "13%",
       align: "center",
       render: (text, record) => {
         const isLacking = text < record.quantity;
         const isExcess = text > record.quantity;
 
         return (
-          <span
-            className={
-              isLacking
-                ? "text-red-600 font-semibold"
-                : isExcess
-                ? "text-orange-600 font-semibold"
-                : "text-green-600 font-semibold"
-            }
-            style={{ fontSize: "16px" }}
-          >
-            {text}
-          </span>
+          <div style={{ textAlign: "center" }}>
+            <span
+              className={
+                isLacking
+                  ? "text-red-600 font-semibold"
+                  : isExcess
+                  ? "text-orange-600 font-semibold"
+                  : "text-green-600 font-semibold"
+              }
+              style={{ fontSize: "18px" }}
+            >
+              {text}
+            </span>{" "}
+            {record.unitType && (
+              <span className="text-gray-500">{record.unitType}</span>
+            )}
+          </div>
         );
       },
     },
     {
-      title: "Giá trị đo lường thực tế",
+      title: "Tổng giá trị thực tế",
       dataIndex: "actualMeasurementValue",
       key: "actualMeasurementValue",
       width: "18%",
@@ -224,18 +319,23 @@ const StockCheckRequestDetail = () => {
         const isExcess = text > record.measurementValue;
 
         return (
-          <span
-            className={
-              isLacking
-                ? "text-red-600 font-semibold"
-                : isExcess
-                ? "text-orange-600 font-semibold"
-                : "text-green-600 font-semibold"
-            }
-            style={{ fontSize: "16px" }}
-          >
-            {text}
-          </span>
+          <div style={{ textAlign: "center" }}>
+            <span
+              className={
+                isLacking
+                  ? "text-red-600 font-semibold"
+                  : isExcess
+                  ? "text-orange-600 font-semibold"
+                  : "text-green-600 font-semibold"
+              }
+              style={{ fontSize: "18px" }}
+            >
+              {text}
+            </span>{" "}
+            {record.measurementUnit && (
+              <span className="text-gray-500">{record.measurementUnit}</span>
+            )}
+          </div>
         );
       },
     },
@@ -243,7 +343,7 @@ const StockCheckRequestDetail = () => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: "12%",
+      width: "10%",
       align: "center",
       render: (status, record) => {
         // Nếu status từ API là null hoặc undefined, hiển thị dấu "-"
@@ -292,8 +392,19 @@ const StockCheckRequestDetail = () => {
       title: "Mã sản phẩm tồn kho",
       dataIndex: "inventoryItemId",
       key: "inventoryItemId",
-      render: (_, record, index) =>
-        inventoryItems[index] || `Item ${index + 1}`,
+      render: (_, record) => {
+        const itemId = record.item;
+        const isChecked = checkedInventoryItems.includes(itemId);
+
+        return (
+          <div>
+            <div>{itemId}</div>
+            {isChecked && (
+              <div className="text-xs text-blue-600 mt-1">Đã được kiểm</div>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -337,9 +448,7 @@ const StockCheckRequestDetail = () => {
           bordered
         >
           <Descriptions.Item
-            label={
-              <span style={{ fontWeight: "bold" }}>Mã phiếu kiểm kho</span>
-            }
+            label={<span style={{ fontWeight: "bold" }}>Mã phiếu kiểm</span>}
           >
             #{stockCheckRequest?.id}
           </Descriptions.Item>
@@ -445,31 +554,46 @@ const StockCheckRequestDetail = () => {
           setDetailModalVisible(false);
           setSelectedDetail(null);
           setInventoryItems([]);
+          setCheckedInventoryItems([]);
+          setInventorySearchText("");
         }}
         title={
           <span style={{ fontWeight: 700, fontSize: "18px" }}>
-            Danh sách sản phẩm tồn kho - {selectedDetail?.itemId}
+            Danh sách sản phẩm tồn kho - #{selectedDetail?.itemId}
           </span>
         }
         footer={null}
         width={600}
         centered
       >
+        {/* Search bar */}
+        <div className="mb-4">
+          <Input.Search
+            placeholder="Tìm kiếm theo mã sản phẩm tồn kho"
+            allowClear
+            value={inventorySearchText}
+            onChange={(e) => setInventorySearchText(e.target.value)}
+            onSearch={(value) => setInventorySearchText(value)}
+            style={{ width: "100%" }}
+          />
+        </div>
+
+        {/* Table container với sticky header */}
         <div style={{ maxHeight: 400, overflowY: "auto" }}>
           <Table
-            rowKey={(record, index) => index}
-            dataSource={inventoryItems.map((item, index) => ({
-              inventoryItemId: item,
-              index: index,
-            }))}
+            rowKey={(record) => record.originalIndex}
+            dataSource={getFilteredInventoryItems()}
             pagination={false}
             columns={inventoryColumns}
             size="small"
             className="mb-4"
+            rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
           />
-          {inventoryItems.length === 0 && (
+          {getFilteredInventoryItems().length === 0 && (
             <div className="text-center text-gray-500 py-8">
-              Không có sản phẩm tồn kho nào được liên kết
+              {inventorySearchText
+                ? "Không tìm thấy sản phẩm tồn kho nào phù hợp"
+                : "Không có sản phẩm tồn kho nào được liên kết"}
             </div>
           )}
         </div>
