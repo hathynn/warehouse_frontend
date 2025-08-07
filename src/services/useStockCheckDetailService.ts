@@ -20,6 +20,7 @@ export interface StockCheckDetailResponse {
   stockCheckRequestId: string;
   itemId: string;
   inventoryItemIds: string[];
+  checkedInventoryItemIds: string[];
 }
 
 const useStockCheckDetailService = () => {
@@ -69,7 +70,7 @@ const useStockCheckDetailService = () => {
         "get",
         `/stock-check-detail/${stockCheckId}`
       );
-      return response;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy chi tiết phiếu kiểm kho");
       console.error("Error fetching stock check detail:", error);
@@ -80,7 +81,7 @@ const useStockCheckDetailService = () => {
   // GET /stock-check-detail/detail/{id} - Lấy chi tiết phiếu kiểm kho theo detail ID
   const getStockCheckDetailByDetailId = async (
     detailId: number
-  ): Promise<StockCheckDetailResponse | null> => {
+  ): Promise<ResponseDTO<StockCheckDetailResponse>> => {
     try {
       if (!detailId) {
         throw new Error("ID chi tiết phiếu kiểm kho không được để trống");
@@ -91,10 +92,7 @@ const useStockCheckDetailService = () => {
         `/stock-check-detail/detail/${detailId}`
       );
 
-      if (response && response.content) {
-        return response.content;
-      }
-      return null;
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy thông tin chi tiết phiếu kiểm kho");
       console.error("Error fetching stock check detail by detail ID:", error);
