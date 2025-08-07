@@ -10,7 +10,7 @@ import { InfoCircleFilled } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 // Components
 import ExcelDataTable from "@/components/export-flow/export-create/ExcelDataTable";
-import DeparmentModal from "@/components/export-flow/export-create/DeparmentModal";
+import DepartmentSelectionModal from "@/components/commons/DepartmentSelectionModal";
 import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
 import ExportRequestInfoForm from "@/components/export-flow/export-create/ExportRequestInfoForm";
 import BackNavigationHeader from "@/components/export-flow/export-general/BackNavigationHeader";
@@ -1325,7 +1325,7 @@ const ExportRequestCreate = () => {
         </>
       )}
       {/* Department Selection Modal */}
-      <DeparmentModal
+      <DepartmentSelectionModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
         data={departments.map((d) => ({

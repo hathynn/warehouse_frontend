@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Typography, Descriptions, Table, Checkbox, TablePaginationConfig, Button } from "antd";
+import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import { ImportRequestDetailRow } from "@/utils/interfaces";
 import { calculateRowSpanForItemHaveSameCompareValue } from "@/utils/helpers";
 import dayjs from "dayjs";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
 
-interface ImportRequestConfirmModalProps {
+interface ImportRequestOrderConfirmModalProps {
   open: boolean;
   onOk: () => void;
   onCancel: () => void;
@@ -16,7 +16,6 @@ interface ImportRequestConfirmModalProps {
     importType: string;
     startDate: string;
     endDate: string;
-    exportRequestId?: string | null;
   };
   details: ImportRequestDetailRow[];
   providers: Record<number, string>;
@@ -29,7 +28,7 @@ interface ProviderSummary {
   itemCount: number;
 }
 
-const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
+const ImportRequestOrderConfirmModal: React.FC<ImportRequestOrderConfirmModalProps> = ({
   open,
   onOk,
   onCancel,
@@ -111,7 +110,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       setConfirmCreateImportRequestChecked(false);
       setShowSummaryModal(false);
     }
-  }, [open]);
+  }, [open, resetScrollTracking]);
 
   // Function to group data by provider
   const getProviderSummary = (): ProviderSummary[] => {
@@ -130,11 +129,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
   };
 
   const handleConfirmClick = () => {
-    if (formData.importType === "RETURN") {
-      onOk();
-    } else {
-      setShowSummaryModal(true);
-    }
+    setShowSummaryModal(true);
   };
 
   const handleCreateRequests = () => {
@@ -159,7 +154,6 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       title: "Số lượng",
       dataIndex: "quantity",
       key: "quantity",
-      width: "15%",
       align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
@@ -178,7 +172,6 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
       dataIndex: "unitType",
       key: "unitType",
       align: "center" as const,
-      width: "25%",
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -186,7 +179,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
         return record.measurementValue + " " + record.measurementUnit + " / " + record.unitType
       }
     },
-    ...(formData.importType !== "RETURN" ? [{
+    {
       title: "Nhà cung cấp",
       dataIndex: "providerId",
       key: "providerId",
@@ -211,7 +204,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
 
         return providers[record.providerId] || "-";
       }
-    }] : []),
+    },
   ];
 
   // Columns for summary table
@@ -268,9 +261,7 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
             {formData.endDate ? dayjs(formData.endDate).format("DD-MM-YYYY") : "-"}
           </Descriptions.Item>
         </Descriptions>
-        <Typography.Title level={5} style={{ marginBottom: 12 }}>
-          {formData.importType === "RETURN" ? "Danh sách hàng hóa sẽ nhập trả" : "Danh sách hàng hóa"}
-        </Typography.Title>
+        <Typography.Title level={5} style={{ marginBottom: 12 }}>Danh sách hàng hóa</Typography.Title>
         <div
           ref={scrollContainerRef}
           onScroll={checkScrollPosition}
@@ -327,4 +318,4 @@ const ImportRequestConfirmModal: React.FC<ImportRequestConfirmModalProps> = ({
   );
 };
 
-export default ImportRequestConfirmModal;
+export default ImportRequestOrderConfirmModal;

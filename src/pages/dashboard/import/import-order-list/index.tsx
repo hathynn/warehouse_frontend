@@ -93,15 +93,6 @@ const ImportOrderList: React.FC = () => {
   const loading = importOrderLoading || accountLoading;
 
   // ========== UTILITY FUNCTIONS ==========
-  const isNearReceivingTime = (dateReceived: string, timeReceived: string): boolean => {
-    if (!dateReceived || !timeReceived) return false;
-
-    const receivingDateTime = new Date(`${dateReceived}T${timeReceived}`);
-    const now = new Date();
-    const diffInHours = (receivingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
-    return diffInHours > 0 && diffInHours <= 2;
-  };
 
   // ========== COMPUTED VALUES & FILTERING ==========
   const filteredItems = importOrdersData.filter((importOrder) => {
@@ -120,15 +111,6 @@ const ImportOrderList: React.FC = () => {
     let matchesStatusFilter = true;
     if (selectedStatusFilter) {
       switch (selectedStatusFilter) {
-        case 'near-time':
-          matchesStatusFilter = isNearReceivingTime(importOrder.dateReceived, importOrder.timeReceived) &&
-            importOrder.status !== ImportStatus.CANCELLED &&
-            importOrder.status !== ImportStatus.COMPLETED &&
-            importOrder.status !== ImportStatus.COUNTED;
-          importOrder.status !== ImportStatus.READY_TO_STORE;
-          importOrder.status !== ImportStatus.STORED;
-          importOrder.status !== ImportStatus.COUNT_AGAIN_REQUESTED;
-          break;
         case 'in-progress':
           matchesStatusFilter = importOrder.status === ImportStatus.IN_PROGRESS;
           break;
@@ -558,7 +540,6 @@ const ImportOrderList: React.FC = () => {
         dataSource={filteredItems}
         rowKey="importOrderId"
         rowClassName={(record) => {
-          const isNearTime = isNearReceivingTime(record.dateReceived, record.timeReceived);
           const statusClass = getStatusRowClass(record.status);
 
           if (record.status === ImportStatus.STORED) {
@@ -575,10 +556,6 @@ const ImportOrderList: React.FC = () => {
 
           if (record.status === ImportStatus.CANCELLED) {
             return `${statusClass} status-gray`;
-          }
-
-          if (isNearTime) {
-            return 'bg-[rgba(220,38,38,0.05)]';
           }
 
           // Add status-specific class for hover effects

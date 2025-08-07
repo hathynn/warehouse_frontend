@@ -1,12 +1,5 @@
 export const legendItems = [
     {
-      key: 'near-time',
-      color: "rgba(220, 38, 38, 0.1)",
-      borderColor: "rgba(220, 38, 38, 0.5)",
-      title: "Gần đến giờ nhận hàng",
-      description: "Đơn nhập có thời điểm nhận hàng trong vòng 2 tiếng tới"
-    },
-    {
       key: 'in-progress',
       color: "rgba(59, 130, 246, 0.1)",
       borderColor: "rgba(59, 130, 246, 0.5)",

@@ -15,7 +15,6 @@ import StatusTag from "@/components/commons/StatusTag";
 import { ImportRequestData } from "../import-request-list";
 import useProviderService from "@/services/useProviderService";
 import useImportOrderService, { ImportOrderResponse } from "@/services/useImportOrderService";
-import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
 import useDepartmentService, { DepartmentResponse } from "@/services/useDepartmentService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/services/useImportOrderDetailService";
@@ -47,7 +46,6 @@ const ImportRequestDetail: React.FC = () => {
   const [importOrders, setImportOrders] = useState<ImportOrderResponse[]>([]);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
-  const [exportRequestData, setExportRequestData] = useState<ExportRequestResponse | null>(null);
   const [departmentData, setDepartmentData] = useState<DepartmentResponse | null>(null);
   const [itemsData, setItemsData] = useState<ItemResponse[]>([]);
 
@@ -85,11 +83,6 @@ const ImportRequestDetail: React.FC = () => {
   const {
     getConfiguration
   } = useConfigurationService();
-
-  const {
-    loading: exportRequestLoading,
-    getExportRequestById
-  } = useExportRequestService();
 
   const {
     loading: departmentLoading,
@@ -185,33 +178,8 @@ const ImportRequestDetail: React.FC = () => {
     if (importRequestData?.importType === "ORDER") {
       baseItems.splice(2, 0, { label: "Nhà cung cấp", value: importRequestData?.providerName });
     }
-
-    // For RETURN type, show export request related information
     if (importRequestData?.importType === "RETURN") {
-      if (importRequestData?.exportRequestId) {
-        baseItems.splice(2, 0, { label: "Mã phiếu xuất liên quan", value: `#${importRequestData.exportRequestId}` });
-      }
-
-      // Add related information section
-      if (exportRequestData || departmentData) {
-        baseItems.push({
-          label: "Thông tin liên hệ",
-          value: (
-            <div className="space-y-1">
-              {departmentData && (
-                <div><strong>Phòng ban:</strong> {departmentData.departmentName}</div>
-              )}
-              {exportRequestData && (
-                <>
-                  <div><strong>Cá nhân:</strong> {exportRequestData.receiverName || "-"}</div>
-                  <div><strong>Số điện thoại:</strong> {exportRequestData.receiverPhone || "-"}</div>
-                </>
-              )}
-            </div>
-          ),
-          span: 1
-        });
-      }
+      baseItems.splice(2, 0, { label: "Phòng ban", value: departmentData?.departmentName });
     }
 
     baseItems.push({ label: "Lý do nhập", value: importRequestData?.importReason, span: 2 });
@@ -246,10 +214,10 @@ const ImportRequestDetail: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (importRequestData?.importType === "RETURN" && importRequestData?.exportRequestId) {
-      fetchExportRequestData();
+    if (importRequestData?.importType === "RETURN" && importRequestData?.departmentId) {
+      fetchDepartmentData();
     }
-  }, [importRequestData?.exportRequestId, importRequestData?.importType]);
+  }, [importRequestData?.departmentId, importRequestData?.importType]);
 
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportRequestData = async () => {
@@ -305,15 +273,12 @@ const ImportRequestDetail: React.FC = () => {
     }
   };
 
-  const fetchExportRequestData = async () => {
-    if (!importRequestData?.exportRequestId) return;
-
-    const response = await getExportRequestById(importRequestData.exportRequestId);
-    setExportRequestData(response);
+  const fetchDepartmentData = async () => {
+    if (!importRequestData?.departmentId) return;
 
     // Fetch department data if departmentId exists
-    if (response.departmentId) {
-      const deptResponse = await getDepartmentById(response.departmentId);
+    if (importRequestData.departmentId) {
+      const deptResponse = await getDepartmentById(importRequestData.departmentId);
       if (deptResponse?.content) {
         setDepartmentData(deptResponse.content);
       }
@@ -538,7 +503,7 @@ const ImportRequestDetail: React.FC = () => {
   };
 
   // Show loading spinner when initially loading the page
-  if ((importRequestLoading || providerLoading || exportRequestLoading || departmentLoading || itemLoading) && !importRequestData) {
+  if ((importRequestLoading || providerLoading || departmentLoading || itemLoading) && !importRequestData) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Spin size="large" />

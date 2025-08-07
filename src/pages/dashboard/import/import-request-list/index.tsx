@@ -6,7 +6,6 @@ import { Tooltip } from "antd";
 import { Link } from "react-router-dom";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
 import useProviderService from "@/services/useProviderService";
-import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
 import useDepartmentService, { DepartmentResponse } from "@/services/useDepartmentService";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
@@ -51,28 +50,12 @@ const ImportRequestList: React.FC = () => {
   } = useProviderService();
 
   const {
-    loading: exportRequestLoading,
-    getAllExportRequests
-  } = useExportRequestService();
-
-  const {
     loading: departmentLoading,
     getAllDepartments
   } = useDepartmentService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = importRequestLoading || providerLoading || exportRequestLoading || departmentLoading;
-
-  // ========== UTILITY FUNCTIONS ==========
-  const isNearEndDate = (endDate: string): boolean => {
-    if (!endDate) return false;
-
-    const endDateTime = dayjs(endDate);
-    const now = dayjs();
-    const diffInDays = endDateTime.diff(now, 'day');
-
-    return diffInDays >= 0 && diffInDays <= 2; // Gần đến ngày hết hạn trong vòng 3 ngày
-  };
+  const loading = importRequestLoading || providerLoading || departmentLoading;
 
 
   // ========== COMPUTED VALUES & FILTERING ==========
@@ -86,11 +69,6 @@ const ImportRequestList: React.FC = () => {
     let matchesStatusFilter = true;
     if (selectedStatusFilter) {
       switch (selectedStatusFilter) {
-        case 'near-time':
-          matchesStatusFilter = isNearEndDate(importRequest.endDate) &&
-            importRequest.status !== 'COMPLETED' &&
-            importRequest.status !== 'CANCELLED';
-          break;
         case 'in-progress':
           matchesStatusFilter = importRequest.status === 'IN_PROGRESS';
           break;
@@ -120,7 +98,6 @@ const ImportRequestList: React.FC = () => {
   const fetchImportRequests = async (): Promise<void> => {
     const { content } = await getAllImportRequests();
     const { content: providerList = [] } = await getAllProviders();
-    const { content: exportRequestList = [] } = await getAllExportRequests();
     const { content: departmentList = [] } = await getAllDepartments(1, 100);
 
 
@@ -147,16 +124,11 @@ const ImportRequestList: React.FC = () => {
 
       // For RETURN type, find department name via exportRequestId
       let departmentName = "";
-      if (request.importType === "RETURN" && request.exportRequestId) {
-        const exportRequest = exportRequestList.find(
-          (exp) => exp.exportRequestId === request.exportRequestId
+      if (request.importType === "RETURN" && request.departmentId) {
+        const department = departmentList.find(
+          (dept) => dept.id === request.departmentId
         );
-        if (exportRequest && exportRequest.departmentId) {
-          const department = departmentList.find(
-            (dept) => dept.id === exportRequest.departmentId
-          );
-          departmentName = department?.departmentName || "";
-        }
+        departmentName = department?.departmentName || "";
       }
 
       return {
@@ -306,7 +278,7 @@ const ImportRequestList: React.FC = () => {
       },
     ] : [
       {
-        title: "Phòng ban nhận phiếu xuất nội bộ",
+        title: "Phòng ban nhận phiếu nhập trả",
         dataIndex: "departmentName",
         key: "departmentName",
         align: "center" as const,
@@ -478,9 +450,6 @@ const ImportRequestList: React.FC = () => {
         loading={loading}
         onChange={handleTableChange}
         rowClassName={(record) => {
-          const isNearEnd = isNearEndDate(record.endDate) &&
-            record.status !== 'COMPLETED' &&
-            record.status !== 'CANCELLED';
           const statusClass = getStatusRowClass(record.status);
 
           // Priority: COMPLETED and CANCELLED > near end date > other status colors
@@ -490,10 +459,6 @@ const ImportRequestList: React.FC = () => {
 
           if (record.status === 'CANCELLED') {
             return `${statusClass} status-gray`;
-          }
-
-          if (isNearEnd) {
-            return 'bg-[rgba(220,38,38,0.05)]';
           }
 
           // Add status-specific class for hover effects

@@ -81,7 +81,7 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
       resetScrollTracking();
       setConfirmCreateImportOrderChecked(false);
     }
-  }, [open]);
+  }, [open, resetScrollTracking]);
 
   // Utility function to get item info
   const getItemInfo = (itemId: string) => {

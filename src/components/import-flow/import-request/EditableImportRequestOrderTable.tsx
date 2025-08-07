@@ -16,24 +16,22 @@ interface ProviderType {
   name: string;
 }
 
-interface EditableImportRequestTableSectionProps {
+interface EditableImportRequestOrderTableProps {
   data: ImportRequestDetailRow[];
   setData: (data: ImportRequestDetailRow[]) => void;
   items: ItemType[];
   providers: ProviderType[];
-  loading?: boolean;
   alertNode?: React.ReactNode;
   emptyText?: React.ReactNode;
   title?: string;
   setIsAllPagesViewed?: (isValid: boolean) => void;
 }
 
-const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSectionProps> = ({
+const EditableImportRequestOrderTable: React.FC<EditableImportRequestOrderTableProps> = ({
   data,
   setData,
   items,
   providers,
-  loading = false,
   alertNode,
   emptyText,
   title = "Danh sách hàng hóa từ file Excel",
@@ -254,7 +252,6 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
         columns={columns}
         dataSource={data}
         rowKey={(record, index) => index as number}
-        loading={loading}
         pagination={{
           ...pagination,
           showSizeChanger: true,
@@ -272,4 +269,4 @@ const EditableImportRequestTableSection: React.FC<EditableImportRequestTableSect
   );
 };
 
-export default EditableImportRequestTableSection;
+export default EditableImportRequestOrderTable;

@@ -3,7 +3,7 @@ import { Modal, Input, List, Pagination } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import PropTypes from "prop-types";
 
-const DeparmentModal = ({
+const DepartmentSelectionModal = ({
   visible,
   title,
   data,
@@ -69,7 +69,7 @@ const DeparmentModal = ({
   );
 };
 
-DeparmentModal.propTypes = {
+DepartmentSelectionModal.propTypes = {
   visible: PropTypes.bool.isRequired,
   title: PropTypes.string.isRequired,
   data: PropTypes.arrayOf(
@@ -88,4 +88,4 @@ DeparmentModal.propTypes = {
   }),
 };
 
-export default DeparmentModal;
+export default DepartmentSelectionModal;

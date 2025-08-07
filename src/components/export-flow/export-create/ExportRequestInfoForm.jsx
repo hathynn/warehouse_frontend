@@ -5,9 +5,9 @@ import UseExportForm from "@/components/export-flow/export-create/UseExportForm"
 import ExcelDataTableAfter from "./ExcelDataTableAfter";
 import PropTypes from "prop-types";
 import ExportRequestConfirmModal from "../export-general/ExportRequestConfirmModal";
-import DeparmentModal from "./DeparmentModal";
 import SellingExportForm from "@/components/export-flow/export-create/SellingExportForm";
 import ReturnExportForm from "./ReturnExportForm";
+import DepartmentSelectionModal from "@/components/commons/DepartmentSelectionModal";
 
 const { Title } = Typography;
 
@@ -218,7 +218,7 @@ const ExportRequestInfoForm = ({
         </div>
       </div>
 
-      <DeparmentModal
+      <DepartmentSelectionModal
         visible={departmentModalVisible}
         title="Chọn bộ phận/phân xưởng"
         data={departments}

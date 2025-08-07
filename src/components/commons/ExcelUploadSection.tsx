@@ -6,6 +6,7 @@ import templateXuatNoiBo from "@/assets/export-templates/template_xuat_noi_bo.xl
 import templatePhieuNhap from "@/assets/import-templates/template_phieu_nhap.xlsx";
 import templatePhieuKiemKho from "@/assets/stock-check-templates/template_kiem_kho.xlsx";
 import templateDonNhap from "@/assets/import-templates/template_don_nhap.xlsx";
+import templatePhieuNhapTra from "@/assets/import-templates/template_phieu_nhap_tra.xlsx";
 
 const TYPE_LABELS = {
   SELLING: "xuất bán",
@@ -13,6 +14,7 @@ const TYPE_LABELS = {
   INTERNAL: "xuất nội bộ",
   LIQUIDATION: "xuất thanh lý",
   IMPORT_REQUEST: "phiếu nhập",
+  IMPORT_RETURN: "phiếu nhập trả",
   IMPORT_ORDER: "đơn nhập",
   STOCK_CHECK_REQUEST: "phiếu kiểm kho"
 };
@@ -22,7 +24,8 @@ const TEMPLATE_FILES = {
   INTERNAL: templateXuatNoiBo,
   IMPORT_REQUEST: templatePhieuNhap,
   IMPORT_ORDER: templateDonNhap,
-  STOCK_CHECK_REQUEST: templatePhieuKiemKho
+  STOCK_CHECK_REQUEST: templatePhieuKiemKho,
+  IMPORT_RETURN: templatePhieuNhapTra
 };
 
 interface ExcelUploadSectionProps {
@@ -61,6 +64,7 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         IMPORT_REQUEST: "template_phieu_nhap.xlsx",
         IMPORT_ORDER: "template_don_nhap.xlsx",
         STOCK_CHECK_REQUEST: "template_kiem_kho.xlsx",
+        IMPORT_RETURN: "template_phieu_nhap_tra.xlsx",
       };
 
       link.download = fileNames[type as keyof typeof fileNames] || "template.xlsx";

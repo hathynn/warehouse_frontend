@@ -1,66 +1,88 @@
-import React, { useState, useEffect } from "react";
-import { Button, Input, Space, Card, Alert, Table, DatePicker, Steps, Select, Descriptions } from "antd";
-import useItemService, { ItemResponse } from "@/services/useItemService";
-import useImportRequestDetailService, { ImportRequestCreateWithDetailRequest } from "@/services/useImportRequestDetailService";
-import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
-import useExportRequestDetailService from "@/services/useExportRequestDetailService";
+import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
+import * as XLSX from "xlsx";
+import { Button, Input, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps, Modal, Checkbox } from "antd";
+import useImportRequestService from "@/services/useImportRequestService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
-import { ArrowRightOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { FormData, ImportRequestDetailRow } from "@/utils/interfaces";
+import ExcelUploadSection from "@/components/commons/ExcelUploadSection";
+import { ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
 import { isDateDisabledForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
-import useImportRequestService from "@/services/useImportRequestService";
-import ImportRequestConfirmModal from "./ImportRequestConfirmModal";
+import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
+import EditableImportRequestReturnTable from "./EditableImportRequestReturnTable";
+import DepartmentSelectionModal from "@/components/commons/DepartmentSelectionModal";
+import useDepartmentService from "@/services/useDepartmentService";
+import ImportRequestReturnConfirmModal from "./ImportRequestReturnConfirmModal";
 
 const { TextArea } = Input;
-const { Option } = Select;
 
 interface ImportRequestReturnTypeProps {
   onStepChange?: (step: number) => void;
+}
+
+interface ReturnImportDetailRow {
+  inventoryItemId: string;
+  measurementValue: number;
+}
+
+interface FormData {
+  importReason: string;
+  importType: ImportRequestType;
+  startDate: string;
+  endDate: string;
+  departmentId: number | null;
+  returnImportRequestDetails: ReturnImportDetailRow[];
 }
 
 const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = ({
   onStepChange
 }) => {
   const importType: ImportRequestType = "RETURN";
+
   // ========== ROUTER & PARAMS ==========
   const navigate = useNavigate();
 
   // ========== DATA STATES ==========
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedExportRequest, setSelectedExportRequest] = useState<ExportRequestResponse | null>(null);
+  const [importedData, setImportedData] = useState<ReturnImportDetailRow[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [formData, setFormData] = useState<FormData>({
     importReason: "",
     importType,
-    exportRequestId: null,
     startDate: dayjs().format("YYYY-MM-DD"),
     endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
+    departmentId: null,
+    returnImportRequestDetails: []
   });
-  const [items, setItems] = useState<ItemResponse[]>([]);
-  const [exportRequests, setExportRequests] = useState<ExportRequestResponse[]>([]);
-  const [exportRequestDetails, setExportRequestDetails] = useState<any[]>([]);
+  const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
+  const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ========== ZERO QUANTITY DELETE STATES ==========
+  const [quantityZeroRowsToDelete, setQuantityZeroRowsToDelete] = useState<ReturnImportDetailRow[]>([]);
+  const [deleteQuantityZeroRowsResponsibilityChecked, setDeleteQuantityZeroRowsResponsibilityChecked] = useState<boolean>(false);
+  const [isDeleteQuantityZeroRowModalOpen, setIsDeleteQuantityZeroRowModalOpen] = useState(false);
+
+  // ========== SCROLL VIEW TRACKER FOR DELETE MODAL ==========
+  const { scrollContainerRef: deleteModalScrollRef, checkScrollPosition: checkDeleteModalScroll, hasScrolledToBottom: hasScrolledToBottomInDeleteModal, resetScrollTracking: resetDeleteModalScroll } = useScrollViewTracker(5);
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
+  const [departmentModalVisible, setDepartmentModalVisible] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
   // Notify parent component when step changes
   useEffect(() => {
     onStepChange?.(step);
   }, [step, onStepChange]);
 
-  // ========== PAGINATION STATE ==========
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
 
   // ========== SERVICES ==========
   const {
@@ -69,24 +91,13 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   } = useImportRequestService();
 
   const {
-    loading: itemLoading,
-    getItems
-  } = useItemService();
-
-  const {
-    loading: exportRequestLoading,
-    getAllExportRequests
-  } = useExportRequestService();
-
-  const { getExportRequestDetails, loading: exportRequestDetailLoading } =
-    useExportRequestDetailService();
-
-  const {
-    getConfiguration,
+    getConfiguration
   } = useConfigurationService();
 
+  const { getAllDepartments, departments } = useDepartmentService();
+
   // ========== COMPUTED VALUES ==========
-  const loading = itemLoading || importRequestLoading || exportRequestLoading || exportRequestDetailLoading;
+  const loading = importRequestLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
@@ -112,7 +123,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   };
 
   const isFormDataValid = (): boolean => {
-    if (!formData.importReason || !formData.startDate || !formData.endDate || !formData.exportRequestId) {
+    if (!formData.importReason || !formData.startDate || !formData.endDate || !formData.departmentId) {
       return false;
     }
 
@@ -129,65 +140,41 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     return true;
   };
 
-  // Filter export requests by type (RETURN or BORROWING)
-  const filteredExportRequests = exportRequests.filter(request =>
-    request.type === "INTERNAL"
-  );
+  const getConsolidatedData = (originalData: ReturnImportDetailRow[]): ReturnImportDetailRow[] => {
+    const groupedData: { [key: string]: ReturnImportDetailRow } = {};
 
-  // ========== UTILITY FUNCTIONS FOR EXPORT REQUEST DETAILS ==========
-  const enrichWithItemsData = (exportRequestDetails: any[], itemsData: ItemResponse[]) => {
-    return exportRequestDetails.map((detail) => {
-      const itemInfo = itemsData.find(
-        (item) => String(item.id) === String(detail.itemId)
-      );
-      return {
-        ...detail,
-        itemName: itemInfo?.name || detail.itemName || "Không xác định",
-        unitType: itemInfo?.unitType || "",
-        measurementUnit: itemInfo?.measurementUnit || "",
-      };
-    });
-  };
+    originalData.forEach((item) => {
+      const key = item.inventoryItemId;
 
-  const fetchExportRequestDetails = async (exportRequestId: string) => {
-    try {
-      const response = await getExportRequestDetails(exportRequestId, 1, 1000);
-      if (response && response.content && items.length > 0) {
-        const enriched = enrichWithItemsData(response.content, items);
-        setExportRequestDetails(enriched);
+      if (groupedData[key]) {
+        groupedData[key].measurementValue += item.measurementValue;
+      } else {
+        groupedData[key] = { ...item };
       }
-    } catch (error) {
-      console.error("Error fetching export request details:", error);
-      setExportRequestDetails([]);
-    }
+    });
+
+    return Object.values(groupedData);
   };
+
+  // ========== COMPUTED VALUES & FILTERING ==========
+  const sortedData = useMemo(() => {
+    if (step === 1) {
+      return [...getConsolidatedData(importedData)].sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
+    }
+    return [...importedData].sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
+  }, [importedData, step]);
 
   // ========== USE EFFECTS ==========
-  useEffect(() => {
-    const fetchData = async () => {
-      const [itemsResponse, exportRequestsResponse] = await Promise.all([
-        getItems(),
-        getAllExportRequests()
-      ]);
-
-      if (itemsResponse?.content) {
-        setItems(itemsResponse.content);
-      }
-
-      if (exportRequestsResponse?.content) {
-        setExportRequests(exportRequestsResponse.content);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   useEffect(() => {
     const fetchConfiguration = async () => {
       const configuration = await getConfiguration();
       setConfiguration(configuration);
     };
     fetchConfiguration();
+  }, []);
+
+  useEffect(() => {
+    getAllDepartments(1, 100);
   }, []);
 
   useEffect(() => {
@@ -199,6 +186,13 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     }
   }, [configuration]);
 
+  useEffect(() => {
+    if (!isDeleteQuantityZeroRowModalOpen) {
+      resetDeleteModalScroll();
+      setDeleteQuantityZeroRowsResponsibilityChecked(false);
+    }
+  }, [isDeleteQuantityZeroRowModalOpen, resetDeleteModalScroll]);
+
   // Update formData when importType prop changes
   useEffect(() => {
     setFormData(prev => ({
@@ -207,22 +201,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     }));
   }, [importType]);
 
-  // Fetch export request details when items are loaded and an export request is selected
-  useEffect(() => {
-    if (selectedExportRequest && items.length > 0) {
-      fetchExportRequestDetails(selectedExportRequest.exportRequestId.toString());
-    }
-  }, [selectedExportRequest, items]);
-
-
   // ========== EVENT HANDLERS ==========
-  const handleChangePage = (paginationObj: any) => {
-    setPagination(prev => ({
-      ...prev,
-      current: paginationObj.current,
-      pageSize: paginationObj.pageSize || prev.pageSize,
-    }));
-  };
 
   const handleStartDateChange = (date: dayjs.Dayjs | null) => {
     const newStartDate = date ? date.format("YYYY-MM-DD") : "";
@@ -247,83 +226,179 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     setFormData({ ...formData, endDate: newEndDate });
   };
 
-  const handleExportRequestSelect = (exportRequestId: string) => {
-    const selected = exportRequests.find(request => request.exportRequestId === exportRequestId);
-    setSelectedExportRequest(selected || null);
-    setFormData({ ...formData, exportRequestId: exportRequestId });
+  const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const uploadedFile = e.target.files?.[0];
+    if (uploadedFile) {
+      setFile(uploadedFile);
+      setFileName(uploadedFile.name);
+      const reader = new FileReader();
+      reader.onload = (event: ProgressEvent<FileReader>) => {
+        const ab = event.target?.result;
+        if (ab instanceof ArrayBuffer) {
+          const wb = XLSX.read(ab, { type: "array" });
+          const ws = wb.Sheets[wb.SheetNames[0]];
 
-    // Fetch the details of the selected export request
-    if (selected && items.length > 0) {
-      fetchExportRequestDetails(exportRequestId);
-    } else {
-      setExportRequestDetails([]);
+          try {
+            // Extract import type from B6 (row index 5)
+            const importTypeCell = ws['B6'];
+            const importTypeFromFile = importTypeCell ? importTypeCell.v : null;
+
+            // Extract import reason from B7 (row index 6)  
+            const importReasonCell = ws['B7'];
+            const importReason = importReasonCell ? importReasonCell.v : "";
+
+            // Map Vietnamese import types to system codes
+            const importTypeMapping = {
+              "NHẬP TRẢ": "RETURN",
+              "RETURN": "RETURN",
+            };
+
+            if (importTypeFromFile) {
+              const normalizedType = String(importTypeFromFile).trim().toUpperCase();
+              const mappedType = importTypeMapping[normalizedType];
+
+              if (mappedType) {
+                setFormData(prev => ({
+                  ...prev,
+                  importType: mappedType as ImportRequestType,
+                  importReason: importReason || prev.importReason
+                }));
+              } else {
+                console.warn(`Unrecognized import type: "${importTypeFromFile}"`);
+              }
+            }
+
+            // Parse data rows starting from row 10 (index 9)
+            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+            const jsonData = [];
+
+            for (let rowNum = 9; rowNum <= range.e.r; rowNum++) {
+              const row: any = {};
+              const sttCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A - STT
+              const inventoryItemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B - Mã sản phẩm tồn kho
+              const measurementValueCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Giá trị cần nhập
+
+              // Skip header row and empty rows
+              if (sttCell && String(sttCell.v).trim() === "Số thứ tự") continue;
+              if (!inventoryItemIdCell || !measurementValueCell) continue;
+
+              const inventoryItemId = String(inventoryItemIdCell.v).trim();
+              const measurementValue = String(measurementValueCell.v).trim();
+
+              if (inventoryItemId && measurementValue &&
+                !isNaN(Number(measurementValue)) &&
+                Number(measurementValue) >= 0) {
+                row.inventoryItemId = inventoryItemId;
+                row.measurementValue = Number(measurementValue);
+                jsonData.push(row);
+              }
+            }
+
+            const transformedData: ReturnImportDetailRow[] = jsonData.map((item: any, index: number) => {
+              const inventoryItemId = item.inventoryItemId;
+              const measurementValue = item.measurementValue;
+
+              if (!inventoryItemId || measurementValue === undefined) {
+                throw new Error(`Row ${index + 10}: Missing inventory item ID or measurement value`);
+              }
+
+              return {
+                inventoryItemId: inventoryItemId,
+                measurementValue: Number(measurementValue),
+              };
+            });
+
+            setImportedData(transformedData);
+            setIsImportRequestDataValid(true);
+            setIsAllPagesViewed(true); // For return type, we don't need the scroll tracking
+
+          } catch (error) {
+            if (error instanceof Error) {
+              setIsImportRequestDataValid(false);
+              toast.error(error.message);
+            }
+          }
+        }
+      };
+      reader.readAsArrayBuffer(uploadedFile);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileName("");
+    setImportedData([]);
+    setIsImportRequestDataValid(false);
+    setIsAllPagesViewed(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleSubmit = async () => {
+    if (!file || importedData.length === 0) {
+      toast.error("Vui lòng tải lên file Excel với dữ liệu hợp lệ");
+      return;
+    }
+
     if (!formData.startDate || !formData.endDate) {
       toast.error("Vui lòng nhập đầy đủ ngày bắt đầu và ngày kết thúc");
       return;
     }
 
-    await createReturnImportRequest(formData);
+    const requestData = {
+      importReason: formData.importReason,
+      importType: formData.importType,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      departmentId: formData.departmentId,
+      returnImportRequestDetails: getConsolidatedData(importedData)
+    };
+
+    await createReturnImportRequest(requestData);
 
     navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
     setFormData({
       importReason: "",
       importType: importType,
-      exportRequestId: null,
       startDate: dayjs().format("YYYY-MM-DD"),
       endDate: dayjs().format("YYYY-MM-DD"),
+      departmentId: null,
+      returnImportRequestDetails: []
     });
-    setSelectedExportRequest(null);
-    setExportRequestDetails([]);
+    setSelectedDepartment(null);
+    setFile(null);
+    setFileName("");
+    setImportedData([]);
   };
 
+  // ========== ZERO QUANTITY HANDLERS ==========
   const handleNextStep = () => {
+    const quantityZeroRows = importedData.filter(row => row.measurementValue === 0);
+    if (quantityZeroRows.length > 0) {
+      setQuantityZeroRowsToDelete(quantityZeroRows);
+      setIsDeleteQuantityZeroRowModalOpen(true);
+    } else {
+      setStep(1);
+    }
+  };
+
+  const confirmDeleteQuantityZeroRow = () => {
+    const newImportedData = importedData.filter(row => !quantityZeroRowsToDelete.includes(row));
+    setImportedData(newImportedData);
+    setQuantityZeroRowsToDelete([]);
+    setIsDeleteQuantityZeroRowModalOpen(false);
+    setDeleteQuantityZeroRowsResponsibilityChecked(false);
     setStep(1);
   };
 
+  const cancelDeleteQuantityZeroRow = () => {
+    setIsDeleteQuantityZeroRowModalOpen(false);
+    setDeleteQuantityZeroRowsResponsibilityChecked(false);
+    setQuantityZeroRowsToDelete([]);
+  };
+
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
-  const columns = [
-    {
-      title: "Mã sản phẩm",
-      dataIndex: "itemId",
-      key: "itemId",
-      width: "25%",
-      onHeaderCell: () => ({
-        style: { textAlign: "center" as const },
-      }),
-      render: (id: string) => `${id}`,
-    },
-    {
-      title: "Tên sản phẩm",
-      dataIndex: "itemName",
-      key: "itemName",
-      width: "30%",
-      ellipsis: true,
-      onHeaderCell: () => ({
-        style: { textAlign: "center" as const },
-      }),
-    },
-    {
-      title: "Số lượng đã xuất",
-      dataIndex: "measurementValue",
-      key: "measurementValue",
-      width: "20%",
-      onHeaderCell: () => ({
-        style: { textAlign: "center" as const },
-      }),
-      render: (measurementValue: any, record: any) => (
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{measurementValue}</span>{" "}
-          {record.unitType && (
-            <span className="text-gray-500">{record.measurementUnit}</span>
-          )}
-        </div>
-      ),
-    }
-  ];
 
   return (
     <>
@@ -333,204 +408,282 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
           onChange={setStep}
           items={[
             {
-              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Chọn phiếu xuất</span>,
+              title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Tải lên file Excel</span>,
             },
             {
               title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Xác nhận thông tin</span>,
-              disabled: !selectedExportRequest || !formData.exportRequestId
+              disabled: importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed
             }
           ]}
         />
       </div>
 
-      {step === 0 && (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span className="text-gray-600 font-medium">Đang tải dữ liệu cấu hình và phòng ban...</span>
+          </div>
+        </div>
+      ) : (
         <>
-          <div className="flex gap-6 mt-4">
-            <Card title={<span className="text-lg font-semibold">Chọn phiếu xuất mượn / xuất nội bộ</span>} className="w-[25%]">
-              <Space direction="vertical" className="w-full">
-                <div className="mb-4">
-                  <label className="text-base font-semibold">Mã phiếu xuất<span className="text-red-500">*</span></label>
-                  <Select
-                    size="middle"
-                    className="w-full !mt-1"
-                    placeholder="Chọn phiếu xuất"
-                    value={selectedExportRequest?.exportRequestId || undefined}
-                    onChange={handleExportRequestSelect}
-                    loading={exportRequestLoading}
-                    showSearch
-                  >
-                    {filteredExportRequests.map(request => (
-                      <Option key={request.exportRequestId} value={request.exportRequestId}>
-                        #{request.exportRequestId} - {request.type}
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-              </Space>
-            </Card>
+          {step === 0 && (
+            <div className="flex flex-col items-center gap-6 mt-2">
+              <div className="w-full">
+                <ExcelUploadSection
+                  fileName={fileName}
+                  onFileChange={handleFileUpload}
+                  onRemoveFile={handleRemoveFile}
+                  fileInputRef={fileInputRef}
+                  buttonLabel="Tải lên file Excel"
+                  type="IMPORT_RETURN"
+                />
 
-            <div className="w-[75%]">
-              {selectedExportRequest ? (
-                <>
-                  <Card className="mb-6">
-                    <Descriptions title="Thông tin phiếu xuất" bordered>
-                      <Descriptions.Item label="Mã phiếu xuất" key="exportRequestId">
-                        #{selectedExportRequest.exportRequestId}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Loại phiếu xuất" key="exportType">
-                        Xuất nội bộ
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Ngày tạo phiếu" key="exportDate">
-                        {dayjs(selectedExportRequest.createdDate).format("DD-MM-YYYY")}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Ngày xuất" key="exportDate">
-                        {dayjs(selectedExportRequest.exportDate).format("DD-MM-YYYY")}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Người nhận hàng" key="receiverName">
-                        {selectedExportRequest.receiverName || "-"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="SĐT" key="receiverPhone">
-                        {selectedExportRequest.receiverPhone || "-"}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Lý do xuất" key="exportReason">
-                        {selectedExportRequest.exportReason || "-"}
-                      </Descriptions.Item>
-                    </Descriptions>
-                    <div className="mt-8 mb-2">
-                      <label className="text-base font-semibold">Danh sách chi tiết sản phẩm cần nhập lại</label>
-                    </div>
-                    <Table
-                      className="[&_.ant-table-cell]:!p-3"
-                      columns={columns}
-                      dataSource={exportRequestDetails}
-                      rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
-                      loading={exportRequestDetailLoading}
-                      pagination={{
-                        ...pagination,
-                        showTotal: (total: number) => `Tổng ${total} mục`,
-                      }}
-                      onChange={handleChangePage}
-                      locale={{ emptyText: "Không có dữ liệu" }}
+                <EditableImportRequestReturnTable
+                  setIsAllPagesViewed={setIsAllPagesViewed}
+                  data={importedData}
+                  setData={setImportedData}
+                  alertNode={importedData.length > 0 ? (
+                    <Alert
+                      message="Thông tin nhập trả"
+                      description={
+                        <>
+                          <p>Tổng số mặt hàng: {importedData.length}</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả dựa trên dữ liệu từ file</p>
+                        </>
+                      }
+                      type="info"
+                      showIcon
+                      className="mb-4"
                     />
-                  </Card>
-                </>
-              ) : (
-                <Card title={<span className="text-lg font-semibold">Thông tin phiếu xuất</span>}>
-                  <div className="py-8 text-center text-gray-500">
-                    Vui lòng chọn phiếu xuất để xem thông tin chi tiết
-                  </div>
-                </Card>
-              )}
-            </div>
-          </div>
-          <div className="mt-4 w-[20%] mx-auto">
-            <Button
-              type="primary"
-              onClick={handleNextStep}
-              disabled={!selectedExportRequest}
-              className="w-full"
-            >
-              Tiếp tục nhập thông tin phiếu nhập
-              <ArrowRightOutlined />
-            </Button>
-          </div>
-        </>
-      )}
-
-      {step === 1 && (
-        <div className="flex gap-6 mt-4">
-          <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
-            <Space direction="vertical" className="w-full">
-              <div className="text-sm text-blue-500">
-                <InfoCircleOutlined className="mr-1" />
-                Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
-              </div>
-              <div className="flex gap-6 mb-4">
-                <div className="w-1/2 mb-2">
-                  <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    value={formData.startDate ? dayjs(formData.startDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
-                    onChange={handleStartDateChange}
-                    placeholder="Chọn ngày"
-                    allowClear
-                  />
-                </div>
-                <div className="w-1/2 mb-2">
-                  <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    value={formData.endDate ? dayjs(formData.endDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
-                    onChange={handleEndDateChange}
-                    placeholder="Chọn ngày"
-                    allowClear
-                  />
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
-                <TextArea
-                  placeholder="Nhập lý do"
-                  rows={4}
-                  value={formData.importReason}
-                  onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
-                  className="w-full !mt-1"
-                  maxLength={150}
-                  showCount
+                  ) : null}
+                  emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+                  title="Danh sách hàng hóa trả từ file Excel"
                 />
               </div>
               <Button
                 type="primary"
-                onClick={() => setShowConfirmModal(true)}
-                loading={loading}
-                className="w-full mt-2"
-                id="btn-detail"
-                disabled={!isFormDataValid()}
+                onClick={handleNextStep}
+                disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
               >
-                Xác nhận thông tin
+                Tiếp tục nhập thông tin phiếu nhập
+                <ArrowRightOutlined />
               </Button>
-            </Space>
-          </Card>
-          <div className="w-7/10">
-            <Card title={<span className="text-lg font-semibold">Danh sách hàng hóa sẽ nhập trả từ phiếu xuất #{selectedExportRequest?.exportRequestId}</span>}>
-              <Table
-                className="[&_.ant-table-cell]:!p-3"
-                columns={columns}
-                dataSource={exportRequestDetails}
-                rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
-                loading={exportRequestDetailLoading}
-                pagination={{
-                  ...pagination,
-                  showTotal: (total: number) => `Tổng ${total} mục`,
-                }}
-                onChange={handleChangePage}
-                locale={{ emptyText: "Không có dữ liệu" }}
-              />
-            </Card>
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      <ImportRequestConfirmModal
-        open={showConfirmModal}
-        onOk={handleSubmit}
-        onCancel={() => setShowConfirmModal(false)}
-        confirmLoading={loading}
-        formData={{
-          ...formData,
-          exportRequestId: formData.exportRequestId
-        }}
-        details={exportRequestDetails}
-        providers={[]}
-      />
+          {step === 1 && (
+            <div className="flex gap-6 mt-4">
+              <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
+                <Space direction="vertical" className="w-full">
+                  <div className="text-sm text-blue-500">
+                    <InfoCircleOutlined className="mr-1" />
+                    Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
+                  </div>
+                  <div className="flex gap-6 mb-4">
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
+                      <DatePicker
+                        locale={locale}
+                        format="DD-MM-YYYY"
+                        size="large"
+                        className="w-full !mt-1 !p-[4px_8px]"
+                        value={formData.startDate ? dayjs(formData.startDate) : null}
+                        disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                        onChange={handleStartDateChange}
+                        placeholder="Chọn ngày"
+                        allowClear
+                      />
+                    </div>
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
+                      <DatePicker
+                        locale={locale}
+                        format="DD-MM-YYYY"
+                        size="large"
+                        className="w-full !mt-1 !p-[4px_8px]"
+                        value={formData.endDate ? dayjs(formData.endDate) : null}
+                        disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                        onChange={handleEndDateChange}
+                        placeholder="Chọn ngày"
+                        allowClear
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-base font-semibold">Phòng ban<span className="text-red-500">*</span></label>
+                    <Input
+                      value={
+                        selectedDepartment
+                          ? selectedDepartment.departmentName
+                          : ""
+                      }
+                      placeholder="Chọn phòng ban"
+                      readOnly
+                      onClick={() => setDepartmentModalVisible(true)}
+                      className="w-full cursor-pointer"
+                    />
+                    {!selectedDepartment && (
+                      <div className="text-red-500 text-xs mt-1">
+                        Vui lòng chọn phòng ban.
+                      </div>
+                    )}
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
+                    <TextArea
+                      placeholder="Nhập lý do"
+                      rows={4}
+                      value={formData.importReason}
+                      onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
+                      className="w-full !mt-1"
+                      maxLength={150}
+                      showCount
+                    />
+                  </div>
+                  <Button
+                    type="primary"
+                    onClick={() => setIsConfirmModalOpen(true)}
+                    loading={loading}
+                    className="w-full mt-2"
+                    id="btn-detail"
+                    disabled={importedData.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
+                  >
+                    Xác nhận thông tin phiếu nhập trả
+                  </Button>
+                </Space>
+              </Card>
+              <div className="w-7/10">
+                <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa trả từ file Excel</span>}>
+                  {sortedData.length > 0 && (
+                    <Alert
+                      message="Thông tin nhập tXác nhận thông tin phiếu nhập trảrả"
+                      description={
+                        <>
+                          <p>Tổng số mặt hàng: {sortedData.length}</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả dựa trên dữ liệu từ file</p>
+                          <p className="text-orange-500">* Các mặt hàng có cùng mã sản phẩm tồn kho đã được gộp giá trị</p>
+                        </>
+                      }
+                      type="info"
+                      showIcon
+                      className="mb-4"
+                    />
+                  )}
+                  <Table
+                    className="[&_.ant-table-cell]:!p-3"
+                    columns={[
+                      {
+                        width: "50%",
+                        title: <span className="font-semibold">Mã sản phẩm cụ thể</span>,
+                        dataIndex: "inventoryItemId",
+                        key: "inventoryItemId",
+                        onHeaderCell: () => ({
+                          style: { textAlign: 'center' as const }
+                        }),
+                      },
+                      {
+                        width: "50%",
+                        title: <span className="font-semibold">Giá trị cần nhập</span>,
+                        dataIndex: "measurementValue",
+                        key: "measurementValue",
+                        align: "center" as const,
+                        onHeaderCell: () => ({
+                          style: { textAlign: 'center' as const }
+                        }),
+                      },
+                    ]}
+                    dataSource={sortedData}
+                    rowKey={(record, index) => `${record.inventoryItemId}-${index}`}
+                    loading={false}
+                    pagination={{
+                      current: 1,
+                      pageSize: 10,
+                      showTotal: (total: number) => `Tổng ${total} mục`,
+                    }}
+                    locale={{ emptyText: "Không có dữ liệu" }}
+                  />
+                </Card>
+              </div>
+            </div>
+          )}
+
+          <Modal
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                Những mã hàng sau sẽ bị loại bỏ do giá trị bằng 0
+              </div>
+            }
+            open={isDeleteQuantityZeroRowModalOpen}
+            onOk={confirmDeleteQuantityZeroRow}
+            onCancel={cancelDeleteQuantityZeroRow}
+            okText="Xác nhận và tiếp tục"
+            cancelText="Hủy"
+            okButtonProps={{ disabled: !deleteQuantityZeroRowsResponsibilityChecked }}
+            width={540}
+            maskClosable={false}
+          >
+            {quantityZeroRowsToDelete.length > 0 && (
+              <>
+                <div
+                  ref={deleteModalScrollRef}
+                  onScroll={checkDeleteModalScroll}
+                  style={{
+                    height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto",
+                    overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
+                    marginBottom: 16
+                  }}
+                >
+                  {quantityZeroRowsToDelete.map((item, index) => (
+                    <div key={`${item.inventoryItemId}-${index}`} className="pb-2 mb-2 border-b">
+                      <p><strong>Mã sản phẩm cụ thể:</strong> {item.inventoryItemId}</p>
+                      <p><strong>Giá trị:</strong> {item.measurementValue}</p>
+                    </div>
+                  ))}
+                </div>
+                <Checkbox
+                  checked={deleteQuantityZeroRowsResponsibilityChecked}
+                  onChange={e => setDeleteQuantityZeroRowsResponsibilityChecked(e.target.checked)}
+                  style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
+                  disabled={quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal}
+                >
+                  Tôi xác nhận giá trị là đúng và đồng ý tiếp tục.
+                  {quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal && (
+                    <div style={{ color: 'red' }}>(Vui lòng xem hết danh sách)</div>
+                  )}
+                </Checkbox>
+              </>
+            )}
+          </Modal>
+
+          <DepartmentSelectionModal
+            visible={departmentModalVisible}
+            title="Chọn phòng ban"
+            data={departments?.map((d) => ({
+              ...d,
+              name: d.departmentName,
+            })) || []}
+            onSelect={(dept) => {
+              setSelectedDepartment(dept);
+              setFormData(prev => ({ ...prev, departmentId: dept.id }));
+              setDepartmentModalVisible(false);
+            }}
+            onCancel={() => setDepartmentModalVisible(false)}
+            placeholder="Tìm kiếm phòng ban..."
+          />
+
+          <ImportRequestReturnConfirmModal
+            open={isConfirmModalOpen}
+            onOk={handleSubmit}
+            onCancel={() => setIsConfirmModalOpen(false)}
+            confirmLoading={loading}
+            formData={formData}
+            details={getConsolidatedData(importedData)}
+            departmentName={selectedDepartment?.departmentName || ""}
+          />
+        </>
+      )}
     </>
   );
 };

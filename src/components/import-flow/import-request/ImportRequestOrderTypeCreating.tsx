@@ -17,8 +17,8 @@ import { calculateRowSpanForItemHaveSameCompareValue, isDateDisabledForAction } 
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
-import EditableImportRequestTableSection from "./EditableImportRequestTableSection";
-import ImportRequestConfirmModal from "./ImportRequestConfirmModal";
+import EditableImportRequestOrderTable from "./EditableImportRequestOrderTable";
+import ImportRequestOrderConfirmModal from "./ImportRequestOrderConfirmModal";
 
 const { TextArea } = Input;
 
@@ -524,214 +524,224 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
         />
       </div>
 
-      {step === 0 && (
-        <div className="flex flex-col items-center gap-6 mt-2">
-          <div className="w-full">
-            <ExcelUploadSection
-              fileName={fileName}
-              onFileChange={handleFileUpload}
-              onRemoveFile={handleRemoveFile}
-              fileInputRef={fileInputRef}
-              buttonLabel="Tải lên file Excel"
-              type="IMPORT_REQUEST"
-            />
-            <EditableImportRequestTableSection
-              setIsAllPagesViewed={setIsAllPagesViewed}
-              data={importedData}
-              setData={setImportedData}
-              items={items}
-              providers={providers}
-              loading={loading}
-              alertNode={importedData.length > 0 ? (
-                <Alert
-                  message="Thông tin nhập kho"
-                  description={
-                    <>
-                      <p>Số lượng nhà cung cấp: {Array.from(new Set(importedData.map(item => item.providerId))).length}</p>
-                      <p>Tổng số mặt hàng: {importedData.length}</p>
-                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
-                    </>
-                  }
-                  type="info"
-                  showIcon
-                  className="mb-4"
-                />
-              ) : null}
-              emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
-              title="Danh sách hàng hóa từ file Excel"
-            />
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span className="text-gray-600 font-medium">Đang tải dữ liệu nhà cung cấp và sản phẩm...</span>
           </div>
-          <Button
-            type="primary"
-            onClick={handleNextStep}
-            disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
-          >
-            Tiếp tục nhập thông tin phiếu nhập
-            <ArrowRightOutlined />
-            {!isAllPagesViewed && isImportRequestDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
-          </Button>
         </div>
-      )}
-      {step === 1 && (
-        <div className="flex gap-6 mt-4">
-          <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
-            <Space direction="vertical" className="w-full">
-              <div className="text-sm text-blue-500">
-                <InfoCircleOutlined className="mr-1" />
-                Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
-              </div>
-              <div className="flex gap-6 mb-4">
-                <div className="w-1/2 mb-2">
-                  <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    value={formData.startDate ? dayjs(formData.startDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
-                    onChange={handleStartDateChange}
-                    placeholder="Chọn ngày"
-                    allowClear
-                  />
-                </div>
-                <div className="w-1/2 mb-2">
-                  <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
-                  <DatePicker
-                    locale={locale}
-                    format="DD-MM-YYYY"
-                    size="large"
-                    className="w-full !mt-1 !p-[4px_8px]"
-                    value={formData.endDate ? dayjs(formData.endDate) : null}
-                    disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
-                    onChange={handleEndDateChange}
-                    placeholder="Chọn ngày"
-                    allowClear
-                  />
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
-                <TextArea
-                  placeholder="Nhập lý do"
-                  rows={4}
-                  value={formData.importReason}
-                  onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
-                  className="w-full !mt-1"
-                  maxLength={150}
-                  showCount
+      ) : (
+        <>
+          {step === 0 && (
+            <div className="flex flex-col items-center gap-6 mt-2">
+              <div className="w-full">
+                <ExcelUploadSection
+                  fileName={fileName}
+                  onFileChange={handleFileUpload}
+                  onRemoveFile={handleRemoveFile}
+                  fileInputRef={fileInputRef}
+                  buttonLabel="Tải lên file Excel"
+                  type="IMPORT_REQUEST"
+                />
+                <EditableImportRequestOrderTable
+                  setIsAllPagesViewed={setIsAllPagesViewed}
+                  data={importedData}
+                  setData={setImportedData}
+                  items={items}
+                  providers={providers}
+                  alertNode={importedData.length > 0 ? (
+                    <Alert
+                      message="Thông tin nhập kho"
+                      description={
+                        <>
+                          <p>Số lượng nhà cung cấp: {Array.from(new Set(importedData.map(item => item.providerId))).length}</p>
+                          <p>Tổng số mặt hàng: {importedData.length}</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
+                        </>
+                      }
+                      type="info"
+                      showIcon
+                      className="mb-4"
+                    />
+                  ) : null}
+                  emptyText="Vui lòng tải lên file Excel để xem chi tiết hàng hóa"
+                  title="Danh sách hàng hóa từ file Excel"
                 />
               </div>
               <Button
                 type="primary"
-                onClick={() => setShowConfirmModal(true)}
-                loading={loading}
-                className="w-full mt-2"
-                id="btn-detail"
-                disabled={importedData.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
+                onClick={handleNextStep}
+                disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
               >
-                Xác nhận thông tin
+                Tiếp tục nhập thông tin phiếu nhập
+                <ArrowRightOutlined />
+                {!isAllPagesViewed && isImportRequestDataValid && <span style={{ color: 'red', marginLeft: 4 }}>(Vui lòng xem tất cả các trang)</span>}
               </Button>
-            </Space>
-          </Card>
-          <div className="w-7/10">
-            <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa từ file Excel</span>}>
-              {sortedData.length > 0 && (
-                <Alert
-                  message="Thông tin nhập kho"
-                  description={
-                    <>
-                      <p>Số lượng nhà cung cấp: {Array.from(new Set(sortedData.map(item => item.providerId))).length}</p>
-                      <p>Tổng số mặt hàng: {sortedData.length}</p>
-                      <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
-                      <p className="text-orange-500">* Các mặt hàng có cùng mã và nhà cung cấp đã được gộp số lượng</p>
-                    </>
-                  }
-                  type="info"
-                  showIcon
-                  className="mb-4"
-                />
-              )}
-            </Card>
-            <Table
-              className="[&_.ant-table-cell]:!p-3"
-              columns={columns}
-              dataSource={sortedData}
-              rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
-              loading={false}
-              pagination={{
-                ...pagination,
-                showTotal: (total: number) => `Tổng ${total} mục`,
-              }}
-              onChange={handleChangePage}
-              locale={{ emptyText: "Không có dữ liệu" }}
-            />
-          </div>
-        </div>
-      )}
-
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
-            Những mã hàng sau sẽ bị loại bỏ do số lượng bằng 0
-          </div>
-        }
-        open={isDeleteQuantityZeroRowModalOpen}
-        onOk={confirmDeleteQuantityZeroRow}
-        onCancel={cancelDeleteQuantityZeroRow}
-        okText="Xác nhận và tiếp tục"
-        cancelText="Hủy"
-        okButtonProps={{ disabled: !deleteQuantityZeroRowsResponsibilityChecked }}
-        width={540}
-        maskClosable={false}
-      >
-        {quantityZeroRowsToDelete.length > 0 && (
-          <>
-            <div
-              ref={deleteModalScrollRef}
-              onScroll={checkDeleteModalScroll}
-              style={{
-                height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto",
-                overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
-                marginBottom: 16
-              }}
-            >
-              {quantityZeroRowsToDelete.map((item, index) => (
-                <div key={`${item.itemId}-${item.providerId}-${index}`} className="pb-2 mb-2 border-b">
-                  <p><strong>Mã hàng:</strong> #{item.itemId}</p>
-                  <p><strong>Tên hàng:</strong> {item.itemName}</p>
-                  <p><strong>Nhà cung cấp:</strong> {item.providerName}</p>
-                </div>
-              ))}
             </div>
-            <Checkbox
-              checked={deleteQuantityZeroRowsResponsibilityChecked}
-              onChange={e => setDeleteQuantityZeroRowsResponsibilityChecked(e.target.checked)}
-              style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
-              disabled={quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal}
-            >
-              Tôi xác nhận số lượng là đúng và đồng ý tiếp tục.
-              {quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal && (
-                <div style={{ color: 'red' }}>(Vui lòng xem hết danh sách)</div>
-              )}
-            </Checkbox>
-          </>
-        )}
-      </Modal>
+          )}
+          {step === 1 && (
+            <div className="flex gap-6 mt-4">
+              <Card title={<span className="text-xl font-semibold">Thông tin phiếu nhập</span>} className="w-3/10">
+                <Space direction="vertical" className="w-full">
+                  <div className="text-sm text-blue-500">
+                    <InfoCircleOutlined className="mr-1" />
+                    Ngày hết hạn không được quá <span className="font-bold">{configuration?.maxAllowedDaysForImportRequestProcess} ngày</span> kể từ ngày bắt đầu
+                  </div>
+                  <div className="flex gap-6 mb-4">
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Ngày có hiệu lực<span className="text-red-500">*</span></label>
+                      <DatePicker
+                        locale={locale}
+                        format="DD-MM-YYYY"
+                        size="large"
+                        className="w-full !mt-1 !p-[4px_8px]"
+                        value={formData.startDate ? dayjs(formData.startDate) : null}
+                        disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration)}
+                        onChange={handleStartDateChange}
+                        placeholder="Chọn ngày"
+                        allowClear
+                      />
+                    </div>
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Ngày hết hạn<span className="text-red-500">*</span></label>
+                      <DatePicker
+                        locale={locale}
+                        format="DD-MM-YYYY"
+                        size="large"
+                        className="w-full !mt-1 !p-[4px_8px]"
+                        value={formData.endDate ? dayjs(formData.endDate) : null}
+                        disabledDate={(current) => isDateDisabledForAction(current, "import-request-create", configuration, formData.startDate)}
+                        onChange={handleEndDateChange}
+                        placeholder="Chọn ngày"
+                        allowClear
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-base font-semibold">Lý do nhập kho<span className="text-red-500">*</span></label>
+                    <TextArea
+                      placeholder="Nhập lý do"
+                      rows={4}
+                      value={formData.importReason}
+                      onChange={(e) => setFormData({ ...formData, importReason: e.target.value.slice(0, 150) })}
+                      className="w-full !mt-1"
+                      maxLength={150}
+                      showCount
+                    />
+                  </div>
+                  <Button
+                    type="primary"
+                    onClick={() => setShowConfirmModal(true)}
+                    loading={loading}
+                    className="w-full mt-2"
+                    id="btn-detail"
+                    disabled={importedData.length === 0 || !isImportRequestDataValid || !isFormDataValid()}
+                  >
+                    Xác nhận thông tin
+                  </Button>
+                </Space>
+              </Card>
+              <div className="w-7/10">
+                <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa từ file Excel</span>}>
+                  {sortedData.length > 0 && (
+                    <Alert
+                      message="Thông tin nhập kho"
+                      description={
+                        <>
+                          <p>Số lượng nhà cung cấp: {Array.from(new Set(sortedData.map(item => item.providerId))).length}</p>
+                          <p>Tổng số mặt hàng: {sortedData.length}</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập kho riêng theo từng nhà cung cấp</p>
+                          <p className="text-orange-500">* Các mặt hàng có cùng mã và nhà cung cấp đã được gộp số lượng</p>
+                        </>
+                      }
+                      type="info"
+                      showIcon
+                      className="mb-4"
+                    />
+                  )}
+                </Card>
+                <Table
+                  className="[&_.ant-table-cell]:!p-3"
+                  columns={columns}
+                  dataSource={sortedData}
+                  rowKey={(record, index) => `${record.itemId}-${record.providerId}-${index}`}
+                  loading={false}
+                  pagination={{
+                    ...pagination,
+                    showTotal: (total: number) => `Tổng ${total} mục`,
+                  }}
+                  onChange={handleChangePage}
+                  locale={{ emptyText: "Không có dữ liệu" }}
+                />
+              </div>
+            </div>
+          )}
 
-      <ImportRequestConfirmModal
-        open={showConfirmModal}
-        onOk={handleSubmit}
-        onCancel={() => setShowConfirmModal(false)}
-        confirmLoading={loading}
-        formData={formData}
-        details={getConsolidatedData(importedData)}
-        providers={providers.reduce((providerNameMap, provider) => {
-          providerNameMap[provider.id] = provider.name;
-          return providerNameMap;
-        }, {} as Record<number, string>)}
-      />
+          <Modal
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+                Những mã hàng sau sẽ bị loại bỏ do số lượng bằng 0
+              </div>
+            }
+            open={isDeleteQuantityZeroRowModalOpen}
+            onOk={confirmDeleteQuantityZeroRow}
+            onCancel={cancelDeleteQuantityZeroRow}
+            okText="Xác nhận và tiếp tục"
+            cancelText="Hủy"
+            okButtonProps={{ disabled: !deleteQuantityZeroRowsResponsibilityChecked }}
+            width={540}
+            maskClosable={false}
+          >
+            {quantityZeroRowsToDelete.length > 0 && (
+              <>
+                <div
+                  ref={deleteModalScrollRef}
+                  onScroll={checkDeleteModalScroll}
+                  style={{
+                    height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto",
+                    overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
+                    marginBottom: 16
+                  }}
+                >
+                  {quantityZeroRowsToDelete.map((item, index) => (
+                    <div key={`${item.itemId}-${item.providerId}-${index}`} className="pb-2 mb-2 border-b">
+                      <p><strong>Mã hàng:</strong> #{item.itemId}</p>
+                      <p><strong>Tên hàng:</strong> {item.itemName}</p>
+                      <p><strong>Nhà cung cấp:</strong> {item.providerName}</p>
+                    </div>
+                  ))}
+                </div>
+                <Checkbox
+                  checked={deleteQuantityZeroRowsResponsibilityChecked}
+                  onChange={e => setDeleteQuantityZeroRowsResponsibilityChecked(e.target.checked)}
+                  style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
+                  disabled={quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal}
+                >
+                  Tôi xác nhận số lượng là đúng và đồng ý tiếp tục.
+                  {quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal && (
+                    <div style={{ color: 'red' }}>(Vui lòng xem hết danh sách)</div>
+                  )}
+                </Checkbox>
+              </>
+            )}
+          </Modal>
+
+          <ImportRequestOrderConfirmModal
+            open={showConfirmModal}
+            onOk={handleSubmit}
+            onCancel={() => setShowConfirmModal(false)}
+            confirmLoading={loading}
+            formData={formData}
+            details={getConsolidatedData(importedData)}
+            providers={providers.reduce((providerNameMap, provider) => {
+              providerNameMap[provider.id] = provider.name;
+              return providerNameMap;
+            }, {} as Record<number, string>)}
+          />
+        </>
+      )}
     </>
   );
 };
