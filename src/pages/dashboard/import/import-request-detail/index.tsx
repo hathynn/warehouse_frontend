@@ -426,7 +426,7 @@ const ImportRequestDetail: React.FC = () => {
     } else if (importType === 'RETURN') {
       baseColumns.push(
         {
-          width: '35%',
+          width: '32%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
@@ -437,7 +437,7 @@ const ImportRequestDetail: React.FC = () => {
           }),
         },
         {
-          width: '25%',
+          width: '20%',
           title: "Tên sản phẩm",
           dataIndex: "itemName",
           key: "itemName",
@@ -472,17 +472,35 @@ const ImportRequestDetail: React.FC = () => {
         },
         {
           title: "Số lượng cần nhập",
-          dataIndex: "measurementUnit",
-          key: "measurementUnit",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
           align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (measurementUnit: string, record: ImportRequestDetailResponse) => {
+          render: (expectQuantity: number, record: ImportRequestDetailResponse) => {
             const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{expectQuantity}</span>{" "}
+                <span>{mappedItem?.unitType || '-'}</span>
+              </div>
+            );
+          },
+        },
+        {
+          title: "Thực tế đã nhập",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: "center" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (actualQuantity: number, record: ImportRequestDetailResponse) => {
+            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+            return (
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{actualQuantity}</span>{" "}
                 <span>{mappedItem?.unitType || '-'}</span>
               </div>
             );
