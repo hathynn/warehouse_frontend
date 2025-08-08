@@ -38,6 +38,11 @@ export interface StockCheckRequestRequest {
   note?: string;
 }
 
+export interface AssignStaffRequest {
+  stockCheckId: string;
+  staffId: string; // hoặc number tùy theo API backend
+}
+
 const useStockCheckService = () => {
   const { callApi, loading } = useApi();
 
@@ -92,11 +97,39 @@ const useStockCheckService = () => {
     }
   };
 
+  const assignStaffToStockCheck = async (
+    requestData: AssignStaffRequest
+  ): Promise<ResponseDTO<any>> => {
+    try {
+      if (!requestData.stockCheckId || !requestData.staffId) {
+        throw new Error(
+          "Mã phiếu kiểm kho và mã nhân viên không được để trống"
+        );
+      }
+
+      const response = await callApi(
+        "post",
+        "/stock-check/assign-staff",
+        requestData
+      );
+
+      if (response) {
+        toast.success("Đã đổi nhân viên kiểm kho");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể phân công nhân viên");
+      console.error("Error assigning staff to stock check:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     createStockCheckRequest,
     getAllStockCheckRequests,
     getStockCheckRequestById,
+    assignStaffToStockCheck,
   };
 };
 

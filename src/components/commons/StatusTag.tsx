@@ -41,8 +41,8 @@ const detailStatusMap: Record<DetailStatus, { color: string; text: string }> = {
 const stockcheckStatusMap: Record<StockcheckStatus, { color: string; text: string }> = {
   NOT_STARTED: { color: "default", text: "Chưa bắt đầu" },
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
-  COUNTED: { color: "processing", text: "Đã đóng gói" },
-  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận đóng gói" },
+  COUNTED: { color: "processing", text: "Đã kiểm kê" },
+  COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm kê" },
   CONFIRMED: { color: "processing", text: "Đã xuất kho" },
   COMPLETED: { color: "green", text: "Hoàn tất" },
   CANCELLED: { color: "default", text: "Đã hủy" },

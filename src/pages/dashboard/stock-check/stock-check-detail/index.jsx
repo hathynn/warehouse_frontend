@@ -12,15 +12,23 @@ import {
   Tooltip,
   Input,
 } from "antd";
-import { ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
-import StatusTag from "@/components/commons/StatusTag";
+import {
+  ArrowLeftOutlined,
+  EyeOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
+import StatusTag from "@/components/commons/StatusTag";
+import AssignStockCheckStaffModal from "@/components/stock-check-flow/stock-check-detail/AssignStockCheckStaffModal";
+import { AccountRole } from "@/utils/enums";
 
 //Services import
 import useStockCheckService from "@/services/useStockCheckService";
 import useStockCheckDetailService from "@/services/useStockCheckDetailService";
 import useAccountService from "@/services/useAccountService";
 import useItemService from "@/services/useItemService";
+import useConfigurationService from "@/services/useConfigurationService";
+import { useSelector } from "react-redux";
 
 const enrichDetailsWithLocalData = (details, itemsData) => {
   return details.map((detail) => {
@@ -41,17 +49,22 @@ const enrichDetailsWithLocalData = (details, itemsData) => {
 const StockCheckRequestDetail = () => {
   const { stockCheckId } = useParams();
   const navigate = useNavigate();
+  const userRole = useSelector((state) => state.user.role);
 
   // Services
-  const { getStockCheckRequestById, loading: stockCheckLoading } =
-    useStockCheckService();
+  const {
+    getStockCheckRequestById,
+    assignStaffToStockCheck,
+    loading: stockCheckLoading,
+  } = useStockCheckService();
   const {
     getStockCheckDetailById,
     getStockCheckDetailByDetailId,
     loading: stockCheckDetailLoading,
   } = useStockCheckDetailService();
-  const { findAccountById } = useAccountService();
+  const { findAccountById, getActiveStaffsInDay } = useAccountService();
   const { getItems } = useItemService();
+  const { getConfiguration } = useConfigurationService();
 
   // States
   const [stockCheckRequest, setStockCheckRequest] = useState(null);
@@ -64,6 +77,11 @@ const StockCheckRequestDetail = () => {
   });
   const [items, setItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [staffs, setStaffs] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [configuration, setConfiguration] = useState(null);
+  const [searchText, setSearchText] = useState("");
 
   // Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -71,6 +89,7 @@ const StockCheckRequestDetail = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [checkedInventoryItems, setCheckedInventoryItems] = useState([]);
   const [inventorySearchText, setInventorySearchText] = useState("");
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
 
   // Fetch stock check request data
   const fetchStockCheckRequest = useCallback(async () => {
@@ -84,6 +103,27 @@ const StockCheckRequestDetail = () => {
       message.error("Không thể tải thông tin phiếu kiểm kho");
     }
   }, [stockCheckId]);
+
+  const fetchActiveStaffs = async () => {
+    if (!stockCheckRequest?.startDate) {
+      message.error("Ngày kiểm kê không hợp lệ");
+      return;
+    }
+
+    try {
+      setLoadingStaff(true);
+      const activeStaffs = await getActiveStaffsInDay({
+        date: stockCheckRequest.startDate,
+        stockCheckId: stockCheckRequest.id,
+      });
+      setStaffs(activeStaffs);
+    } catch (error) {
+      console.error("Failed to fetch warehouse keepers:", error);
+      message.error("Không thể tải danh sách nhân viên kho");
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
 
   const fetchStockCheckDetails = useCallback(
     async (page = 1, pageSize = 10) => {
@@ -171,6 +211,129 @@ const StockCheckRequestDetail = () => {
   // Handlers
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleOpenAssignModal = async () => {
+    setSelectedStaffId(null);
+    // Lấy configuration
+    try {
+      const config = await getConfiguration();
+      setConfiguration(config);
+    } catch (e) {
+      console.error("Error getting configuration:", e);
+    }
+    fetchActiveStaffs();
+    setAssignModalVisible(true);
+  };
+
+  const handleCloseAssignModal = () => {
+    setAssignModalVisible(false);
+    setSelectedStaffId(null);
+  };
+
+  const handleAssignStockCheckStaff = async () => {
+    if (!selectedStaffId || !stockCheckId) {
+      message.warning("Vui lòng chọn nhân viên để phân công");
+      return;
+    }
+
+    try {
+      await assignStaffToStockCheck({
+        stockCheckId: stockCheckId,
+        staffId: selectedStaffId,
+      });
+
+      // Refresh data
+      await fetchStockCheckRequest();
+      setAssignModalVisible(false);
+      setSelectedStaffId(null);
+      message.success("Phân công nhân viên thành công");
+    } catch (error) {
+      console.error("Error assigning staff:", error);
+      message.error("Không thể phân công nhân viên");
+    }
+  };
+
+  const handleSearch = (value) => {
+    setSearchText(value);
+  };
+
+  // TODO: Implement these functions similar to export logic
+  const canReassignStockCheckStaff = () => {
+    if (
+      !stockCheckRequest?.countingDate ||
+      !stockCheckRequest?.countingTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return true;
+    }
+
+    // Combine countingDate and countingTime into a Date object
+    const countingDateTime = new Date(
+      `${stockCheckRequest.countingDate}T${stockCheckRequest.countingTime}`
+    );
+
+    // Convert timeToAllowAssign to milliseconds
+    const [hours, minutes, seconds] = configuration.timeToAllowAssign
+      .split(":")
+      .map(Number);
+    const allowAssignMs = (hours * 60 * 60 + minutes * 60 + seconds) * 1000;
+
+    // Deadline = countingTime - timeToAllowAssign
+    const deadline = new Date(countingDateTime.getTime() - allowAssignMs);
+
+    // If current time < deadline, allow reassignment
+    return Date.now() < deadline.getTime();
+  };
+
+  const getRemainingAssignTime = () => {
+    if (
+      !stockCheckRequest?.countingDate ||
+      !stockCheckRequest?.countingTime ||
+      !configuration?.timeToAllowAssign
+    ) {
+      return null;
+    }
+
+    // 1. Thời điểm counting
+    const countingDateTime = new Date(
+      `${stockCheckRequest.countingDate}T${stockCheckRequest.countingTime}`
+    );
+
+    // 2. Hạn chót = counting time - timeToAllowAssign
+    const [h, m, s] = configuration.timeToAllowAssign.split(":").map(Number);
+    const allowAssignMs = (h * 3600 + m * 60 + s) * 1000;
+    const deadline = new Date(countingDateTime.getTime() - allowAssignMs);
+
+    // 3. Còn lại bao lâu
+    const diffMs = deadline.getTime() - Date.now();
+    if (diffMs <= 0) return "0 tiếng 0 phút"; // đã quá hạn
+
+    const diffMinutes = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffMins = diffMinutes % 60;
+    return `${diffHours} tiếng ${diffMins} phút`;
+  };
+
+  const calculateRemainingTime = (totalExpectedTime, defaultWorkingMinutes) => {
+    try {
+      const [hours, minutes] = totalExpectedTime.split(":").map(Number);
+      const expectedMinutes = hours * 60 + minutes;
+      const remainingMinutes = defaultWorkingMinutes - expectedMinutes;
+      if (remainingMinutes <= 0) return "0 tiếng 0 phút";
+      const remainingHours = Math.floor(remainingMinutes / 60);
+      const remainingMins = Math.floor(remainingMinutes % 60);
+      return `${remainingHours} tiếng ${remainingMins} phút`;
+    } catch (error) {
+      return `${Math.floor(defaultWorkingMinutes / 60)} tiếng ${
+        defaultWorkingMinutes % 60
+      } phút`;
+    }
+  };
+
+  const getDefaultWorkingMinutes = () => {
+    // Assume làm việc cả ngày lẫn đêm (24h)
+    return 24 * 60; // 1440 phút
   };
 
   const handleTableChange = (pag) => {
@@ -278,7 +441,7 @@ const StockCheckRequestDetail = () => {
       ),
     },
     {
-      title: "Số lượng thực tế",
+      title: "Số lượng đã kiểm",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
       width: "13%",
@@ -309,7 +472,7 @@ const StockCheckRequestDetail = () => {
       },
     },
     {
-      title: "Tổng giá trị thực tế",
+      title: "Tổng giá trị đã kiểm",
       dataIndex: "actualMeasurementValue",
       key: "actualMeasurementValue",
       width: "18%",
@@ -430,6 +593,23 @@ const StockCheckRequestDetail = () => {
         <h1 className="text-xl font-bold m-0">
           Chi tiết phiếu kiểm kho #{stockCheckRequest?.id}
         </h1>
+        {userRole === AccountRole.WAREHOUSE_MANAGER &&
+          stockCheckRequest?.status === "IN_PROGRESS" && (
+            <Button
+              type="primary"
+              icon={<UserAddOutlined />}
+              onClick={handleOpenAssignModal}
+              disabled={!canReassignStockCheckStaff()}
+              title={
+                !canReassignStockCheckStaff()
+                  ? "Đã quá thời gian cho phép phân công lại"
+                  : ""
+              }
+              className="ml-4"
+            >
+              Phân công lại nhân viên kiểm kê
+            </Button>
+          )}
       </div>
 
       {/* Stock Check Request Information */}
@@ -598,6 +778,23 @@ const StockCheckRequestDetail = () => {
           )}
         </div>
       </Modal>
+      <AssignStockCheckStaffModal
+        visible={assignModalVisible}
+        onCancel={handleCloseAssignModal}
+        onAssign={handleAssignStockCheckStaff}
+        selectedStaffId={selectedStaffId}
+        setSelectedStaffId={setSelectedStaffId}
+        staffs={staffs}
+        loadingStaff={loadingStaff}
+        assignedStaff={assignedWarehouseKeeper}
+        stockCheckRequest={stockCheckRequest}
+        stockCheckLoading={stockCheckLoading}
+        searchText={searchText}
+        onSearch={handleSearch}
+        getRemainingAssignTime={getRemainingAssignTime}
+        calculateRemainingTime={calculateRemainingTime}
+        getDefaultWorkingMinutes={getDefaultWorkingMinutes}
+      />
     </div>
   );
 };
