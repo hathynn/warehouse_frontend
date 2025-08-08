@@ -50,6 +50,15 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
     }
   }, [open, resetScrollTracking]);
 
+  useEffect(() => {
+    if (open && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      if (container.scrollHeight <= container.clientHeight) {
+        setTimeout(() => checkScrollPosition(), 100);
+      }
+    }
+  }, [open, details, checkScrollPosition]);
+
   const columns = [
     {
       width: "40%",

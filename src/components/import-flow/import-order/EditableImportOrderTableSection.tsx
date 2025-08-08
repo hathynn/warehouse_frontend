@@ -11,12 +11,11 @@ export interface ImportOrderDetailRow {
   orderedQuantity: number;
   plannedQuantity: number;
   actualQuantity: number;
-  expectMeasurementValue: number;
-  orderedMeasurementValue: number;
-  actualMeasurementValue: number;
-  plannedMeasurementValue?: number;
+  measurementValue: number;
+  inventoryItemId: string;
   importRequestProviderId: number;
   measurementUnit?: string;
+  unitType?: string;
 }
 
 export interface ProviderOption {
@@ -101,14 +100,14 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     if (recordToDelete) {
       const newData = data.filter(row => row.itemId !== recordToDelete.itemId);
       onChange(newData);
-      
+
       // Update pagination total
       setPagination(prev => ({
         ...prev,
         total: newData.length,
         // If current page becomes empty after deletion, go to previous page
-        current: Math.ceil(newData.length / prev.pageSize) < prev.current 
-          ? Math.max(1, prev.current - 1) 
+        current: Math.ceil(newData.length / prev.pageSize) < prev.current
+          ? Math.max(1, prev.current - 1)
           : prev.current
       }));
     }
@@ -123,117 +122,61 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
 
   const getColumns = () => {
     const baseColumns: any[] = [
-      {
-        width: "12%",
-        title: "Mã hàng",
-        dataIndex: "itemId",
-        key: "itemId",
-        render: (id: string) => `#${id}`,
-        align: "left" as const,
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-      },
-      {
-        width: "28%",
-        title: "Tên hàng",
-        dataIndex: "itemName",
-        key: "itemName",
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-      },
     ];
 
     if (importType === "RETURN") {
-      // For RETURN type, show measurement values with units
+      // For RETURN type, show simplified columns
       baseColumns.push(
         {
-          title: "Dự nhập theo phiếu",
-          dataIndex: "expectMeasurementValue",
-          key: "expectMeasurementValue",
-          align: "right" as const,
+          width: "35%",
+          title: "Mã sản phẩm tồn kho",
+          key: "inventoryItemId",
+          align: "left" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => (
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-              {record.measurementUnit && (
-                <span>{record.measurementUnit}</span>
-              )}
-            </div>
-          ),
+          render: (_, record: ImportOrderDetailRow) => {
+            // This would need item service to get inventory item IDs
+            return `#${record.inventoryItemId}`; // Placeholder - you'll need proper inventory item ID mapping
+          },
         },
         {
-          title: "Đã lên đơn",
-          dataIndex: "orderedMeasurementValue",
-          key: "orderedMeasurementValue",
-          align: "right" as const,
+          width: "28%",
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => (
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-              {record.measurementUnit && (
-                <span>{record.measurementUnit}</span>
-              )}
-            </div>
-          ),
         },
         {
-          title: "Thực tế đã nhập",
-          dataIndex: "actualMeasurementValue",
-          key: "actualMeasurementValue",
+          title: "Giá trị đo lường",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
           align: "right" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => (
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-              {record.measurementUnit && (
-                <span>{record.measurementUnit}</span>
-              )}
-            </div>
-          ),
-        },
-        {
-          title: "Dự nhập đơn này",
-          dataIndex: "plannedMeasurementValue",
-          key: "plannedMeasurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (_: any, record: ImportOrderDetailRow) => {
-            let maxAllowed = 0;
-            if (record.actualMeasurementValue === 0) {
-              maxAllowed = record.expectMeasurementValue - record.orderedMeasurementValue;
-            }
-            else {
-              maxAllowed = record.expectMeasurementValue - record.actualMeasurementValue;
-            }
-            const currentValue = record.plannedMeasurementValue || 0;
-            const isInvalid = currentValue > maxAllowed;
+          render: (value: number, record: ImportOrderDetailRow) => {
             return (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                <Input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  max={maxAllowed}
-                  value={currentValue}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    handlePlannedMeasurementValueChange(val ? Number(val) : 0, record);
-                  }}
-                  style={{ textAlign: 'right', width: 100, color: 'blue' }}
-                  status={isInvalid ? 'error' : undefined}
-                />
-                {record.measurementUnit && (
-                  <span>{record.measurementUnit}</span>
-                )}
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
+              </div>
+            );
+          },
+        },
+        {
+          title: "Số lượng cần nhập",
+          key: "quantity",
+          align: "center" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_, record: ImportOrderDetailRow) => {
+            return (
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
+                <span>{record?.unitType || '-'}</span>
               </div>
             );
           },
@@ -242,6 +185,26 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     } else {
       // For ORDER type, show quantities
       baseColumns.push(
+        {
+          width: "12%",
+          title: "Mã hàng",
+          dataIndex: "itemId",
+          key: "itemId",
+          render: (id: string) => `#${id}`,
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: "28%",
+          title: "Tên hàng",
+          dataIndex: "itemName",
+          key: "itemName",
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
         {
           title: "Dự nhập theo phiếu",
           dataIndex: "expectQuantity",
@@ -331,38 +294,21 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   // Tổng hợp lỗi
   const invalidRows = data
     .map((row, idx) => {
-      if (importType === "RETURN") {
-        let maxAllowed = 0;
-        if (row.actualMeasurementValue === 0) {
-          maxAllowed = row.expectMeasurementValue - row.orderedMeasurementValue;
-        }
-        else {
-          maxAllowed = row.expectMeasurementValue - row.actualMeasurementValue;
-        }
-        const currentValue = row.plannedMeasurementValue || 0;
-        if (currentValue > maxAllowed) {
-          return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed} ${row.measurementUnit || ''})`;
-        }
-
-        if (currentValue <= 0) {
-          return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
-        }
-      } else {
-        let maxAllowed = 0;
-        if (row.actualQuantity === 0) {
-          maxAllowed = row.expectQuantity - row.orderedQuantity;
-        }
-        else {
-          maxAllowed = row.expectQuantity - row.actualQuantity;
-        }
-        if (row.plannedQuantity > maxAllowed) {
-          return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
-        }
-
-        if (row.plannedQuantity <= 0) {
-          return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
-        }
+      let maxAllowed = 0;
+      if (row.actualQuantity === 0) {
+        maxAllowed = row.expectQuantity - row.orderedQuantity;
       }
+      else {
+        maxAllowed = row.expectQuantity - row.actualQuantity;
+      }
+      if (row.plannedQuantity > maxAllowed) {
+        return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
+      }
+
+      if (row.plannedQuantity <= 0) {
+        return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
+      }
+
       return null;
     })
     .filter(Boolean);

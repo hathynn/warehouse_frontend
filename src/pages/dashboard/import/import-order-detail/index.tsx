@@ -43,6 +43,7 @@ import { AccountRole, ImportStatus } from "@/utils/enums";
 import { toast } from "react-toastify";
 import { MdApartment, MdLocationSearching } from "react-icons/md";
 import { convertStoredLocationName } from "@/utils/helpers";
+import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
 
 const ImportOrderDetail = () => {
   // ========== ROUTER & PARAMS ==========
@@ -56,6 +57,7 @@ const ImportOrderDetail = () => {
   // ========== DATA STATES ==========
   const [importOrderData, setImportOrderData] = useState<ImportOrderResponse | null>(null);
   const [importOrderDetails, setImportOrderDetails] = useState<ImportOrderDetailResponse[]>([]);
+  const [importRequestRelated, setImportRequestRelated] = useState<ImportRequestResponse | null>(null);
   const [staffs, setStaffs] = useState<AccountResponse[]>([]);
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
@@ -95,6 +97,9 @@ const ImportOrderDetail = () => {
     updateImportOrderToReadyToStore,
     countAgainImportOrder
   } = useImportOrderService();
+  const {
+    getImportRequestById
+  } = useImportRequestService();
   const {
     loading: importOrderDetailLoading,
     getImportOrderDetailsPaginated
@@ -137,6 +142,12 @@ const ImportOrderDetail = () => {
         setPagination(prev => ({ ...prev, current: page, pageSize: limit, total: total }));
       }
     }
+  };
+
+  const fetchImportRequestRelated = async () => {
+    if (!importOrderData?.importRequestId) return;
+    const response = await getImportRequestById(importOrderData.importRequestId);
+    setImportRequestRelated(response?.content || null);
   };
 
   const fetchInitialData = async () => {
@@ -200,6 +211,7 @@ const ImportOrderDetail = () => {
   }, [importOrderDetails]);
 
   useEffect(() => {
+    fetchImportRequestRelated();
     fetchAssignedStaff();
   }, [importOrderData]);
 
@@ -355,108 +367,130 @@ const ImportOrderDetail = () => {
   };
 
   // Table columns definition
-  const columns = [
-    {
-      width: '15%',
-      title: "Mã sản phẩm",
-      dataIndex: "itemId",
-      key: "itemId",
-      render: (id: number) => `#${id}`,
-      align: 'left' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: '20%',
-      title: "Tên sản phẩm",
-      dataIndex: "itemName",
-      key: "itemName",
-      ellipsis: true,
-      align: 'left' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: '15%',
-      title: "Dự nhập của đơn",
-      dataIndex: "expectQuantity",
-      key: "expectQuantity",
-      align: 'right' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: '15%',
-      title: "Nhập thực tế của đơn",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      align: 'right' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    {
-      width: '10%',
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status: string) => <StatusTag status={status} type="detail" />,
-      align: 'center' as const,
-      onHeaderCell: () => ({
-        style: { textAlign: 'center' as const }
-      }),
-    },
-    ...(importOrderData?.status === ImportStatus.COMPLETED ||
-      importOrderData?.status === ImportStatus.READY_TO_STORE ||
-      importOrderData?.status === ImportStatus.STORED ? [
-      {
-        width: '20%',
-        title: "Vị trí lưu kho",
-        key: "currentLocation",
-        align: 'center' as const,
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-        render: (record: ImportOrderDetailResponse) => {
-          const inventoryItems = inventoryItemsData.filter(inv =>
-            inv.itemId === record.itemId.toString()
-          );
-          const firstItem = inventoryItems[0];
-          return (
-            <div className="font-medium">
-              {convertStoredLocationName(firstItem?.storedLocationName)}
-            </div>
-          );
+  const getColumns = () => {
+    const baseColumns: any[] = [
+    ];
+
+    if (importRequestRelated?.importType === "RETURN") {
+      baseColumns.push(
+        {
+          title: "Mã sản phẩm tồn kho",
+          dataIndex: "inventoryItemId",
+          key: "inventoryItemId",
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (id: number) => `#${id}`,
         },
-      },
-      ...(importOrderData?.status === ImportStatus.COMPLETED ? [
+      )
+    } else {
+      baseColumns.push(
         {
           width: '15%',
-          title: "Hành động",
-          key: "action",
+          title: "Mã sản phẩm",
+          dataIndex: "itemId",
+          key: "itemId",
+          render: (id: number) => `#${id}`,
+          align: 'left' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '20%',
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
+          ellipsis: true,
+          align: 'left' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '15%',
+          title: "Dự nhập của đơn",
+          dataIndex: "expectQuantity",
+          key: "expectQuantity",
+          align: 'right' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '15%',
+          title: "Nhập thực tế của đơn",
+          dataIndex: "actualQuantity",
+          key: "actualQuantity",
+          align: 'right' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '10%',
+          title: "Trạng thái",
+          dataIndex: "status",
+          key: "status",
+          render: (status: string) => <StatusTag status={status} type="detail" />,
           align: 'center' as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (record: ImportOrderDetailResponse) => {
-            if (userRole !== AccountRole.WAREHOUSE_MANAGER) return null;
-            return (
-              <Button
-                type="primary"
-                size="small"
-                onClick={() => handleUpdateItemLocation(record)}
-              >
-                Cập nhật vị trí
-              </Button>
-            );
+        },
+        ...(importOrderData?.status === ImportStatus.COMPLETED ||
+          importOrderData?.status === ImportStatus.READY_TO_STORE ||
+          importOrderData?.status === ImportStatus.STORED ? [
+          {
+            width: '20%',
+            title: "Vị trí lưu kho",
+            key: "currentLocation",
+            align: 'center' as const,
+            onHeaderCell: () => ({
+              style: { textAlign: 'center' as const }
+            }),
+            render: (record: ImportOrderDetailResponse) => {
+              const inventoryItems = inventoryItemsData.filter(inv =>
+                inv.itemId === record.itemId.toString()
+              );
+              const firstItem = inventoryItems[0];
+              return (
+                <div className="font-medium">
+                  {convertStoredLocationName(firstItem?.storedLocationName)}
+                </div>
+              );
+            },
           },
-        }
-      ] : []),
-    ] : [])
-  ];
+          ...(importOrderData?.status === ImportStatus.COMPLETED ? [
+            {
+              width: '15%',
+              title: "Hành động",
+              key: "action",
+              align: 'center' as const,
+              onHeaderCell: () => ({
+                style: { textAlign: 'center' as const }
+              }),
+              render: (record: ImportOrderDetailResponse) => {
+                if (userRole !== AccountRole.WAREHOUSE_MANAGER) return null;
+                return (
+                  <Button
+                    type="primary"
+                    size="small"
+                    onClick={() => handleUpdateItemLocation(record)}
+                  >
+                    Cập nhật vị trí
+                  </Button>
+                );
+              },
+            }
+          ] : []),
+        ] : [])
+      )
+    }
+    return baseColumns;
+  };
+
 
   // Prepare data for DetailCard
   const infoItems = [
@@ -667,7 +701,7 @@ const ImportOrderDetail = () => {
         </div>
       )}
       <Table
-        columns={columns}
+        columns={getColumns()}
         dataSource={importOrderDetails}
         rowKey="importOrderDetailId"
         loading={importOrderDetailLoading}

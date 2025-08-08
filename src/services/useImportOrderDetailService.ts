@@ -23,6 +23,11 @@ export interface ImportOrderDetailCreateRequest {
   }[];
 }
 
+export interface ReturnImportOrderDetailCreateRequest {
+  inventoryItemId: string;
+  measurementValue: number;
+}
+
 const useImportOrderDetailService = () => {
   const { callApi, loading } = useApi();
 
@@ -73,7 +78,22 @@ const useImportOrderDetailService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể tạo danh sách sản phẩm");
+      throw error;
+    }
+  };
+
+  const createReturnImportOrderDetails = async (
+    request: ReturnImportOrderDetailCreateRequest[],
+    importOrderId: string
+  ): Promise<ResponseDTO<null>> => {
+    try {
+    const response = await callApi(
+      "post",
+      `/import-order-detail/return/${importOrderId}`,
+        request
+      );
+      return response;
+    } catch (error) {
       throw error;
     }
   };
@@ -83,6 +103,7 @@ const useImportOrderDetailService = () => {
     getImportOrderDetailsPaginated,
     getImportOrderDetailById,
     createImportOrderDetails,
+    createReturnImportOrderDetails,
   };
 };
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Table, Input, Card, TablePaginationConfig, Alert } from "antd";
+import { Table, Input, Card, TablePaginationConfig, Alert, Button, Modal } from "antd";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { MdOutlineDeleteForever } from "react-icons/md";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 import { ItemResponse } from "@/services/useItemService";
 
@@ -18,6 +20,7 @@ interface EditableImportRequestReturnTableProps {
   emptyText?: React.ReactNode;
   title?: string;
   setIsAllPagesViewed?: (isValid: boolean) => void;
+  onValidationChange?: (hasErrors: boolean) => void;
 }
 
 const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTableProps> = ({
@@ -28,6 +31,7 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
   emptyText,
   title = "Danh sách hàng hóa trả từ file Excel",
   setIsAllPagesViewed,
+  onValidationChange,
 }) => {
 
   const [pagination, setPagination] = useState({
@@ -35,6 +39,9 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
     pageSize: 10,
     total: data.length,
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<ReturnImportDetailRow | null>(null);
 
   const { allPagesViewed, markPageAsViewed } = usePaginationViewTracker(
     data.length,
@@ -81,19 +88,58 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
     );
   };
 
+  const handleDeleteRow = (record: ReturnImportDetailRow) => {
+    setRecordToDelete(record);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (recordToDelete) {
+      const newData = data.filter(row => row.inventoryItemId !== recordToDelete.inventoryItemId);
+      setData(newData);
+
+      // Update pagination total
+      setPagination(prev => ({
+        ...prev,
+        total: newData.length,
+        // If current page becomes empty after deletion, go to previous page
+        current: Math.ceil(newData.length / prev.pageSize) < prev.current
+          ? Math.max(1, prev.current - 1)
+          : prev.current
+      }));
+    }
+    setIsDeleteModalOpen(false);
+    setRecordToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setIsDeleteModalOpen(false);
+    setRecordToDelete(null);
+  };
+
   // Tổng hợp lỗi validation
   const invalidRows = data
     .map((row, idx) => {
-      if (row.measurementValue <= 0) {
-        return `Dòng ${idx + 1}: Giá trị đang bằng 0. Nếu bạn tiếp tục, mã hàng này sẽ bị loại bỏ.`;
-      }
       if (!row.inventoryItemId || row.inventoryItemId.trim() === '') {
         return `Dòng ${idx + 1}: Mã sản phẩm tồn kho không được để trống.`;
       }
+
+      if (row.measurementValue <= 0) {
+        return `Dòng ${idx + 1}: Giá trị cần nhập phải lớn hơn 0.`;
+      }
+
+      const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(row.inventoryItemId));
+      if (mappedItem && mappedItem.measurementValue && row.measurementValue > mappedItem.measurementValue) {
+        return `Dòng ${idx + 1}: Giá trị vượt quá tối đa cho phép (${mappedItem.measurementValue} ${mappedItem.measurementUnit}).`;
+      }
+
       return null;
     })
     .filter(Boolean);
 
+  useEffect(() => {
+    onValidationChange?.(invalidRows.length > 0);
+  }, [invalidRows.length, onValidationChange]);
   const validationAlertNode = invalidRows.length > 0 ? (
     <Alert
       type="error"
@@ -179,6 +225,24 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
         );
       },
     },
+    {
+      width: "10%",
+      title: <span className="font-semibold">Hành động</span>,
+      key: "action",
+      align: "center" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (_, record: ReturnImportDetailRow) => (
+        <Button
+          type="text"
+          danger
+          icon={<MdOutlineDeleteForever size={20} />}
+          onClick={() => handleDeleteRow(record)}
+          title="Xóa dòng"
+        />
+      ),
+    },
 
   ];
 
@@ -203,6 +267,30 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
         onChange={handleTableChange}
         locale={{ emptyText: emptyText || "Không có dữ liệu" }}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            Xác nhận xóa
+          </div>
+        }
+        open={isDeleteModalOpen}
+        onOk={confirmDelete}
+        onCancel={cancelDelete}
+        okText="Xóa"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+        width={320}
+      >
+        {recordToDelete && (
+          <div>
+            <p><strong>Mã sản phẩm tồn kho:</strong> #{recordToDelete.inventoryItemId}</p>
+            <p><strong>Giá trị:</strong> {recordToDelete.measurementValue}</p>
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 };

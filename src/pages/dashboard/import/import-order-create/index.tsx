@@ -4,7 +4,7 @@ import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePa
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
-import useImportOrderDetailService from "@/services/useImportOrderDetailService";
+import useImportOrderDetailService, { ReturnImportOrderDetailCreateRequest } from "@/services/useImportOrderDetailService";
 import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
@@ -62,6 +62,7 @@ const ImportOrderCreate = () => {
   const {
     loading: importOrderDetailLoading,
     createImportOrderDetails,
+    createReturnImportOrderDetails,
   } = useImportOrderDetailService();
   const {
     loading: itemLoading,
@@ -107,18 +108,11 @@ const ImportOrderCreate = () => {
 
   // Validation flag for import order data
   const isImportOrderDataValid = editableRows.length > 0 && editableRows.every(row => {
-    if (importRequest?.importType === "RETURN") {
-      const currentValue = row.plannedMeasurementValue || 0;
-      if (row.actualMeasurementValue === 0) {
-        return currentValue > 0 && currentValue <= (row.expectMeasurementValue - row.orderedMeasurementValue);
-      }
-      return currentValue > 0 && currentValue <= (row.expectMeasurementValue - row.actualMeasurementValue);
-    } else {
-      if (row.actualQuantity === 0) {
-        return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
-      }
-      return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
+    if (row.actualQuantity === 0) {
+      return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.orderedQuantity);
     }
+    return row.plannedQuantity > 0 && row.plannedQuantity <= (row.expectQuantity - row.actualQuantity);
+
   });
 
   // ==================== UTILITY FUNCTIONS ====================
@@ -235,42 +229,28 @@ const ImportOrderCreate = () => {
     if (importRequestDetails.length && !excelImported && itemsData.length > 0) {
       setEditableRows(
         importRequestDetails
-          .filter(row => {
-            if (importRequest?.importType === "RETURN") {
-              if (row.actualMeasurementValue === 0) {
-                return row.expectMeasurementValue !== row.orderedMeasurementValue;
-              } else {
-                return row.expectMeasurementValue !== row.actualMeasurementValue;
-              }
-            } else {
-              if (row.actualQuantity === 0) {
-                return row.expectQuantity !== row.orderedQuantity;
-              } else {
-                return row.expectQuantity !== row.actualQuantity;
-              }
-            }
-          })
           .map(row => {
-            const itemInfo = getItemInfo(row.itemId);
+            let mappedItem: ItemResponse | undefined;
+            if (importRequest?.importType === "RETURN") {
+              mappedItem = itemsData.find(item => item.inventoryItemIds.includes(row.inventoryItemId));
+            }
+            else {
+              mappedItem = getItemInfo(row.itemId);
+            }
             return {
               itemId: row.itemId,
-              itemName: row.itemName,
+              itemName: importRequest?.importType === "RETURN" ? mappedItem?.name : row.itemName,
               expectQuantity: row.expectQuantity,
               orderedQuantity: row.orderedQuantity,
               plannedQuantity: row.actualQuantity === 0
                 ? row.expectQuantity - row.orderedQuantity
                 : row.expectQuantity - row.actualQuantity,
               actualQuantity: row.actualQuantity,
-              expectMeasurementValue: row.expectMeasurementValue || 0,
-              orderedMeasurementValue: row.orderedMeasurementValue || 0,
-              actualMeasurementValue: row.actualMeasurementValue || 0,
-              plannedMeasurementValue: importRequest?.importType === "RETURN"
-                ? (row.actualMeasurementValue === 0
-                  ? row.expectMeasurementValue - row.orderedMeasurementValue
-                  : row.expectMeasurementValue - row.actualMeasurementValue)
-                : 0,
+              measurementValue: row.expectMeasurementValue,
               importRequestProviderId: importRequest?.providerId || 0,
-              measurementUnit: itemInfo?.measurementUnit,
+              measurementUnit: mappedItem?.measurementUnit,
+              inventoryItemId: row.inventoryItemId,
+              unitType: mappedItem?.unitType
             };
           })
       );
@@ -328,22 +308,33 @@ const ImportOrderCreate = () => {
       dateReceived: formData.dateReceived,
       timeReceived: formData.timeReceived,
       note: formData.note,
-      exportRequestId: importRequest?.exportRequestId || undefined
     };
     const response = await createImportOrder(createOrderRequest);
     if (response?.content) {
-      // 2. Chỉ gửi các itemId có trong phiếu nhập
-      const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
-      const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
-        itemId: row.itemId,
-        quantity: importRequest?.importType === "RETURN" ? (row.plannedMeasurementValue || 0) : row.plannedQuantity
-      }));
-      await createImportOrderDetails(
-        { providerId: importRequest?.providerId!, importOrderItems },
-        response.content.importOrderId
-      );
+
+      if (importRequest?.importType === "RETURN") {
+        const returnImportOrderDetails: ReturnImportOrderDetailCreateRequest[] = editableRows.map(row => ({
+          inventoryItemId: row.inventoryItemId,
+          measurementValue: row.measurementValue
+        }));
+        await createReturnImportOrderDetails(returnImportOrderDetails, response.content.importOrderId);
+      }
+
+      else {
+        // 2. Chỉ gửi các itemId có trong phiếu nhập
+        const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
+        const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
+          itemId: row.itemId,
+          quantity: row.plannedQuantity
+        }));
+        await createImportOrderDetails(
+          { providerId: importRequest?.providerId!, importOrderItems },
+          response.content.importOrderId
+        );
+      }
       // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
+
     }
 
     if (response.statusCode == 444) {
@@ -485,21 +476,6 @@ const ImportOrderCreate = () => {
     if (importRequestDetails.length && itemsData.length > 0) {
       setEditableRows(
         importRequestDetails
-          .filter(row => {
-            if (importRequest?.importType === "RETURN") {
-              if (row.actualMeasurementValue === 0) {
-                return row.expectMeasurementValue !== row.orderedMeasurementValue;
-              } else {
-                return row.expectMeasurementValue !== row.actualMeasurementValue;
-              }
-            } else {
-              if (row.actualQuantity === 0) {
-                return row.expectQuantity !== row.orderedQuantity;
-              } else {
-                return row.expectQuantity !== row.actualQuantity;
-              }
-            }
-          })
           .map(row => {
             const itemInfo = getItemInfo(row.itemId);
             return {
@@ -511,16 +487,10 @@ const ImportOrderCreate = () => {
                 ? row.expectQuantity - row.orderedQuantity
                 : row.expectQuantity - row.actualQuantity,
               actualQuantity: row.actualQuantity,
-              expectMeasurementValue: row.expectMeasurementValue || 0,
-              orderedMeasurementValue: row.orderedMeasurementValue || 0,
-              actualMeasurementValue: row.actualMeasurementValue || 0,
-              plannedMeasurementValue: importRequest?.importType === "RETURN"
-                ? (row.actualMeasurementValue === 0
-                  ? row.expectMeasurementValue - row.orderedMeasurementValue
-                  : row.expectMeasurementValue - row.actualMeasurementValue)
-                : 0,
+              measurementValue: row.expectMeasurementValue,
               importRequestProviderId: importRequest?.providerId || 0,
               measurementUnit: itemInfo?.measurementUnit,
+              inventoryItemId: row.inventoryItemId
             };
           })
       );
@@ -528,35 +498,37 @@ const ImportOrderCreate = () => {
   };
 
   // ==================== TABLE CONFIGURATION ====================
+
   const getConfirmationColumns = () => {
     const baseColumns: any[] = [
-      {
-        title: "Mã hàng",
-        dataIndex: "itemId",
-        key: "itemId",
-        align: "right" as const,
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-        render: (id: number) => `#${id}`,
-      },
-      {
-        width: "30%",
-        title: "Tên hàng",
-        dataIndex: "itemName",
-        key: "itemName",
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-      },
+
     ];
 
     if (importRequest?.importType === "RETURN") {
       baseColumns.push(
         {
-          title: "Dự nhập theo phiếu",
-          dataIndex: "expectMeasurementValue",
-          key: "expectMeasurementValue",
+          title: "Mã sản phẩm tồn kho",
+          dataIndex: "inventoryItemId",
+          key: "inventoryItemId",
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (id: number) => `#${id}`,
+        },
+        {
+          width: "25%",
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          title: "Giá trị cần nhập",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
           align: "right" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
@@ -564,55 +536,50 @@ const ImportOrderCreate = () => {
           render: (value: number, record: ImportOrderDetailRow) => {
             return (
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-                {record?.measurementUnit && (
-                  <span>{record.measurementUnit}</span>
-                )}
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
               </div>
             );
           },
         },
         {
-          title: "Thực tế đã nhập",
-          dataIndex: "actualMeasurementValue",
-          key: "actualMeasurementValue",
-          align: "right" as const,
+          title: "Số lượng",
+          key: "quantity",
+          align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => {
+          render: (_, record: ImportOrderDetailRow) => {
+            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-                {record?.measurementUnit && (
-                  <span>{record.measurementUnit}</span>
-                )}
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
+                <span>{mappedItem?.unitType || '-'}</span>
               </div>
             );
           },
         },
-        {
-          title: "Dự nhập đơn này",
-          dataIndex: "plannedMeasurementValue",
-          key: "plannedMeasurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (_: any, record: ImportOrderDetailRow) => {
-            return (
-              <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
-                {record.plannedMeasurementValue || 0}{" "}
-                {record?.measurementUnit && (
-                  <span>{record.measurementUnit}</span>
-                )}
-              </span>
-            );
-          },
-        }
       );
     } else {
       baseColumns.push(
+        {
+          title: "Mã hàng",
+          dataIndex: "itemId",
+          key: "itemId",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (id: number) => `#${id}`,
+        },
+        {
+          width: "30%",
+          title: "Tên hàng",
+          dataIndex: "itemName",
+          key: "itemName",
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
         {
           title: "Dự nhập theo phiếu",
           dataIndex: "expectQuantity",

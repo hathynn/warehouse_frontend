@@ -426,21 +426,21 @@ const ImportRequestDetail: React.FC = () => {
     } else if (importType === 'RETURN') {
       baseColumns.push(
         {
-          width: '25%',
+          width: '35%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
-          render: (id: string) => <div className="!text-xs">{`#${id}`}</div>,
+          render: (id: string) => `#${id}`,
           align: "left" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
         },
         {
-          width: '20%',
-          title: "Tên sản phẩm tồn kho",
-          dataIndex: "inventoryItemName",
-          key: "inventoryItemName",
+          width: '25%',
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
           ellipsis: true,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
@@ -451,7 +451,7 @@ const ImportRequestDetail: React.FC = () => {
           },
         },
         {
-          title: "Dự nhập của phiếu",
+          title: "Gía trị đo lường",
           dataIndex: "expectMeasurementValue",
           key: "expectMeasurementValue",
           align: "right" as const,
@@ -471,41 +471,19 @@ const ImportRequestDetail: React.FC = () => {
           },
         },
         {
-          title: "Đã lên đơn nhập",
-          dataIndex: "orderedMeasurementValue",
-          key: "orderedMeasurementValue",
-          align: "right" as const,
+          title: "Số lượng cần nhập",
+          dataIndex: "measurementUnit",
+          key: "measurementUnit",
+          align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
+          render: (measurementUnit: string, record: ImportRequestDetailResponse) => {
             const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
-                {mappedItem?.unitType && (
-                  <span>{mappedItem.measurementUnit}</span>
-                )}
-              </div>
-            );
-          },
-        },
-        {
-          title: "Thực tế đã nhập",
-          dataIndex: "actualMeasurementValue",
-          key: "actualMeasurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
-            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
-            return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
-                {mappedItem?.unitType && (
-                  <span>{mappedItem.measurementUnit}</span>
-                )}
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
+                <span>{mappedItem?.unitType || '-'}</span>
               </div>
             );
           },

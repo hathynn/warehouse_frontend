@@ -67,15 +67,9 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   });
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
+  const [hasValidationErrors, setHasValidationErrors] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ========== ZERO QUANTITY DELETE STATES ==========
-  const [quantityZeroRowsToDelete, setQuantityZeroRowsToDelete] = useState<ReturnImportDetailRow[]>([]);
-  const [deleteQuantityZeroRowsResponsibilityChecked, setDeleteQuantityZeroRowsResponsibilityChecked] = useState<boolean>(false);
-  const [isDeleteQuantityZeroRowModalOpen, setIsDeleteQuantityZeroRowModalOpen] = useState(false);
-
-  // ========== SCROLL VIEW TRACKER FOR DELETE MODAL ==========
-  const { scrollContainerRef: deleteModalScrollRef, checkScrollPosition: checkDeleteModalScroll, hasScrolledToBottom: hasScrolledToBottomInDeleteModal, resetScrollTracking: resetDeleteModalScroll } = useScrollViewTracker(5);
 
   // ========== UI & FORM STATES ==========
   const [step, setStep] = useState<number>(0);
@@ -191,12 +185,6 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     }
   }, [configuration]);
 
-  useEffect(() => {
-    if (!isDeleteQuantityZeroRowModalOpen) {
-      resetDeleteModalScroll();
-      setDeleteQuantityZeroRowsResponsibilityChecked(false);
-    }
-  }, [isDeleteQuantityZeroRowModalOpen, resetDeleteModalScroll]);
 
   // Update formData when importType prop changes
   useEffect(() => {
@@ -335,6 +323,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     setImportedData([]);
     setIsImportRequestDataValid(false);
     setIsAllPagesViewed(false);
+    setHasValidationErrors(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -377,31 +366,16 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     setImportedData([]);
   };
 
-  // ========== ZERO QUANTITY HANDLERS ==========
+  // ========== STEP HANDLERS ==========
   const handleNextStep = () => {
-    const quantityZeroRows = importedData.filter(row => row.measurementValue === 0);
-    if (quantityZeroRows.length > 0) {
-      setQuantityZeroRowsToDelete(quantityZeroRows);
-      setIsDeleteQuantityZeroRowModalOpen(true);
-    } else {
-      setStep(1);
+    if (hasValidationErrors) {
+      toast.error("Vui lòng sửa các lỗi trong bảng dữ liệu trước khi tiếp tục");
+      return;
     }
-  };
 
-  const confirmDeleteQuantityZeroRow = () => {
-    const newImportedData = importedData.filter(row => !quantityZeroRowsToDelete.includes(row));
-    setImportedData(newImportedData);
-    setQuantityZeroRowsToDelete([]);
-    setIsDeleteQuantityZeroRowModalOpen(false);
-    setDeleteQuantityZeroRowsResponsibilityChecked(false);
     setStep(1);
   };
 
-  const cancelDeleteQuantityZeroRow = () => {
-    setIsDeleteQuantityZeroRowModalOpen(false);
-    setDeleteQuantityZeroRowsResponsibilityChecked(false);
-    setQuantityZeroRowsToDelete([]);
-  };
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
 
@@ -417,7 +391,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
             },
             {
               title: <span style={{ fontSize: '20px', fontWeight: 'bold' }}>Xác nhận thông tin</span>,
-              disabled: importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed
+              disabled: importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed || hasValidationErrors
             }
           ]}
         />
@@ -448,7 +422,8 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                   setIsAllPagesViewed={setIsAllPagesViewed}
                   data={importedData}
                   setData={setImportedData}
-                  relatedItemsData={items}  
+                  relatedItemsData={items}
+                  onValidationChange={setHasValidationErrors}
                   alertNode={importedData.length > 0 ? (
                     <Alert
                       message="Thông tin nhập trả"
@@ -470,7 +445,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
               <Button
                 type="primary"
                 onClick={handleNextStep}
-                disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed}
+                disabled={importedData.length === 0 || !isImportRequestDataValid || !isAllPagesViewed || hasValidationErrors}
               >
                 Tiếp tục nhập thông tin phiếu nhập
                 <ArrowRightOutlined />
@@ -647,54 +622,6 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
             </div>
           )}
 
-          <Modal
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ExclamationCircleOutlined style={{ color: '#faad14' }} />
-                Những mã hàng sau sẽ bị loại bỏ do giá trị bằng 0
-              </div>
-            }
-            open={isDeleteQuantityZeroRowModalOpen}
-            onOk={confirmDeleteQuantityZeroRow}
-            onCancel={cancelDeleteQuantityZeroRow}
-            okText="Xác nhận và tiếp tục"
-            cancelText="Hủy"
-            okButtonProps={{ disabled: !deleteQuantityZeroRowsResponsibilityChecked }}
-            width={540}
-            maskClosable={false}
-          >
-            {quantityZeroRowsToDelete.length > 0 && (
-              <>
-                <div
-                  ref={deleteModalScrollRef}
-                  onScroll={checkDeleteModalScroll}
-                  style={{
-                    height: quantityZeroRowsToDelete.length > 5 ? "540px" : "auto",
-                    overflowY: quantityZeroRowsToDelete.length > 5 ? "auto" : "visible",
-                    marginBottom: 16
-                  }}
-                >
-                  {quantityZeroRowsToDelete.map((item, index) => (
-                    <div key={`${item.inventoryItemId}-${index}`} className="pb-2 mb-2 border-b">
-                      <p><strong>Mã sản phẩm cụ thể:</strong> {item.inventoryItemId}</p>
-                      <p><strong>Giá trị:</strong> {item.measurementValue}</p>
-                    </div>
-                  ))}
-                </div>
-                <Checkbox
-                  checked={deleteQuantityZeroRowsResponsibilityChecked}
-                  onChange={e => setDeleteQuantityZeroRowsResponsibilityChecked(e.target.checked)}
-                  style={{ marginTop: 8, fontSize: 14, fontWeight: "bold" }}
-                  disabled={quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal}
-                >
-                  Tôi xác nhận giá trị là đúng và đồng ý tiếp tục.
-                  {quantityZeroRowsToDelete.length > 3 && !hasScrolledToBottomInDeleteModal && (
-                    <div style={{ color: 'red' }}>(Vui lòng xem hết danh sách)</div>
-                  )}
-                </Checkbox>
-              </>
-            )}
-          </Modal>
 
           <DepartmentSelectionModal
             visible={departmentModalVisible}

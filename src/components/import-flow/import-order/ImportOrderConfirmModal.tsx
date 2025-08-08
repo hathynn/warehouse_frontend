@@ -83,101 +83,87 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
     }
   }, [open, resetScrollTracking]);
 
-  // Utility function to get item info
-  const getItemInfo = (itemId: string) => {
-    return itemsData?.find(item => String(item.id) === String(itemId));
-  };
+  useEffect(() => {
+    if (open && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      if (container.scrollHeight <= container.clientHeight) {
+        setTimeout(() => checkScrollPosition(), 100);
+      }
+    }
+  }, [open, details, checkScrollPosition]);
 
   const getColumns = () => {
     const baseColumns: any[] = [
-      {
-        title: "Mã hàng",
-        dataIndex: "itemId",
-        key: "itemId",
-        align: "right" as const,
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-        render: (id: number) => `#${id}`
-      },
-      {
-        width: "30%",
-        title: "Tên hàng",
-        dataIndex: "itemName",
-        key: "itemName",
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-      },
     ];
 
     if (importType === "RETURN") {
-      // For RETURN type, show measurement values with units
       baseColumns.push(
         {
-          title: "Dự nhập theo phiếu",
-          dataIndex: "expectMeasurementValue",
-          key: "expectMeasurementValue",
+          title: "Mã sản phẩm tồn kho",
+          dataIndex: "inventoryItemId",
+          key: "inventoryItemId",
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (id: number) => `#${id}`,
+        },
+        {
+          title: "Giá trị đo lường",
+          dataIndex: "measurementValue",
+          key: "measurementValue",
           align: "right" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
           render: (value: number, record: ImportOrderDetailRow) => {
-            const itemInfo = getItemInfo(record.itemId);
             return (
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-                {itemInfo?.measurementUnit && (
-                  <span>{itemInfo.measurementUnit}</span>
-                )}
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
               </div>
             );
           },
         },
         {
-          title: "Thực tế đã nhập",
-          dataIndex: "actualMeasurementValue",
-          key: "actualMeasurementValue",
-          align: "right" as const,
+          title: "Số lượng cần nhập",
+          key: "quantity",
+          align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => {
-            const itemInfo = getItemInfo(record.itemId);
+          render: (_, record: ImportOrderDetailRow) => {
+            const mappedItem = itemsData?.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span>{" "}
-                {itemInfo?.measurementUnit && (
-                  <span>{itemInfo.measurementUnit}</span>
-                )}
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
+                <span>{mappedItem?.unitType || '-'}</span>
               </div>
             );
           },
         },
-        {
-          title: "Dự nhập đơn này",
-          dataIndex: "plannedMeasurementValue",
-          key: "plannedMeasurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (_: any, record: ImportOrderDetailRow) => {
-            const itemInfo = getItemInfo(record.itemId);
-            return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{record.plannedMeasurementValue || 0}</span>{" "}
-                {itemInfo?.measurementUnit && (
-                  <span>{itemInfo.measurementUnit}</span>
-                )}
-              </div>
-            );
-          },
-        }
       );
     } else {
       // For ORDER type, show quantities
       baseColumns.push(
+        {
+          title: "Mã hàng",
+          dataIndex: "itemId",
+          key: "itemId",
+          align: "right" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (id: number) => `#${id}`
+        },
+        {
+          width: "25%",
+          title: "Tên sản phẩm",
+          dataIndex: "itemName",
+          key: "itemName",
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
         {
           title: "Dự nhập theo phiếu",
           dataIndex: "expectQuantity",
