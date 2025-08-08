@@ -9,6 +9,7 @@ export const BASE_ROUTES = {
 
 // Default landing route for each role
 export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
+  [AccountRole.MANAGER]: "/overview",
   [AccountRole.DEPARTMENT]: "/import/request-list",
   [AccountRole.STAFF]: "/overview",
   [AccountRole.WAREHOUSE_MANAGER]: "/import/orders",
@@ -19,6 +20,40 @@ export const ROLE_DEFAULT_ROUTES: Record<AccountRole, string> = {
 // Route permissions mapping
 export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
   [AccountRole.DEPARTMENT]: [
+    "/overview",
+
+    // Import routes
+    "/import/request-list",
+    "/import/request-detail/:id",
+    "/import/create-request",
+    "/import/order-list/:id",
+    "/import/order-detail/:id",
+    "/import/create-order/:id",
+    "/import/orders",
+
+    // Export routes
+    "/export/request-list",
+    "/export/request-detail/:id",
+    "/export/create-request",
+
+    // Inventory item routes
+    "/inventory-item/inventory-item-list",
+    "/inventory-item/warehouse-section",
+
+    // Item routes
+    "/item/list",
+    "/item/detail/:id",
+
+    // Transaction log routes
+    "/transaction-logs/import",
+    "/transaction-logs/export",
+
+    // Stock-check routes
+    "/stock-check/create-request",
+    "/stock-check/request-list",
+    "/stock-check/request-detail/:id",
+  ],
+  [AccountRole.MANAGER]: [
     "/overview",
 
     // Import routes

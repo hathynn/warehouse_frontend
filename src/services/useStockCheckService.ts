@@ -40,7 +40,11 @@ export interface StockCheckRequestRequest {
 
 export interface AssignStaffRequest {
   stockCheckId: string;
-  staffId: string; // hoặc number tùy theo API backend
+  staffId: string;
+}
+
+export interface UpdateStockCheckStatusRequest {
+  status: string;
 }
 
 const useStockCheckService = () => {
@@ -124,12 +128,69 @@ const useStockCheckService = () => {
     }
   };
 
+  const updateStockCheckStatus = async (
+    stockCheckId: string,
+    status: string // Thay đổi từ object thành string
+  ): Promise<ResponseDTO<any>> => {
+    try {
+      if (!stockCheckId) {
+        throw new Error("Mã phiếu kiểm kho không được để trống");
+      }
+
+      if (!status) {
+        throw new Error("Trạng thái không được để trống");
+      }
+
+      const response = await callApi(
+        "post",
+        `/stock-check/update-status/${stockCheckId}?status=${status}`, // status làm query param
+        {} // request body rỗng
+      );
+
+      if (response) {
+        toast.success("Cập nhật trạng thái phiếu kiểm kho thành công");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể cập nhật trạng thái phiếu kiểm kho");
+      console.error("Error updating stock check status:", error);
+      throw error;
+    }
+  };
+
+  const completeStockCheck = async (
+    stockCheckId: string
+  ): Promise<ResponseDTO<any>> => {
+    try {
+      if (!stockCheckId) {
+        throw new Error("Mã phiếu kiểm kho không được để trống");
+      }
+
+      const response = await callApi(
+        "put",
+        `/stock-check/complete/${stockCheckId}`,
+        {} // request body rỗng vì chỉ có path parameter
+      );
+
+      if (response) {
+        toast.success("Hoàn thành phiếu kiểm kho thành công");
+      }
+      return response;
+    } catch (error) {
+      toast.error("Không thể hoàn thành phiếu kiểm kho");
+      console.error("Error completing stock check:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     createStockCheckRequest,
     getAllStockCheckRequests,
     getStockCheckRequestById,
     assignStaffToStockCheck,
+    updateStockCheckStatus,
+    completeStockCheck,
   };
 };
 

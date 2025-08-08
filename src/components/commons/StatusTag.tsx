@@ -43,7 +43,7 @@ const stockcheckStatusMap: Record<StockcheckStatus, { color: string; text: strin
   IN_PROGRESS: { color: "processing", text: "Đang xử lý" },
   COUNTED: { color: "processing", text: "Đã kiểm kê" },
   COUNT_CONFIRMED: { color: "processing", text: "Đã xác nhận kiểm kê" },
-  CONFIRMED: { color: "processing", text: "Đã xuất kho" },
+  CONFIRMED: { color: "processing", text: "Đã kí chứng từ" },
   COMPLETED: { color: "green", text: "Hoàn tất" },
   CANCELLED: { color: "default", text: "Đã hủy" },
 };

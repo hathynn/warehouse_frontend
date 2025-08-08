@@ -4,6 +4,7 @@ export enum AccountRole {
   ADMIN = "ROLE_ADMIN",
   WAREHOUSE_MANAGER = "ROLE_WAREHOUSE_MANAGER",
   ACCOUNTING = "ROLE_ACCOUNTING",
+  MANAGER = "ROLE_MANAGER",
 }
 
 export enum AccountRoleForRequest {
@@ -12,6 +13,7 @@ export enum AccountRoleForRequest {
   ADMIN = "ADMIN",
   WAREHOUSE_MANAGER = "WAREHOUSE_MANAGER",
   ACCOUNTING = "ACCOUNTING",
+  MANAGER = "MANAGER",
 }
 
 export enum ImportStatus {

@@ -23,7 +23,8 @@ const getRoleDisplayName = (role: AccountRole): string => {
     [AccountRole.WAREHOUSE_MANAGER]: "Quản Lý Kho",
     [AccountRole.STAFF]: "Nhân Viên",
     [AccountRole.ACCOUNTING]: "Kế Toán",
-    [AccountRole.ADMIN]: "Quản Trị Viên"
+    [AccountRole.ADMIN]: "Quản Trị Viên",
+    [AccountRole.MANAGER]: "Người Điều Hành Kho"
   };
   return roleMap[role] || role;
 };

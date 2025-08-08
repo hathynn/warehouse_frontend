@@ -127,6 +127,40 @@ const transactionLogMenuItems: MenuItem[] = [
 
 // Role-based menu configuration
 export const menuItems: RoleMenuConfig = {
+  [AccountRole.MANAGER]: [
+    ...baseMenuItems,
+    ...importMenuItems,
+    ...exportMenuItems,
+    ...stockcheckMenuItems,
+    ...transactionLogMenuItems,
+    {
+      key: "inventory-items",
+      icon: AiOutlineInbox,
+      label: "Quản lý vật tư - hàng hóa",
+      path: "",
+      children: [
+        {
+          key: "item-list",
+          icon: AiOutlineTag,
+          label: "Danh sách mặt hàng",
+          path: ROUTES.PROTECTED.ITEM.LIST,
+        },
+        {
+          key: "inventory-item-list",
+          icon: AiOutlineInbox,
+          label: "Danh sách tồn kho",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.LIST,
+        },
+        {
+          key: "warehouse-section",
+          icon: AiOutlineCompass,
+          label: "Sơ đồ kho",
+          path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
+        },
+      ],
+    },
+  ],
+
   [AccountRole.DEPARTMENT]: [
     ...baseMenuItems,
     ...importMenuItems,
