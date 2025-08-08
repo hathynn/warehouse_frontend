@@ -18,9 +18,10 @@ import {
   UserAddOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { AccountRole } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
 import AssignStockCheckStaffModal from "@/components/stock-check-flow/stock-check-detail/AssignStockCheckStaffModal";
-import { AccountRole } from "@/utils/enums";
+import StockCheckConfirmationModal from "@/components/stock-check-flow/stock-check-detail/StockCheckConfirmationModal";
 
 //Services import
 import useStockCheckService from "@/services/useStockCheckService";
@@ -55,6 +56,8 @@ const StockCheckRequestDetail = () => {
   const {
     getStockCheckRequestById,
     assignStaffToStockCheck,
+    updateStockCheckStatus,
+    completeStockCheck,
     loading: stockCheckLoading,
   } = useStockCheckService();
   const {
@@ -82,6 +85,14 @@ const StockCheckRequestDetail = () => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [configuration, setConfiguration] = useState(null);
   const [searchText, setSearchText] = useState("");
+  const [confirmCountedChecked, setConfirmCountedChecked] = useState(false);
+  const [modalPagination, setModalPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [allStockCheckDetails, setAllStockCheckDetails] = useState([]);
+  const [viewedPages, setViewedPages] = useState(new Set([1]));
 
   // Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -90,6 +101,17 @@ const StockCheckRequestDetail = () => {
   const [checkedInventoryItems, setCheckedInventoryItems] = useState([]);
   const [inventorySearchText, setInventorySearchText] = useState("");
   const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [confirmCountedModalVisible, setConfirmCountedModalVisible] =
+    useState(false);
+
+  const [completeModalVisible, setCompleteModalVisible] = useState(false);
+  const [completeChecked, setCompleteChecked] = useState(false);
+  const [completeModalPagination, setCompleteModalPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [completeViewedPages, setCompleteViewedPages] = useState(new Set([1]));
 
   // Fetch stock check request data
   const fetchStockCheckRequest = useCallback(async () => {
@@ -133,11 +155,15 @@ const StockCheckRequestDetail = () => {
         const response = await getStockCheckDetailById(stockCheckId);
 
         if (response) {
-          const startIndex = (page - 1) * pageSize;
-          const endIndex = startIndex + pageSize;
-
           // Enrich data với items info
           const enrichedData = enrichDetailsWithLocalData(response, items);
+
+          // Lưu all data để dùng cho modal
+          setAllStockCheckDetails(enrichedData);
+
+          // Phân trang cho table chính
+          const startIndex = (page - 1) * pageSize;
+          const endIndex = startIndex + pageSize;
           const paginatedData = enrichedData.slice(startIndex, endIndex);
 
           setStockCheckDetails(paginatedData);
@@ -152,7 +178,7 @@ const StockCheckRequestDetail = () => {
         message.error("Không thể tải chi tiết phiếu kiểm kho");
       }
     },
-    [stockCheckId, items] // Thêm items vào dependency
+    [stockCheckId, items]
   );
 
   // Fetch assigned warehouse keeper info
@@ -213,6 +239,19 @@ const StockCheckRequestDetail = () => {
     navigate(-1);
   };
 
+  const handleCompleteStockCheck = async () => {
+    try {
+      await completeStockCheck(stockCheckId);
+      message.success("Đã xác nhận và cập nhật số lượng hàng tồn kho");
+
+      await fetchStockCheckRequest();
+      fetchStockCheckDetails();
+    } catch (error) {
+      console.error("Lỗi khi hoàn thành stock check", error);
+      message.error("Không thể hoàn thành stock check. Vui lòng thử lại.");
+    }
+  };
+
   const handleOpenAssignModal = async () => {
     setSelectedStaffId(null);
     // Lấy configuration
@@ -258,7 +297,20 @@ const StockCheckRequestDetail = () => {
     setSearchText(value);
   };
 
-  // TODO: Implement these functions similar to export logic
+  // Add function to handle confirm counted state
+  const handleConfirmCounted = async () => {
+    try {
+      await updateStockCheckStatus(stockCheckId, "COUNT_CONFIRMED");
+      message.success("Đã xác nhận kiểm kê");
+
+      await fetchStockCheckRequest();
+      fetchStockCheckDetails();
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái", error);
+      message.error("Không thể cập nhật trạng thái. Vui lòng thử lại.");
+    }
+  };
+
   const canReassignStockCheckStaff = () => {
     if (
       !stockCheckRequest?.countingDate ||
@@ -382,6 +434,20 @@ const StockCheckRequestDetail = () => {
     );
   };
 
+  const hasViewedAllPages = () => {
+    const totalPages = Math.ceil(
+      allStockCheckDetails.length / modalPagination.pageSize
+    );
+    return totalPages <= 1 || viewedPages.size >= totalPages;
+  };
+
+  const hasViewedAllPagesComplete = () => {
+    const totalPages = Math.ceil(
+      allStockCheckDetails.length / completeModalPagination.pageSize
+    );
+    return totalPages <= 1 || completeViewedPages.size >= totalPages;
+  };
+
   // Get stock check type text
   const getStockCheckTypeText = (type) => {
     switch (type) {
@@ -426,21 +492,6 @@ const StockCheckRequestDetail = () => {
       ),
     },
     {
-      title: "Tổng giá trị đo lường",
-      dataIndex: "measurementValue", // Đây là giá trị cần kiểm từ stock check detail
-      key: "measurementValue",
-      width: "13%",
-      align: "center",
-      render: (text, record) => (
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
-          {record.measurementUnit && (
-            <span className="text-gray-500">{record.measurementUnit}</span>
-          )}
-        </div>
-      ),
-    },
-    {
       title: "Số lượng đã kiểm",
       dataIndex: "actualQuantity",
       key: "actualQuantity",
@@ -471,6 +522,22 @@ const StockCheckRequestDetail = () => {
         );
       },
     },
+    {
+      title: "Tổng giá trị đo lường",
+      dataIndex: "measurementValue", // Đây là giá trị cần kiểm từ stock check detail
+      key: "measurementValue",
+      width: "13%",
+      align: "center",
+      render: (text, record) => (
+        <div style={{ textAlign: "center" }}>
+          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+          {record.measurementUnit && (
+            <span className="text-gray-500">{record.measurementUnit}</span>
+          )}
+        </div>
+      ),
+    },
+
     {
       title: "Tổng giá trị đã kiểm",
       dataIndex: "actualMeasurementValue",
@@ -697,19 +764,48 @@ const StockCheckRequestDetail = () => {
       </Card>
 
       {/* Stock Check Details Table */}
-      <Card
-        title={
-          <span
-            style={{
-              fontWeight: "bold",
-              fontSize: "18px",
-            }}
-          >
-            Chi tiết phiếu kiểm kho
-          </span>
-        }
-        className="mb-6 mt-10"
-      >
+      <div className="flex items-center justify-between mb-4 mt-5">
+        <h2 className="font-bold" style={{ fontSize: "20px" }}>
+          Chi tiết phiếu kiểm kho
+        </h2>
+        <div className="flex gap-2">
+          {userRole === AccountRole.WAREHOUSE_MANAGER &&
+            stockCheckRequest?.status === "COUNTED" && (
+              <Button
+                type="primary"
+                onClick={() => {
+                  setConfirmCountedModalVisible(true);
+                  setModalPagination({ current: 1, pageSize: 10, total: 0 });
+                  setViewedPages(new Set([1]));
+                  setConfirmCountedChecked(false);
+                }}
+              >
+                Xác nhận số lượng đã kiểm kê
+              </Button>
+            )}
+
+          {userRole === AccountRole.MANAGER &&
+            stockCheckRequest?.status === "CONFIRMED" && (
+              <Button
+                type="primary"
+                onClick={() => {
+                  setCompleteModalVisible(true);
+                  setCompleteModalPagination({
+                    current: 1,
+                    pageSize: 10,
+                    total: 0,
+                  });
+                  setCompleteViewedPages(new Set([1]));
+                  setCompleteChecked(false);
+                }}
+              >
+                Xác nhận và cập nhật kết quả kiểm kê
+              </Button>
+            )}
+        </div>
+      </div>
+
+      <Card className="mb-6 mt-4">
         <Table
           columns={columns}
           dataSource={stockCheckDetails}
@@ -794,6 +890,62 @@ const StockCheckRequestDetail = () => {
         getRemainingAssignTime={getRemainingAssignTime}
         calculateRemainingTime={calculateRemainingTime}
         getDefaultWorkingMinutes={getDefaultWorkingMinutes}
+      />
+      <StockCheckConfirmationModal
+        visible={confirmCountedModalVisible}
+        onCancel={() => {
+          setConfirmCountedModalVisible(false);
+          setModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setViewedPages(new Set([1]));
+          setConfirmCountedChecked(false);
+        }}
+        onConfirm={async () => {
+          await handleConfirmCounted();
+          setConfirmCountedModalVisible(false);
+          setModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setViewedPages(new Set([1]));
+          setConfirmCountedChecked(false);
+        }}
+        title="Xác nhận số lượng kiểm kê"
+        checkboxText="Tôi đã đọc và xác nhận các thông tin về sản phẩm đã được kiểm kê."
+        confirmChecked={confirmCountedChecked}
+        setConfirmChecked={setConfirmCountedChecked}
+        allStockCheckDetails={allStockCheckDetails}
+        modalPagination={modalPagination}
+        setModalPagination={setModalPagination}
+        viewedPages={viewedPages}
+        setViewedPages={setViewedPages}
+        hasViewedAllPages={hasViewedAllPages}
+        loading={stockCheckLoading}
+      />
+
+      {/* Modal xác nhận và cập nhật số lượng hàng */}
+      <StockCheckConfirmationModal
+        visible={completeModalVisible}
+        onCancel={() => {
+          setCompleteModalVisible(false);
+          setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setCompleteViewedPages(new Set([1]));
+          setCompleteChecked(false);
+        }}
+        onConfirm={async () => {
+          await handleCompleteStockCheck();
+          setCompleteModalVisible(false);
+          setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
+          setCompleteViewedPages(new Set([1]));
+          setCompleteChecked(false);
+        }}
+        title="Xác nhận và cập nhật số lượng hàng tồn kho"
+        checkboxText="Tôi xác nhận các thông tin về sản phẩm đã được kiểm kê và đồng ý cập nhật lại số lượng hàng tồn kho."
+        confirmChecked={completeChecked}
+        setConfirmChecked={setCompleteChecked}
+        allStockCheckDetails={allStockCheckDetails}
+        modalPagination={completeModalPagination}
+        setModalPagination={setCompleteModalPagination}
+        viewedPages={completeViewedPages}
+        setViewedPages={setCompleteViewedPages}
+        hasViewedAllPages={hasViewedAllPagesComplete}
+        loading={stockCheckLoading}
       />
     </div>
   );

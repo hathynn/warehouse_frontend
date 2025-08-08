@@ -1381,7 +1381,8 @@ const ExportRequestDetail = () => {
           style={{ fontWeight: "500" }}
           disabled={!hasViewedAllPages()}
         >
-          Tôi đã đọc và kiểm tra kỹ các thông tin về sản phẩm đã được kiểm đếm.
+          Tôi đã đọc, kiểm tra kỹ và xác nhận các thông tin về sản phẩm đã được
+          kiểm đếm.
         </Checkbox>
       </Modal>
 
