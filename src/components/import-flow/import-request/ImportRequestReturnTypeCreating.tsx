@@ -18,11 +18,14 @@ import EditableImportRequestReturnTable from "./EditableImportRequestReturnTable
 import DepartmentSelectionModal from "@/components/commons/DepartmentSelectionModal";
 import useDepartmentService from "@/services/useDepartmentService";
 import ImportRequestReturnConfirmModal from "./ImportRequestReturnConfirmModal";
+import { ItemResponse } from "@/services/useItemService";
 
 const { TextArea } = Input;
 
 interface ImportRequestReturnTypeProps {
   onStepChange?: (step: number) => void;
+  itemLoading: boolean;
+  items: ItemResponse[];
 }
 
 interface ReturnImportDetailRow {
@@ -40,7 +43,9 @@ interface FormData {
 }
 
 const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = ({
-  onStepChange
+  onStepChange,
+  itemLoading,
+  items
 }) => {
   const importType: ImportRequestType = "RETURN";
 
@@ -97,7 +102,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   const { getAllDepartments, departments } = useDepartmentService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = importRequestLoading;
+  const loading = itemLoading || importRequestLoading;
 
   // ========== UTILITY FUNCTIONS ==========
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
@@ -443,6 +448,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                   setIsAllPagesViewed={setIsAllPagesViewed}
                   data={importedData}
                   setData={setImportedData}
+                  relatedItemsData={items}  
                   alertNode={importedData.length > 0 ? (
                     <Alert
                       message="Thông tin nhập trả"
@@ -574,8 +580,8 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                     className="[&_.ant-table-cell]:!p-3"
                     columns={[
                       {
-                        width: "50%",
-                        title: <span className="font-semibold">Mã sản phẩm cụ thể</span>,
+                        width: "40%",
+                        title: <span className="font-semibold">Mã sản phẩm tồn kho</span>,
                         dataIndex: "inventoryItemId",
                         key: "inventoryItemId",
                         onHeaderCell: () => ({
@@ -583,14 +589,47 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                         }),
                       },
                       {
-                        width: "50%",
+                        width: "20%",
                         title: <span className="font-semibold">Giá trị cần nhập</span>,
                         dataIndex: "measurementValue",
                         key: "measurementValue",
-                        align: "center" as const,
+                        align: "right" as const,
                         onHeaderCell: () => ({
                           style: { textAlign: 'center' as const }
                         }),
+                      },
+                      {
+                        width: "10%",
+                        title: <span className="font-semibold">Đơn vị</span>,
+                        dataIndex: "unitType",
+                        key: "unitType",
+                        align: "left" as const,
+                        onHeaderCell: () => ({
+                          style: { textAlign: 'center' as const }
+                        }),
+                        render: (value: string, record: ReturnImportDetailRow) => {
+                          const mappedItem = items.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+                          return (
+                            <div>
+                              {mappedItem?.measurementUnit || '-'}
+                            </div>
+                          );
+                        },
+                      },
+                      {
+                        width: "20%",
+                        title: <span className="font-semibold">Tối đa cho phép</span>,
+                        dataIndex: "unitType",
+                        key: "unitType",
+                        align: "center" as const,
+                        render: (value: string, record: ReturnImportDetailRow) => {
+                          const mappedItem = items.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+                          return (
+                            <div>
+                              {mappedItem?.measurementValue || '-'} {mappedItem?.measurementUnit || '-'} / {mappedItem?.unitType || '-'}
+                            </div>
+                          );
+                        },
                       },
                     ]}
                     dataSource={sortedData}
@@ -681,6 +720,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
             formData={formData}
             details={getConsolidatedData(importedData)}
             departmentName={selectedDepartment?.departmentName || ""}
+            relatedItemsData={items}
           />
         </>
       )}

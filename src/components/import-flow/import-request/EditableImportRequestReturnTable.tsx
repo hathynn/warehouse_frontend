@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Table, Input, Card, TablePaginationConfig, Alert } from "antd";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
+import { ItemResponse } from "@/services/useItemService";
 
 interface ReturnImportDetailRow {
   inventoryItemId: string;
   measurementValue: number;
+  unitType?: string;
+  measurementUnit?: string;
 }
 
 interface EditableImportRequestReturnTableProps {
   data: ReturnImportDetailRow[];
   setData: (data: ReturnImportDetailRow[]) => void;
+  relatedItemsData: ItemResponse[];
   alertNode?: React.ReactNode;
   emptyText?: React.ReactNode;
   title?: string;
@@ -19,6 +23,7 @@ interface EditableImportRequestReturnTableProps {
 const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTableProps> = ({
   data,
   setData,
+  relatedItemsData,
   alertNode,
   emptyText,
   title = "Danh sách hàng hóa trả từ file Excel",
@@ -107,28 +112,19 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
 
   const columns = [
     {
-      width: "50%",
+      width: "40%",
       title: <span className="font-semibold">Mã sản phẩm tồn kho</span>,
       dataIndex: "inventoryItemId",
       key: "inventoryItemId",
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
-      render: (value: string, record: ReturnImportDetailRow) => (
-        <Input
-          value={value}
-          onChange={e => handleCellChange(e.target.value, record, 'inventoryItemId')}
-          style={{ width: '100%' }}
-          placeholder="Nhập mã sản phẩm tồn kho"
-        />
-      ),
     },
     {
-      width: "50%",
+      width: "20%",
       title: <span className="font-semibold">Giá trị cần nhập</span>,
       dataIndex: "measurementValue",
       key: "measurementValue",
-      align: "center" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
@@ -144,12 +140,46 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
               handleCellChange(numVal, record, 'measurementValue');
             }
           }}
-          style={{ textAlign: 'center', width: '100%' }}
+          style={{ textAlign: 'right', width: '100%' }}
           onWheel={e => e.currentTarget.blur()}
           placeholder="Nhập giá trị"
         />
       ),
     },
+    {
+      width: "10%",
+      title: <span className="font-semibold">Đơn vị</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "left" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (value: string, record: ReturnImportDetailRow) => {
+        const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+        return (
+          <div>
+            {mappedItem?.measurementUnit || '-'}
+          </div>
+        );
+      },
+    },
+    {
+      width: "20%",
+      title: <span className="font-semibold">Tối đa cho phép</span>,
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center" as const,
+      render: (value: string, record: ReturnImportDetailRow) => {
+        const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+        return (
+          <div>
+            {mappedItem?.measurementValue || '-'} {mappedItem?.measurementUnit || '-'} / {mappedItem?.unitType || '-'}
+          </div>
+        );
+      },
+    },
+
   ];
 
   return (

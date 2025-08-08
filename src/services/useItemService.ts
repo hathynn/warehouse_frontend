@@ -39,7 +39,7 @@ export interface ItemResponse {
   importOrderDetailIds: number[];
   importRequestDetailIds: number[];
   exportRequestDetailIds: number[];
-  inventoryItemIds: number[];
+  inventoryItemIds: string[];
   numberOfAvailableItems: number;
   numberOfAvailableMeasurementValues: number;
 }

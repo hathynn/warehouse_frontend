@@ -750,7 +750,6 @@ const ImportOrderDetail = () => {
           await completeImportOrder(importOrderData.importOrderId);
           await fetchImportOrderData();
           await fetchInventoryItemsData();
-          setShowUpdateInventoryItemLocationModal(true)
         }}
       />
 

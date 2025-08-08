@@ -24,10 +24,18 @@ const { TextArea } = Input;
 
 interface ImportRequestOrderTypeProps {
   onStepChange?: (step: number) => void;
+  itemLoading: boolean;
+  providerLoading: boolean;
+  items: ItemResponse[];
+  providers: ProviderResponse[];
 }
 
 const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
-  onStepChange
+  onStepChange,
+  itemLoading,
+  providerLoading,
+  items,
+  providers
 }) => {
   const importType: ImportRequestType = "ORDER";
   // ========== ROUTER & PARAMS ==========
@@ -46,8 +54,6 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
     startDate: dayjs().format("YYYY-MM-DD"),
     endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
   });
-  const [providers, setProviders] = useState<ProviderResponse[]>([]);
-  const [items, setItems] = useState<ItemResponse[]>([]);
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,16 +86,6 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
     loading: importRequestDetailLoading,
     createImportRequestDetail
   } = useImportRequestDetailService();
-
-  const {
-    loading: providerLoading,
-    getAllProviders
-  } = useProviderService();
-
-  const {
-    loading: itemLoading,
-    getItems
-  } = useItemService();
 
   const {
     getConfiguration
@@ -164,21 +160,6 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
   }, [importedData, step]);
 
   // ========== USE EFFECTS ==========
-  useEffect(() => {
-    const fetchData = async () => {
-      const [providersResponse, itemsResponse] = await Promise.all([
-        getAllProviders(),
-        getItems()
-      ]);
-
-      if (providersResponse?.content && itemsResponse?.content) {
-        setProviders(providersResponse.content);
-        setItems(itemsResponse.content);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   useEffect(() => {
     const fetchConfiguration = async () => {

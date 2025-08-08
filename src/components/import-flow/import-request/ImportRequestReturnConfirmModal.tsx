@@ -3,6 +3,7 @@ import { Modal, Typography, Descriptions, Table, Checkbox } from "antd";
 import { CheckboxChangeEvent } from "antd/es/checkbox";
 import dayjs from "dayjs";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
+import { ItemResponse } from "@/services/useItemService";
 
 interface ReturnImportDetailRow {
   inventoryItemId: string;
@@ -23,6 +24,7 @@ interface ImportRequestReturnConfirmModalProps {
   };
   details: ReturnImportDetailRow[];
   departmentName: string;
+  relatedItemsData?: ItemResponse[];
 }
 
 const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalProps> = ({
@@ -33,6 +35,7 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
   formData,
   details,
   departmentName,
+  relatedItemsData = [],
 }) => {
   const [confirmCreateImportRequestChecked, setConfirmCreateImportRequestChecked] = useState(false);
   
@@ -49,6 +52,7 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
 
   const columns = [
     {
+      width: "40%",
       title: "Mã sản phẩm tồn kho",
       dataIndex: "inventoryItemId",
       key: "inventoryItemId",
@@ -57,13 +61,47 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
       }),
     },
     {
+      width: "20%",
       title: "Giá trị cần nhập",
       dataIndex: "measurementValue",
       key: "measurementValue",
-      align: "center" as const,
+      align: "right" as const,
       onHeaderCell: () => ({
         style: { textAlign: 'center' as const }
       }),
+    },
+    {
+      width: "10%",
+      title: "Đơn vị",
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "left" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: (value: string, record: ReturnImportDetailRow) => {
+        const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+        return (
+          <div>
+            {mappedItem?.measurementUnit || '-'}
+          </div>
+        );
+      },
+    },
+    {
+      width: "20%",
+      title: "Tối đa cho phép",
+      dataIndex: "unitType",
+      key: "unitType",
+      align: "center" as const,
+      render: (value: string, record: ReturnImportDetailRow) => {
+        const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+        return (
+          <div>
+            {mappedItem?.measurementValue || '-'} {mappedItem?.measurementUnit || '-'} / {mappedItem?.unitType || '-'}
+          </div>
+        );
+      },
     },
   ];
 

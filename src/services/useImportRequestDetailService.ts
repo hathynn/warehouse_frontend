@@ -15,6 +15,7 @@ export interface ImportRequestDetailResponse {
   expectMeasurementValue: number;
   orderedMeasurementValue: number;
   status: DetailStatus;
+  inventoryItemId: string;
 }
 
 export enum DetailStatus {
