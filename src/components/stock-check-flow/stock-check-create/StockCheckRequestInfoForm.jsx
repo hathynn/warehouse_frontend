@@ -257,8 +257,7 @@ const StockCheckRequestInfoForm = ({
               {/* Dự kiến ngày hoàn tất */}
               <div className="w-1/2">
                 <label className="block mb-1">
-                  Ngày mong muốn hoàn tất{" "}
-                  <span className="text-red-500">*</span>
+                  Ngày dự kiến xong <span className="text-red-500">*</span>
                 </label>
                 <ConfigProvider>
                   <div dir="rtl">
