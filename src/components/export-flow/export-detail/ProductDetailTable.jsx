@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Table, Button, Tag } from "antd";
 import { InputNumber, Popconfirm, Tooltip } from "antd";
 import { ExportStatus, AccountRole } from "@/utils/enums";
@@ -38,9 +38,9 @@ const ProductDetailTable = ({
   const totalEnough = currentData.filter((d) => d.status !== "LACK").length;
   const totalLack = currentData.filter((d) => d.status === "LACK").length;
   const totalItems = currentData.length;
+  const [showUnexportableAlert, setShowUnexportableAlert] = useState(true);
 
   const handleQuantityChange = (value, recordId) => {
-
     setEditedDetails((prev) =>
       prev.map((item) => {
         if (item.id === recordId) {
@@ -256,6 +256,7 @@ const ProductDetailTable = ({
         ) {
           return {
             ...col,
+            title: "Số lượng cần (phiếu mới)",
             render: (text, record) => {
               const isLackWithQuantityOne =
                 record.status === "LACK" && record.actualQuantity === 1;
@@ -335,7 +336,6 @@ const ProductDetailTable = ({
                 );
               }
 
-              // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
               const itemInfo = items.find(
                 (i) => String(i.id) === String(record.itemId)
               );
@@ -353,7 +353,7 @@ const ProductDetailTable = ({
                   <InputNumber
                     min={1}
                     step={1}
-                    max={maxAllowed} // ✅ SỬA
+                    max={maxAllowed}
                     value={record.measurementValue}
                     onChange={(val) =>
                       handleMeasurementValueChange(val, record.id)
@@ -386,14 +386,13 @@ const ProductDetailTable = ({
 
         return col;
       })
-      // Lọc bỏ cột "Trạng thái" và "Chi tiết" khi ở editMode
       .filter((col) => {
         // Ẩn cột "Trạng thái" và "Chi tiết" khi ở editMode
         if (editMode && (col.key === "status" || col.key === "detail")) {
           return false;
         }
 
-        //Ẩn cột "Số lượng cần" cho INTERNAL, LIQUIDATION khi ở editMode
+        // Ẩn cột "Số lượng cần" cho INTERNAL, LIQUIDATION khi ở editMode
         if (
           editMode &&
           col.dataIndex === "quantity" &&
@@ -403,7 +402,45 @@ const ProductDetailTable = ({
         }
 
         return true;
-      }),
+      })
+      .map((col, index, array) => {
+        if (
+          editMode &&
+          exportRequest?.type === "SELLING" &&
+          col.title === "Số lượng cần (phiếu mới)"
+        ) {
+          return [
+            {
+              title: "Số lượng cần ban đầu",
+              dataIndex: "originalQuantity",
+              key: "originalQuantity",
+              width: 140,
+              align: "center",
+              render: (text, record) => (
+                <div style={{ textAlign: "center" }}>
+                  <span
+                    style={{
+                      fontWeight: "600",
+                      fontSize: "16px",
+                      color: "#666",
+                    }}
+                  >
+                    {record.originalQuantity || record.quantity}
+                  </span>{" "}
+                  {record.unitType && (
+                    <span className="text-gray-500">{record.unitType}</span>
+                  )}
+                </div>
+              ),
+            },
+            col,
+          ];
+        }
+
+        return col;
+      })
+      .flat(), // ✅ THÊM: flatten array vì một số column có thể return array
+
     ...(editMode ? [actionColumn] : []),
   ];
 
@@ -486,9 +523,7 @@ const ProductDetailTable = ({
                   if (item.status === "LACK" && item.actualQuantity > 1) {
                     lastValidValuesRef.current[item.id] = item.actualQuantity;
                     if (
-                      ["INTERNAL", "LIQUIDATION"].includes(
-                        exportRequest?.type
-                      )
+                      ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
                     ) {
                       // ✅ SỬA: Sử dụng numberOfAvailableMeasurementValues và minimumStockQuantity
                       const itemInfo = items.find(
@@ -511,12 +546,10 @@ const ProductDetailTable = ({
 
                 setEditedDetails(
                   sortedEditedDetails.map((item) => {
-                    // ✅ SỬA: Tính measurementValue hợp lệ lớn nhất
+                    //Tính measurementValue hợp lệ lớn nhất
                     let validMeasurementValue = item.measurementValue;
                     if (
-                      ["INTERNAL", "LIQUIDATION"].includes(
-                        exportRequest?.type
-                      )
+                      ["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
                     ) {
                       const itemInfo = items.find(
                         (i) => String(i.id) === String(item.itemId)
@@ -540,6 +573,7 @@ const ProductDetailTable = ({
                     return {
                       ...item,
                       quantity: item.actualQuantity,
+                      originalQuantity: item.quantity,
                       measurementValue: validMeasurementValue,
                       error: "",
                       measurementError: "",
@@ -614,7 +648,7 @@ const ProductDetailTable = ({
               userRole === AccountRole.WAREHOUSE_MANAGER &&
               !editMode && ( // ✅ THÊM điều kiện !editMode
                 <div className="mb-2">
-                  <span className="ml-6 font-medium">Trạng thái hàng: </span>
+                  <span className="ml-6 font-medium">Trạng thái tổng: </span>
                   {itemStatus === "LACK" ? (
                     <Tag color="error">Thiếu</Tag>
                   ) : itemStatus === "ENOUGH" ? (
@@ -625,10 +659,10 @@ const ProductDetailTable = ({
 
             <div className="flex gap-8 items-center">
               <span className="ml-6">
-                Tổng số hàng: <span>{totalItems}</span>
+                Tổng số sản phẩm:{" "}
+                <span style={{ fontWeight: "bold" }}>{totalItems}</span>
               </span>
 
-              {/* ✅ SỬA: Chỉ hiện chi tiết khi không ở editMode */}
               {!editMode &&
                 [
                   ExportStatus.COUNTED,
@@ -642,13 +676,14 @@ const ProductDetailTable = ({
                   [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
                     exportRequest?.status
                   )
-                ) && (
+                ) &&
+                itemStatus === "LACK" && (
                   <>
                     <span>
-                      Tổng số hàng đủ: <span>{totalEnough}</span>
+                      Tổng số sản phẩm đủ: <span>{totalEnough}</span>
                     </span>
                     <span>
-                      Tổng số hàng thiếu:{" "}
+                      Tổng số sản phẩm thiếu:{" "}
                       <span style={{ color: "#ff4d4f", fontWeight: 500 }}>
                         {totalLack}
                       </span>
@@ -658,12 +693,81 @@ const ProductDetailTable = ({
             </div>
           </div>
 
-          {unexportableItems.length > 0 && editMode && (
-            <div className="mb-4 text-red-600 font-semibold">
-              Các sản phẩm không thể xuất do không đủ tồn kho:{" "}
-              {unexportableItems.map((item) => `#${item.itemId}`).join(", ")}
-            </div>
-          )}
+          {unexportableItems.length > 0 &&
+            editMode &&
+            showUnexportableAlert && (
+              <div
+                className="mb-4"
+                style={{
+                  background: "#fff2f0",
+                  border: "1px solid #ffccc7",
+                  borderRadius: 8,
+                  padding: "16px 24px",
+                  marginBottom: 24,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "flex-start", flex: 1 }}
+                >
+                  <InfoCircleOutlined
+                    style={{
+                      color: "#ff4d4f",
+                      fontSize: 17,
+                      marginRight: 8,
+                      marginTop: 2,
+                    }}
+                  />
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: 15,
+                        marginBottom: 8,
+                        color: "#ff4d4f",
+                      }}
+                    >
+                      Cảnh báo sản phẩm không thể xuất
+                    </div>
+                    <div>
+                      Các sản phẩm{" "}
+                      <span style={{ fontWeight: 500 }}>không thể xuất</span> do
+                      không đủ tồn kho:{" "}
+                      <span
+                        className="text-red-500"
+                        style={{ fontWeight: 500 }}
+                      >
+                        {unexportableItems
+                          .map((item) => `#${item.itemId}`)
+                          .join(", ")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowUnexportableAlert(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#ff4d4f",
+                    fontSize: 16,
+                    cursor: "pointer",
+                    padding: 0,
+                    marginLeft: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 20,
+                    height: 20,
+                  }}
+                  title="Đóng"
+                >
+                  ×
+                </button>
+              </div>
+            )}
         </>
       )}
 

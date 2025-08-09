@@ -52,6 +52,12 @@ function enrichWithItemMeta(details, items) {
   });
 }
 
+const customTableStyle = `
+  .ant-table-tbody > tr.bg-red-50:hover > td {
+    background-color: #fee2e2 !important;
+  }
+`;
+
 const ExportRequestDetail = () => {
   const { exportRequestId } = useParams();
   const [configuration, setConfiguration] = useState(null);
@@ -163,7 +169,6 @@ const ExportRequestDetail = () => {
     setExportRequest(data);
   }, [exportRequestId, getExportRequestById]);
 
-  // ✅ GIẢI PHÁP TỐI ÂU: Sử dụng items đã có sẵn thay vì gọi API
   const enrichDetailsWithLocalData = (details, itemsData) => {
     return details.map((detail) => {
       const itemInfo = itemsData.find(
@@ -174,6 +179,7 @@ const ExportRequestDetail = () => {
         itemName: itemInfo?.name || detail.itemName || "Không xác định",
         unitType: itemInfo?.unitType || "", // Thêm unitType vào đây
         measurementUnit: itemInfo?.measurementUnit || "",
+        standardMeasurementValue: itemInfo?.measurementValue || 0,
       };
     });
   };
@@ -825,12 +831,27 @@ const ExportRequestDetail = () => {
   };
 
   const columns = [
+    // {
+    //   title: "Mã sản phẩm",
+    //   dataIndex: "itemId",
+    //   key: "itemId",
+    //   width: "18%",
+    //   render: (id) => `${id}`,
+    // },
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
       width: "18%",
-      render: (id) => `${id}`,
+      render: (id, record) => (
+        <div>
+          <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
+          <div className="text-gray-500 mt-1" style={{ fontSize: "12px" }}>
+            (Quy cách chuẩn: {record.standardMeasurementValue || "-"}{" "}
+            {record.measurementUnit || ""}/{record.unitType || ""})
+          </div>
+        </div>
+      ),
     },
     {
       title: "Tên sản phẩm",
@@ -1221,117 +1242,102 @@ const ExportRequestDetail = () => {
         }}
       >
         <div className="mb-1 font-semibold">
-          Tổng đã đóng gói: {allExportRequestDetails.length} sản phẩm
+          Tổng số sản phẩm: {allExportRequestDetails.length} sản phẩm
         </div>
 
-        <div className="mb-4 font-semibold">
-          Tổng thiếu:{" "}
-          <span className="text-red-600">
-            {allExportRequestDetails.filter((d) => d.status === "LACK").length}
-          </span>{" "}
-          sản phẩm
-        </div>
+        {allExportRequestDetails.filter((d) => d.status === "LACK").length >
+          0 && (
+          <div className="mb-4 font-semibold">
+            Tổng sản phẩm thiếu hàng:{" "}
+            <span className="text-red-600">
+              {
+                allExportRequestDetails.filter((d) => d.status === "LACK")
+                  .length
+              }
+            </span>{" "}
+            sản phẩm
+          </div>
+        )}
 
-        <div style={{ fontSize: "16px" }} className="mb-2 font-bold">
+        <div style={{ fontSize: "16px" }} className="mt-4 mb-2 font-bold">
           Danh sách tất cả sản phẩm:
         </div>
-
-        <Table
-          dataSource={getSortedProducts()}
-          rowKey="id"
-          style={{ height: "500px", overflowY: "auto" }}
-          pagination={
-            allExportRequestDetails.length > 10
-              ? {
-                  current: modalPagination.current,
-                  pageSize: modalPagination.pageSize,
-                  total: allExportRequestDetails.length,
-                  onChange: (page) => {
-                    setModalPagination({
-                      current: page,
-                      pageSize: 10,
-                      total: allExportRequestDetails.length,
-                    });
-                    // Thêm trang hiện tại vào danh sách đã xem
-                    setViewedPages((prev) => new Set([...prev, page]));
-                  },
-                  showSizeChanger: false,
-                  showQuickJumper: false,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} của ${total} sản phẩm`,
-                }
-              : false // Ẩn pagination nếu <= 10 items
-          }
-          size="small"
-          className="mb-4"
-          columns={[
-            {
-              title: "Mã sản phẩm",
-              dataIndex: "itemId",
-              key: "itemId",
-              width: "18%",
-            },
-            {
-              title: "Tên sản phẩm",
-              dataIndex: "itemName",
-              key: "itemName",
-              ellipsis: true,
-              width: "22%",
-            },
-            // Cột Giá trị cần xuất - chỉ hiển thị cho INTERNAL, LIQUIDATION
-            ...(["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
-              ? [
-                  {
-                    title: "Giá trị cần xuất",
-                    dataIndex: "measurementValue",
-                    key: "measurementValue",
-                    width: 140,
-                    align: "left",
-                    render: (text, record) => (
-                      <span>
-                        <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                          {text}
-                        </span>{" "}
-                        {record.measurementUnit && (
-                          <span className="text-gray-500">
-                            {record.measurementUnit}
-                          </span>
-                        )}
-                      </span>
-                    ),
-                  },
-                ]
-              : []),
-            {
-              title: "Số lượng cần",
-              dataIndex: "quantity",
-              key: "quantity",
-              width: 120,
-              align: "left",
-              render: (text, record) => (
-                <span>
-                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                    {text}
-                  </span>{" "}
-                  {record.unitType && (
-                    <span className="text-gray-500">{record.unitType}</span>
-                  )}
-                </span>
-              ),
-            },
-            {
-              title: "Số lượng thực tế",
-              dataIndex: "actualQuantity",
-              key: "actualQuantity",
-              width: 140,
-              align: "left",
-              render: (text, record) => {
-                const isLacking = text < record.quantity;
-
-                return (
-                  <span
-                    className={isLacking ? "text-red-600 font-semibold" : ""}
-                  >
+        <>
+          <style>{customTableStyle}</style>
+          <Table
+            dataSource={getSortedProducts()}
+            rowKey="id"
+            style={{ height: "500px", overflowY: "auto" }}
+            pagination={
+              allExportRequestDetails.length > 10
+                ? {
+                    current: modalPagination.current,
+                    pageSize: modalPagination.pageSize,
+                    total: allExportRequestDetails.length,
+                    onChange: (page) => {
+                      setModalPagination({
+                        current: page,
+                        pageSize: 10,
+                        total: allExportRequestDetails.length,
+                      });
+                      // Thêm trang hiện tại vào danh sách đã xem
+                      setViewedPages((prev) => new Set([...prev, page]));
+                    },
+                    showSizeChanger: false,
+                    showQuickJumper: false,
+                    showTotal: (total, range) =>
+                      `${range[0]}-${range[1]} của ${total} sản phẩm`,
+                  }
+                : false // Ẩn pagination nếu <= 10 items
+            }
+            size="small"
+            className="mb-4"
+            columns={[
+              {
+                title: "Mã sản phẩm",
+                dataIndex: "itemId",
+                key: "itemId",
+                width: "18%",
+              },
+              {
+                title: "Tên sản phẩm",
+                dataIndex: "itemName",
+                key: "itemName",
+                ellipsis: true,
+                width: "22%",
+              },
+              // Cột Giá trị cần xuất - chỉ hiển thị cho INTERNAL, LIQUIDATION
+              ...(["INTERNAL", "LIQUIDATION"].includes(exportRequest?.type)
+                ? [
+                    {
+                      title: "Giá trị cần xuất",
+                      dataIndex: "measurementValue",
+                      key: "measurementValue",
+                      width: 140,
+                      align: "left",
+                      render: (text, record) => (
+                        <span>
+                          <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                            {text}
+                          </span>{" "}
+                          {record.measurementUnit && (
+                            <span className="text-gray-500">
+                              {record.measurementUnit}
+                            </span>
+                          )}
+                        </span>
+                      ),
+                    },
+                  ]
+                : []),
+              {
+                title: "Số lượng cần",
+                dataIndex: "quantity",
+                key: "quantity",
+                width: 120,
+                align: "left",
+                render: (text, record) => (
+                  <span>
                     <span style={{ fontWeight: "600", fontSize: "16px" }}>
                       {text}
                     </span>{" "}
@@ -1339,30 +1345,53 @@ const ExportRequestDetail = () => {
                       <span className="text-gray-500">{record.unitType}</span>
                     )}
                   </span>
-                );
+                ),
               },
-            },
-            {
-              title: "Trạng thái",
-              dataIndex: "status",
-              key: "status",
-              width: 100,
-              onHeaderCell: () => ({
-                style: { textAlign: "center" },
-              }),
-              render: (status) => (
-                <div style={{ textAlign: "center" }}>
-                  <Tag color={status === "LACK" ? "error" : "success"}>
-                    {status === "LACK" ? "Thiếu" : "Đủ"}
-                  </Tag>
-                </div>
-              ),
-            },
-          ]}
-          rowClassName={(record) =>
-            record.status === "LACK" ? "bg-red-50" : ""
-          }
-        />
+              {
+                title: "Số lượng đã đóng gói",
+                dataIndex: "actualQuantity",
+                key: "actualQuantity",
+                width: 140,
+                align: "left",
+                render: (text, record) => {
+                  const isLacking = text < record.quantity;
+
+                  return (
+                    <span
+                      className={isLacking ? "text-red-600 font-semibold" : ""}
+                    >
+                      <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                        {text}
+                      </span>{" "}
+                      {record.unitType && (
+                        <span className="text-gray-500">{record.unitType}</span>
+                      )}
+                    </span>
+                  );
+                },
+              },
+              {
+                title: "Trạng thái",
+                dataIndex: "status",
+                key: "status",
+                width: 100,
+                onHeaderCell: () => ({
+                  style: { textAlign: "center" },
+                }),
+                render: (status) => (
+                  <div style={{ textAlign: "center" }}>
+                    <Tag color={status === "LACK" ? "error" : "success"}>
+                      {status === "LACK" ? "Thiếu" : "Đủ"}
+                    </Tag>
+                  </div>
+                ),
+              },
+            ]}
+            rowClassName={(record) =>
+              record.status === "LACK" ? "bg-red-50" : ""
+            }
+          />
+        </>
 
         {/* Hiển thị thông báo nếu chưa xem hết tất cả trang */}
         {!hasViewedAllPages() && (
@@ -1601,9 +1630,7 @@ const ExportRequestDetail = () => {
                   },
                   // Chỉ thêm cột "Thao tác" khi đúng điều kiện
                   ...(userRole === AccountRole.WAREHOUSE_MANAGER &&
-                  [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
-                    exportRequest?.status
-                  )
+                  [ExportStatus.IN_PROGRESS].includes(exportRequest?.status)
                     ? [
                         {
                           title: "Thao tác",
