@@ -74,23 +74,22 @@ const ImportOrderList: React.FC = () => {
   } = useAccountService();
 
   const {
+    loading: importRequestLoading,
     getAllImportRequests
   } = useImportRequestService();
 
   const {
+    loading: providerLoading,
     getAllProviders
   } = useProviderService();
 
   const {
-    getAllExportRequests
-  } = useExportRequestService();
-
-  const {
+    loading: departmentLoading,
     getAllDepartments
   } = useDepartmentService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = importOrderLoading || accountLoading;
+  const loading = importOrderLoading || accountLoading || importRequestLoading || providerLoading || departmentLoading;
 
   // ========== UTILITY FUNCTIONS ==========
 
@@ -183,12 +182,10 @@ const ImportOrderList: React.FC = () => {
     // Fetch import requests to get import type information
     const importRequestsResponse = await getAllImportRequests();
     const providersResponse = await getAllProviders();
-    const exportRequestsResponse = await getAllExportRequests();
     const departmentsResponse = await getAllDepartments(1, 100);
 
     const importRequests = importRequestsResponse.content || [];
     const providers = providersResponse.content || [];
-    const exportRequests = exportRequestsResponse.content || [];
     const departments = departmentsResponse.content || [];
 
     const formatted: ImportOrderData[] = (response.content ?? []).map(order => {
@@ -205,10 +202,9 @@ const ImportOrderList: React.FC = () => {
         if (importRequest.importType === "ORDER") {
           const provider = providers.find(p => p.id === importRequest.providerId);
           providerName = provider?.name || "";
-        } else if (importRequest.importType === "RETURN" && importRequest.exportRequestId) {
-          const exportRequest = exportRequests.find(exp => exp.exportRequestId === importRequest.exportRequestId);
-          if (exportRequest && exportRequest.departmentId) {
-            const department = departments.find(dept => dept.id === exportRequest.departmentId);
+        } else if (importRequest.importType === "RETURN") {
+          if (importRequest.departmentId) {
+            const department = departments.find(dept => dept.id === importRequest.departmentId);
             departmentName = department?.departmentName || "";
           }
         }
