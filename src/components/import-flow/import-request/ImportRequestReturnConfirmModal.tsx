@@ -71,7 +71,7 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
     },
     {
       width: "20%",
-      title: "Giá trị cần nhập",
+      title: "Giá trị dự kiến",
       dataIndex: "measurementValue",
       key: "measurementValue",
       align: "right" as const,

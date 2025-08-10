@@ -305,7 +305,7 @@ const ImportOrderList: React.FC = () => {
       key: "importOrderDetailsCount",
       align: "center" as const,
       render: (count: number) => (
-        <div className="text-lg text-right">{count}</div>
+        <div className="font-bold text-right">{count}</div>
       ),
     },
     {

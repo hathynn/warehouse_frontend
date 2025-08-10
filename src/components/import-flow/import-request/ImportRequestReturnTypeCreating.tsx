@@ -269,7 +269,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
               const row: any = {};
               const sttCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A - STT
               const inventoryItemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B - Mã sản phẩm tồn kho
-              const measurementValueCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Giá trị cần nhập
+              const measurementValueCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Giá trị dự kiến
 
               // Skip header row and empty rows
               if (sttCell && String(sttCell.v).trim() === "Số thứ tự") continue;
@@ -565,7 +565,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                       },
                       {
                         width: "20%",
-                        title: <span className="font-semibold">Giá trị cần nhập</span>,
+                        title: <span className="font-semibold">Giá trị dự kiến</span>,
                         dataIndex: "measurementValue",
                         key: "measurementValue",
                         align: "right" as const,

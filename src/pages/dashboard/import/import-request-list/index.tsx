@@ -278,7 +278,37 @@ const ImportRequestList: React.FC = () => {
       },
     ] : [
       {
-        title: "Phòng ban nhận phiếu nhập trả",
+        title: "Số lượng dự nhập",
+        dataIndex: "totalExpectQuantityInRequest",
+        key: "totalExpectQuantityInRequest",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (quantity: number) => <div className="text-base">{quantity || 0}</div>,
+      },
+      {
+        title: "Số lượng đã nhập",
+        dataIndex: "totalActualQuantityInRequest",
+        key: "totalActualQuantityInRequest",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (actual: number) => {
+          return (
+            <div className="text-right">
+              {actual === 0 ? (
+                <span className="font-bold text-gray-600">Chưa nhập</span>
+              ) : (
+                <div className="text-base">{actual}</div>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        title: "Phòng ban tiếp nhận",
         dataIndex: "departmentName",
         key: "departmentName",
         align: "center" as const,

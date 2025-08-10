@@ -44,6 +44,8 @@ import { toast } from "react-toastify";
 import { MdApartment, MdLocationSearching } from "react-icons/md";
 import { convertStoredLocationName } from "@/utils/helpers";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
+import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
+import useItemService, { ItemResponse } from "@/services/useItemService";
 
 const ImportOrderDetail = () => {
   // ========== ROUTER & PARAMS ==========
@@ -62,7 +64,7 @@ const ImportOrderDetail = () => {
   const [assignedStaff, setAssignedStaff] = useState<AccountResponse | null>(null);
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [inventoryItemsData, setInventoryItemsData] = useState<InventoryItemResponse[]>([]);
-  const [storedLocationData, setStoredLocationData] = useState<StoredLocationResponse[]>([]);
+  const [itemsData, setItemsData] = useState<ItemResponse[]>([]);
 
   // ========== MODAL STATES ==========
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -118,10 +120,8 @@ const ImportOrderDetail = () => {
     updateStoredLocation,
   } = useInventoryItemService();
   const {
-    loading: storedLocationLoading,
-    getAllStoredLocations,
-  } = useStoredLocationService();
-
+    getItems
+  } = useItemService();
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportOrderData = async () => {
     if (!importOrderId) return;
@@ -153,8 +153,8 @@ const ImportOrderDetail = () => {
   const fetchInitialData = async () => {
     const config = await getConfiguration();
     setConfiguration(config);
-    const locationsResponse = await getAllStoredLocations();
-    setStoredLocationData(locationsResponse?.content || []);
+    const itemsResponse = await getItems();
+    setItemsData(itemsResponse?.content || []);
   };
 
   const fetchActiveStaffs = async () => {
@@ -355,7 +355,6 @@ const ImportOrderDetail = () => {
     // fetchInventoryItemsData is not needed here as it's triggered by the change in importOrderDetails from fetchImportOrderDetails.
     setShowInventoryItemsLocationConfirmModal(false);
     await Promise.all([
-      getAllStoredLocations().then(res => setStoredLocationData(res?.content || [])),
       fetchImportOrderData(),
       fetchImportOrderDetails(),
     ]);
@@ -385,7 +384,7 @@ const ImportOrderDetail = () => {
           render: (id: number) => `#${id}`,
         },
         {
-          width: '15%',
+          width: '20%',
           title: "Tên sản phẩm",
           dataIndex: "itemName",
           key: "itemName",
@@ -395,25 +394,41 @@ const ImportOrderDetail = () => {
           }),
         },
         {
-          width: '10%',
-          title: "Số lượng cần nhập",
+          title: "Giá trị dự nhập",
           dataIndex: "expectQuantity",
           key: "expectQuantity",
-          align: "right" as const,
+          align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
+          render: (expectQuantity: number, record: ImportOrderDetailResponse) => {
+            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+            return (
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{expectQuantity}{" "}</span>{mappedItem?.unitType || '-'}
+                <span>{" "}({record.expectMeasurementValue || 0}{" "}{mappedItem?.measurementUnit || '-'})</span>
+              </div>
+            );
+          },
         },
         {
-          width: '10%',
           title: "Thực tế đã nhập",
           dataIndex: "actualQuantity",
           key: "actualQuantity",
-          align: "right" as const,
+          align: "center" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-        }
+          render: (expectQuantity: number, record: ImportOrderDetailResponse) => {
+            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
+            return (
+              <div>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{expectQuantity}{" "}</span>{mappedItem?.unitType || '-'}
+                <span>{" "}({record.actualMeasurementValue || 0}{" "}{mappedItem?.measurementUnit || '-'})</span>
+              </div>
+            );
+          },
+        },
       )
     } else {
       baseColumns.push(
@@ -785,7 +800,7 @@ const ImportOrderDetail = () => {
 
       {/* Modal cập nhật vị trí lưu kho */}
       <UpdateInventoryItemLocationModal
-        loading={storedLocationLoading || inventoryItemLoading}
+        loading={inventoryItemLoading}
         inventoryItems={inventoryItemsData}
         open={showUpdateInventoryItemLocationModal}
         selectedItem={selectedItemForLocationUpdate}

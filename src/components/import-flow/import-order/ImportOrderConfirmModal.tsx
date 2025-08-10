@@ -117,9 +117,10 @@ const ImportOrderConfirmModal: React.FC<ImportOrderConfirmModalProps> = ({
             style: { textAlign: 'center' as const }
           }),
           render: (value: number, record: ImportOrderDetailRow) => {
+            const mappedItem = itemsData?.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {mappedItem?.measurementUnit || '-'}
               </div>
             );
           },

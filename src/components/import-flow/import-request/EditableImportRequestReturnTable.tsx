@@ -125,7 +125,7 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
       }
 
       if (row.measurementValue <= 0) {
-        return `Dòng ${idx + 1}: Giá trị cần nhập phải lớn hơn 0.`;
+        return `Dòng ${idx + 1}: Giá trị dự kiến phải lớn hơn 0.`;
       }
 
       const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(row.inventoryItemId));
@@ -168,7 +168,7 @@ const EditableImportRequestReturnTable: React.FC<EditableImportRequestReturnTabl
     },
     {
       width: "20%",
-      title: <span className="font-semibold">Giá trị cần nhập</span>,
+      title: <span className="font-semibold">Giá trị dự kiến</span>,
       dataIndex: "measurementValue",
       key: "measurementValue",
       onHeaderCell: () => ({

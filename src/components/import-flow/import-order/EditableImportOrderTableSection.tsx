@@ -3,10 +3,10 @@ import { Input, Alert, TablePaginationConfig, Card, Table, Button, Modal } from 
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 import { MdOutlineDeleteForever } from "react-icons/md";
+import { ItemResponse } from "@/services/useItemService";
 
 export interface ImportOrderDetailRow {
   itemId: string;
-  itemName: string;
   expectQuantity: number;
   orderedQuantity: number;
   plannedQuantity: number;
@@ -14,8 +14,6 @@ export interface ImportOrderDetailRow {
   measurementValue: number;
   inventoryItemId: string;
   importRequestProviderId: number;
-  measurementUnit?: string;
-  unitType?: string;
 }
 
 export interface ProviderOption {
@@ -25,6 +23,7 @@ export interface ProviderOption {
 
 interface EditableImportOrderTableSectionProps {
   data: ImportOrderDetailRow[];
+  relatedItemsData: ItemResponse[];
   onChange: (rows: ImportOrderDetailRow[]) => void;
   loading?: boolean;
   title?: string;
@@ -37,6 +36,7 @@ interface EditableImportOrderTableSectionProps {
 
 const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionProps> = ({
   data,
+  relatedItemsData,
   onChange,
   loading,
   title,
@@ -84,10 +84,10 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
     onChange(newData);
   };
 
-  const handlePlannedMeasurementValueChange = (value: number | null, record: ImportOrderDetailRow) => {
-    const newData = data.map(row =>
-      row.itemId === record.itemId ? { ...row, plannedMeasurementValue: value ?? 0 } : row
-    );
+  const handleMeasurementValueChange = (value: number | null, record: ImportOrderDetailRow) => {
+    const newData = data.map(row => {
+      return row.inventoryItemId === record.inventoryItemId ? { ...row, measurementValue: value ?? 0 } : row;
+    });
     onChange(newData);
   };
 
@@ -98,7 +98,12 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
 
   const confirmDelete = () => {
     if (recordToDelete) {
-      const newData = data.filter(row => row.itemId !== recordToDelete.itemId);
+      const newData = data.filter(row => {
+        // For RETURN type, use inventoryItemId as unique identifier
+        return importType === "RETURN" 
+          ? row.inventoryItemId !== recordToDelete.inventoryItemId
+          : row.itemId !== recordToDelete.itemId;
+      });
       onChange(newData);
 
       // Update pagination total
@@ -128,20 +133,20 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       // For RETURN type, show simplified columns
       baseColumns.push(
         {
-          width: "35%",
+          width: "32%",
           title: "Mã sản phẩm tồn kho",
+          dataIndex: "inventoryItemId",
           key: "inventoryItemId",
           align: "left" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
           render: (_, record: ImportOrderDetailRow) => {
-            // This would need item service to get inventory item IDs
-            return `#${record.inventoryItemId}`; // Placeholder - you'll need proper inventory item ID mapping
+            return `#${record.inventoryItemId}`;
           },
         },
         {
-          width: "28%",
+          width: "20%",
           title: "Tên sản phẩm",
           dataIndex: "itemName",
           key: "itemName",
@@ -150,33 +155,61 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
           }),
         },
         {
-          title: "Giá trị đo lường",
+          width: "15%",
+          title: "Giá trị dự kiến",
           dataIndex: "measurementValue",
           key: "measurementValue",
           align: "right" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (value: number, record: ImportOrderDetailRow) => {
+          render: (value: number, record: ImportOrderDetailRow) => (
+            <Input
+              inputMode="numeric"
+              pattern="[0-9]*[.,]?[0-9]*"
+              value={value || 0}
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
+                const numVal = val === '' ? 0 : parseFloat(val);
+                if (!isNaN(numVal)) {
+                  handleMeasurementValueChange(numVal, record);
+                }
+              }}
+              style={{ textAlign: 'right', width: '100%' }}
+              onWheel={e => e.currentTarget.blur()}
+              placeholder="Nhập giá trị"
+            />
+          ),
+        },
+        {
+          width: "8%",
+          title: <span className="font-semibold">Đơn vị</span>,
+          dataIndex: "unitType",
+          key: "unitType",
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+          render: (_, record: ImportOrderDetailRow) => {
+            const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
+              <div>
+                {mappedItem?.measurementUnit || '-'}
               </div>
             );
           },
         },
         {
-          title: "Số lượng cần nhập",
-          key: "quantity",
+          width: "15%",
+          title: <span className="font-semibold">Tối đa cho phép</span>,
+          dataIndex: "maxAllowed",
+          key: "maxAllowed",
           align: "center" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
           render: (_, record: ImportOrderDetailRow) => {
+            const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
-                <span>{record?.unitType || '-'}</span>
+                {mappedItem?.measurementValue || '-'} {mappedItem?.measurementUnit || '-'} / {mappedItem?.unitType || '-'}
               </div>
             );
           },
@@ -294,19 +327,30 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
   // Tổng hợp lỗi
   const invalidRows = data
     .map((row, idx) => {
-      let maxAllowed = 0;
-      if (row.actualQuantity === 0) {
-        maxAllowed = row.expectQuantity - row.orderedQuantity;
-      }
-      else {
-        maxAllowed = row.expectQuantity - row.actualQuantity;
-      }
-      if (row.plannedQuantity > maxAllowed) {
-        return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
-      }
+      if (importType === "RETURN") {
+        if (row.measurementValue <= 0) {
+          return `Dòng ${idx + 1}: Giá trị dự kiến phải lớn hơn 0.`;
+        }
+        const mappedItem = relatedItemsData.find(item => item.inventoryItemIds.includes(row.inventoryItemId));
+        if (mappedItem && mappedItem.measurementValue && row.measurementValue > mappedItem.measurementValue) {
+          return `Dòng ${idx + 1}: Giá trị vượt quá tối đa cho phép (${mappedItem.measurementValue} ${mappedItem.measurementUnit}).`;
+        }
+        return null;
+      } else {
+        let maxAllowed = 0;
+        if (row.actualQuantity === 0) {
+          maxAllowed = row.expectQuantity - row.orderedQuantity;
+        }
+        else {
+          maxAllowed = row.expectQuantity - row.actualQuantity;
+        }
+        if (row.plannedQuantity > maxAllowed) {
+          return `Dòng ${idx + 1}: Số lượng nhập vượt quá cho phép (tối đa ${maxAllowed})`;
+        }
 
-      if (row.plannedQuantity <= 0) {
-        return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
+        if (row.plannedQuantity <= 0) {
+          return `Dòng ${idx + 1}: Số lượng nhập đang bằng 0. Vui lòng nhập số lượng lớn hơn 0 hoặc xóa dòng này.`;
+        }
       }
 
       return null;
@@ -335,7 +379,7 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
       <Table
         columns={getColumns()}
         dataSource={data}
-        rowKey="itemId"
+        rowKey={(record) => importType === "RETURN" ? `${record.inventoryItemId}` : `${record.itemId}`}
         loading={loading}
         pagination={{
           ...pagination,
@@ -365,12 +409,15 @@ const EditableImportOrderTableSection: React.FC<EditableImportOrderTableSectionP
         okText="Xóa"
         cancelText="Hủy"
         okButtonProps={{ danger: true }}
-        width={320}
+        width={importType === "RETURN" ? 400 : 320}
       >
         {recordToDelete && (
           <div>
-            <p><strong>Mã hàng:</strong> #{recordToDelete.itemId}</p>
-            <p><strong>Tên hàng:</strong> {recordToDelete.itemName}</p>
+            {importType === "RETURN" ? (
+              <p><strong>Mã sản phẩm tồn kho:</strong> <div>#{recordToDelete.inventoryItemId}</div></p>
+            ) : (
+              <p><strong>Mã hàng:</strong> #{recordToDelete.itemId}</p>
+            )}
           </div>
         )}
       </Modal>

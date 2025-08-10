@@ -426,7 +426,7 @@ const ImportRequestDetail: React.FC = () => {
     } else if (importType === 'RETURN') {
       baseColumns.push(
         {
-          width: '32%',
+          width: '35%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
@@ -451,27 +451,7 @@ const ImportRequestDetail: React.FC = () => {
           },
         },
         {
-          title: "Gía trị đo lường",
-          dataIndex: "expectMeasurementValue",
-          key: "expectMeasurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (measurementValue: number, record: ImportRequestDetailResponse) => {
-            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
-            return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{measurementValue || 0}</span>{" "}
-                {mappedItem?.unitType && (
-                  <span>{mappedItem.measurementUnit}</span>
-                )}
-              </div>
-            );
-          },
-        },
-        {
-          title: "Số lượng cần nhập",
+          title: "Giá trị dự nhập",
           dataIndex: "expectQuantity",
           key: "expectQuantity",
           align: "center" as const,
@@ -482,8 +462,8 @@ const ImportRequestDetail: React.FC = () => {
             const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{expectQuantity}</span>{" "}
-                <span>{mappedItem?.unitType || '-'}</span>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{expectQuantity}{" "}</span>{mappedItem?.unitType || '-'}
+                <span>{" "}({record.expectMeasurementValue || 0}{" "}{mappedItem?.measurementUnit || '-'})</span>
               </div>
             );
           },
@@ -500,8 +480,8 @@ const ImportRequestDetail: React.FC = () => {
             const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{actualQuantity}</span>{" "}
-                <span>{mappedItem?.unitType || '-'}</span>
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{actualQuantity}{" "}</span>{mappedItem?.unitType || '-'}
+                <span>{" "}({record.actualMeasurementValue || 0}{" "}{mappedItem?.measurementUnit || '-'})</span>
               </div>
             );
           },
@@ -553,7 +533,7 @@ const ImportRequestDetail: React.FC = () => {
               icon={<UnorderedListOutlined />}
               onClick={handleViewImportOrders}
             >
-              Xem đơn nhập của phiếu #{importRequestData?.importRequestId}
+              Xem đơn của phiếu #{importRequestData?.importRequestId}
             </Button>
           )}
           {(isAbleToCreateImportOrder === true || isImportOrderCreationExpired) && (
@@ -565,7 +545,7 @@ const ImportRequestDetail: React.FC = () => {
             >
               {isImportOrderCreationExpired
                 ? "Đã hết hạn tạo đơn nhập"
-                : `Tạo đơn nhập cho phiếu #${importRequestData?.importRequestId}`
+                : `Tạo đơn cho phiếu #${importRequestData?.importRequestId}`
               }
             </Button>
           )}

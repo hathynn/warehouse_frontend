@@ -533,9 +533,10 @@ const ImportOrderCreate = () => {
             style: { textAlign: 'center' as const }
           }),
           render: (value: number, record: ImportOrderDetailRow) => {
+            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
             return (
               <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {record?.measurementUnit || '-'}
+                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {mappedItem?.measurementUnit || '-'}
               </div>
             );
           },
@@ -666,6 +667,7 @@ const ImportOrderCreate = () => {
             <EditableImportOrderTableSection
               loading={itemLoading || importOrderDetailLoading}
               data={editableRows}
+              relatedItemsData={itemsData}
               onChange={setEditableRows}
               title="Danh sách hàng hóa cần nhập"
               emptyText="Chưa có dữ liệu từ file Excel"

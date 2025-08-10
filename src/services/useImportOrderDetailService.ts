@@ -8,8 +8,11 @@ export interface ImportOrderDetailResponse {
   importOrderId: string;
   itemId: number;
   itemName: string;
+  inventoryItemId: string;
   expectQuantity: number;
+  expectMeasurementValue: number;
   actualQuantity: number;
+  actualMeasurementValue: number;
   status: string;
 }
 
