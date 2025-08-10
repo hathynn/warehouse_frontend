@@ -881,7 +881,7 @@ const ExcelDataTable = ({
         rowKey={(record) => String(record?.itemId)}
         pagination={pagination.total > pagination.pageSize ? pagination : false}
         onChange={onPaginationChange}
-        rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
+        rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
         components={{
           body: {
             row: ({ children, ...restProps }) => (

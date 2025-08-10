@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Table } from "antd";
 import PropTypes from "prop-types";
 import { InfoCircleFilled } from "@ant-design/icons";
@@ -11,100 +11,13 @@ const ExcelDataTable = ({
   pagination,
   onPaginationChange,
   setPagination,
-  onRemovedItemsNotification,
 }) => {
-  const [originalData, setOriginalData] = useState([]);
-  const [hasProcessed, setHasProcessed] = useState(false);
-  const [removedItems, setRemovedItems] = useState([]);
-  const [persistentRemovedItems, setPersistentRemovedItems] = useState([]);
-  const [showRemovedItemsWarning, setShowRemovedItemsWarning] = useState(true);
-
   // Reset states when data changes completely
   useEffect(() => {
-    setHasProcessed(false);
-    setOriginalData([]);
-    setPersistentRemovedItems([]);
     if (onTableErrorChange) {
       onTableErrorChange(false);
     }
   }, [onTableErrorChange]);
-
-  // Process data to remove items with zero stock
-  useEffect(() => {
-    if (!items || items.length === 0 || !data || data.length === 0) return;
-
-    // Reset when data changes completely
-    if (JSON.stringify(data) !== JSON.stringify(originalData)) {
-      setOriginalData(data);
-      setHasProcessed(false);
-    }
-
-    if (!hasProcessed) {
-      const timeoutId = setTimeout(() => {
-        const itemsToRemove = [];
-        const itemsToKeep = [];
-
-        data.forEach((item) => {
-          const itemMeta = items.find(
-            (i) => String(i.id) === String(item.itemId)
-          );
-          const stockQuantity = itemMeta?.quantity ?? 0;
-
-          // Remove items with zero stock quantity
-          if (stockQuantity === 0) {
-            itemsToRemove.push({
-              itemId: item.itemId,
-              itemName:
-                item.itemName || itemMeta?.name || `Item ${item.itemId}`,
-              unitType: item.unitType || itemMeta?.unitType || "",
-              measurementUnit:
-                item.measurementUnit || itemMeta?.measurementUnit || "",
-            });
-          } else {
-            itemsToKeep.push(item);
-          }
-        });
-
-        setRemovedItems(itemsToRemove);
-        if (itemsToRemove.length > 0) {
-          setPersistentRemovedItems(itemsToRemove);
-        }
-
-        if (itemsToRemove.length > 0) {
-          onDataChange(itemsToKeep);
-          if (onRemovedItemsNotification) {
-            onRemovedItemsNotification(itemsToRemove);
-          }
-        }
-
-        setHasProcessed(true);
-      }, 100);
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [
-    data,
-    items,
-    hasProcessed,
-    originalData,
-    onDataChange,
-    onRemovedItemsNotification,
-  ]);
-
-  // Reset removed items when no data
-  useEffect(() => {
-    if (!data || data.length === 0) {
-      setRemovedItems([]);
-      setPersistentRemovedItems([]);
-    }
-  }, [data?.length]);
-
-  // Reset warning visibility when new persistent removed items
-  useEffect(() => {
-    if (persistentRemovedItems.length > 0) {
-      setShowRemovedItemsWarning(true);
-    }
-  }, [persistentRemovedItems.length]);
 
   const columns = [
     {
@@ -204,159 +117,6 @@ const ExcelDataTable = ({
         <div style={{ marginTop: 4 }}>
           Tổng số mặt hàng yêu cầu kiểm kho: {data.length}
         </div>
-
-        {/* Thông báo sản phẩm bị loại bỏ */}
-        {persistentRemovedItems.length > 0 && showRemovedItemsWarning && (
-          <div
-            style={{
-              marginTop: 12,
-              padding: 16,
-              backgroundColor: "#fef3cd",
-              border: "1px solid #faad14",
-              borderRadius: 8,
-              borderLeft: "4px solid #faad14",
-              position: "relative",
-            }}
-          >
-            <button
-              onClick={() => setShowRemovedItemsWarning(false)}
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                background: "none",
-                border: "none",
-                fontSize: "16px",
-                cursor: "pointer",
-                color: "#ad6800",
-                padding: "4px",
-                borderRadius: "50%",
-                width: "24px",
-                height: "24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = "#f0f0f0";
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = "transparent";
-              }}
-              title="Đóng thông báo"
-            >
-              ×
-            </button>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: 5,
-                paddingRight: 30,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  color: "#ad6800",
-                }}
-              >
-                Sản phẩm bị loại bỏ khỏi danh sách cần kiểm kho
-              </div>
-              <div
-                style={{
-                  marginLeft: 8,
-                  backgroundColor: "#faad14",
-                  color: "white",
-                  padding: "2px 8px",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                }}
-              >
-                {persistentRemovedItems.length}
-              </div>
-            </div>
-
-            <div
-              style={{
-                color: "#ad6800",
-                fontSize: "13px",
-                lineHeight: "1.5",
-                marginBottom: 8,
-              }}
-            >
-              Các sản phẩm sau không có hàng tồn kho để kiểm kê:
-            </div>
-
-            <div
-              style={{
-                backgroundColor: "#fff",
-                border: "1px solid #faad14",
-                borderRadius: 6,
-                padding: 12,
-                maxHeight: "8rem",
-                overflowY: "auto",
-              }}
-            >
-              {persistentRemovedItems.map((item, index) => (
-                <div
-                  key={`${item.itemId}-${index}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "6px 0",
-                    borderBottom:
-                      index < persistentRemovedItems.length - 1
-                        ? "1px solid #f0f0f0"
-                        : "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 6,
-                      height: 6,
-                      backgroundColor: "#faad14",
-                      borderRadius: "50%",
-                      marginRight: 10,
-                    }}
-                  ></div>
-                  <div
-                    style={{
-                      fontWeight: "500",
-                      color: "#262626",
-                      marginRight: 8,
-                      fontSize: "15px",
-                    }}
-                  >
-                    {item.itemId}
-                  </div>
-                  <div
-                    style={{
-                      color: "#595959",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {item.itemName}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div
-              style={{
-                marginTop: 8,
-                fontSize: 14,
-                fontWeight: "600",
-              }}
-            >
-              * Các sản phẩm này đã được tự động loại bỏ khỏi danh sách kiểm kho
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Bảng dữ liệu */}
@@ -366,7 +126,7 @@ const ExcelDataTable = ({
         rowKey={(record) => String(record?.itemId)}
         pagination={pagination.total > pagination.pageSize ? pagination : false}
         onChange={onPaginationChange}
-        rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
+        rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
         components={{
           body: {
             row: ({ children, ...restProps }) => (
@@ -397,7 +157,6 @@ ExcelDataTable.propTypes = {
   pagination: PropTypes.object,
   onPaginationChange: PropTypes.func,
   setPagination: PropTypes.func,
-  onRemovedItemsNotification: PropTypes.func,
 };
 
 export default ExcelDataTable;
