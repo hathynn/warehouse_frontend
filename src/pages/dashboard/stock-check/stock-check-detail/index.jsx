@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -22,6 +23,7 @@ import { AccountRole } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
 import AssignStockCheckStaffModal from "@/components/stock-check-flow/stock-check-detail/AssignStockCheckStaffModal";
 import StockCheckConfirmationModal from "@/components/stock-check-flow/stock-check-detail/StockCheckConfirmationModal";
+import StockCheckDetailsTable from "@/components/stock-check-flow/stock-check-detail/StockCheckDetailsTable";
 
 //Services import
 import useStockCheckService from "@/services/useStockCheckService";
@@ -29,7 +31,7 @@ import useStockCheckDetailService from "@/services/useStockCheckDetailService";
 import useAccountService from "@/services/useAccountService";
 import useItemService from "@/services/useItemService";
 import useConfigurationService from "@/services/useConfigurationService";
-import { useSelector } from "react-redux";
+import useInventoryItemService from "@/services/useInventoryItemService";
 
 const enrichDetailsWithLocalData = (details, itemsData) => {
   return details.map((detail) => {
@@ -68,6 +70,7 @@ const StockCheckRequestDetail = () => {
   const { findAccountById, getActiveStaffsInDay } = useAccountService();
   const { getItems } = useItemService();
   const { getConfiguration } = useConfigurationService();
+  const { getAllInventoryItems } = useInventoryItemService();
 
   // States
   const [stockCheckRequest, setStockCheckRequest] = useState(null);
@@ -97,7 +100,9 @@ const StockCheckRequestDetail = () => {
   // Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState(null);
-  const [inventoryItems, setInventoryItems] = useState([]);
+  const [modalInventoryItems, setModalInventoryItems] = useState([]); // Used for modal detail
+  const [allInventoryItems, setAllInventoryItems] = useState([]); // Used for getAllInventoryItems API
+  const [inventoryItemsLoading, setInventoryItemsLoading] = useState(true);
   const [checkedInventoryItems, setCheckedInventoryItems] = useState([]);
   const [inventorySearchText, setInventorySearchText] = useState("");
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -144,6 +149,19 @@ const StockCheckRequestDetail = () => {
       message.error("Không thể tải danh sách nhân viên kho");
     } finally {
       setLoadingStaff(false);
+    }
+  };
+
+  const fetchInventoryItems = async () => {
+    setInventoryItemsLoading(true);
+    try {
+      const response = await getAllInventoryItems(1, 9999);
+      setAllInventoryItems(response?.content || []);
+    } catch (error) {
+      console.error("Error loading inventory items:", error);
+      setAllInventoryItems([]);
+    } finally {
+      setInventoryItemsLoading(false);
     }
   };
 
@@ -202,6 +220,10 @@ const StockCheckRequestDetail = () => {
       fetchStockCheckRequest();
     }
   }, [stockCheckId]);
+
+  useEffect(() => {
+    fetchInventoryItems();
+  }, []);
 
   // useEffect cho fetchStockCheckDetails
   useEffect(() => {
@@ -403,15 +425,15 @@ const StockCheckRequestDetail = () => {
         const allInventoryItems = response.inventoryItemIds || [];
         const checkedItems = response.checkedInventoryItemIds || [];
 
-        setInventoryItems(allInventoryItems);
+        setModalInventoryItems(allInventoryItems); // ĐỔI TÊN
         setCheckedInventoryItems(checkedItems);
       } else {
-        setInventoryItems(record.inventoryItemIds || []);
+        setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
         setCheckedInventoryItems([]);
       }
     } catch (error) {
       console.error("Error fetching inventory detail:", error);
-      setInventoryItems(record.inventoryItemIds || []);
+      setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
       setCheckedInventoryItems([]);
     }
 
@@ -420,7 +442,7 @@ const StockCheckRequestDetail = () => {
 
   // Function filter inventory items theo search text
   const getFilteredInventoryItems = () => {
-    const itemsWithIndex = inventoryItems.map((item, originalIndex) => ({
+    const itemsWithIndex = modalInventoryItems.map((item, originalIndex) => ({
       item,
       originalIndex,
     }));
@@ -459,162 +481,6 @@ const StockCheckRequestDetail = () => {
         return type;
     }
   };
-
-  const columns = [
-    {
-      title: "Mã sản phẩm",
-      dataIndex: "itemId",
-      key: "itemId",
-      width: "16%",
-      render: (id, record) => (
-        <div>
-          <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
-          <div className="text-gray-500 mt-1" style={{ fontSize: "12px" }}>
-            (Quy cách chuẩn: {record.standardMeasurementValue || "-"}{" "}
-            {record.measurementUnit || ""}/{record.unitType || ""})
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Số lượng cần kiểm",
-      dataIndex: "quantity",
-      key: "quantity",
-      width: "13%",
-      align: "center",
-      render: (text, record) => (
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
-          {record.unitType && (
-            <span className="text-gray-500">{record.unitType}</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: "Số lượng đã kiểm",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      width: "13%",
-      align: "center",
-      render: (text, record) => {
-        const isLacking = text < record.quantity;
-        const isExcess = text > record.quantity;
-
-        return (
-          <div style={{ textAlign: "center" }}>
-            <span
-              className={
-                isLacking
-                  ? "text-red-600 font-semibold"
-                  : isExcess
-                  ? "text-orange-600 font-semibold"
-                  : "text-green-600 font-semibold"
-              }
-              style={{ fontSize: "18px" }}
-            >
-              {text}
-            </span>{" "}
-            {record.unitType && (
-              <span className="text-gray-500">{record.unitType}</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Tổng giá trị đo lường",
-      dataIndex: "measurementValue", // Đây là giá trị cần kiểm từ stock check detail
-      key: "measurementValue",
-      width: "13%",
-      align: "center",
-      render: (text, record) => (
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
-          {record.measurementUnit && (
-            <span className="text-gray-500">{record.measurementUnit}</span>
-          )}
-        </div>
-      ),
-    },
-
-    {
-      title: "Tổng giá trị đã kiểm",
-      dataIndex: "actualMeasurementValue",
-      key: "actualMeasurementValue",
-      width: "18%",
-      align: "center",
-      render: (text, record) => {
-        const isLacking = text < record.measurementValue;
-        const isExcess = text > record.measurementValue;
-
-        return (
-          <div style={{ textAlign: "center" }}>
-            <span
-              className={
-                isLacking
-                  ? "text-red-600 font-semibold"
-                  : isExcess
-                  ? "text-orange-600 font-semibold"
-                  : "text-green-600 font-semibold"
-              }
-              style={{ fontSize: "18px" }}
-            >
-              {text}
-            </span>{" "}
-            {record.measurementUnit && (
-              <span className="text-gray-500">{record.measurementUnit}</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: "10%",
-      align: "center",
-      render: (status, record) => {
-        // Nếu status từ API là null hoặc undefined, hiển thị dấu "-"
-        if (!status) {
-          return "-";
-        }
-
-        const statusConfig = {
-          LACK: { color: "error", text: "Thiếu" },
-          MATCH: { color: "success", text: "Đủ" },
-          EXCESS: { color: "warning", text: "Thừa" },
-        };
-
-        const config = statusConfig[status];
-
-        // Nếu status không nằm trong config, hiển thị status gốc
-        if (!config) {
-          return status;
-        }
-
-        return <Tag color={config.color}>{config.text}</Tag>;
-      },
-    },
-    {
-      title: "Chi tiết",
-      key: "detail",
-      width: "7%",
-      align: "center",
-      render: (text, record) => (
-        <Tooltip title="Xem danh sách sản phẩm tồn kho" placement="top">
-          <span
-            className="inline-flex items-center justify-center rounded-full border-2 border-blue-900 text-blue-900 hover:bg-blue-100 hover:border-blue-700 hover:shadow-lg cursor-pointer"
-            style={{ width: 32, height: 32 }}
-            onClick={() => handleViewDetail(record)}
-          >
-            <EyeOutlined style={{ fontSize: 20, fontWeight: 700 }} />
-          </span>
-        </Tooltip>
-      ),
-    },
-  ];
 
   // Inventory items modal columns
   const inventoryColumns = [
@@ -805,23 +671,15 @@ const StockCheckRequestDetail = () => {
         </div>
       </div>
 
-      <Card className="mb-6 mt-4">
-        <Table
-          columns={columns}
-          dataSource={stockCheckDetails}
-          rowKey="id"
-          loading={stockCheckDetailLoading}
-          pagination={{
-            ...pagination,
-            showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50", "100"],
-            showTotal: (total, range) =>
-              `${range[0]}-${range[1]} của ${total} sản phẩm`,
-          }}
-          onChange={handleTableChange}
-          className="[&_.ant-table-cell]:!p-3"
-        />
-      </Card>
+      <StockCheckDetailsTable
+        stockCheckDetails={stockCheckDetails}
+        stockCheckDetailLoading={stockCheckDetailLoading}
+        pagination={pagination}
+        onTableChange={handleTableChange}
+        inventoryItems={allInventoryItems}
+        inventoryItemsLoading={inventoryItemsLoading}
+        getStockCheckDetailByDetailId={getStockCheckDetailByDetailId}
+      />
 
       {/* Inventory Items Detail Modal */}
       <Modal
@@ -829,7 +687,7 @@ const StockCheckRequestDetail = () => {
         onCancel={() => {
           setDetailModalVisible(false);
           setSelectedDetail(null);
-          setInventoryItems([]);
+          setModalInventoryItems([]);
           setCheckedInventoryItems([]);
           setInventorySearchText("");
         }}
@@ -863,7 +721,7 @@ const StockCheckRequestDetail = () => {
             columns={inventoryColumns}
             size="small"
             className="mb-4"
-            rowClassName={(_, index) => (index % 2 === 0 ? "bg-gray-100" : "")}
+            rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
           />
           {getFilteredInventoryItems().length === 0 && (
             <div className="text-center text-gray-500 py-8">

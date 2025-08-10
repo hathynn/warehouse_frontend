@@ -414,12 +414,6 @@ const StockCheckRequestCreate = () => {
     }
   };
 
-  // Thêm function xử lý notification cho items bị loại bỏ
-  const handleRemovedItemsNotification = (removedItems) => {
-    // TODO: Implement notification logic similar to export
-    console.log("Removed items:", removedItems);
-  };
-
   return (
     <div className="container mx-auto p-3 pt-0">
       {!fileConfirmed ? (
@@ -510,7 +504,6 @@ const StockCheckRequestCreate = () => {
                 pagination={pagination}
                 onPaginationChange={handleTablePageChange}
                 setPagination={setPagination}
-                onRemovedItemsNotification={handleRemovedItemsNotification}
               />
             ) : (
               <div className="text-center py-10 text-gray-500">
