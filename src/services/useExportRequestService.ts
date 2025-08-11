@@ -61,6 +61,11 @@ export interface ExportRequestRenewRequest {
   exportRequestId: string;
   items: ExportRequestRenewItem[];
 }
+// Interface cho request body update department
+export interface UpdateDepartmentRequest {
+  exportRequestId: string;
+  departmentId: number;
+}
 
 const useExportRequestService = () => {
   const { callApi, loading } = useApi();
@@ -300,6 +305,27 @@ const useExportRequestService = () => {
     }
   };
 
+  //Update department that will receive the export request
+  const updateExportRequestDepartment = async (
+    requestData: UpdateDepartmentRequest
+  ): Promise<ExportRequestResponse | undefined> => {
+    try {
+      const response = await callApi(
+        "put",
+        "/export-request/update-department",
+        requestData
+      );
+      if (response && response.content) {
+        toast.success("Cập nhật phòng ban thành công");
+      }
+      return response.content;
+    } catch (error) {
+      toast.error("Không thể cập nhật phòng ban");
+      console.error("Error updating export request department:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -314,6 +340,7 @@ const useExportRequestService = () => {
     createExportRequestSelling,
     renewExportRequest,
     createExportRequestReturn,
+    updateExportRequestDepartment,
   };
 };
 
