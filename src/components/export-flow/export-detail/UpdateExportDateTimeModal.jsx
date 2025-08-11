@@ -1,10 +1,23 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Modal, DatePicker, Checkbox, Button, message, Spin } from "antd";
+import {
+  Modal,
+  DatePicker,
+  Checkbox,
+  Button,
+  message,
+  Spin,
+  Select,
+  ConfigProvider,
+} from "antd";
 import dayjs from "dayjs";
 import PropTypes from "prop-types";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import useDepartmentService from "@/services/useDepartmentService";
+import holidaysData from "@/assets/data/holidays-2025.json";
+import "dayjs/locale/vi";
+import locale from "antd/es/date-picker/locale/vi_VN";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -16,14 +29,27 @@ const UpdateExportDateTimeModal = ({
   exportRequest,
   updateExportDateTime,
   updateExportRequestStatus,
+  updateExportRequestDepartment, // THÊM prop này
   loading,
   exportDate,
   getWaitingExportStartTime,
+  departmentInfo, // THÊM prop này
 }) => {
   const [date, setDate] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [remainingTime, setRemainingTime] = useState("");
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [changeDate, setChangeDate] = useState(false);
+
+  // States cho department
+  const [changeDepartment, setChangeDepartment] = useState(false);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState(null);
+  const [departmentSearchText, setDepartmentSearchText] = useState("");
+
+  const { getAllDepartments, loading: departmentLoading } =
+    useDepartmentService();
+  const [departments, setDepartments] = useState([]);
 
   // Tính minDate từ exportDate
   const minDate = exportDate ? dayjs(exportDate) : null;
@@ -48,13 +74,44 @@ const UpdateExportDateTimeModal = ({
     return `${diffHours} tiếng ${diffMins} phút`;
   }, [getWaitingExportStartTime]);
 
+  //Use effects
+  // 1. Load departments when modal opens
+  useEffect(() => {
+    if (open && departments.length === 0) {
+      const loadDepartments = async () => {
+        try {
+          const response = await getAllDepartments(1, 100);
+          if (response && response.content) {
+            setDepartments(response.content);
+          }
+        } catch (error) {
+          console.error("Error loading departments:", error);
+        }
+      };
+      loadDepartments();
+    }
+  }, [open, getAllDepartments, departments.length]);
+
+  // 2. Load blocked dates from holidays data
+  useEffect(() => {
+    try {
+      const allBlockedDates = [
+        ...holidaysData.fixedHolidays.map((h) => h.date),
+        ...holidaysData.lunarHolidays.map((h) => h.date),
+        ...holidaysData.sundays,
+      ];
+      setBlockedDates(allBlockedDates);
+    } catch (error) {
+      console.error("Error loading holidays data:", error);
+    }
+  }, []);
+
+  // 3. Calculate remaining time
   useEffect(() => {
     if (!open) return;
 
-    // Cập nhật ngay lập tức
     setRemainingTime(calculateRemainingTime());
 
-    // Set interval 5 phút = 5 * 60 * 1000 ms
     const interval = setInterval(() => {
       setRemainingTime(calculateRemainingTime());
     }, 5 * 60 * 1000);
@@ -62,24 +119,71 @@ const UpdateExportDateTimeModal = ({
     return () => clearInterval(interval);
   }, [open, calculateRemainingTime]);
 
-  // Set date mặc định là exportDate khi mở modal
+  // 4. Set initial values when modal opens
   useEffect(() => {
     if (open && exportDate) {
       setDate(dayjs(exportDate));
-      setConfirmed(false); // Reset confirmed state
-    }
-  }, [open, exportDate]);
+      setConfirmed(false);
+      setDepartmentSearchText("");
 
-  // Reset states khi đóng modal
+      // Logic theo type
+      if (exportRequest?.type === "INTERNAL") {
+        // INTERNAL: không check gì cả
+        setChangeDepartment(false);
+        setSelectedDepartmentId(null);
+        setChangeDate(false);
+      } else {
+        // Các type khác: chỉ check đổi ngày, disable checkbox
+        setChangeDepartment(false);
+        setSelectedDepartmentId(null);
+        setChangeDate(true); // Tự động check
+      }
+    }
+  }, [open, exportDate, exportRequest?.type]);
+
+  // 5. Reset states when modal closes
   useEffect(() => {
     if (!open) {
       setDate(null);
       setConfirmed(false);
       setSubmitting(false);
+      setChangeDepartment(false);
+      setSelectedDepartmentId(null);
+      setDepartmentSearchText("");
+      setChangeDate(false);
     }
   }, [open]);
 
+  const isDateBlocked = (date) => {
+    const dateString = dayjs(date).format("YYYY-MM-DD");
+    return blockedDates.includes(dateString);
+  };
+
   const handleOk = async () => {
+    // Nếu không tick đổi ngày thì chỉ cập nhật department
+    if (!changeDate) {
+      // Nếu có đổi phòng ban thì cập nhật department
+      if (changeDepartment && selectedDepartmentId) {
+        setSubmitting(true);
+        try {
+          await updateExportRequestDepartment({
+            exportRequestId: String(exportRequest.exportRequestId),
+            departmentId: selectedDepartmentId,
+          });
+          message.success("Đã cập nhật phòng ban thành công!");
+          onSuccess && onSuccess();
+        } catch (e) {
+          // Lỗi đã được handle ở hook
+        } finally {
+          setSubmitting(false);
+        }
+      } else {
+        message.warning("Không có thay đổi nào để cập nhật.");
+      }
+      return;
+    }
+
+    // Logic cũ cho việc cập nhật ngày
     if (!date) {
       message.warning("Vui lòng nhập ngày xuất.");
       return;
@@ -95,12 +199,32 @@ const UpdateExportDateTimeModal = ({
       return;
     }
 
+    // Kiểm tra nếu tick đổi phòng ban nhưng không chọn phòng ban khác
+    if (
+      changeDepartment &&
+      (!selectedDepartmentId ||
+        selectedDepartmentId === exportRequest.departmentId)
+    ) {
+      message.warning("Vui lòng chọn phòng ban khác để đổi.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Cập nhật ngày xuất
       await updateExportDateTime(String(exportRequest.exportRequestId), {
         date: date.format("YYYY-MM-DD"),
       });
-      message.success("Đã cập nhật ngày khách nhận hàng!");
+
+      // Nếu có đổi phòng ban thì cập nhật department
+      if (changeDepartment && selectedDepartmentId) {
+        await updateExportRequestDepartment({
+          exportRequestId: String(exportRequest.exportRequestId),
+          departmentId: selectedDepartmentId,
+        });
+      }
+
+      message.success("Đã cập nhật thông tin thành công!");
       onSuccess && onSuccess();
     } catch (e) {
       // Lỗi đã được handle ở hook
@@ -134,6 +258,17 @@ const UpdateExportDateTimeModal = ({
     }
   };
 
+  // Filter departments based on search text
+  const filteredDepartments = departments.filter(
+    (dept) =>
+      dept.departmentName
+        .toLowerCase()
+        .includes(departmentSearchText.toLowerCase()) ||
+      dept.departmentResponsible
+        .toLowerCase()
+        .includes(departmentSearchText.toLowerCase())
+  );
+
   return (
     <>
       <style>
@@ -147,7 +282,6 @@ const UpdateExportDateTimeModal = ({
       <Modal
         open={open}
         title={
-          // ✅ THÊM: Header nổi bật với background xanh nhạt
           <div className="!bg-blue-50 -mx-6 -mt-4 px-6 py-4 border-b">
             <div
               style={{
@@ -157,7 +291,7 @@ const UpdateExportDateTimeModal = ({
                 marginBottom: 8,
               }}
             >
-              Cập nhật ngày khách nhận hàng
+              Cập nhật thông tin nhận hàng
             </div>
             <div className="flex items-center gap-2 text-black-600">
               <InfoCircleOutlined style={{ fontSize: 16 }} />
@@ -176,16 +310,25 @@ const UpdateExportDateTimeModal = ({
           <Button
             key="submit"
             type="primary"
-            disabled={!confirmed || !date || !minDate || !isValidDate()}
+            disabled={
+              !confirmed ||
+              (!changeDate &&
+                (exportRequest?.type !== "INTERNAL" || !changeDepartment)) ||
+              (changeDate &&
+                (!date || !minDate || !isValidDate() || isDateBlocked(date))) ||
+              (exportRequest?.type === "INTERNAL" &&
+                changeDepartment &&
+                (!selectedDepartmentId ||
+                  selectedDepartmentId === exportRequest.departmentId))
+            }
             loading={submitting || loading}
             onClick={handleOk}
           >
             Xác nhận
           </Button>,
         ]}
-        width={480}
+        width={520}
         centered
-        destroyOnClose
       >
         {!minDate ? (
           <div className="flex justify-center items-center py-8">
@@ -194,10 +337,10 @@ const UpdateExportDateTimeModal = ({
         ) : (
           <>
             <div className="mb-4">
-              <div className="mb-2">
+              <div className="mb-1">
                 <b>Phiếu xuất:</b> #{exportRequest.exportRequestId}
               </div>
-              <div className="mb-2">
+              <div className="mb-1">
                 <b>Loại xuất:</b> {getExportTypeText(exportRequest.type)}
               </div>
               <div>
@@ -206,42 +349,199 @@ const UpdateExportDateTimeModal = ({
               </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block mb-2">
-                <b>Ngày khách nhận hàng:</b>
-              </label>
-              <DatePicker
-                value={date}
-                onChange={setDate}
-                style={{ width: "100%" }}
-                placeholder="Chọn ngày"
-                format="DD/MM/YYYY"
-                disabledDate={(current) => {
-                  if (!current) return false;
-                  const today = dayjs().startOf("day");
+            <div className="mb-5">
+              <div className="mb-3">
+                <div className="mb-3 flex items-center justify-end gap-2">
+                  <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                    Đổi ngày khách nhận hàng
+                  </span>
+                  <Checkbox
+                    checked={changeDate}
+                    disabled={exportRequest?.type !== "INTERNAL"} // Disable nếu không phải INTERNAL
+                    onChange={(e) => {
+                      if (exportRequest?.type === "INTERNAL") {
+                        // Chỉ cho phép thay đổi nếu là INTERNAL
+                        setChangeDate(e.target.checked);
+                        if (!e.target.checked) {
+                          setDate(dayjs(exportDate));
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
 
-                  // Disable ngày trong quá khứ và ngày xuất hiện tại
-                  return current.isBefore(today, "day");
-                }}
-              />
-              {date &&
+              <label
+                className="block mb-2"
+                style={{ fontWeight: 600, fontSize: "14px" }}
+              >
+                Ngày khách nhận hàng:
+              </label>
+              <ConfigProvider>
+                <DatePicker
+                  locale={locale}
+                  value={date}
+                  onChange={setDate}
+                  style={{ width: "100%", height: "40px" }}
+                  placeholder="Chọn ngày"
+                  format="DD/MM/YYYY"
+                  disabled={!changeDate}
+                  disabledDate={(current) => {
+                    if (!current) return false;
+                    const today = dayjs().startOf("day");
+                    const currentExportDate = dayjs(exportDate).startOf("day");
+
+                    return (
+                      current.isBefore(today, "day") ||
+                      current.isSame(currentExportDate, "day") ||
+                      isDateBlocked(current)
+                    );
+                  }}
+                />
+              </ConfigProvider>
+              {changeDate &&
+                date &&
                 (date.isBefore(dayjs(), "day") ||
-                  date.isSame(dayjs(exportDate), "day")) && (
-                  <div className="text-red-500 text-sm mt-1">
-                    Vui lòng chọn ngày từ hôm nay trở đi và khác ngày xuất hiện
-                    tại
+                  date.isSame(dayjs(exportDate), "day") ||
+                  isDateBlocked(date)) && (
+                  <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                    <span>⚠️</span>
+                    <span>
+                      {isDateBlocked(date)
+                        ? "Không thể chọn ngày lễ/cuối tuần"
+                        : "Vui lòng chọn ngày từ hôm nay trở đi và khác ngày xuất hiện tại"}
+                    </span>
                   </div>
                 )}
             </div>
+
+            {/* PHẦN MỚI: Department Section */}
+            {exportRequest?.type === "INTERNAL" && (
+              <div className="mb-6">
+                <div className="mb-3">
+                  <div className="mb-3 flex items-center justify-end gap-2">
+                    <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                      Đổi phòng ban nhận hàng
+                    </span>
+                    <Checkbox
+                      checked={changeDepartment}
+                      onChange={(e) => {
+                        setChangeDepartment(e.target.checked);
+                        if (!e.target.checked) {
+                          setSelectedDepartmentId(null);
+                          setDepartmentSearchText("");
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-2">
+                  <label
+                    className="block mb-2"
+                    style={{ fontWeight: 600, fontSize: "14px" }}
+                  >
+                    Phòng ban nhận hàng:
+                  </label>
+                  <Select
+                    style={{ width: "100%", minHeight: "40px" }}
+                    placeholder="Chọn phòng ban"
+                    disabled={!changeDepartment}
+                    value={
+                      changeDepartment
+                        ? selectedDepartmentId
+                        : departmentInfo?.id
+                    }
+                    onChange={setSelectedDepartmentId}
+                    showSearch
+                    searchValue={departmentSearchText}
+                    onSearch={setDepartmentSearchText}
+                    filterOption={false}
+                    loading={departmentLoading}
+                    optionLabelProp="label"
+                  >
+                    {!changeDepartment && departmentInfo && (
+                      <Select.Option
+                        key={departmentInfo.id}
+                        value={departmentInfo.id}
+                        label={departmentInfo.departmentName}
+                      >
+                        <div className="py-2">
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: "14px",
+                              color: "#1f1f1f",
+                            }}
+                          >
+                            {departmentInfo.departmentName}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "#8c8c8c",
+                              marginTop: "2px",
+                            }}
+                          >
+                            Đại diện: {departmentInfo.departmentResponsible}
+                          </div>
+                        </div>
+                      </Select.Option>
+                    )}
+
+                    {changeDepartment &&
+                      filteredDepartments.map((dept) => (
+                        <Select.Option
+                          key={dept.id}
+                          value={dept.id}
+                          label={dept.departmentName}
+                        >
+                          <div className="py-2">
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                fontSize: "14px",
+                                color: "#1f1f1f",
+                              }}
+                            >
+                              {dept.departmentName}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#8c8c8c",
+                                marginTop: "2px",
+                              }}
+                            >
+                              Đại diện: {dept.departmentResponsible}
+                            </div>
+                          </div>
+                        </Select.Option>
+                      ))}
+                  </Select>
+
+                  {changeDepartment &&
+                    selectedDepartmentId === exportRequest.departmentId && (
+                      <div className="text-red-500 text-sm mt-2 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>Vui lòng chọn phòng ban khác để đổi</span>
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
 
             <div className="mb-2">
               <Checkbox
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
                 disabled={!isValidDate()}
+                style={{ fontSize: "14px", lineHeight: "1.4" }}
               >
-                Tôi đã liên hệ với khách hàng và xác nhận ngày nhận hàng trên là
-                đúng.
+                <span style={{ fontWeight: 500 }}>
+                  Tôi đã liên hệ với khách hàng và xác nhận thông tin trên là
+                  đúng.
+                </span>
               </Checkbox>
             </div>
           </>
@@ -259,12 +559,19 @@ UpdateExportDateTimeModal.propTypes = {
     exportRequestId: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
       .isRequired,
     type: PropTypes.string.isRequired,
+    departmentId: PropTypes.number,
   }).isRequired,
   updateExportDateTime: PropTypes.func.isRequired,
   updateExportRequestStatus: PropTypes.func.isRequired,
+  updateExportRequestDepartment: PropTypes.func.isRequired, // THÊM prop type
   loading: PropTypes.bool,
   exportDate: PropTypes.string.isRequired,
   getWaitingExportStartTime: PropTypes.func.isRequired,
+  departmentInfo: PropTypes.shape({
+    id: PropTypes.number,
+    departmentName: PropTypes.string,
+    departmentResponsible: PropTypes.string,
+  }), // THÊM prop type
 };
 
 export default UpdateExportDateTimeModal;

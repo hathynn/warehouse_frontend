@@ -70,6 +70,7 @@ const ExportRequestDetail = () => {
     assignConfirmimgStaff,
     renewExportRequest,
     confirmCountedExportRequest,
+    updateExportRequestDepartment,
     loading: exportRequestLoading,
   } = useExportRequestService();
   const { getExportRequestDetails, loading: exportRequestDetailLoading } =
@@ -693,27 +694,10 @@ const ExportRequestDetail = () => {
     return now.getTime() - startTime.getTime() <= threeHoursMs;
   };
 
-  const getRemainingUpdateTime = () => {
-    const startTime = getWaitingExportStartTime();
-    if (!startTime) {
-      return "Không xác định";
-    }
-
-    const now = new Date();
-    const threeHoursMs = 3 * 60 * 60 * 1000;
-    const deadline = new Date(startTime.getTime() + threeHoursMs);
-
-    const diffMs = deadline.getTime() - now.getTime();
-    if (diffMs <= 0) return "Đã hết hạn";
-
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffMins = diffMinutes % 60;
-
-    return `${diffHours} tiếng ${diffMins} phút`;
-  };
-
-  const ITEM_STATUS_SHOW_STATUSES = [ExportStatus.COUNT_CONFIRMED];
+  const ITEM_STATUS_SHOW_STATUSES = [
+    ExportStatus.COUNT_CONFIRMED,
+    ExportStatus.WAITING_EXPORT,
+  ];
 
   const getItemStatus = () => {
     if (!allExportRequestDetails || allExportRequestDetails.length === 0)
@@ -778,7 +762,14 @@ const ExportRequestDetail = () => {
           {assignedKeeper?.fullName || "-"}
         </Descriptions.Item>,
         <Descriptions.Item label="Người nhận hàng" key="receiverName">
-          {exportRequest.receiverName || "-"}
+          {exportRequest.type === "INTERNAL" ? (
+            <>
+              {exportRequest.receiverName || "-"} (
+              <strong>{departmentInfo?.departmentName || ""}</strong>)
+            </>
+          ) : (
+            exportRequest.receiverName || "-"
+          )}
         </Descriptions.Item>,
         <Descriptions.Item label="SĐT người nhận hàng" key="receiverPhone">
           {exportRequest.receiverPhone || "-"}
@@ -842,7 +833,7 @@ const ExportRequestDetail = () => {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: "18%",
+      width: "20%",
       render: (id, record) => (
         <div>
           <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
@@ -1112,7 +1103,7 @@ const ExportRequestDetail = () => {
             </Button>
           )}
 
-        {/* Nút cập nhật ngày khách nhận hàng */}
+        {/* Nút cập nhật thông tin nhận hàng */}
         {userRole === AccountRole.DEPARTMENT &&
           exportRequest?.status === ExportStatus.WAITING_EXPORT &&
           getItemStatus() === "ENOUGH" &&
@@ -1122,7 +1113,7 @@ const ExportRequestDetail = () => {
               className="ml-4"
               onClick={() => setUpdateDateTimeModalOpen(true)}
             >
-              Cập nhật ngày khách nhận hàng
+              Cập nhật thông tin nhận hàng
             </Button>
           )}
         {userRole === AccountRole.DEPARTMENT &&
@@ -1506,9 +1497,11 @@ const ExportRequestDetail = () => {
         exportRequest={exportRequest || {}}
         updateExportDateTime={updateExportDateTime}
         updateExportRequestStatus={updateExportRequestStatus}
+        updateExportRequestDepartment={updateExportRequestDepartment} // THÊM
         loading={exportRequestLoading}
         exportDate={exportRequest?.exportDate}
         getWaitingExportStartTime={getWaitingExportStartTime}
+        departmentInfo={departmentInfo} // THÊM
         onSuccess={async () => {
           setUpdateDateTimeModalOpen(false);
           await fetchExportRequestData();
