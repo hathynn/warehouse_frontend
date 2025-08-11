@@ -543,7 +543,6 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                         <>
                           <p>Tổng số mặt hàng: {sortedData.length}</p>
                           <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả dựa trên dữ liệu từ file</p>
-                          <p className="text-orange-500">* Các mặt hàng có cùng mã sản phẩm tồn kho đã được gộp giá trị</p>
                         </>
                       }
                       type="info"
