@@ -9,20 +9,16 @@ import {
   Spin,
   message,
   Modal,
-  Tag,
-  Tooltip,
+  Checkbox,
   Input,
 } from "antd";
-import {
-  ArrowLeftOutlined,
-  EyeOutlined,
-  UserAddOutlined,
-} from "@ant-design/icons";
+import { ArrowLeftOutlined, UserAddOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { AccountRole } from "@/utils/enums";
 import StatusTag from "@/components/commons/StatusTag";
 import AssignStockCheckStaffModal from "@/components/stock-check-flow/stock-check-detail/AssignStockCheckStaffModal";
 import StockCheckConfirmationModal from "@/components/stock-check-flow/stock-check-detail/StockCheckConfirmationModal";
+import CompleteStockCheckModal from "@/components/stock-check-flow/stock-check-detail/CompleteStockCheckModal";
 import StockCheckDetailsTable from "@/components/stock-check-flow/stock-check-detail/StockCheckDetailsTable";
 
 //Services import
@@ -96,6 +92,7 @@ const StockCheckRequestDetail = () => {
   });
   const [allStockCheckDetails, setAllStockCheckDetails] = useState([]);
   const [viewedPages, setViewedPages] = useState(new Set([1]));
+  const [selectedDetailIds, setSelectedDetailIds] = useState([]);
 
   // Modal states
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -240,6 +237,13 @@ const StockCheckRequestDetail = () => {
   }, [stockCheckRequest?.assignedWareHouseKeeperId]);
 
   useEffect(() => {
+    if (allStockCheckDetails.length > 0) {
+      const allIds = allStockCheckDetails.map((detail) => detail.id);
+      setSelectedDetailIds(allIds);
+    }
+  }, [allStockCheckDetails]);
+
+  useEffect(() => {
     const loadItems = async () => {
       setItemsLoading(true);
       try {
@@ -261,13 +265,52 @@ const StockCheckRequestDetail = () => {
     navigate(-1);
   };
 
+  const handleSelectDetail = (detailId, checked) => {
+    if (checked) {
+      setSelectedDetailIds((prev) => [...prev, detailId]);
+    } else {
+      setSelectedDetailIds((prev) => prev.filter((id) => id !== detailId));
+    }
+  };
+
+  const handleSelectAllDetails = (e) => {
+    if (e.target.checked) {
+      const allIds = allStockCheckDetails.map((detail) => detail.id);
+      setSelectedDetailIds(allIds);
+    } else {
+      setSelectedDetailIds([]);
+    }
+  };
+
   const handleCompleteStockCheck = async () => {
+    if (selectedDetailIds.length === 0) {
+      message.warning("Vui lòng chọn ít nhất một chi tiết để hoàn thành");
+      return;
+    }
+
+    // Hiện modal thay vì gọi API trực tiếp
+    setCompleteModalVisible(true);
+    setCompleteModalPagination({
+      current: 1,
+      pageSize: 10,
+      total: 0,
+    });
+    setCompleteViewedPages(new Set([1]));
+    setCompleteChecked(false);
+  };
+
+  const handleConfirmComplete = async () => {
     try {
-      await completeStockCheck(stockCheckId);
+      await completeStockCheck(selectedDetailIds);
       message.success("Đã xác nhận và cập nhật số lượng hàng tồn kho");
 
       await fetchStockCheckRequest();
       fetchStockCheckDetails();
+      setSelectedDetailIds([]); // Reset selection
+      setCompleteModalVisible(false);
+      setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
+      setCompleteViewedPages(new Set([1]));
+      setCompleteChecked(false);
     } catch (error) {
       console.error("Lỗi khi hoàn thành stock check", error);
       message.error("Không thể hoàn thành stock check. Vui lòng thử lại.");
@@ -651,21 +694,14 @@ const StockCheckRequestDetail = () => {
             )}
 
           {userRole === AccountRole.MANAGER &&
-            stockCheckRequest?.status === "CONFIRMED" && (
+            stockCheckRequest?.status === "COUNT_CONFIRMED" && (
               <Button
                 type="primary"
-                onClick={() => {
-                  setCompleteModalVisible(true);
-                  setCompleteModalPagination({
-                    current: 1,
-                    pageSize: 10,
-                    total: 0,
-                  });
-                  setCompleteViewedPages(new Set([1]));
-                  setCompleteChecked(false);
-                }}
+                onClick={handleCompleteStockCheck}
+                disabled={selectedDetailIds.length === 0}
               >
-                Xác nhận và cập nhật kết quả kiểm kê
+                Xác nhận và cập nhật kết quả kiểm kê ({selectedDetailIds.length}{" "}
+                mục đã chọn)
               </Button>
             )}
         </div>
@@ -679,6 +715,12 @@ const StockCheckRequestDetail = () => {
         inventoryItems={allInventoryItems}
         inventoryItemsLoading={inventoryItemsLoading}
         getStockCheckDetailByDetailId={getStockCheckDetailByDetailId}
+        userRole={userRole}
+        stockCheckStatus={stockCheckRequest?.status}
+        selectedDetailIds={selectedDetailIds}
+        onSelectDetail={handleSelectDetail}
+        onSelectAllDetails={handleSelectAllDetails}
+        allDetailIds={allStockCheckDetails.map((detail) => detail.id)}
       />
 
       {/* Inventory Items Detail Modal */}
@@ -778,31 +820,17 @@ const StockCheckRequestDetail = () => {
       />
 
       {/* Modal xác nhận và cập nhật số lượng hàng */}
-      <StockCheckConfirmationModal
+      <CompleteStockCheckModal
         visible={completeModalVisible}
         onCancel={() => {
           setCompleteModalVisible(false);
-          setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
-          setCompleteViewedPages(new Set([1]));
           setCompleteChecked(false);
         }}
-        onConfirm={async () => {
-          await handleCompleteStockCheck();
-          setCompleteModalVisible(false);
-          setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
-          setCompleteViewedPages(new Set([1]));
-          setCompleteChecked(false);
-        }}
-        title="Xác nhận và cập nhật số lượng hàng tồn kho"
-        checkboxText="Tôi xác nhận các thông tin về sản phẩm đã được kiểm kê và đồng ý cập nhật lại số lượng hàng tồn kho."
+        onConfirm={handleConfirmComplete}
         confirmChecked={completeChecked}
         setConfirmChecked={setCompleteChecked}
         allStockCheckDetails={allStockCheckDetails}
-        modalPagination={completeModalPagination}
-        setModalPagination={setCompleteModalPagination}
-        viewedPages={completeViewedPages}
-        setViewedPages={setCompleteViewedPages}
-        hasViewedAllPages={hasViewedAllPagesComplete}
+        selectedDetailIds={selectedDetailIds}
         loading={stockCheckLoading}
       />
     </div>
