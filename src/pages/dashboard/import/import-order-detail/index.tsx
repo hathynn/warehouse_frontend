@@ -95,6 +95,7 @@ const ImportOrderDetail = () => {
     assignStaff,
     cancelImportOrder,
     completeImportOrder,
+    completeImportOrderReturn,
     extendImportOrder,
     updateImportOrderToReadyToStore,
     countAgainImportOrder
@@ -373,7 +374,7 @@ const ImportOrderDetail = () => {
     if (importRequestRelated?.importType === "RETURN") {
       baseColumns.push(
         {
-          width: '30%',
+          width: '25%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
@@ -492,7 +493,7 @@ const ImportOrderDetail = () => {
         importOrderData?.status === ImportStatus.READY_TO_STORE ||
         importOrderData?.status === ImportStatus.STORED ? [
         {
-          width: '20%',
+          width: '15%',
           title: "Vị trí lưu kho",
           key: "currentLocation",
           align: 'center' as const,
@@ -704,17 +705,15 @@ const ImportOrderDetail = () => {
         <div className="flex items-center justify-end gap-4 mt-16 mb-4">
           <>
             {importOrderData?.status === ImportStatus.COMPLETED && (
-              <>
-                <Button
-                  type="primary"
-                  icon={<MdApartment />}
-                  onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
-                >
-                  Xác nhận vị trí lưu kho
-                </Button>
-              </>
+              <Button
+                type="primary"
+                icon={<MdApartment />}
+                onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
+              >
+                Xác nhận vị trí lưu kho
+              </Button>
             )}
-            {importOrderData?.status === ImportStatus.COMPLETED || importOrderData?.status === ImportStatus.READY_TO_STORE || importOrderData?.status === ImportStatus.STORED && (
+            {(importOrderData?.status === ImportStatus.READY_TO_STORE || importOrderData?.status === ImportStatus.STORED) && (
               <Button
                 type="default"
                 className="!text-blue-500 !border-blue-500"
@@ -829,7 +828,11 @@ const ImportOrderDetail = () => {
         onConfirm={async () => {
           setConfirmCountingModalVisible(false);
           if (!importOrderData?.importOrderId) return;
-          await completeImportOrder(importOrderData.importOrderId);
+          if (importRequestRelated?.importType === "RETURN") {
+            await completeImportOrderReturn(importOrderData.importOrderId);
+          } else {
+            await completeImportOrder(importOrderData.importOrderId);
+          }
           await fetchImportOrderData();
           await fetchInventoryItemsData();
         }}

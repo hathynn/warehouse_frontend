@@ -538,7 +538,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                 <Card title={<span className="text-xl font-semibold">Danh sách hàng hóa trả từ file Excel</span>}>
                   {sortedData.length > 0 && (
                     <Alert
-                      message="Thông tin nhập tXác nhận thông tin phiếu nhập trảrả"
+                      message="Thông tin nhập trả"
                       description={
                         <>
                           <p>Tổng số mặt hàng: {sortedData.length}</p>

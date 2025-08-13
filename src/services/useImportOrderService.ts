@@ -134,6 +134,17 @@ const useImportOrderService = () => {
     }
   };
 
+  const completeImportOrderReturn = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
+    try {
+      const response = await callApi("post", `/import-order/complete-return/${importOrderId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể hoàn tất đơn nhập");
+      throw error;
+    }
+  };
+
+
   const cancelImportOrder = async (importOrderId: string): Promise<ResponseDTO<ImportOrderResponse>> => {
     try {
       const response = await callApi("post", `/import-order/cancel/${importOrderId}`);
@@ -183,6 +194,7 @@ const useImportOrderService = () => {
     createImportOrder,
     assignStaff,
     completeImportOrder,
+    completeImportOrderReturn,
     cancelImportOrder,
     extendImportOrder,
     updateImportOrderToReadyToStore,

@@ -284,7 +284,7 @@ const ImportOrderList: React.FC = () => {
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const columns = [
     {
-      width: "16%",
+      width: "19%",
       title: "Mã đơn nhập",
       dataIndex: "importOrderId",
       key: "importOrderId",
