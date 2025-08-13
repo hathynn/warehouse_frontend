@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Table, Card, Tag, Button } from "antd";
+import { Table, Card, Tag, Button, Checkbox } from "antd";
 import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import PropTypes from "prop-types";
+import { AccountRole } from "@/utils/enums";
 
 const StockCheckDetailsTable = ({
   stockCheckDetails,
@@ -11,6 +12,12 @@ const StockCheckDetailsTable = ({
   inventoryItems,
   inventoryItemsLoading,
   getStockCheckDetailByDetailId,
+  userRole,
+  stockCheckStatus,
+  selectedDetailIds,
+  onSelectDetail,
+  onSelectAllDetails,
+  allDetailIds,
 }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [expandedPagination, setExpandedPagination] = useState({});
@@ -281,7 +288,7 @@ const StockCheckDetailsTable = ({
     );
   };
 
-  const columns = [
+  const baseColumns = [
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
@@ -417,6 +424,30 @@ const StockCheckDetailsTable = ({
     },
   ];
 
+  const checkboxColumn = {
+    title: (
+      <Checkbox
+        checked={
+          selectedDetailIds?.length === allDetailIds?.length &&
+          allDetailIds?.length > 0
+        }
+        onChange={onSelectAllDetails}
+      />
+    ),
+    width: "60px",
+    render: (_, record) => (
+      <Checkbox
+        checked={selectedDetailIds?.includes(record.id)}
+        onChange={(e) => onSelectDetail(record.id, e.target.checked)}
+      />
+    ),
+  };
+
+  const columns =
+    userRole === AccountRole.MANAGER && stockCheckStatus === "COUNT_CONFIRMED"
+      ? [checkboxColumn, ...baseColumns]
+      : baseColumns;
+
   return (
     <Card className="mb-6 mt-4">
       <Table
@@ -438,6 +469,7 @@ const StockCheckDetailsTable = ({
           expandedRowKeys,
           onExpand: handleExpand,
           expandedRowRender: renderExpandedRow,
+          expandIconColumnIndex: columns.length,
           expandIcon: ({ expanded, onExpand, record }) => (
             <Button
               type="text"
@@ -470,6 +502,12 @@ StockCheckDetailsTable.propTypes = {
   inventoryItems: PropTypes.array.isRequired,
   inventoryItemsLoading: PropTypes.bool.isRequired,
   getStockCheckDetailByDetailId: PropTypes.func.isRequired,
+  userRole: PropTypes.string,
+  stockCheckStatus: PropTypes.string,
+  selectedDetailIds: PropTypes.array,
+  onSelectDetail: PropTypes.func,
+  onSelectAllDetails: PropTypes.func,
+  allDetailIds: PropTypes.array,
 };
 
 export default StockCheckDetailsTable;
