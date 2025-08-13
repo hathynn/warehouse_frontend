@@ -159,17 +159,22 @@ const useStockCheckService = () => {
   };
 
   const completeStockCheck = async (
-    stockCheckId: string
+    stockCheckRequestDetailIds: number[]
   ): Promise<ResponseDTO<any>> => {
     try {
-      if (!stockCheckId) {
-        throw new Error("Mã phiếu kiểm kho không được để trống");
+      if (
+        !stockCheckRequestDetailIds ||
+        stockCheckRequestDetailIds.length === 0
+      ) {
+        throw new Error(
+          "Danh sách chi tiết phiếu kiểm kho không được để trống"
+        );
       }
 
       const response = await callApi(
         "put",
-        `/stock-check/complete/${stockCheckId}`,
-        {} // request body rỗng vì chỉ có path parameter
+        `/stock-check/complete`,
+        { stockCheckRequestDetailIds } // request body với mảng IDs
       );
 
       if (response) {
