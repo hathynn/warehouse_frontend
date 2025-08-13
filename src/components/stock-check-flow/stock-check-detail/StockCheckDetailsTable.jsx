@@ -397,7 +397,7 @@ const StockCheckDetailsTable = ({
       },
     },
     {
-      title: "Trạng thái",
+      title: "Trạng thái kiểm kê",
       dataIndex: "status",
       key: "status",
       width: "12%",
@@ -408,9 +408,9 @@ const StockCheckDetailsTable = ({
         }
 
         const statusConfig = {
-          LACK: { color: "error", text: "Thiếu" },
-          MATCH: { color: "success", text: "Đủ" },
-          EXCESS: { color: "warning", text: "Thừa" },
+          LACK: { color: "error", text: "Không trùng khớp" },
+          MATCH: { color: "success", text: "Trùng khớp" },
+          EXCESS: { color: "error", text: "Không trùng khớp" },
         };
 
         const config = statusConfig[status];
@@ -423,6 +423,17 @@ const StockCheckDetailsTable = ({
       },
     },
   ];
+
+  const filteredBaseColumns = baseColumns.filter((column) => {
+    if (userRole === AccountRole.WAREHOUSE_MANAGER) {
+      // Hide "Số lượng đã kiểm" and "Tổng giá trị đã kiểm" columns
+      return (
+        column.key !== "actualQuantity" &&
+        column.key !== "actualMeasurementValue"
+      );
+    }
+    return true;
+  });
 
   const checkboxColumn = {
     title: (
@@ -445,8 +456,8 @@ const StockCheckDetailsTable = ({
 
   const columns =
     userRole === AccountRole.MANAGER && stockCheckStatus === "COUNT_CONFIRMED"
-      ? [checkboxColumn, ...baseColumns]
-      : baseColumns;
+      ? [checkboxColumn, ...filteredBaseColumns]
+      : filteredBaseColumns;
 
   return (
     <Card className="mb-6 mt-4">
@@ -465,30 +476,34 @@ const StockCheckDetailsTable = ({
         onChange={onTableChange}
         className="[&_.ant-table-cell]:!p-3"
         rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
-        expandable={{
-          expandedRowKeys,
-          onExpand: handleExpand,
-          expandedRowRender: renderExpandedRow,
-          expandIconColumnIndex: columns.length,
-          expandIcon: ({ expanded, onExpand, record }) => (
-            <Button
-              type="text"
-              size="small"
-              icon={expanded ? <UpOutlined /> : <DownOutlined />}
-              onClick={(e) => onExpand(record, e)}
-              style={{
-                color: "#1677ff",
-                border: "1px solid #1677ff",
-                borderRadius: "50%",
-                width: "28px",
-                height: "28px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            />
-          ),
-        }}
+        expandable={
+          userRole === AccountRole.WAREHOUSE_MANAGER
+            ? undefined
+            : {
+                expandedRowKeys,
+                onExpand: handleExpand,
+                expandedRowRender: renderExpandedRow,
+                expandIconColumnIndex: columns.length,
+                expandIcon: ({ expanded, onExpand, record }) => (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={expanded ? <UpOutlined /> : <DownOutlined />}
+                    onClick={(e) => onExpand(record, e)}
+                    style={{
+                      color: "#1677ff",
+                      border: "1px solid #1677ff",
+                      borderRadius: "50%",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  />
+                ),
+              }
+        }
       />
     </Card>
   );

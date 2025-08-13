@@ -162,7 +162,7 @@ const CompleteStockCheckModal = ({
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
-      width: 100,
+      width: 150,
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
@@ -173,11 +173,15 @@ const CompleteStockCheckModal = ({
               status === "LACK"
                 ? "error"
                 : status === "EXCESS"
-                ? "warning"
+                ? "error"
                 : "success"
             }
           >
-            {status === "LACK" ? "Thiếu" : status === "EXCESS" ? "Thừa" : "Đủ"}
+            {status === "LACK"
+              ? "Không trùng khớp"
+              : status === "EXCESS"
+              ? "Không trùng khớp"
+              : "Trùng khớp"}
           </Tag>
         </div>
       ),
@@ -206,7 +210,7 @@ const CompleteStockCheckModal = ({
       }
       okText="Xác nhận"
       cancelText="Quay lại"
-      width={1200}
+      width={1100}
       centered
       okButtonProps={{
         disabled: !confirmChecked || !hasViewedAllPages(),
