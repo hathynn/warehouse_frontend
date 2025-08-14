@@ -495,17 +495,19 @@ const StockCheckDetailsTable = ({
   ];
 
   const filteredBaseColumns = baseColumns.filter((column) => {
-    if (userRole === AccountRole.WAREHOUSE_MANAGER) {
-      // Hide "Số lượng đã kiểm" and "Tổng giá trị đã kiểm" columns
-      return (
-        column.key !== "actualQuantity" &&
-        column.key !== "actualMeasurementValue"
-      );
-    }
-
-    // Chỉ hiện cột "Được duyệt" khi status là COMPLETED
+    // Chỉ hiện cột "Được duyệt" khi status là COMPLETED (áp dụng cho tất cả role)
     if (column.key === "isChecked" && stockCheckStatus !== "COMPLETED") {
       return false;
+    }
+
+    if (userRole === AccountRole.WAREHOUSE_MANAGER) {
+      // Hide "Số lượng đã kiểm" and "Tổng giá trị đã kiểm" columns
+      if (
+        column.key === "actualQuantity" ||
+        column.key === "actualMeasurementValue"
+      ) {
+        return false;
+      }
     }
 
     return true;
