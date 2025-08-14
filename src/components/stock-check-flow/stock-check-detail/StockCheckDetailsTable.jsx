@@ -250,27 +250,32 @@ const StockCheckDetailsTable = ({
           </Tag>
         ),
       },
-      {
-        title: "Trạng thái hàng",
-        dataIndex: "status",
-        key: "status",
-        width: "17.5%",
-        align: "center",
-        render: (status) => {
-          const statusConfig = {
-            AVAILABLE: { color: "success", text: "Có sẵn" },
-            UNAVAILABLE: { color: "error", text: "Không có sẵn" },
-            NEED_LIQUID: { color: "warning", text: "Thanh lý" },
-          };
+      // Chỉ hiện cột "Trạng thái hàng" khi status KHÔNG phải COMPLETED
+      ...(stockCheckStatus !== "COMPLETED"
+        ? [
+            {
+              title: "Trạng thái hàng",
+              dataIndex: "status",
+              key: "status",
+              width: "17.5%",
+              align: "center",
+              render: (status) => {
+                const statusConfig = {
+                  AVAILABLE: { color: "success", text: "Có sẵn" },
+                  UNAVAILABLE: { color: "error", text: "Không có sẵn" },
+                  NEED_LIQUID: { color: "warning", text: "Thanh lý" },
+                };
 
-          const config = statusConfig[status] || {
-            color: "default",
-            text: status,
-          };
+                const config = statusConfig[status] || {
+                  color: "default",
+                  text: status,
+                };
 
-          return <Tag color={config.color}>{config.text}</Tag>;
-        },
-      },
+                return <Tag color={config.color}>{config.text}</Tag>;
+              },
+            },
+          ]
+        : []),
     ];
 
     return (
