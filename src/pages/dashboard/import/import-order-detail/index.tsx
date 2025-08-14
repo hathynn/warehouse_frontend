@@ -376,7 +376,7 @@ const ImportOrderDetail = () => {
     if (importRequestRelated?.importType === "RETURN") {
       baseColumns.push(
         {
-          width: '25%',
+          width: '20%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
@@ -387,7 +387,7 @@ const ImportOrderDetail = () => {
           render: (id: number) => `#${id}`,
         },
         {
-          width: '20%',
+          width: '15%',
           title: "Tên sản phẩm",
           dataIndex: "itemName",
           key: "itemName",

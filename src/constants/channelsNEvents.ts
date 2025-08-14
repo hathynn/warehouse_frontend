@@ -20,6 +20,9 @@ export const IMPORT_ORDER_CONFIRMED_EVENT = 'import-order-confirmed';
 export const IMPORT_ORDER_CANCELLED_EVENT = 'import-order-cancelled';
 export const IMPORT_ORDER_EXTENDED_EVENT = 'import-order-extended';
 export const IMPORT_ORDER_COMPLETED_EVENT = 'import-order-completed';
+export const IMPORT_ORDER_STORED_EVENT = 'import-order-stored';
+export const IMPORT_ORDER_READY_TO_STORE_EVENT = 'import-order-ready-to-store';
+
 export const EXPORT_REQUEST_CREATED_EVENT = 'export-request-created';
 export const EXPORT_REQUEST_COUNTED_EVENT = 'export-request-counted';
 export const EXPORT_REQUEST_CONFIRMED_EVENT = 'export-request-confirmed';
