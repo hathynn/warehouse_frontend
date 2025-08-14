@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -18,8 +19,10 @@ import useProviderService from "@/services/useProviderService";
 import useInventoryItemService, {
   ItemStatus,
 } from "@/services/useInventoryItemService";
+import { AccountRole } from "@/utils/enums";
 
 const ItemDetail = () => {
+  const userRole = useSelector((state) => state.user.role);
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
@@ -155,6 +158,12 @@ const ItemDetail = () => {
       }));
     }
   }, [inventoryItems, searchTerm]);
+
+  const canViewInventoryInfo = () => {
+    return (
+      userRole === AccountRole.MANAGER || userRole === AccountRole.DEPARTMENT
+    );
+  };
 
   const calculateAvailableQuantity = () => {
     if (!item) return 0;
@@ -338,7 +347,7 @@ const ItemDetail = () => {
             {item.description || "Không có mô tả"}
           </Descriptions.Item>
 
-          <Descriptions.Item label="Giá trị đo lường">
+          <Descriptions.Item label="Giá trị đo lường chuẩn">
             <strong style={{ fontSize: "16px" }}>
               {item.measurementValue || 0}
             </strong>{" "}
@@ -349,31 +358,38 @@ const ItemDetail = () => {
             {category ? category.name : "Không xác định"}
           </Descriptions.Item>
 
-          <Descriptions.Item label="Số lượng tồn kho">
-            <strong style={{ fontSize: "18px" }}>{item.quantity || 0}</strong>{" "}
-            {item.unitType}
-          </Descriptions.Item>
+          {/* Chỉ hiện cho MANAGER và DEPARTMENT */}
+          {canViewInventoryInfo() && (
+            <>
+              <Descriptions.Item label="Số lượng tồn kho">
+                <strong style={{ fontSize: "18px" }}>
+                  {item.quantity || 0}
+                </strong>{" "}
+                {item.unitType}
+              </Descriptions.Item>
 
-          <Descriptions.Item label="Số lượng khả dụng">
-            <strong style={{ fontSize: "18px" }}>
-              {calculateAvailableQuantity()}
-            </strong>{" "}
-            {item.unitType}
-          </Descriptions.Item>
+              <Descriptions.Item label="Số lượng khả dụng">
+                <strong style={{ fontSize: "18px" }}>
+                  {calculateAvailableQuantity()}
+                </strong>{" "}
+                {item.unitType}
+              </Descriptions.Item>
 
-          <Descriptions.Item label="Giá trị tồn kho">
-            <strong style={{ fontSize: "18px" }}>
-              {item.totalMeasurementValue || 0}
-            </strong>{" "}
-            {item.measurementUnit}
-          </Descriptions.Item>
+              <Descriptions.Item label="Giá trị tồn kho">
+                <strong style={{ fontSize: "18px" }}>
+                  {item.totalMeasurementValue || 0}
+                </strong>{" "}
+                {item.measurementUnit}
+              </Descriptions.Item>
 
-          <Descriptions.Item label="Giá trị khả dụng">
-            <strong style={{ fontSize: "18px" }}>
-              {calculateAvailableValue()}
-            </strong>{" "}
-            {item.measurementUnit}
-          </Descriptions.Item>
+              <Descriptions.Item label="Giá trị khả dụng">
+                <strong style={{ fontSize: "18px" }}>
+                  {calculateAvailableValue()}
+                </strong>{" "}
+                {item.measurementUnit}
+              </Descriptions.Item>
+            </>
+          )}
 
           <Descriptions.Item label="Tồn kho tối thiểu">
             <strong style={{ fontSize: "16px" }}>
@@ -395,37 +411,39 @@ const ItemDetail = () => {
         </Descriptions>
       </Card>
 
-      <div className="mt-5">
-        <Card
-          title="Danh sách hàng tồn kho thuộc mặt hàng"
-          className="shadow-lg mt-6"
-        >
-          <div className="mb-4 flex items-center gap-4">
-            <span className="font-medium">Mã sản phẩm:</span>
-            <Input
-              placeholder="Tìm kiếm theo mã sản phẩm..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              style={{ width: 400 }}
-              allowClear
-            />
-          </div>
+      {canViewInventoryInfo() && (
+        <div className="mt-5">
+          <Card
+            title="Danh sách hàng tồn kho thuộc mặt hàng"
+            className="shadow-lg mt-6"
+          >
+            <div className="mb-4 flex items-center gap-4">
+              <span className="font-medium">Mã sản phẩm:</span>
+              <Input
+                placeholder="Tìm kiếm theo mã sản phẩm..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                style={{ width: 400 }}
+                allowClear
+              />
+            </div>
 
-          <Table
-            columns={inventoryColumns}
-            dataSource={filteredInventoryItems}
-            rowKey="id"
-            loading={inventoryLoading}
-            pagination={{
-              ...inventoryPagination,
-              showSizeChanger: false,
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} của ${total} sản phẩm`,
-            }}
-            onChange={handleInventoryTableChange}
-          />
-        </Card>
-      </div>
+            <Table
+              columns={inventoryColumns}
+              dataSource={filteredInventoryItems}
+              rowKey="id"
+              loading={inventoryLoading}
+              pagination={{
+                ...inventoryPagination,
+                showSizeChanger: false,
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} của ${total} sản phẩm`,
+              }}
+              onChange={handleInventoryTableChange}
+            />
+          </Card>
+        </div>
+      )}
 
       {/* Modal hiển thị chi tiết inventory item */}
       <Modal
