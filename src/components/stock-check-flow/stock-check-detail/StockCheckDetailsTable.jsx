@@ -9,8 +9,6 @@ const StockCheckDetailsTable = ({
   stockCheckDetailLoading,
   pagination,
   onTableChange,
-  inventoryItems,
-  inventoryItemsLoading,
   getStockCheckDetailByDetailId,
   userRole,
   stockCheckStatus,
@@ -18,10 +16,12 @@ const StockCheckDetailsTable = ({
   onSelectDetail,
   onSelectAllDetails,
   allDetailIds,
+  getInventoryItemsByItemId,
 }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [expandedPagination, setExpandedPagination] = useState({});
   const [expandedRowData, setExpandedRowData] = useState({});
+  const [recordInventoryItems, setRecordInventoryItems] = useState({});
 
   // Handle expand/collapse
   const handleExpand = async (expanded, record) => {
@@ -29,14 +29,26 @@ const StockCheckDetailsTable = ({
       // Fetch data for this row if not already fetched
       if (!expandedRowData[record.id]) {
         try {
-          const response = await getStockCheckDetailByDetailId(record.id);
-          if (response) {
+          // Gọi API để lấy inventory items by itemId
+          const [detailResponse, inventoryResponse] = await Promise.all([
+            getStockCheckDetailByDetailId(record.id),
+            getInventoryItemsByItemId(record.itemId),
+          ]);
+
+          if (detailResponse && inventoryResponse) {
             setExpandedRowData((prev) => ({
               ...prev,
               [record.id]: {
-                inventoryItemIds: response.inventoryItemIds || [],
-                checkedInventoryItemIds: response.checkedInventoryItemIds || [],
+                inventoryItemIds: detailResponse.inventoryItemIds || [],
+                checkedInventoryItemIds:
+                  detailResponse.checkedInventoryItemIds || [],
               },
+            }));
+
+            // Lưu inventory items cho record này
+            setRecordInventoryItems((prev) => ({
+              ...prev,
+              [record.id]: inventoryResponse.content || [],
             }));
           }
         } catch (error) {
@@ -46,7 +58,6 @@ const StockCheckDetailsTable = ({
 
       setExpandedRowKeys([...expandedRowKeys, record.id]);
 
-      // Initialize pagination for this expanded row
       if (!expandedPagination[record.id]) {
         setExpandedPagination((prev) => ({
           ...prev,
@@ -69,6 +80,8 @@ const StockCheckDetailsTable = ({
   // Render expanded content
   const renderExpandedRow = (record) => {
     const rowData = expandedRowData[record.id];
+    const inventoryItemsData = recordInventoryItems[record.id] || []; // Đổi tên biến này
+
     if (
       !rowData ||
       !rowData.inventoryItemIds ||
@@ -83,14 +96,16 @@ const StockCheckDetailsTable = ({
 
     const { inventoryItemIds, checkedInventoryItemIds } = rowData;
 
-    // Find inventory items that belong to this record's itemId
-    const recordInventoryItems = inventoryItems.filter(
-      (item) =>
-        inventoryItemIds.includes(item.id) && item.itemId === record.itemId
+    // Filter inventory items thuộc về record này
+    const filteredInventoryItems = inventoryItemsData.filter(
+      (
+        item // Đổi tên biến này
+      ) => inventoryItemIds.includes(item.id)
     );
 
     // Sort items by measurementValue first
-    const sortedItems = [...recordInventoryItems].sort((a, b) => {
+    const sortedItems = [...filteredInventoryItems].sort((a, b) => {
+      // Dùng tên mới
       const valA = a.measurementValue || 0;
       const valB = b.measurementValue || 0;
       return valA - valB;
@@ -110,20 +125,20 @@ const StockCheckDetailsTable = ({
     const allTableData = [];
     let groupIndex = 0;
     Object.entries(groupedByMeasurement)
-      .sort(([a], [b]) => Number(a) - Number(b)) // Sort groups by measurement value
+      .sort(([a], [b]) => Number(a) - Number(b))
       .forEach(([measurementValue, items]) => {
         items.forEach((item, index) => {
           allTableData.push({
             key: item.id,
             measurementValue: measurementValue,
             inventoryItemId: item.id,
+            status: item.status, // Thêm status
             isChecked: checkedInventoryItemIds.includes(item.id),
             groupSize: items.length,
             isFirstInGroup: index === 0,
-            // Store original group info for proper rendering
             originalGroupSize: items.length,
             indexInGroup: index,
-            groupIndex: groupIndex, // Add group index for row coloring
+            groupIndex: groupIndex,
           });
         });
         groupIndex++;
@@ -142,12 +157,10 @@ const StockCheckDetailsTable = ({
 
     // Recalculate group spans for current page
     const tableData = paginatedData.map((item, idx) => {
-      // Check if this is the first item of a group on this page
       const isFirstOnPage =
         idx === 0 ||
         paginatedData[idx - 1].measurementValue !== item.measurementValue;
 
-      // Count how many items of this group are on this page
       let groupSizeOnPage = 1;
       if (isFirstOnPage) {
         for (let i = idx + 1; i < paginatedData.length; i++) {
@@ -163,9 +176,8 @@ const StockCheckDetailsTable = ({
         ...item,
         isFirstInGroup: isFirstOnPage,
         groupSize: isFirstOnPage ? groupSizeOnPage : 0,
-        // Keep track of total items in original group for display
         totalInGroup: item.originalGroupSize,
-        groupIndex: item.groupIndex, // Keep group index for row coloring
+        groupIndex: item.groupIndex,
       };
     });
 
@@ -174,7 +186,8 @@ const StockCheckDetailsTable = ({
         title: "Quy cách",
         dataIndex: "measurementValue",
         key: "measurementValue",
-        width: "30%",
+        align: "center",
+        width: "25%",
         render: (value, item) => {
           if (!item.isFirstInGroup)
             return { children: null, props: { rowSpan: 0 } };
@@ -209,7 +222,7 @@ const StockCheckDetailsTable = ({
         title: "Mã sản phẩm tồn kho",
         dataIndex: "inventoryItemId",
         key: "inventoryItemId",
-        width: "50%",
+        width: "40%",
         render: (value) => (
           <div
             style={{
@@ -226,16 +239,37 @@ const StockCheckDetailsTable = ({
         ),
       },
       {
-        title: "Trạng thái",
+        title: "Trạng thái kiểm",
         dataIndex: "isChecked",
         key: "isChecked",
-        width: "20%",
+        width: "17.5%",
         align: "center",
         render: (isChecked) => (
-          <Tag color={isChecked ? "success" : "default"}>
-            {isChecked ? "Đã kiểm" : "Chưa kiểm"}
+          <Tag color={isChecked ? "success" : "error"}>
+            {isChecked ? "Đã kiểm" : "Không tìm thấy"}
           </Tag>
         ),
+      },
+      {
+        title: "Trạng thái hàng",
+        dataIndex: "status",
+        key: "status",
+        width: "17.5%",
+        align: "center",
+        render: (status) => {
+          const statusConfig = {
+            AVAILABLE: { color: "success", text: "Có sẵn" },
+            UNAVAILABLE: { color: "error", text: "Không có sẵn" },
+            NEED_LIQUID: { color: "warning", text: "Thanh lý" },
+          };
+
+          const config = statusConfig[status] || {
+            color: "default",
+            text: status,
+          };
+
+          return <Tag color={config.color}>{config.text}</Tag>;
+        },
       },
     ];
 
@@ -280,7 +314,6 @@ const StockCheckDetailsTable = ({
           style={{ backgroundColor: "white" }}
           bordered
           rowClassName={(record) => {
-            // Alternate background color by group
             return record.groupIndex % 2 === 0 ? "" : "bg-gray-100";
           }}
         />
@@ -289,6 +322,38 @@ const StockCheckDetailsTable = ({
   };
 
   const baseColumns = [
+    {
+      title: "Đã được duyệt",
+      dataIndex: "isChecked",
+      key: "isChecked",
+      width: "10%",
+      align: "center",
+      render: (isChecked) => (
+        <div className="flex justify-center approved-checkbox">
+          <Checkbox
+            checked={isChecked}
+            disabled={true}
+            style={{
+              cursor: "default",
+            }}
+            className={isChecked ? "text-blue-500" : "text-gray-400"}
+          />
+          <style>{`
+        .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner {
+          background-color: #1677ff !important;
+          border-color: #1677ff !important;
+        }
+        .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner::after {
+          border-color: #ffffff !important;
+        }
+        .approved-checkbox .ant-checkbox-disabled .ant-checkbox-inner {
+          background-color: #f5f5f5 !important;
+          border-color: #d9d9d9 !important;
+        }
+      `}</style>
+        </div>
+      ),
+    },
     {
       title: "Mã sản phẩm",
       dataIndex: "itemId",
@@ -432,6 +497,12 @@ const StockCheckDetailsTable = ({
         column.key !== "actualMeasurementValue"
       );
     }
+
+    // Chỉ hiện cột "Được duyệt" khi status là COMPLETED
+    if (column.key === "isChecked" && stockCheckStatus !== "COMPLETED") {
+      return false;
+    }
+
     return true;
   });
 
@@ -439,8 +510,13 @@ const StockCheckDetailsTable = ({
     title: (
       <Checkbox
         checked={
-          selectedDetailIds?.length === allDetailIds?.length &&
-          allDetailIds?.length > 0
+          // Kiểm tra tất cả items có thể chọn được đã được chọn chưa
+          allDetailIds?.every(
+            (id) =>
+              selectedDetailIds?.includes(id) ||
+              stockCheckDetails.find((detail) => detail.id === id)?.status ===
+                "MATCH"
+          ) && allDetailIds?.length > 0
         }
         onChange={onSelectAllDetails}
       />
@@ -448,7 +524,10 @@ const StockCheckDetailsTable = ({
     width: "60px",
     render: (_, record) => (
       <Checkbox
-        checked={selectedDetailIds?.includes(record.id)}
+        checked={
+          selectedDetailIds?.includes(record.id) || record.status === "MATCH"
+        }
+        disabled={record.status === "MATCH"}
         onChange={(e) => onSelectDetail(record.id, e.target.checked)}
       />
     ),
@@ -465,7 +544,7 @@ const StockCheckDetailsTable = ({
         columns={columns}
         dataSource={stockCheckDetails}
         rowKey="id"
-        loading={stockCheckDetailLoading || inventoryItemsLoading}
+        loading={stockCheckDetailLoading}
         pagination={{
           ...pagination,
           showSizeChanger: true,
@@ -514,8 +593,6 @@ StockCheckDetailsTable.propTypes = {
   stockCheckDetailLoading: PropTypes.bool.isRequired,
   pagination: PropTypes.object.isRequired,
   onTableChange: PropTypes.func.isRequired,
-  inventoryItems: PropTypes.array.isRequired,
-  inventoryItemsLoading: PropTypes.bool.isRequired,
   getStockCheckDetailByDetailId: PropTypes.func.isRequired,
   userRole: PropTypes.string,
   stockCheckStatus: PropTypes.string,
@@ -523,6 +600,7 @@ StockCheckDetailsTable.propTypes = {
   onSelectDetail: PropTypes.func,
   onSelectAllDetails: PropTypes.func,
   allDetailIds: PropTypes.array,
+  getInventoryItemsByItemId: PropTypes.func.isRequired,
 };
 
 export default StockCheckDetailsTable;

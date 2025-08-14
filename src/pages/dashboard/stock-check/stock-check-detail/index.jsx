@@ -66,7 +66,7 @@ const StockCheckRequestDetail = () => {
   const { findAccountById, getActiveStaffsInDay } = useAccountService();
   const { getItems } = useItemService();
   const { getConfiguration } = useConfigurationService();
-  const { getAllInventoryItems } = useInventoryItemService();
+  const { getInventoryItemsByItemId } = useInventoryItemService();
 
   // States
   const [stockCheckRequest, setStockCheckRequest] = useState(null);
@@ -98,8 +98,6 @@ const StockCheckRequestDetail = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [modalInventoryItems, setModalInventoryItems] = useState([]); // Used for modal detail
-  const [allInventoryItems, setAllInventoryItems] = useState([]); // Used for getAllInventoryItems API
-  const [inventoryItemsLoading, setInventoryItemsLoading] = useState(true);
   const [checkedInventoryItems, setCheckedInventoryItems] = useState([]);
   const [inventorySearchText, setInventorySearchText] = useState("");
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -149,19 +147,6 @@ const StockCheckRequestDetail = () => {
     }
   };
 
-  const fetchInventoryItems = async () => {
-    setInventoryItemsLoading(true);
-    try {
-      const response = await getAllInventoryItems(1, 9999);
-      setAllInventoryItems(response?.content || []);
-    } catch (error) {
-      console.error("Error loading inventory items:", error);
-      setAllInventoryItems([]);
-    } finally {
-      setInventoryItemsLoading(false);
-    }
-  };
-
   const fetchStockCheckDetails = useCallback(
     async (page = 1, pageSize = 10) => {
       if (!stockCheckId || items.length === 0) return;
@@ -173,13 +158,23 @@ const StockCheckRequestDetail = () => {
           // Enrich data với items info
           const enrichedData = enrichDetailsWithLocalData(response, items);
 
-          // Lưu all data để dùng cho modal
-          setAllStockCheckDetails(enrichedData);
+          // Sort: LACK và EXCESS lên đầu, MATCH xuống cuối
+          const sortedData = enrichedData.sort((a, b) => {
+            // Nếu a là MATCH và b không phải MATCH → a xuống sau
+            if (a.status === "MATCH" && b.status !== "MATCH") return 1;
+            // Nếu b là MATCH và a không phải MATCH → a lên trước
+            if (b.status === "MATCH" && a.status !== "MATCH") return -1;
+            // Các trường hợp khác giữ nguyên thứ tự
+            return 0;
+          });
 
-          // Phân trang cho table chính
+          // Lưu all sorted data để dùng cho modal
+          setAllStockCheckDetails(sortedData);
+
+          // Phân trang cho table chính SAU KHI ĐÃ SORT
           const startIndex = (page - 1) * pageSize;
           const endIndex = startIndex + pageSize;
-          const paginatedData = enrichedData.slice(startIndex, endIndex);
+          const paginatedData = sortedData.slice(startIndex, endIndex);
 
           setStockCheckDetails(paginatedData);
           setPagination({
@@ -218,10 +213,6 @@ const StockCheckRequestDetail = () => {
     }
   }, [stockCheckId]);
 
-  useEffect(() => {
-    fetchInventoryItems();
-  }, []);
-
   // useEffect cho fetchStockCheckDetails
   useEffect(() => {
     if (items.length > 0 && stockCheckId) {
@@ -238,6 +229,7 @@ const StockCheckRequestDetail = () => {
 
   useEffect(() => {
     if (allStockCheckDetails.length > 0) {
+      // Auto select tất cả items, bao gồm cả những item có status MATCH
       const allIds = allStockCheckDetails.map((detail) => detail.id);
       setSelectedDetailIds(allIds);
     }
@@ -265,6 +257,12 @@ const StockCheckRequestDetail = () => {
     navigate(-1);
   };
 
+  const handleCreateNewStockCheck = () => {
+    // Logic để tạo phiếu kiểm kê mới cho sản phẩm không được duyệt
+    console.log("Creating new stock check for unapproved items");
+    // TODO: Implement logic
+  };
+
   const handleSelectDetail = (detailId, checked) => {
     if (checked) {
       setSelectedDetailIds((prev) => [...prev, detailId]);
@@ -278,7 +276,11 @@ const StockCheckRequestDetail = () => {
       const allIds = allStockCheckDetails.map((detail) => detail.id);
       setSelectedDetailIds(allIds);
     } else {
-      setSelectedDetailIds([]);
+      // Khi bỏ chọn "Select All", vẫn giữ lại những item có status MATCH
+      const matchIds = allStockCheckDetails
+        .filter((detail) => detail.status === "MATCH")
+        .map((detail) => detail.id);
+      setSelectedDetailIds(matchIds);
     }
   };
 
@@ -457,33 +459,34 @@ const StockCheckRequestDetail = () => {
     fetchStockCheckDetails(pag.current, pag.pageSize);
   };
 
-  const handleViewDetail = async (record) => {
-    setSelectedDetail(record);
-    setInventorySearchText("");
+  // const handleViewDetail = async (record) => {
+  //   setSelectedDetail(record);
+  //   setInventorySearchText("");
 
-    try {
-      const response = await getStockCheckDetailByDetailId(record.id);
+  //   try {
+  //     const response = await getStockCheckDetailByDetailId(record.id);
 
-      if (response) {
-        const allInventoryItems = response.inventoryItemIds || [];
-        const checkedItems = response.checkedInventoryItemIds || [];
+  //     if (response) {
+  //       const allInventoryItems = response.inventoryItemIds || [];
+  //       const checkedItems = response.checkedInventoryItemIds || [];
 
-        setModalInventoryItems(allInventoryItems); // ĐỔI TÊN
-        setCheckedInventoryItems(checkedItems);
-      } else {
-        setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
-        setCheckedInventoryItems([]);
-      }
-    } catch (error) {
-      console.error("Error fetching inventory detail:", error);
-      setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
-      setCheckedInventoryItems([]);
-    }
+  //       setModalInventoryItems(allInventoryItems); // ĐỔI TÊN
+  //       setCheckedInventoryItems(checkedItems);
+  //     } else {
+  //       setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
+  //       setCheckedInventoryItems([]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching inventory detail:", error);
+  //     setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
+  //     setCheckedInventoryItems([]);
+  //   }
 
-    setDetailModalVisible(true);
-  };
+  //   setDetailModalVisible(true);
+  // };
 
   // Function filter inventory items theo search text
+
   const getFilteredInventoryItems = () => {
     const itemsWithIndex = modalInventoryItems.map((item, originalIndex) => ({
       item,
@@ -506,12 +509,12 @@ const StockCheckRequestDetail = () => {
     return totalPages <= 1 || viewedPages.size >= totalPages;
   };
 
-  const hasViewedAllPagesComplete = () => {
-    const totalPages = Math.ceil(
-      allStockCheckDetails.length / completeModalPagination.pageSize
-    );
-    return totalPages <= 1 || completeViewedPages.size >= totalPages;
-  };
+  // const hasViewedAllPagesComplete = () => {
+  //   const totalPages = Math.ceil(
+  //     allStockCheckDetails.length / completeModalPagination.pageSize
+  //   );
+  //   return totalPages <= 1 || completeViewedPages.size >= totalPages;
+  // };
 
   // Get stock check type text
   const getStockCheckTypeText = (type) => {
@@ -704,6 +707,14 @@ const StockCheckRequestDetail = () => {
                 mục đã chọn)
               </Button>
             )}
+
+          {/* Thêm button mới cho ROLE_DEPARTMENT */}
+          {userRole === AccountRole.DEPARTMENT &&
+            stockCheckRequest?.status === "COMPLETED" && (
+              <Button type="primary" onClick={handleCreateNewStockCheck}>
+                Tạo phiếu kiểm kê mới (cho sản phẩm không được duyệt)
+              </Button>
+            )}
         </div>
       </div>
 
@@ -712,8 +723,7 @@ const StockCheckRequestDetail = () => {
         stockCheckDetailLoading={stockCheckDetailLoading}
         pagination={pagination}
         onTableChange={handleTableChange}
-        inventoryItems={allInventoryItems}
-        inventoryItemsLoading={inventoryItemsLoading}
+        getInventoryItemsByItemId={getInventoryItemsByItemId}
         getStockCheckDetailByDetailId={getStockCheckDetailByDetailId}
         userRole={userRole}
         stockCheckStatus={stockCheckRequest?.status}

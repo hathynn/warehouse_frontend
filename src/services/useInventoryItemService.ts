@@ -208,6 +208,19 @@ const useInventoryItemService = () => {
     }
   };
 
+  // Get inventory items by item ID
+  const getInventoryItemsByItemId = async (
+    itemId: string
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+    try {
+      const response = await callApi("get", `/inventory-item/item/${itemId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy danh sách sản phẩm theo mã sản phẩm");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllInventoryItems,
@@ -219,6 +232,7 @@ const useInventoryItemService = () => {
     updateStoredLocation,
     changeInventoryItemExportDetail,
     autoChangeInventoryItem,
+    getInventoryItemsByItemId,
   };
 };
 
