@@ -9,12 +9,15 @@ import {
   Spin,
   message,
   Modal,
-  Checkbox,
   Input,
 } from "antd";
 import { ArrowLeftOutlined, UserAddOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { AccountRole } from "@/utils/enums";
+import { AccountRole, StockcheckStatus, DetailStatus } from "@/utils/enums";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
+//Components
 import StatusTag from "@/components/commons/StatusTag";
 import AssignStockCheckStaffModal from "@/components/stock-check-flow/stock-check-detail/AssignStockCheckStaffModal";
 import StockCheckConfirmationModal from "@/components/stock-check-flow/stock-check-detail/StockCheckConfirmationModal";
@@ -106,12 +109,6 @@ const StockCheckRequestDetail = () => {
 
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
-  const [completeModalPagination, setCompleteModalPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
-  const [completeViewedPages, setCompleteViewedPages] = useState(new Set([1]));
 
   // Fetch stock check request data
   const fetchStockCheckRequest = useCallback(async () => {
@@ -161,9 +158,17 @@ const StockCheckRequestDetail = () => {
           // Sort: LACK và EXCESS lên đầu, MATCH xuống cuối
           const sortedData = enrichedData.sort((a, b) => {
             // Nếu a là MATCH và b không phải MATCH → a xuống sau
-            if (a.status === "MATCH" && b.status !== "MATCH") return 1;
+            if (
+              a.status === DetailStatus.MATCH &&
+              b.status !== DetailStatus.MATCH
+            )
+              return 1;
             // Nếu b là MATCH và a không phải MATCH → a lên trước
-            if (b.status === "MATCH" && a.status !== "MATCH") return -1;
+            if (
+              b.status === DetailStatus.MATCH &&
+              a.status !== DetailStatus.MATCH
+            )
+              return -1;
             // Các trường hợp khác giữ nguyên thứ tự
             return 0;
           });
@@ -257,10 +262,59 @@ const StockCheckRequestDetail = () => {
     navigate(-1);
   };
 
-  const handleCreateNewStockCheck = () => {
-    // Logic để tạo phiếu kiểm kê mới cho sản phẩm không được duyệt
-    console.log("Creating new stock check for unapproved items");
-    // TODO: Implement logic
+  const handleCreateNewStockCheck = async () => {
+    try {
+      const unapprovedItems = allStockCheckDetails.filter(
+        (detail) => detail?.isChecked === false
+      );
+      const unapprovedItemIds = unapprovedItems.map((item) => item?.itemId);
+
+      const response = await fetch("/template_kiem_kho.xlsx");
+      if (!response.ok) {
+        throw new Error("Không thể tải template");
+      }
+      const arrayBuffer = await response.arrayBuffer();
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(arrayBuffer);
+
+      // Cách 1: Lấy theo index (bắt đầu từ 0)
+      const worksheet = workbook.worksheets[0];
+
+      // Kiểm tra worksheet tồn tại
+      if (!worksheet) {
+        throw new Error("Không tìm thấy worksheet trong template");
+      }
+
+      // Điền data - Sử dụng getCell đúng cách
+      const cellB7 = worksheet.getCell("B7");
+      if (cellB7) {
+        cellB7.value = "Từ file excel được xuất từ phiếu kiểm kê";
+      }
+
+      // Điền danh sách mã sản phẩm
+      unapprovedItemIds.forEach((itemId, index) => {
+        const rowNumber = 10 + index;
+        const cell = worksheet.getCell(`B${rowNumber}`);
+        if (cell) {
+          cell.value = itemId;
+        }
+      });
+
+      // Xuất file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      saveAs(
+        blob,
+        `kiem_kho_chua_duyet_${new Date().toISOString().slice(0, 10)}.xlsx`
+      );
+      message.success("Đã xuất file Excel thành công");
+    } catch (error) {
+      message.error(`Không thể xuất file Excel: ${error.message}`);
+    }
   };
 
   const handleSelectDetail = (detailId, checked) => {
@@ -278,7 +332,7 @@ const StockCheckRequestDetail = () => {
     } else {
       // Khi bỏ chọn "Select All", vẫn giữ lại những item có status MATCH
       const matchIds = allStockCheckDetails
-        .filter((detail) => detail.status === "MATCH")
+        .filter((detail) => detail.status === DetailStatus.MATCH)
         .map((detail) => detail.id);
       setSelectedDetailIds(matchIds);
     }
@@ -292,12 +346,6 @@ const StockCheckRequestDetail = () => {
 
     // Hiện modal thay vì gọi API trực tiếp
     setCompleteModalVisible(true);
-    setCompleteModalPagination({
-      current: 1,
-      pageSize: 10,
-      total: 0,
-    });
-    setCompleteViewedPages(new Set([1]));
     setCompleteChecked(false);
   };
 
@@ -310,8 +358,6 @@ const StockCheckRequestDetail = () => {
       fetchStockCheckDetails();
       setSelectedDetailIds([]); // Reset selection
       setCompleteModalVisible(false);
-      setCompleteModalPagination({ current: 1, pageSize: 10, total: 0 });
-      setCompleteViewedPages(new Set([1]));
       setCompleteChecked(false);
     } catch (error) {
       console.error("Lỗi khi hoàn thành stock check", error);
@@ -367,7 +413,10 @@ const StockCheckRequestDetail = () => {
   // Add function to handle confirm counted state
   const handleConfirmCounted = async () => {
     try {
-      await updateStockCheckStatus(stockCheckId, "COUNT_CONFIRMED");
+      await updateStockCheckStatus(
+        stockCheckId,
+        StockcheckStatus.COUNT_CONFIRMED
+      );
       message.success("Đã xác nhận kiểm kê");
 
       await fetchStockCheckRequest();
@@ -459,32 +508,6 @@ const StockCheckRequestDetail = () => {
     fetchStockCheckDetails(pag.current, pag.pageSize);
   };
 
-  // const handleViewDetail = async (record) => {
-  //   setSelectedDetail(record);
-  //   setInventorySearchText("");
-
-  //   try {
-  //     const response = await getStockCheckDetailByDetailId(record.id);
-
-  //     if (response) {
-  //       const allInventoryItems = response.inventoryItemIds || [];
-  //       const checkedItems = response.checkedInventoryItemIds || [];
-
-  //       setModalInventoryItems(allInventoryItems); // ĐỔI TÊN
-  //       setCheckedInventoryItems(checkedItems);
-  //     } else {
-  //       setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
-  //       setCheckedInventoryItems([]);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching inventory detail:", error);
-  //     setModalInventoryItems(record.inventoryItemIds || []); // ĐỔI TÊN
-  //     setCheckedInventoryItems([]);
-  //   }
-
-  //   setDetailModalVisible(true);
-  // };
-
   // Function filter inventory items theo search text
 
   const getFilteredInventoryItems = () => {
@@ -508,13 +531,6 @@ const StockCheckRequestDetail = () => {
     );
     return totalPages <= 1 || viewedPages.size >= totalPages;
   };
-
-  // const hasViewedAllPagesComplete = () => {
-  //   const totalPages = Math.ceil(
-  //     allStockCheckDetails.length / completeModalPagination.pageSize
-  //   );
-  //   return totalPages <= 1 || completeViewedPages.size >= totalPages;
-  // };
 
   // Get stock check type text
   const getStockCheckTypeText = (type) => {
@@ -573,7 +589,7 @@ const StockCheckRequestDetail = () => {
           Chi tiết phiếu kiểm kho #{stockCheckRequest?.id}
         </h1>
         {userRole === AccountRole.WAREHOUSE_MANAGER &&
-          stockCheckRequest?.status === "IN_PROGRESS" && (
+          stockCheckRequest?.status === StockcheckStatus.IN_PROGRESS && (
             <Button
               type="primary"
               icon={<UserAddOutlined />}
@@ -682,7 +698,7 @@ const StockCheckRequestDetail = () => {
         </h2>
         <div className="flex gap-2">
           {userRole === AccountRole.WAREHOUSE_MANAGER &&
-            stockCheckRequest?.status === "COUNTED" && (
+            stockCheckRequest?.status === StockcheckStatus.COUNTED && (
               <Button
                 type="primary"
                 onClick={() => {
@@ -697,7 +713,7 @@ const StockCheckRequestDetail = () => {
             )}
 
           {userRole === AccountRole.MANAGER &&
-            stockCheckRequest?.status === "COUNT_CONFIRMED" && (
+            stockCheckRequest?.status === StockcheckStatus.COUNT_CONFIRMED && (
               <Button
                 type="primary"
                 onClick={handleCompleteStockCheck}
@@ -710,9 +726,12 @@ const StockCheckRequestDetail = () => {
 
           {/* Thêm button mới cho ROLE_DEPARTMENT */}
           {userRole === AccountRole.DEPARTMENT &&
-            stockCheckRequest?.status === "COMPLETED" && (
+            stockCheckRequest?.status === StockcheckStatus.COMPLETED &&
+            allStockCheckDetails.filter((detail) => detail?.isChecked === false)
+              .length > 0 && ( // Thêm điều kiện này
               <Button type="primary" onClick={handleCreateNewStockCheck}>
-                Tạo phiếu kiểm kê mới (cho sản phẩm không được duyệt)
+                <span className="font-bold">Xuất file Excel</span>
+                (sản phẩm không được duyệt)
               </Button>
             )}
         </div>
