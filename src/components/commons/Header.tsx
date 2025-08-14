@@ -1,5 +1,5 @@
-import { Avatar, Dropdown, Badge, List, Empty, Spin } from 'antd';
-import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined } from '@ant-design/icons';
+import { Avatar, Dropdown, Badge, List, Empty, Spin, Modal, Checkbox } from 'antd';
+import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import React, { useRef, useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/contexts/redux/store';
@@ -34,6 +34,8 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [recentNotification, setRecentNotification] = useState<{ message: string, visible: boolean }>({ message: '', visible: false });
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [confirmDeleteAllResponsibilityChecked, setConfirmDeleteAllResponsibilityChecked] = useState(false);
   const notificationTimerRef = useRef<number | null>(null);
 
   // Add audio context refs for better audio handling
@@ -50,7 +52,8 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     getAllNotifications,
     deleteNotification,
     viewAllNotifications,
-    clickNotification
+    clickNotification,
+    deleteAllNotifications
   } = useNotificationService();
 
   // Use Pusher context for notifications
@@ -200,6 +203,29 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     );
   };
 
+  const handleDeleteAllNotifications = () => {
+    setDropdownVisible(false);
+    setConfirmDeleteAllResponsibilityChecked(false);
+    setIsDeleteAllModalOpen(true);
+  };
+
+  const confirmDeleteAll = async () => {
+    if (!confirmDeleteAllResponsibilityChecked) return;
+
+    await deleteAllNotifications(Number(accountId));
+
+    setNotifications([]);
+    setHasUnreadNotifications(false);
+    setIsDeleteAllModalOpen(false);
+    setConfirmDeleteAllResponsibilityChecked(false);
+    setDropdownVisible(true);
+  };
+
+  const cancelDeleteAll = () => {
+    setIsDeleteAllModalOpen(false);
+    setConfirmDeleteAllResponsibilityChecked(false);
+  };
+
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
@@ -251,8 +277,19 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             }}
             dropdownRender={() => (
               <div className="w-[340px] max-h-[440px] overflow-y-auto bg-white rounded-xl shadow-lg p-0">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-200">
                   <span className="text-base font-bold">Thông báo</span>
+                  {notifications.length > 0 && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAllNotifications();
+                    }}
+                    className="text-sm text-red-800 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md font-medium"
+                    >
+                      Xoá toàn bộ
+                    </button>
+                  )}
                 </div>
 
                 {loading ? (
@@ -275,12 +312,23 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                             <span className={`${item.isClicked ? 'font-normal text-gray-800' : 'font-semibold text-indigo-900'}`}>
                               {item.content}
                             </span>
-                            <span
+                            <button
                               onClick={(e) => handleDeleteNotification(item, e)}
-                              className="ml-2 text-xs text-gray-500 cursor-pointer"
+                              className="ml-2 p-1 text-black hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 flex items-center justify-center w-8 h-8"
+                              title="Xoá thông báo này"
                             >
-                              ✕
-                            </span>
+                              <svg 
+                                width="14" 
+                                height="14" 
+                                viewBox="0 0 24 24" 
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                              >
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                              </svg>
+                            </button>
                           </div>
                           {item.createdDate && (
                             <div className="mt-1 text-xs text-gray-500">
@@ -331,6 +379,39 @@ function Header({ title = "Dashboard" }: HeaderProps) {
           </Dropdown>
         </div>
       </div>
+
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            Xác nhận xoá toàn bộ thông báo
+          </div>
+        }
+        open={isDeleteAllModalOpen}
+        onOk={confirmDeleteAll}
+        onCancel={() => {
+          cancelDeleteAll();
+          setDropdownVisible(true);
+        }}
+        okText="Xoá toàn bộ"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: !confirmDeleteAllResponsibilityChecked }}
+        width={440}
+        confirmLoading={loading}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <p>Bạn có chắc chắn muốn xoá toàn bộ thông báo không?</p>
+          <p className='text-red-900 font-bold'>{notifications.length} thông báo sẽ bị xoá</p>
+        </div>
+        
+        <Checkbox 
+          checked={confirmDeleteAllResponsibilityChecked} 
+          onChange={e => setConfirmDeleteAllResponsibilityChecked(e.target.checked)}
+          style={{ fontSize: 14, fontWeight: "bold" }}
+        >
+          Tôi xác nhận xoá toàn bộ thông báo của mình
+        </Checkbox>
+      </Modal>
     </>
   );
 }

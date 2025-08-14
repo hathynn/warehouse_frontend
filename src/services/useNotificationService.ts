@@ -56,6 +56,21 @@ const useNotificationService = () => {
     }
   };
 
+  const deleteAllNotifications = async (
+    receiverId: number
+  ): Promise<ResponseDTO<NotificationResponse[]>> => {
+    try {
+      const response = await callApi(
+        "delete",
+        `/notification/receiver/${receiverId}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể xóa toàn bộ thông báo");
+      throw error;
+    }
+  };
+
   // Mark all notifications as viewed for a specific account
   const viewAllNotifications = async (
     accountId: number
@@ -94,6 +109,7 @@ const useNotificationService = () => {
     deleteNotification,
     viewAllNotifications,
     clickNotification,
+    deleteAllNotifications,
   };
 };
 
