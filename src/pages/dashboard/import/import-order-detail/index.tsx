@@ -218,7 +218,9 @@ const ImportOrderDetail = () => {
 
   useEffect(() => {
     if (latestNotification) {
-      const isImportOrderEvent = latestNotification.type === `import-order-counted-${importOrderId}`;
+      const isImportOrderEvent = latestNotification.type === `import-order-counted-${importOrderId}` ||
+        latestNotification.type === `import-order-stored-${importOrderId}` ||
+        latestNotification.type === `import-order-ready-to-store-${importOrderId}`;
 
       if (isImportOrderEvent) {
         reloadImportOrderDetail();
