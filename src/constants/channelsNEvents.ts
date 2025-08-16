@@ -36,27 +36,30 @@ export const STOCK_CHECK_COUNTED_EVENT = 'stock-check-counted';
 export const STOCK_CHECK_CONFIRMED_EVENT = 'stock-check-confirmed';
 export const STOCK_CHECK_COMPLETED_EVENT = 'stock-check-completed';
 
-// Static events - events that don't have dynamic IDs
-export const staticAppEvents = [
+// All application events - both static and dynamic
+export const AppEvents = [
+  // Import Order Events
   IMPORT_ORDER_CREATED_EVENT,
+  IMPORT_ORDER_COUNTED_EVENT,
   IMPORT_ORDER_CONFIRMED_EVENT,
   IMPORT_ORDER_CANCELLED_EVENT,
   IMPORT_ORDER_EXTENDED_EVENT,
   IMPORT_ORDER_COMPLETED_EVENT,
+  IMPORT_ORDER_STORED_EVENT,
+  IMPORT_ORDER_READY_TO_STORE_EVENT,
+  
+  // Export Request Events
   EXPORT_REQUEST_CREATED_EVENT,
+  EXPORT_REQUEST_COUNTED_EVENT,
   EXPORT_REQUEST_CONFIRMED_EVENT,
   EXPORT_REQUEST_CANCELLED_EVENT,
   EXPORT_REQUEST_EXTENDED_EVENT,
   EXPORT_REQUEST_COMPLETED_EVENT,
+
+  // Stock Check Events
   STOCK_CHECK_CREATED_EVENT,
+  STOCK_CHECK_ASSIGNED_EVENT,
+  STOCK_CHECK_COUNTED_EVENT,
   STOCK_CHECK_CONFIRMED_EVENT,
   STOCK_CHECK_COMPLETED_EVENT
-];
-
-// Dynamic events - events that have dynamic IDs appended
-export const dynamicAppEvents = [
-  IMPORT_ORDER_COUNTED_EVENT,
-  EXPORT_REQUEST_COUNTED_EVENT,
-  STOCK_CHECK_ASSIGNED_EVENT,
-  STOCK_CHECK_COUNTED_EVENT
 ];

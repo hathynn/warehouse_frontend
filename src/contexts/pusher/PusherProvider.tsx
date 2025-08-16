@@ -4,7 +4,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
 import { createPusherClient } from "@/config/pusher";
 import { getChannelForRole } from "@/utils/helpers";
-import { staticAppEvents, dynamicAppEvents } from "@/constants/channelsNEvents";
+import { AppEvents } from "@/constants/channelsNEvents";
 
 export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const [latestNotification, setLatestNotification] = useState<NotificationEvent | null>(null);
@@ -17,14 +17,8 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
   const pusherRef = useRef<any>(null);
   const channelRef = useRef<any>(null);
 
-  // Handler for notification events
   const handleNotificationEvent = (data: any, eventType: string) => {
     setLatestNotification({ type: eventType, data, timestamp: Date.now() });
-  };
-
-  // Handler for dynamic notification events (with IDs)
-  const handleDynamicNotificationEvent = (data: any, eventName: string) => {
-    setLatestNotification({ type: eventName, data, timestamp: Date.now() });
   };
 
   useEffect(() => {
@@ -84,21 +78,13 @@ export const PusherProvider = ({ children }: { children: ReactNode }) => {
       channel.bind_global((eventName: string, data: any) => {
         // Skip pusher system events
         if (eventName.startsWith('pusher:')) return;
-        
-        // Handle static events
-        if (staticAppEvents.includes(eventName)) {
+
+        const matchingEvent = AppEvents.find(event => eventName.startsWith(event));
+    
+        if (matchingEvent) {
           handleNotificationEvent(data, eventName);
-          return;
         }
-        
-        // Handle dynamic events with IDs
-        const isDynamicEvent = dynamicAppEvents.some(event => 
-          eventName.startsWith(event + '-')
-        );
-        
-        if (isDynamicEvent) {
-          handleDynamicNotificationEvent(data, eventName);
-        }
+
       }); 
     } catch (error) {
       setConnectionError(`Setup error: ${error instanceof Error ? error.message : 'Unknown error'}`);
