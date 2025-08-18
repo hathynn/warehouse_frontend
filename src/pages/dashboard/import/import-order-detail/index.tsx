@@ -517,7 +517,7 @@ const ImportOrderDetail = () => {
             );
           },
         },
-        ...(importOrderData?.status === ImportStatus.COMPLETED ? [
+        ...((importOrderData?.status === ImportStatus.COMPLETED || importOrderData?.status === ImportStatus.READY_TO_STORE) ? [
           {
             width: '15%',
             title: "Hành động",

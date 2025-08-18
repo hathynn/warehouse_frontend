@@ -416,10 +416,9 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
         await createReturnImportOrderDetails(returnImportOrderDetails, importOrderResponse.content.importOrderId);
 
         toast.success("Đã tạo phiếu nhập trả và đơn nhập thành công");
+        navigate(ROUTES.PROTECTED.IMPORT.ORDER.DETAIL(importOrderResponse?.content.importOrderId));
       }
     }
-
-    navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
 
     setFormData({
       importReason: "",

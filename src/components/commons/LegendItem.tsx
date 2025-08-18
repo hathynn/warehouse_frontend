@@ -28,7 +28,7 @@ export const LegendItem = ({
     >
       <div 
         className={`rounded-full border-2 transition-all duration-200 ${
-          isSelected ? 'w-5 h-5' : 'w-4 h-4'
+          isSelected ? 'w-6 h-6' : 'w-4 h-4'
         }`} 
         style={{ 
           backgroundColor: isSelected ? borderColor : color, 
@@ -36,7 +36,7 @@ export const LegendItem = ({
         }} 
       />
       <span className={`text-[13px] transition-all duration-200 ${
-        isSelected ? 'font-semibold' : ''
+        isSelected ? 'font-semibold text-[14px]' : ''
       }`}>
         {title}
       </span>
