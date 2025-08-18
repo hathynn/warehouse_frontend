@@ -4,7 +4,7 @@ import { Button, Input, Typography, Space, Card, DatePicker, TimePicker, TablePa
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
-import useImportOrderDetailService, { ReturnImportOrderDetailCreateRequest } from "@/services/useImportOrderDetailService";
+import useImportOrderDetailService from "@/services/useImportOrderDetailService";
 import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
@@ -62,7 +62,6 @@ const ImportOrderCreate = () => {
   const {
     loading: importOrderDetailLoading,
     createImportOrderDetails,
-    createReturnImportOrderDetails,
   } = useImportOrderDetailService();
   const {
     loading: itemLoading,
@@ -230,16 +229,10 @@ const ImportOrderCreate = () => {
       setEditableRows(
         importRequestDetails
           .map(row => {
-            let mappedItem: ItemResponse | undefined;
-            if (importRequest?.importType === "RETURN") {
-              mappedItem = itemsData.find(item => item.inventoryItemIds.includes(row.inventoryItemId));
-            }
-            else {
-              mappedItem = getItemInfo(row.itemId);
-            }
+            const mappedItem = getItemInfo(row.itemId);
             return {
               itemId: row.itemId,
-              itemName: importRequest?.importType === "RETURN" ? mappedItem?.name : row.itemName,
+              itemName: row.itemName,
               expectQuantity: row.expectQuantity,
               orderedQuantity: row.orderedQuantity,
               plannedQuantity: row.actualQuantity === 0
@@ -311,27 +304,16 @@ const ImportOrderCreate = () => {
     };
     const response = await createImportOrder(createOrderRequest);
     if (response?.content) {
-
-      if (importRequest?.importType === "RETURN") {
-        const returnImportOrderDetails: ReturnImportOrderDetailCreateRequest[] = editableRows.map(row => ({
-          inventoryItemId: row.inventoryItemId,
-          measurementValue: row.measurementValue
-        }));
-        await createReturnImportOrderDetails(returnImportOrderDetails, response.content.importOrderId);
-      }
-
-      else {
-        // 2. Chỉ gửi các itemId có trong phiếu nhập
-        const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
-        const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
-          itemId: row.itemId,
-          quantity: row.plannedQuantity
-        }));
-        await createImportOrderDetails(
-          { providerId: importRequest?.providerId!, importOrderItems },
-          response.content.importOrderId
-        );
-      }
+      // 2. Chỉ gửi các itemId có trong phiếu nhập
+      const validItemIds = importRequestDetails.map(importRequestDetail => importRequestDetail.itemId);
+      const importOrderItems = editableRows.filter(row => validItemIds.includes(row.itemId)).map(row => ({
+        itemId: row.itemId,
+        quantity: row.plannedQuantity
+      }));
+      await createImportOrderDetails(
+        { providerId: importRequest?.providerId!, importOrderItems },
+        response.content.importOrderId
+      );
       // 3. Chuyển hướng về danh sách đơn nhập từ phiếu nhập
       navigate(ROUTES.PROTECTED.IMPORT.ORDER.LIST);
     }
@@ -499,123 +481,59 @@ const ImportOrderCreate = () => {
   // ==================== TABLE CONFIGURATION ====================
 
   const getConfirmationColumns = () => {
-    const baseColumns: any[] = [
-
+    return [
+      {
+        title: "Mã hàng",
+        dataIndex: "itemId",
+        key: "itemId",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (id: number) => `#${id}`,
+      },
+      {
+        width: "30%",
+        title: "Tên hàng",
+        dataIndex: "itemName",
+        key: "itemName",
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+      {
+        title: "Dự nhập theo phiếu",
+        dataIndex: "expectQuantity",
+        key: "expectQuantity",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+      {
+        title: "Thực tế đã nhập",
+        dataIndex: "actualQuantity",
+        key: "actualQuantity",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+      },
+      {
+        title: "Dự nhập đơn này",
+        dataIndex: "plannedQuantity",
+        key: "plannedQuantity",
+        align: "right" as const,
+        onHeaderCell: () => ({
+          style: { textAlign: 'center' as const }
+        }),
+        render: (_: any, record: ImportOrderDetailRow) => (
+          <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
+            {record.plannedQuantity}
+          </span>
+        ),
+      }
     ];
-
-    if (importRequest?.importType === "RETURN") {
-      baseColumns.push(
-        {
-          title: "Mã sản phẩm tồn kho",
-          dataIndex: "inventoryItemId",
-          key: "inventoryItemId",
-          align: "left" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (id: number) => `#${id}`,
-        },
-        {
-          width: "25%",
-          title: "Tên sản phẩm",
-          dataIndex: "itemName",
-          key: "itemName",
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-        },
-        {
-          title: "Giá trị cần nhập",
-          dataIndex: "measurementValue",
-          key: "measurementValue",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (value: number, record: ImportOrderDetailRow) => {
-            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
-            return (
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>{value || 0}</span> {mappedItem?.measurementUnit || '-'}
-              </div>
-            );
-          },
-        },
-        {
-          title: "Số lượng",
-          key: "quantity",
-          align: "center" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (_, record: ImportOrderDetailRow) => {
-            const mappedItem = itemsData.find(item => item.inventoryItemIds.includes(record.inventoryItemId));
-            return (
-              <div>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>1</span>{" "}
-                <span>{mappedItem?.unitType || '-'}</span>
-              </div>
-            );
-          },
-        },
-      );
-    } else {
-      baseColumns.push(
-        {
-          title: "Mã hàng",
-          dataIndex: "itemId",
-          key: "itemId",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (id: number) => `#${id}`,
-        },
-        {
-          width: "30%",
-          title: "Tên hàng",
-          dataIndex: "itemName",
-          key: "itemName",
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-        },
-        {
-          title: "Dự nhập theo phiếu",
-          dataIndex: "expectQuantity",
-          key: "expectQuantity",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-        },
-        {
-          title: "Thực tế đã nhập",
-          dataIndex: "actualQuantity",
-          key: "actualQuantity",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-        },
-        {
-          title: "Dự nhập đơn này",
-          dataIndex: "plannedQuantity",
-          key: "plannedQuantity",
-          align: "right" as const,
-          onHeaderCell: () => ({
-            style: { textAlign: 'center' as const }
-          }),
-          render: (_: any, record: ImportOrderDetailRow) => (
-            <span className="inline-block px-3 py-1 font-medium text-blue-600 rounded-md bg-blue-50" style={{ textAlign: 'right' }}>
-              {record.plannedQuantity}
-            </span>
-          ),
-        }
-      );
-    }
-
-    return baseColumns;
   };
 
 
@@ -651,18 +569,16 @@ const ImportOrderCreate = () => {
       {/* Step 1: Upload Excel + Editable Table */}
       {step === 0 && (
         <div className="flex flex-col items-center gap-2">
-          {importRequest?.importType !== "RETURN" && (
-            <div className="w-full">
-              <ExcelUploadSection
-                fileName={fileName}
-                onFileChange={handleExcelUpload}
-                onRemoveFile={handleRemoveFile}
-                fileInputRef={fileInputRef}
-                buttonLabel="Tải lên file Excel"
-                type="IMPORT_ORDER"
-              />
-            </div>
-          )}
+          <div className="w-full">
+            <ExcelUploadSection
+              fileName={fileName}
+              onFileChange={handleExcelUpload}
+              onRemoveFile={handleRemoveFile}
+              fileInputRef={fileInputRef}
+              buttonLabel="Tải lên file Excel"
+              type="IMPORT_ORDER"
+            />
+          </div>
           <div className="w-full">
             <EditableImportOrderTableSection
               loading={itemLoading || importOrderDetailLoading}
@@ -740,16 +656,14 @@ const ImportOrderCreate = () => {
                   </ConfigProvider>
                 </div>
               </div>
-              {importRequest?.importType !== "RETURN" && (
-                <div className="my-2">
-                  <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
-                  <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
-                    {importRequest?.providerId
-                      ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
-                      : "Chưa chọn"}
-                  </Typography.Text>
-                </div>
-              )}
+              <div className="my-2">
+                <label className="text-base font-semibold">Nhà cung cấp (theo PHIẾU NHẬP)</label>
+                <Typography.Text className="block w-full px-3 py-2 bg-gray-100 rounded" style={{ display: 'block' }}>
+                  {importRequest?.providerId
+                    ? providers.find(p => p.id === importRequest.providerId)?.name || `#${importRequest.providerId}`
+                    : "Chưa chọn"}
+                </Typography.Text>
+              </div>
               <div>
                 <label className="text-base font-semibold">Ghi chú</label>
                 <TextArea
@@ -806,8 +720,6 @@ const ImportOrderCreate = () => {
         formData={formData}
         details={editableRows}
         importRequestProvider={providers.find(p => p.id === importRequest?.providerId)?.name}
-        importType={importRequest?.importType}
-        itemsData={itemsData}
       />
     </div>
   );
