@@ -21,6 +21,8 @@ interface ImportRequestReturnConfirmModalProps {
     startDate: string;
     endDate: string;
     departmentId: number | null;
+    dateReceived: string;
+    timeReceived: string;
   };
   details: ReturnImportDetailRow[];
   departmentName: string;
@@ -144,6 +146,12 @@ const ImportRequestReturnConfirmModal: React.FC<ImportRequestReturnConfirmModalP
         </Descriptions.Item>
         <Descriptions.Item label="Ngày hết hạn">
           {formData.endDate ? dayjs(formData.endDate).format("DD-MM-YYYY") : "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Ngày nhận dự kiến">
+          {formData.dateReceived ? dayjs(formData.dateReceived).format("DD-MM-YYYY") : "-"}
+        </Descriptions.Item>
+        <Descriptions.Item label="Giờ nhận dự kiến">
+          {formData.timeReceived || "-"}
         </Descriptions.Item>
       </Descriptions>
       

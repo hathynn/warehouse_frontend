@@ -19,7 +19,7 @@ function App() {
             <RouterProvider router={Router} />
             <ToastContainer
               position="top-center"
-              autoClose={3000}
+              autoClose={5000}
               hideProgressBar={true}
               newestOnTop
               closeOnClick
@@ -30,7 +30,9 @@ function App() {
               style={{
                 width: "fit-content",
                 fontSize: "16px",
-                "--toastify-toast-width": "280px",
+                "--toastify-toast-width": "auto",
+                "--toastify-toast-max-width": "480px",
+                "--toastify-toast-min-width": "280px",
                 "--toastify-toast-min-height": "48px",
                 "--toastify-toast-padding": "12px",
                 "--toastify-toast-bd-radius": "6px",

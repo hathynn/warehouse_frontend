@@ -226,6 +226,17 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
     setFormData({ ...formData, endDate: newEndDate });
   };
 
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileName("");
+    setImportedData([]);
+    setIsImportRequestDataValid(false);
+    setIsAllPagesViewed(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
     if (uploadedFile) {
@@ -264,7 +275,7 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
                   importReason: importReason || prev.importReason
                 }));
               } else {
-                console.warn(`Unrecognized import type: "${importTypeFromFile}"`);
+                throw new Error(`Loại phiếu nhập không hợp lệ: "${importTypeFromFile}"`);
               }
             }
 
@@ -303,22 +314,26 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
               const providerId = item.providerId;
 
               if (!itemId || !quantity || !providerId) {
-                throw new Error(`Row ${index + 10}: Missing item ID or quantity`);
+                handleRemoveFile()
+                throw new Error(`Dòng ${index + 10}: Thiếu mã sản phẩm hoặc số lượng`);
               }
 
               const foundItem = items.find(i => i.id === itemId);
               if (!foundItem) {
-                throw new Error(`Row ${index + 10}: Item with ID ${itemId} not found`);
+                handleRemoveFile()
+                throw new Error(`Dòng ${index + 10}: Sản phẩm với ID ${itemId} không tồn tại`);
               }
 
               const foundProvider = providers.find(p => p.id === Number(providerId));
               if (!foundProvider) {
-                throw new Error(`Row ${index + 10}: Provider with ID ${providerId} not found`);
+                handleRemoveFile()
+                throw new Error(`Dòng ${index + 10}: Nhà cung cấp với ID ${providerId} không tồn tại`);
               }
 
               // Validate that the provider is actually a provider for this item
               if (!Array.isArray(foundItem.providerIds) || !foundItem.providerIds.includes(Number(providerId))) {
-                throw new Error(`Row ${index + 10}: Provider ID ${providerId} is not a valid provider for item ${itemId}`);
+                handleRemoveFile()
+                throw new Error(`Dòng ${index + 10}: Nhà cung cấp với ID ${providerId} không hợp lệ cho sản phẩm ${itemId}`);
               }
 
 
@@ -341,22 +356,12 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
             if (error instanceof Error) {
               setIsImportRequestDataValid(false);
               toast.error(error.message);
+              handleRemoveFile()
             }
           }
         }
       };
       reader.readAsArrayBuffer(uploadedFile);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setFile(null);
-    setFileName("");
-    setImportedData([]);
-    setIsImportRequestDataValid(false);
-    setIsAllPagesViewed(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 

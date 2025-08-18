@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, ChangeEvent, useMemo } from "react";
 import * as XLSX from "xlsx";
-import { Button, Input, Typography, Space, Card, Alert, Table, DatePicker, ConfigProvider, Steps, Modal, Checkbox } from "antd";
+import { Button, Input, Typography, Space, Card, Alert, Table, DatePicker, TimePicker, ConfigProvider, Steps, Modal, Checkbox } from "antd";
 import useImportRequestService from "@/services/useImportRequestService";
+import useImportOrderService, { ImportOrderCreateRequest } from "@/services/useImportOrderService";
+import useImportOrderDetailService, { ReturnImportOrderDetailCreateRequest } from "@/services/useImportOrderDetailService";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/constants/routes";
@@ -10,7 +12,7 @@ import { ArrowRightOutlined, InfoCircleOutlined, ExclamationCircleOutlined } fro
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
-import { isDateDisabledForAction } from "@/utils/helpers";
+import { isDateDisabledForAction, getDefaultAssignedDateTimeForAction, getDisabledTimeConfigForAction } from "@/utils/helpers";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import { useScrollViewTracker } from "@/hooks/useScrollViewTracker";
@@ -40,6 +42,8 @@ interface FormData {
   endDate: string;
   departmentId: number | null;
   returnImportRequestDetails: ReturnImportDetailRow[];
+  dateReceived: string;
+  timeReceived: string;
 }
 
 const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = ({
@@ -63,7 +67,9 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     startDate: dayjs().format("YYYY-MM-DD"),
     endDate: dayjs().add(1, 'day').format("YYYY-MM-DD"),
     departmentId: null,
-    returnImportRequestDetails: []
+    returnImportRequestDetails: [],
+    dateReceived: "",
+    timeReceived: ""
   });
   const [isImportRequestDataValid, setIsImportRequestDataValid] = useState<boolean>(false);
   const [isAllPagesViewed, setIsAllPagesViewed] = useState<boolean>(false);
@@ -90,15 +96,35 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   } = useImportRequestService();
 
   const {
+    loading: importOrderLoading,
+    createImportOrder
+  } = useImportOrderService();
+
+  const {
+    loading: importOrderDetailLoading,
+    createReturnImportOrderDetails
+  } = useImportOrderDetailService();
+
+  const {
     getConfiguration
   } = useConfigurationService();
 
   const { getAllDepartments, departments } = useDepartmentService();
 
   // ========== COMPUTED VALUES ==========
-  const loading = itemLoading || importRequestLoading;
+  const loading = itemLoading || importRequestLoading || importOrderLoading || importOrderDetailLoading;
 
   // ========== UTILITY FUNCTIONS ==========
+  const getDefaultDateTimeForImportOrder = () => {
+    if (!configuration) return { date: "", time: "" };
+    return getDefaultAssignedDateTimeForAction("import-order-create", configuration);
+  };
+
+  const disabledDateForImportOrder = (current: dayjs.Dayjs) =>
+    isDateDisabledForAction(current, "import-order-create", configuration);
+
+  const disabledTimeForImportOrder = () =>
+    getDisabledTimeConfigForAction(formData.dateReceived, "import-order-create", configuration);
   const isEndDateValid = (startDate: string, endDate: string): boolean => {
     if (!startDate || !endDate) return true;
 
@@ -122,7 +148,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   };
 
   const isFormDataValid = (): boolean => {
-    if (!formData.importReason || !formData.startDate || !formData.endDate || !formData.departmentId) {
+    if (!formData.importReason || !formData.startDate || !formData.endDate || !formData.departmentId || !formData.dateReceived || !formData.timeReceived) {
       return false;
     }
 
@@ -139,29 +165,11 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
     return true;
   };
 
-  const getConsolidatedData = (originalData: ReturnImportDetailRow[]): ReturnImportDetailRow[] => {
-    const groupedData: { [key: string]: ReturnImportDetailRow } = {};
-
-    originalData.forEach((item) => {
-      const key = item.inventoryItemId;
-
-      if (groupedData[key]) {
-        groupedData[key].measurementValue += item.measurementValue;
-      } else {
-        groupedData[key] = { ...item };
-      }
-    });
-
-    return Object.values(groupedData);
-  };
 
   // ========== COMPUTED VALUES & FILTERING ==========
   const sortedData = useMemo(() => {
-    if (step === 1) {
-      return [...getConsolidatedData(importedData)].sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
-    }
     return [...importedData].sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
-  }, [importedData, step]);
+  }, [importedData]);
 
   // ========== USE EFFECTS ==========
   useEffect(() => {
@@ -181,6 +189,17 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
       setFormData(prev => ({
         ...prev,
         endDate: dayjs(prev.startDate).add(configuration.maxAllowedDaysForImportRequestProcess, 'day').format("YYYY-MM-DD")
+      }));
+    }
+  }, [configuration]);
+
+  useEffect(() => {
+    if (configuration) {
+      const defaultDateTime = getDefaultDateTimeForImportOrder();
+      setFormData(prev => ({
+        ...prev,
+        dateReceived: defaultDateTime.date,
+        timeReceived: defaultDateTime.time
       }));
     }
   }, [configuration]);
@@ -217,6 +236,28 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
   const handleEndDateChange = (date: dayjs.Dayjs | null) => {
     const newEndDate = date ? date.format("YYYY-MM-DD") : "";
     setFormData({ ...formData, endDate: newEndDate });
+  };
+
+  const handleDateReceivedChange = (date: dayjs.Dayjs | null) => {
+    const newDate = date ? date.format("YYYY-MM-DD") : "";
+    setFormData({ ...formData, dateReceived: newDate });
+  };
+
+  const handleTimeReceivedChange = (time: dayjs.Dayjs | null) => {
+    const newTime = time ? time.format("HH:mm") : "";
+    setFormData({ ...formData, timeReceived: newTime });
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileName("");
+    setImportedData([]);
+    setIsImportRequestDataValid(false);
+    setIsAllPagesViewed(false);
+    setHasValidationErrors(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -257,7 +298,8 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                   importReason: importReason || prev.importReason
                 }));
               } else {
-                console.warn(`Unrecognized import type: "${importTypeFromFile}"`);
+                handleRemoveFile()
+                throw new Error(`Loại phiếu nhập không hợp lệ: "${importTypeFromFile}"`);
               }
             }
 
@@ -292,7 +334,8 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
               const measurementValue = item.measurementValue;
 
               if (!inventoryItemId || measurementValue === undefined) {
-                throw new Error(`Row ${index + 10}: Missing inventory item ID or measurement value`);
+                handleRemoveFile()
+                throw new Error(`Dòng ${index + 10}: Thiếu mã sản phẩm tồn kho hoặc giá trị dự kiến`);
               }
 
               return {
@@ -300,6 +343,16 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                 measurementValue: Number(measurementValue),
               };
             });
+
+            // Kiểm tra inventoryItemId trùng lặp
+            const inventoryItemIds = transformedData.map(item => item.inventoryItemId);
+            const duplicateIds = inventoryItemIds.filter((id, index) => inventoryItemIds.indexOf(id) !== index);
+            
+            if (duplicateIds.length > 0) {
+              const uniqueDuplicates = [...new Set(duplicateIds)];
+              handleRemoveFile()
+              throw new Error(`Phát hiện mã sản phẩm tồn kho trùng lặp trong file: ${uniqueDuplicates.join(', ')}. Vui lòng kiểm tra lại file Excel.`);
+            }
 
             setImportedData(transformedData);
             setIsImportRequestDataValid(true);
@@ -309,23 +362,12 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
             if (error instanceof Error) {
               setIsImportRequestDataValid(false);
               toast.error(error.message);
+              handleRemoveFile()
             }
           }
         }
       };
       reader.readAsArrayBuffer(uploadedFile);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setFile(null);
-    setFileName("");
-    setImportedData([]);
-    setIsImportRequestDataValid(false);
-    setIsAllPagesViewed(false);
-    setHasValidationErrors(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 
@@ -346,19 +388,48 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
       startDate: formData.startDate,
       endDate: formData.endDate,
       departmentId: formData.departmentId,
-      returnImportRequestDetails: getConsolidatedData(importedData)
+      returnImportRequestDetails: importedData
     };
 
-    await createReturnImportRequest(requestData);
+    const importRequestCreated = await createReturnImportRequest(requestData);
+
+    if (importRequestCreated?.content) {
+      // Tự động tạo đơn nhập cho RETURN type
+      const importOrderData: ImportOrderCreateRequest = {
+        importRequestId: importRequestCreated.content.importRequestId,
+        accountId: null,
+        dateReceived: formData.dateReceived,
+        timeReceived: formData.timeReceived,
+        note: `Đơn nhập trả tự động từ phiếu ${importRequestCreated.content.importRequestId}`
+      };
+
+      // Tạo đơn nhập
+      const importOrderResponse = await createImportOrder(importOrderData);
+
+      if (importOrderResponse?.content) {
+        // Tạo chi tiết đơn nhập trả
+        const returnImportOrderDetails: ReturnImportOrderDetailCreateRequest[] = importedData.map(row => ({
+          inventoryItemId: row.inventoryItemId,
+          measurementValue: row.measurementValue
+        }));
+
+        await createReturnImportOrderDetails(returnImportOrderDetails, importOrderResponse.content.importOrderId);
+
+        toast.success("Đã tạo phiếu nhập trả và đơn nhập thành công");
+      }
+    }
 
     navigate(ROUTES.PROTECTED.IMPORT.REQUEST.LIST);
+
     setFormData({
       importReason: "",
       importType: importType,
       startDate: dayjs().format("YYYY-MM-DD"),
       endDate: dayjs().format("YYYY-MM-DD"),
       departmentId: null,
-      returnImportRequestDetails: []
+      returnImportRequestDetails: [],
+      dateReceived: "",
+      timeReceived: ""
     });
     setSelectedDepartment(null);
     setFile(null);
@@ -430,7 +501,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                       description={
                         <>
                           <p>Tổng số mặt hàng: {importedData.length}</p>
-                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả dựa trên dữ liệu từ file</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả và đơn nhập dựa trên dữ liệu từ file</p>
                         </>
                       }
                       type="info"
@@ -522,6 +593,43 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                       showCount
                     />
                   </div>
+                  <div className="text-sm text-blue-500 mb-2">
+                    <InfoCircleOutlined className="mr-1" />
+                    Giờ nhận phải cách thời điểm hiện tại ít nhất <span className="font-bold">{parseInt(configuration?.createRequestTimeAtLeast?.split(':')[0] || '0', 10)} giờ</span>
+                  </div>
+                  <div className="flex gap-6 mb-4">
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Ngày nhận dự kiến<span className="text-red-500">*</span></label>
+                      <DatePicker
+                        locale={locale}
+                        format="DD-MM-YYYY"
+                        size="large"
+                        className="w-full !mt-1 !p-[4px_8px]"
+                        value={formData.dateReceived ? dayjs(formData.dateReceived) : null}
+                        disabledDate={disabledDateForImportOrder}
+                        onChange={handleDateReceivedChange}
+                        placeholder="Chọn ngày"
+                        allowClear
+                      />
+                    </div>
+                    <div className="w-1/2 mb-2">
+                      <label className="text-base font-semibold">Giờ nhận dự kiến<span className="text-red-500">*</span></label>
+                      <ConfigProvider direction="rtl">
+                        <TimePicker
+                          className="w-full !mt-1 !p-[4px_8px]"
+                          size="large"
+                          value={formData.timeReceived ? dayjs(`1970-01-01 ${formData.timeReceived}`) : null}
+                          onChange={handleTimeReceivedChange}
+                          format="HH:mm"
+                          showNow={false}
+                          needConfirm={false}
+                          disabledTime={disabledTimeForImportOrder}
+                          allowClear
+                          placeholder="Chọn giờ"
+                        />
+                      </ConfigProvider>
+                    </div>
+                  </div>
                   <Button
                     type="primary"
                     onClick={() => setIsConfirmModalOpen(true)}
@@ -542,7 +650,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
                       description={
                         <>
                           <p>Tổng số mặt hàng: {sortedData.length}</p>
-                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả dựa trên dữ liệu từ file</p>
+                          <p className="text-blue-500">Hệ thống sẽ tự động tạo phiếu nhập trả và đơn nhập với ngày giờ nhận dự kiến đã chọn</p>
                         </>
                       }
                       type="info"
@@ -644,7 +752,7 @@ const ImportRequestReturnTypeCreating: React.FC<ImportRequestReturnTypeProps> = 
             onCancel={() => setIsConfirmModalOpen(false)}
             confirmLoading={loading}
             formData={formData}
-            details={getConsolidatedData(importedData)}
+            details={importedData}
             departmentName={selectedDepartment?.departmentName || ""}
             relatedItemsData={items}
           />
