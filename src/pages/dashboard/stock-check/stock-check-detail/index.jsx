@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import { AccountRole, StockcheckStatus, DetailStatus } from "@/utils/enums";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { usePusherContext } from "@/contexts/pusher/PusherContext";
 
 //Components
 import StatusTag from "@/components/commons/StatusTag";
@@ -70,6 +71,7 @@ const StockCheckRequestDetail = () => {
   const { getItems } = useItemService();
   const { getConfiguration } = useConfigurationService();
   const { getInventoryItemsByItemId } = useInventoryItemService();
+  const { latestNotification } = usePusherContext();
 
   // States
   const [stockCheckRequest, setStockCheckRequest] = useState(null);
@@ -256,6 +258,57 @@ const StockCheckRequestDetail = () => {
 
     loadItems();
   }, []);
+
+  useEffect(() => {
+    if (latestNotification) {
+      const isStockCheckEvent =
+        latestNotification.type === `stock-check-created-${stockCheckId}` ||
+        latestNotification.type === `stock-check-assigned-${stockCheckId}` ||
+        latestNotification.type === `stock-check-counted-${stockCheckId}` ||
+        latestNotification.type === `stock-check-confirmed-${stockCheckId}` ||
+        latestNotification.type === `stock-check-completed-${stockCheckId}`;
+
+      if (isStockCheckEvent) {
+        console.log(
+          "🔄 Reloading stock check detail...",
+          latestNotification.type
+        );
+        reloadStockCheckDetail();
+      }
+    }
+  }, [latestNotification]);
+
+  // ========== UTILITY FUNCTIONS ==========
+  // Thêm function này vào phần utility functions
+  const reloadStockCheckDetail = () => {
+    // Close all modals
+    setAssignModalVisible(false);
+    setConfirmCountedModalVisible(false);
+    setCompleteModalVisible(false);
+    setDetailModalVisible(false);
+
+    // Reset form states
+    setConfirmCountedChecked(false);
+    setCompleteChecked(false);
+    setSelectedStaffId(null);
+    setSelectedDetail(null);
+    setModalInventoryItems([]);
+    setCheckedInventoryItems([]);
+    setInventorySearchText("");
+    setSearchText("");
+
+    // Reset pagination states
+    setModalPagination({ current: 1, pageSize: 10, total: 0 });
+    setViewedPages(new Set([1]));
+    setSelectedDetailIds([]);
+
+    // Refetch all data
+    fetchStockCheckRequest();
+    fetchStockCheckDetails();
+    if (stockCheckRequest?.assignedWareHouseKeeperId) {
+      fetchAssignedWarehouseKeeper();
+    }
+  };
 
   // Handlers
   const handleBack = () => {

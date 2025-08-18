@@ -39,6 +39,7 @@ import AssignCountingStaffModal from "@/components/export-flow/export-detail/Ass
 import AssignKeeperStaffModal from "@/components/export-flow/export-detail/AssignKeeperStaffModal";
 // Constants
 import { ROUTES } from "@/constants/routes";
+import { usePusherContext } from "@/contexts/pusher/PusherContext";
 
 function enrichWithItemMeta(details, items) {
   return details.map((row) => {
@@ -59,6 +60,7 @@ const customTableStyle = `
 `;
 
 const ExportRequestDetail = () => {
+  const { latestNotification } = usePusherContext();
   const { exportRequestId } = useParams();
   const [configuration, setConfiguration] = useState(null);
   const navigate = useNavigate();
@@ -430,6 +432,62 @@ const ExportRequestDetail = () => {
       }
     }
   }, [items]);
+
+  useEffect(() => {
+    if (latestNotification) {
+      const isExportRequestEvent =
+        latestNotification.type ===
+          `export-request-counted-${exportRequestId}` ||
+        latestNotification.type ===
+          `import-order-completed-${exportRequestId}` ||
+        latestNotification.type ===
+          `export-request-confirmed-${exportRequestId}` ||
+        latestNotification.type ===
+          `export-request-cancelled-${exportRequestId}` ||
+        latestNotification.type ===
+          `export-request-extended-${exportRequestId}` ||
+        latestNotification.type ===
+          `export-request-completed-${exportRequestId}`;
+      if (isExportRequestEvent) {
+        reloadExportRequestDetail();
+      }
+    }
+  }, [latestNotification]);
+
+  // ========== UTILITY FUNCTIONS ==========
+  const reloadExportRequestDetail = () => {
+    setAssignModalVisible(false);
+    setConfirmModalVisible(false);
+    setCompleteModalVisible(false);
+    setCancelModalVisible(false);
+    setUpdateDateTimeModalOpen(false);
+    setAssignKeeperModalVisible(false);
+    setDetailModalVisible(false);
+    setConfirmCreateExportModalVisible(false);
+    setRecountModalVisible(false);
+    setConfirmSwapModalVisible(false);
+    setConfirmAutoChangeModalVisible(false);
+
+    // Reset form states
+    setCompleteChecked(false);
+    setConfirmChecked(false);
+    setEditMode(false);
+    setEditedDetails([]);
+    setSelectedOldItem(null);
+    setSelectedNewItem(null);
+    setSelectedAutoChangeItem(null);
+    setInventorySearchText("");
+
+    // Refetch all data
+    fetchExportRequestData();
+    fetchDetails();
+    if (exportRequest?.countingStaffId) {
+      fetchAssignedCountingStaff();
+    }
+    if (exportRequest?.assignedWareHouseKeeperId) {
+      fetchAssignedKeeper();
+    }
+  };
 
   // Huỷ tạo phiếu
   const handleCancelCreateExport = () => {

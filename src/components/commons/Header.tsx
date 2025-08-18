@@ -60,7 +60,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   const { latestNotification } = usePusherContext();
 
   // Define ROUTE type from eventType
-  const getRouteTypeFromEventType = (eventType: string): 'IMPORT-ORDER' | 'EXPORT' | 'UNKNOWN' => {
+  const getRouteTypeFromEventType = (eventType: string): 'IMPORT-ORDER' | 'EXPORT' | 'STOCK-CHECK' | 'UNKNOWN' => {
     // Import events
     if (eventType.includes('import-order')) {
       return 'IMPORT-ORDER';
@@ -69,6 +69,10 @@ function Header({ title = "Dashboard" }: HeaderProps) {
     // Export events  
     if (eventType.includes('export-request') || eventType.startsWith('export-')) {
       return 'EXPORT';
+    }
+
+    if (eventType.includes('stock-check') || eventType.startsWith('stock-')) {
+      return 'STOCK-CHECK';
     }
 
     return 'UNKNOWN';
@@ -173,6 +177,10 @@ function Header({ title = "Dashboard" }: HeaderProps) {
 
         case 'EXPORT':
           navigate(`${ROUTES.PROTECTED.EXPORT.REQUEST.DETAIL(notification.objectId.toString())}`);
+          break;
+
+        case 'STOCK-CHECK':
+          navigate(`${ROUTES.PROTECTED.STOCK_CHECK.REQUEST.DETAIL(notification.objectId.toString())}`);
           break;
 
         default:
@@ -280,12 +288,12 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                 <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-200">
                   <span className="text-base font-bold">Thông báo</span>
                   {notifications.length > 0 && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteAllNotifications();
-                    }}
-                    className="text-sm text-red-800 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md font-medium"
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteAllNotifications();
+                      }}
+                      className="text-sm text-red-800 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md font-medium"
                     >
                       Xoá toàn bộ
                     </button>
@@ -317,10 +325,10 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                               className="ml-2 p-1 text-black hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 flex items-center justify-center w-8 h-8"
                               title="Xoá thông báo này"
                             >
-                              <svg 
-                                width="14" 
-                                height="14" 
-                                viewBox="0 0 24 24" 
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="3"
@@ -403,9 +411,9 @@ function Header({ title = "Dashboard" }: HeaderProps) {
           <p>Bạn có chắc chắn muốn xoá toàn bộ thông báo không?</p>
           <p className='text-red-900 font-bold'>{notifications.length} thông báo sẽ bị xoá</p>
         </div>
-        
-        <Checkbox 
-          checked={confirmDeleteAllResponsibilityChecked} 
+
+        <Checkbox
+          checked={confirmDeleteAllResponsibilityChecked}
           onChange={e => setConfirmDeleteAllResponsibilityChecked(e.target.checked)}
           style={{ fontSize: 14, fontWeight: "bold" }}
         >
