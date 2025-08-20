@@ -244,6 +244,8 @@ const ItemDetail = () => {
         return <Tag color="warning">Sắp hết hạn</Tag>;
       case ItemStatus.NEED_LIQUID:
         return <Tag color="error">Thanh lý</Tag>;
+      case ItemStatus.NO_LONGER_EXIST:
+        return <Tag color="default">Không tồn tại trong kho</Tag>;
       default:
         return <Tag color="default">{status}</Tag>;
     }

@@ -10,6 +10,7 @@ export enum ItemStatus {
   SAFE = "SAFE",
   ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE",
   NEED_LIQUID = "NEED_LIQUID",
+  NO_LONGER_EXIST = "NO_LONGER_EXIST",
 }
 
 // Interface to match UpdateInventoryLocationRequest.java
