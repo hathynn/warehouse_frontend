@@ -9,7 +9,11 @@ export interface ExportRequestDetailResponse {
   itemId: string;
   quantity: number;
   status: string;
-  itemName: string; // Dùng để hiển thị tên hàng trên UI
+  itemName: string;
+  actualMeasurementValue: number;
+  actualQuantity: number;
+  inventoryItemIds: string[];
+  measurementValue: number;
 }
 
 // Interface dùng cho payload khi tạo mới export request detail (nếu cần)

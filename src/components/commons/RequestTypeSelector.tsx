@@ -5,7 +5,7 @@ const { Option } = Select;
 
 export type ExportRequestType = "SELLING" | "RETURN" | "INTERNAL" | "LIQUIDATION";
 export type ImportRequestType = "ORDER" | "RETURN";
-export type RequestType = ExportRequestType | ImportRequestType;
+export type RequestType = ExportRequestType | ImportRequestType | null;;
 
 interface RequestOption {
     value: RequestType;

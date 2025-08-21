@@ -928,6 +928,61 @@ const ExportRequestDetail = () => {
           },
         ]
       : []),
+    ...(exportRequest?.type == "INTERNAL"
+      ? [
+          {
+            title: "Giá trị đã đóng gói",
+            dataIndex: "actualMeasurementValue",
+            key: "actualMeasurementValue",
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
+            width: "18%",
+            render: (text, record) => {
+              if (
+                userRole === AccountRole.DEPARTMENT &&
+                [ExportStatus.IN_PROGRESS, ExportStatus.COUNTED].includes(
+                  exportRequest?.status
+                )
+              ) {
+                return (
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontWeight: "600", fontSize: "18px" }}>
+                      0
+                    </span>{" "}
+                    {record.measurementUnit && (
+                      <span className="text-gray-500">
+                        {record.measurementUnit}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              const isLacking = text < record.measurementValue;
+
+              return (
+                <div style={{ textAlign: "center" }}>
+                  <span
+                    style={{
+                      fontWeight: "600",
+                      fontSize: "18px",
+                      color: isLacking ? "#ff4d4f" : "#52c41a",
+                    }}
+                  >
+                    {text}
+                  </span>{" "}
+                  {record.measurementUnit && (
+                    <span className="text-gray-500">
+                      {record.measurementUnit}
+                    </span>
+                  )}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     // Cột "Số lượng cần" - chỉ hiển thị cho loại xuất KHÔNG PHẢI INTERNAL
     ...(exportRequest?.type !== "INTERNAL"
       ? [
@@ -1150,6 +1205,41 @@ const ExportRequestDetail = () => {
           },
         ]
       : []),
+    ...(exportRequest?.type == "INTERNAL"
+      ? [
+          {
+            title: "Giá trị đã đóng gói",
+            dataIndex: "actualMeasurementValue",
+            key: "actualMeasurementValue",
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
+            width: "18%",
+            render: (text, record) => {
+              const isLacking = text < record.measurementValue;
+
+              return (
+                <div>
+                  <span
+                    style={{
+                      fontWeight: "600",
+                      fontSize: "16px",
+                      color: isLacking ? "#ff4d4f" : "#52c41a",
+                    }}
+                  >
+                    {text}
+                  </span>{" "}
+                  {record.measurementUnit && (
+                    <span className="text-gray-500">
+                      {record.measurementUnit}
+                    </span>
+                  )}
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     // Cột "Số lượng cần" - chỉ hiển thị cho loại xuất KHÔNG PHẢI INTERNAL
     ...(exportRequest?.type !== "INTERNAL"
       ? [
@@ -1180,42 +1270,14 @@ const ExportRequestDetail = () => {
       align: "left",
       render: (text, record) => {
         const isLacking = text < record.quantity;
-
-        // Cho INTERNAL: hiển thị "5 cây (cần 5 cây)"
-        // Cho loại khác: hiển thị "5 cây"
-        if (exportRequest?.type === "INTERNAL") {
-          return (
-            <span className={isLacking ? "text-red-600 font-semibold" : ""}>
-              <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                {text}
-              </span>{" "}
-              {record.unitType && (
-                <span className="text-gray-500">{record.unitType}</span>
-              )}{" "}
-              <span className="text-gray-500">
-                (Cần:{" "}
-                <span
-                  className="text-black"
-                  style={{ fontWeight: "600", fontSize: "18px" }}
-                >
-                  {record.quantity}
-                </span>
-                )
-              </span>
-            </span>
-          );
-        } else {
-          return (
-            <span className={isLacking ? "text-red-600 font-semibold" : ""}>
-              <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                {text}
-              </span>{" "}
-              {record.unitType && (
-                <span className="text-gray-500">{record.unitType}</span>
-              )}
-            </span>
-          );
-        }
+        return (
+          <span className={isLacking ? "text-red-600 font-semibold" : ""}>
+            <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
+            {record.unitType && (
+              <span className="text-gray-500">{record.unitType}</span>
+            )}
+          </span>
+        );
       },
     },
     {
