@@ -55,6 +55,8 @@ const InventoryItemList: React.FC = () => {
     });
   };
 
+  // NO_LONGER_EXIST: { color: "default", text: "Không tồn tại" },
+  // READY_TO_STORE: { color: "default", text: "Chuẩn bị vô kho" },
   const getStatusTag = (status: ItemStatus): React.ReactNode => {
     switch (status) {
       case ItemStatus.AVAILABLE:
@@ -70,11 +72,14 @@ const InventoryItemList: React.FC = () => {
       case ItemStatus.NEED_LIQUID:
         return <Tag color="error">Thanh lý</Tag>;
       case ItemStatus.NO_LONGER_EXIST:
-        return <Tag color="default">Không tồn tại trong kho</Tag>;
+        return <Tag color="default">Không tồn tại</Tag>;
+      case ItemStatus.READY_TO_STORE:
+        return <Tag color="default">Chuẩn bị vô kho</Tag>;
       default:
         return <Tag color="default">{status}</Tag>;
     }
   };
+
 
   const getIventoryItemInfoFromItem = (inventoryItem: InventoryItemResponse) => {
     return items.find(item => item.id === inventoryItem.itemId);

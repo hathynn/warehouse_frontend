@@ -402,8 +402,6 @@ const StockCheckRequestCreate = () => {
       // Create stock check details
       await createStockCheckDetail(createdStockCheck.id, stockCheckDetailsData);
 
-      toast.success("Đã tạo phiếu kiểm kho thành công");
-
       navigate(ROUTES.PROTECTED.STOCK_CHECK.REQUEST.LIST);
 
       // Reset states after successful submission
