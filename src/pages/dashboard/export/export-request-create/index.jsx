@@ -28,7 +28,7 @@ import { usePaginationViewTracker } from "@/hooks/usePaginationViewTracker";
 
 // Initial form data state
 const INITIAL_FORM_DATA = {
-  exportType: "SELLING",
+  exportType: null,
   exportDate: null,
   exportTime: null,
   exportReason: "",
@@ -1213,7 +1213,7 @@ const ExportRequestCreate = () => {
 
           {["INTERNAL", "LIQUIDATION", "SELLING"].includes(
             formData.exportType
-          ) ? (
+          ) || !formData.exportType ? (
             <>
               <ExcelUploadSection
                 fileName={fileName}
@@ -1222,6 +1222,7 @@ const ExportRequestCreate = () => {
                 onRemoveFile={handleRemoveFile}
                 fileInputRef={fileInputRef}
                 buttonLabel="Tải lên file Excel"
+                showAllTemplatesButton={!formData.exportType} // THÊM prop này
               />
 
               <input

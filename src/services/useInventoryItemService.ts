@@ -10,6 +10,8 @@ export enum ItemStatus {
   SAFE = "SAFE",
   ALMOST_OUT_OF_DATE = "ALMOST_OUT_OF_DATE",
   NEED_LIQUID = "NEED_LIQUID",
+  NO_LONGER_EXIST = "NO_LONGER_EXIST",
+  READY_TO_STORE = "READY_TO_STORE",
 }
 
 // Interface to match UpdateInventoryLocationRequest.java
@@ -22,6 +24,13 @@ export interface UpdateInventoryLocationRequest {
 export interface ChangeInventoryItemExportDetailRequest {
   oldInventoryItemId: string;
   newInventoryItemId: string;
+}
+
+// Interface for update inventory item request
+export interface UpdateInventoryItemRequest {
+  id: string;
+  status?: ItemStatus;
+  reasonForDisposal?: string;
 }
 
 // Interface to match InventoryItemResponse.java
@@ -231,6 +240,20 @@ const useInventoryItemService = () => {
     }
   };
 
+  // Update an existing inventory item
+  const updateInventoryItem = async (
+    request: UpdateInventoryItemRequest
+  ): Promise<ResponseDTO<InventoryItemResponse>> => {
+    try {
+      const response = await callApi("put", "/inventory-item", request);
+      toast.success("Cập nhật trạng thái mã hàng thành công");
+      return response;
+    } catch (error) {
+      toast.error("Không thể cập nhật trạng thái mã hàng");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllInventoryItems,
@@ -244,6 +267,7 @@ const useInventoryItemService = () => {
     autoChangeInventoryItem,
     getInventoryItemsByItemId,
     getInventoryItemFigure,
+    updateInventoryItem,
   };
 };
 

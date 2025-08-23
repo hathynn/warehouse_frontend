@@ -238,18 +238,22 @@ const StockCheckDetailsTable = ({
           </div>
         ),
       },
-      {
-        title: "Trạng thái kiểm",
-        dataIndex: "isChecked",
-        key: "isChecked",
-        width: "17.5%",
-        align: "center",
-        render: (isChecked) => (
-          <Tag color={isChecked ? "success" : "error"}>
-            {isChecked ? "Đã kiểm" : "Không tìm thấy"}
-          </Tag>
-        ),
-      },
+      ...(stockCheckStatus !== "IN_PROGRESS" && stockCheckStatus !== "COUNTED"
+        ? [
+            {
+              title: "Trạng thái kiểm",
+              dataIndex: "isChecked",
+              key: "isChecked",
+              width: "17.5%",
+              align: "center",
+              render: (isChecked) => (
+                <Tag color={isChecked ? "success" : "error"}>
+                  {isChecked ? "Đã kiểm" : "Không tìm thấy"}
+                </Tag>
+              ),
+            },
+          ]
+        : []),
       // Chỉ hiện cột "Trạng thái hàng" khi status KHÔNG phải COMPLETED
       ...(stockCheckStatus !== "COMPLETED"
         ? [
@@ -264,6 +268,8 @@ const StockCheckDetailsTable = ({
                   AVAILABLE: { color: "success", text: "Có sẵn" },
                   UNAVAILABLE: { color: "error", text: "Không có sẵn" },
                   NEED_LIQUID: { color: "warning", text: "Thanh lý" },
+                  NO_LONGER_EXIST: { color: "default", text: "Không tồn tại" },
+                  READY_TO_STORE: { color: "default", text: "Chuẩn bị vô kho" },
                 };
 
                 const config = statusConfig[status] || {

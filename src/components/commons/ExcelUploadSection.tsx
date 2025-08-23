@@ -10,7 +10,6 @@ import templatePhieuNhapTra from "@/assets/import-templates/template_phieu_nhap_
 
 const TYPE_LABELS = {
   SELLING: "xuất bán",
-  EXPORT_RETURN: "xuất trả nhà cung cấp",
   INTERNAL: "xuất nội bộ",
   LIQUIDATION: "xuất thanh lý",
   IMPORT_REQUEST: "phiếu nhập",
@@ -37,6 +36,8 @@ interface ExcelUploadSectionProps {
   infoMessage?: React.ReactNode;
   fileInputRef?: RefObject<HTMLInputElement | null>;
   type?: string;
+  showAllTemplatesButton?: boolean;
+
 }
 
 const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
@@ -48,8 +49,10 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
   infoMessage,
   fileInputRef,
   type,
+  showAllTemplatesButton = false,
 }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
 
   const handleDownloadTemplate = () => {
     if (type && TEMPLATE_FILES[type as keyof typeof TEMPLATE_FILES]) {
@@ -72,6 +75,25 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
       link.click();
       document.body.removeChild(link);
     }
+  };
+
+  const handleDownloadSpecificTemplate = (templateType: string) => {
+    if (TEMPLATE_FILES[templateType as keyof typeof TEMPLATE_FILES]) {
+      const templatePath = TEMPLATE_FILES[templateType as keyof typeof TEMPLATE_FILES];
+      const link = document.createElement("a");
+      link.href = templatePath;
+
+      const fileNames = {
+        SELLING: "template_xuat_ban.xlsx",
+        INTERNAL: "template_xuat_noi_bo.xlsx",
+      };
+
+      link.download = fileNames[templateType as keyof typeof fileNames] || "template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setShowTemplateModal(false);
   };
 
 
@@ -98,14 +120,26 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
     <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
       <div className="flex flex-col gap-3">
         <div className="flex justify-center gap-3">
-          <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
-            Tải mẫu Excel
-            {type && TYPE_LABELS[type as keyof typeof TYPE_LABELS] && (
-              <span className="font-semibold">
-                {TYPE_LABELS[type as keyof typeof TYPE_LABELS]}
-              </span>
-            )}
-          </Button>
+          {/* Nút tải mẫu Excel */}
+          {showAllTemplatesButton ? (
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={() => setShowTemplateModal(true)}
+            >
+              Xem và tải các mẫu excel <span className="font-semibold">Phiếu Xuất</span>
+            </Button>
+          ) : type ? (
+            <Button icon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+              Tải mẫu Excel{" "}
+              {TYPE_LABELS[type as keyof typeof TYPE_LABELS] && (
+                <span className="font-semibold">
+                  {TYPE_LABELS[type as keyof typeof TYPE_LABELS]}
+                </span>
+              )}
+            </Button>
+          ) : null}
+
+          {/* Nút tải lên file */}
           <input
             type="file"
             ref={fileInputRef}
@@ -164,6 +198,30 @@ const ExcelUploadSection: React.FC<ExcelUploadSectionProps> = ({
         <p>
           File đã chọn và dữ liệu xem trước sẽ bị xóa hoàn toàn.
         </p>
+      </Modal>
+      <Modal
+        title="Chọn mẫu Excel phiếu xuất"
+        open={showTemplateModal}
+        onCancel={() => setShowTemplateModal(false)}
+        footer={null}
+        width={400}
+      >
+        <div className="flex flex-col gap-3 mt-5">
+          <Button
+            block
+            icon={<DownloadOutlined />}
+            onClick={() => handleDownloadSpecificTemplate('SELLING')}
+          >
+            Tải mẫu Excel <span className="font-semibold">Xuất Bán</span>
+          </Button>
+          <Button
+            block
+            icon={<DownloadOutlined />}
+            onClick={() => handleDownloadSpecificTemplate('INTERNAL')}
+          >
+            Tải mẫu Excel <span className="font-semibold">Xuất Nội Bộ</span>
+          </Button>
+        </div>
       </Modal>
     </div>
   );
