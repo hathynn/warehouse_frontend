@@ -46,6 +46,13 @@ export interface InventoryItemResponse {
   isTrackingForExport?: boolean;
 }
 
+export interface InventoryItemFigureResponse {
+  itemId: string;
+  totalInventoryItemAvailable: number;
+  totalInventoryItemUnAvailable: number;
+  totalInventoryItemNeedLiquid: number;
+}
+
 export interface AutoChangeInventoryItemRequest {
   inventoryItemId: string;
 }
@@ -65,7 +72,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm trong kho");
       throw error;
     }
   };
@@ -81,7 +87,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy thông tin sản phẩm");
       throw error;
     }
   };
@@ -99,7 +104,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
       throw error;
     }
   };
@@ -116,7 +120,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm theo đơn nhập");
       throw error;
     }
   };
@@ -134,7 +137,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm theo yêu cầu xuất");
       throw error;
     }
   };
@@ -151,7 +153,6 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
-      toast.error("Không thể lấy thông tin mã QR");
       throw error;
     }
   };
@@ -216,7 +217,16 @@ const useInventoryItemService = () => {
       const response = await callApi("get", `/inventory-item/item/${itemId}`);
       return response;
     } catch (error) {
-      toast.error("Không thể lấy danh sách sản phẩm theo mã sản phẩm");
+      throw error;
+    }
+  };
+
+  const getInventoryItemFigure = async (): Promise<ResponseDTO<InventoryItemFigureResponse[]>> => {
+    try {
+      const response = await callApi("get", "/inventory-item/figure");
+      return response;
+    }
+    catch (error) {
       throw error;
     }
   };
@@ -233,6 +243,7 @@ const useInventoryItemService = () => {
     changeInventoryItemExportDetail,
     autoChangeInventoryItem,
     getInventoryItemsByItemId,
+    getInventoryItemFigure,
   };
 };
 
