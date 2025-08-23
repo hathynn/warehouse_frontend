@@ -46,6 +46,17 @@ const StockCheckRequestInfoForm = ({
   const [blockedDates, setBlockedDates] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  const getNextValidDate = (startDate) => {
+    let nextDate = dayjs(startDate).add(1, "day");
+
+    // Tiếp tục cộng ngày cho đến khi tìm được ngày không bị block
+    while (isDateBlocked(nextDate)) {
+      nextDate = nextDate.add(1, "day");
+    }
+
+    return nextDate.format("YYYY-MM-DD");
+  };
+
   // Update table pagination when mappedData changes
   useEffect(() => {
     setTablePagination((prev) => ({
@@ -70,16 +81,40 @@ const StockCheckRequestInfoForm = ({
   // Load holidays data
   useEffect(() => {
     try {
-      const allBlockedDates = [
+      // Chỉ load holidays và sundays cho expectedDate, không dùng cho startDate
+      const holidaysForExpectedDate = [
         ...holidaysData.fixedHolidays.map((h) => h.date),
         ...holidaysData.lunarHolidays.map((h) => h.date),
         ...holidaysData.sundays,
       ];
-      setBlockedDates(allBlockedDates);
+      setBlockedDates(holidaysForExpectedDate);
+
+      // Auto-populate startDate với ngày hôm nay nếu chưa có
+      if (!formData.startDate) {
+        const today = dayjs().format("YYYY-MM-DD");
+        setFormData((prev) => ({
+          ...prev,
+          startDate: today,
+        }));
+      }
     } catch (error) {
       console.error("Error loading holidays data:", error);
     }
-  }, []);
+  }, [formData.startDate, setFormData]);
+
+  useEffect(() => {
+    // Chỉ auto-populate expectedDate khi:
+    // - Có startDate
+    // - Chưa có expectedCompletedDate
+    // - Component vừa mount hoặc startDate vừa thay đổi từ null thành có giá trị
+    if (formData.startDate && !formData.expectedCompletedDate) {
+      const expectedDate = getNextValidDate(formData.startDate);
+      setFormData((prev) => ({
+        ...prev,
+        expectedCompletedDate: expectedDate,
+      }));
+    }
+  }, [formData.startDate]);
 
   const handleTablePaginationChange = (paginationInfo) => {
     setTablePagination((prev) => ({
@@ -97,8 +132,8 @@ const StockCheckRequestInfoForm = ({
   const getDisabledDateForStartDate = (current) => {
     if (!current) return false;
 
-    // Disable past dates and blocked dates
-    return current.isBefore(dayjs().startOf("day")) || isDateBlocked(current);
+    // Chỉ disable past dates, không disable chủ nhật và ngày lễ
+    return current.isBefore(dayjs().startOf("day"));
   };
 
   const getDisabledDateForExpectedDate = (current) => {
@@ -232,11 +267,17 @@ const StockCheckRequestInfoForm = ({
                         const newDate = date?.isValid()
                           ? date.format("YYYY-MM-DD")
                           : null;
+
+                        let expectedDate = null;
+                        if (newDate) {
+                          // Tự động tính expectedCompletedDate khi startDate thay đổi
+                          expectedDate = getNextValidDate(newDate);
+                        }
+
                         setFormData({
                           ...formData,
                           startDate: newDate,
-                          // Reset expected date if start date changes
-                          expectedCompletedDate: null,
+                          expectedCompletedDate: expectedDate, // Auto-populate expectedDate
                         });
                         setMandatoryError("");
                       }}
@@ -274,6 +315,7 @@ const StockCheckRequestInfoForm = ({
                         const newDate = date?.isValid()
                           ? date.format("YYYY-MM-DD")
                           : null;
+
                         setFormData({
                           ...formData,
                           expectedCompletedDate: newDate,

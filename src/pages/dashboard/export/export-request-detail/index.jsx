@@ -919,7 +919,7 @@ const ExportRequestDetail = () => {
                   {text}
                 </span>{" "}
                 {record.measurementUnit && (
-                  <span className="text-gray-500">
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
                     {record.measurementUnit}
                   </span>
                 )}
@@ -951,7 +951,10 @@ const ExportRequestDetail = () => {
                       0
                     </span>{" "}
                     {record.measurementUnit && (
-                      <span className="text-gray-500">
+                      <span
+                        style={{ fontSize: "13px" }}
+                        className="text-gray-400"
+                      >
                         {record.measurementUnit}
                       </span>
                     )}
@@ -973,7 +976,10 @@ const ExportRequestDetail = () => {
                     {text}
                   </span>{" "}
                   {record.measurementUnit && (
-                    <span className="text-gray-500">
+                    <span
+                      style={{ fontSize: "13px" }}
+                      className="text-gray-400"
+                    >
                       {record.measurementUnit}
                     </span>
                   )}
@@ -1000,7 +1006,9 @@ const ExportRequestDetail = () => {
                   {text}
                 </span>{" "}
                 {record.unitType && (
-                  <span className="text-gray-500">{record.unitType}</span>
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
+                    {record.unitType}
+                  </span>
                 )}
               </div>
             ),
@@ -1029,9 +1037,11 @@ const ExportRequestDetail = () => {
               <div style={{ textAlign: "center" }}>
                 <span style={{ fontWeight: "600", fontSize: "18px" }}>0</span>{" "}
                 {record.unitType && (
-                  <span className="text-gray-500">{record.unitType}</span>
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
+                    {record.unitType}
+                  </span>
                 )}{" "}
-                <span className="text-gray-500">
+                {/* <span className="text-gray-500">
                   (Cần:{" "}
                   <span
                     className="text-black"
@@ -1040,7 +1050,7 @@ const ExportRequestDetail = () => {
                     {record.quantity}
                   </span>
                   )
-                </span>
+                </span> */}
               </div>
             );
           } else {
@@ -1048,7 +1058,9 @@ const ExportRequestDetail = () => {
               <div style={{ textAlign: "center" }}>
                 <span style={{ fontWeight: "600", fontSize: "18px" }}>0</span>{" "}
                 {record.unitType && (
-                  <span className="text-gray-500">{record.unitType}</span>
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
+                    {record.unitType}
+                  </span>
                 )}
               </div>
             );
@@ -1069,9 +1081,11 @@ const ExportRequestDetail = () => {
                 {text}
               </span>{" "}
               {record.unitType && (
-                <span className="text-gray-500">{record.unitType}</span>
+                <span style={{ fontSize: "13px" }} className="text-gray-400">
+                  {record.unitType}
+                </span>
               )}{" "}
-              <span className="text-gray-500">
+              {/* <span className="text-gray-500">
                 (Cần:{" "}
                 <span
                   className="text-black"
@@ -1080,7 +1094,7 @@ const ExportRequestDetail = () => {
                   {record.quantity}
                 </span>
                 )
-              </span>
+              </span> */}
             </div>
           );
         } else {
@@ -1095,7 +1109,9 @@ const ExportRequestDetail = () => {
                 {text}
               </span>{" "}
               {record.unitType && (
-                <span className="text-gray-500">{record.unitType}</span>
+                <span style={{ fontSize: "13px" }} className="text-gray-400">
+                  {record.unitType}
+                </span>
               )}
             </div>
           );
@@ -1196,7 +1212,7 @@ const ExportRequestDetail = () => {
                   {text}
                 </span>{" "}
                 {record.measurementUnit && (
-                  <span className="text-gray-500">
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
                     {record.measurementUnit}
                   </span>
                 )}
@@ -1230,7 +1246,10 @@ const ExportRequestDetail = () => {
                     {text}
                   </span>{" "}
                   {record.measurementUnit && (
-                    <span className="text-gray-500">
+                    <span
+                      style={{ fontSize: "13px" }}
+                      className="text-gray-400"
+                    >
                       {record.measurementUnit}
                     </span>
                   )}
@@ -1255,7 +1274,9 @@ const ExportRequestDetail = () => {
                   {text}
                 </span>{" "}
                 {record.unitType && (
-                  <span className="text-gray-500">{record.unitType}</span>
+                  <span style={{ fontSize: "13px" }} className="text-gray-400">
+                    {record.unitType}
+                  </span>
                 )}
               </span>
             ),
@@ -1274,7 +1295,9 @@ const ExportRequestDetail = () => {
           <span className={isLacking ? "text-red-600 font-semibold" : ""}>
             <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
             {record.unitType && (
-              <span className="text-gray-500">{record.unitType}</span>
+              <span style={{ fontSize: "13px" }} className="text-gray-400">
+                {record.unitType}
+              </span>
             )}
           </span>
         );
@@ -1817,7 +1840,10 @@ const ExportRequestDetail = () => {
                               {measurementValue}
                             </span>
                             {itemMetadata?.measurementUnit && (
-                              <span className="text-gray-500 ml-1">
+                              <span
+                                className="text-gray-400 ml-1"
+                                style={{ fontSize: "13px" }}
+                              >
                                 {itemMetadata.measurementUnit}
                               </span>
                             )}
