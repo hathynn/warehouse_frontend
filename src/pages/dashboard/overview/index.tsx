@@ -1,21 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Row, Col, Space, Typography } from "antd";
 import {
   ShoppingCartOutlined,
   InboxOutlined,
   ExportOutlined,
   ImportOutlined,
-  AlertOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
-  TeamOutlined,
   ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import useInventoryItemService, { InventoryItemFigureResponse } from "../../../services/useInventoryItemService";
-import StatisticCard from "../../../components/commons/StatisticCard";
 
-const { Title } = Typography;
 interface InventoryItemOverviewStats {
   totalProducts: number;
   totalInventoryItemAvailable: number;
@@ -28,13 +22,13 @@ const SummaryOverview = () => {
   const { getInventoryItemFigure } = useInventoryItemService();
   const [inventoryItemFigure, setInventoryItemFigure] = useState<InventoryItemFigureResponse[]>([]);
 
-
   const fetchInventoryItemFigure = async () => {
     const inventoryItemFigureResponse = await getInventoryItemFigure();
     if (inventoryItemFigureResponse.statusCode === 200) {
       setInventoryItemFigure(inventoryItemFigureResponse.content);
     }
   };
+
   useEffect(() => {
     fetchInventoryItemFigure();
   }, []);
@@ -77,155 +71,208 @@ const SummaryOverview = () => {
   };
 
   return (
-    <div className="overflow-x-hidden ">
-      <div className="mb-6 bg-blue-500 text-white p-4 rounded-lg shadow-sm">
-        <div className="flex flex-wrap items-center justify-center-safe gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-white">Thao tác nhanh:</span>
+    <div className=" bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-slate-800 mb-2">
+            Tổng Quan Kho Hàng
+          </h1>
+          <p className="text-lg text-slate-600">
+            Quản lý và theo dõi toàn bộ hoạt động kho vải
+          </p>
+        </div>
 
-            <Space wrap>
-              <button
-                onClick={() => nav("/import/create-request")}
-                className="px-4 py-2 bg-white text-black  rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
-              >
-                Tạo phiếu nhập kho
-              </button>
-              <button
-                onClick={() => nav("/export/create-request")}
-                className="px-4 py-2 bg-white text-black  rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
-              >
-                Tạo phiếu xuất kho
-              </button>
-              <button className="px-4 py-2 bg-white text-black  rounded-lg hover:bg-blue-600 hover:text-white transition-colors">
-                Kiểm tra tồn kho
-              </button>
-            </Space>
+        {/* Quick Actions */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <h2 className="text-xl font-semibold text-slate-800 mb-4">Thao tác nhanh</h2>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => nav("/import/create-request")}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium 
+                       hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200
+                       shadow-md hover:shadow-lg"
+            >
+              Tạo phiếu nhập kho
+            </button>
+            <button
+              onClick={() => nav("/export/create-request")}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-medium 
+                       hover:from-emerald-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200
+                       shadow-md hover:shadow-lg"
+            >
+              Tạo phiếu xuất kho
+            </button>
+            <button
+              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-medium 
+                       hover:from-amber-600 hover:to-amber-700 transform hover:scale-105 transition-all duration-200
+                       shadow-md hover:shadow-lg"
+            >
+              Kiểm tra tồn kho
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Statistics Cards */}
-      <div className="space-y-6">
-        <div>
-          <Title level={4} className="mb-4 text-gray-700 font-semibold">
-            📦 Tổng quan kho vải
-          </Title>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Tổng sản phẩm tồn kho"
-                value={inventoryItemOverviewStats.totalProducts}
-                icon={<InboxOutlined className="text-xl" />}
-                color="bg-blue-50 text-blue-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Khả dụng"
-                value={inventoryItemOverviewStats.totalInventoryItemAvailable}
-                icon={<CheckCircleOutlined className="text-xl" />}
-                color="bg-green-50 text-green-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Cần thanh lý"
-                value={inventoryItemOverviewStats.totalInventoryItemNeedLiquid}
-                icon={<ExclamationCircleOutlined className="text-xl" />}
-                color="bg-red-50 text-red-600"
-              />
-            </Col>
-          </Row>
+        {/* Inventory Overview */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-blue-500 pl-4">
+            Tổng quan kho vải
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-600 font-medium text-sm uppercase tracking-wide">
+                    Tổng sản phẩm
+                  </p>
+                  <p className="text-3xl font-bold text-blue-800 mt-1">
+                    {inventoryItemOverviewStats.totalProducts.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <InboxOutlined style={{ color: "#fff" }} className="text-white text-xl" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-emerald-600 font-medium text-sm uppercase tracking-wide">
+                    Khả dụng
+                  </p>
+                  <p className="text-3xl font-bold text-emerald-800 mt-1">
+                    {inventoryItemOverviewStats.totalInventoryItemAvailable.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-500 rounded-lg flex items-center justify-center">
+                  <CheckCircleOutlined style={{ color: "#fff" }} className="text-white text-xl" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-600 font-medium text-sm uppercase tracking-wide">
+                    Cần thanh lý
+                  </p>
+                  <p className="text-3xl font-bold text-red-800 mt-1">
+                    {inventoryItemOverviewStats.totalInventoryItemNeedLiquid.toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                  <ExclamationCircleOutlined style={{ color: "#fff" }} className="text-white text-xl" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <Title level={4} className="mb-4 text-gray-700 font-semibold">
-            📥 Tổng quan nhập kho
-          </Title>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Phiếu nhập"
-                value={mockData.importSlips}
-                icon={<ImportOutlined className="text-xl" />}
-                color="bg-blue-50 text-blue-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Đơn nhập"
-                value={mockData.importOrders}
-                icon={<ShoppingCartOutlined className="text-xl" />}
-                color="bg-purple-50 text-purple-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Đang xử lý"
-                value={mockData.importsInProgress}
-                icon={<ClockCircleOutlined className="text-xl" />}
-                color="bg-orange-50 text-orange-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Đã nhập kho"
-                value={mockData.importsStored}
-                icon={<CheckCircleOutlined className="text-xl" />}
-                color="bg-green-50 text-green-600"
-              />
-            </Col>
-          </Row>
+        {/* Import & Export Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Import Overview */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-purple-500 pl-4">
+              Tổng quan nhập kho
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <ImportOutlined style={{ color: "#fff" }} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-700">Phiếu nhập</p>
+                    <p className="text-sm text-slate-500">Tổng số phiếu</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-purple-600">{mockData.importSlips}</span>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <ShoppingCartOutlined style={{ color: "#fff" }} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-700">Đơn nhập</p>
+                    <p className="text-sm text-slate-500">Đang xử lý</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-indigo-600">{mockData.importOrders}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <p className="text-2xl font-bold text-orange-600">{mockData.importsInProgress}</p>
+                  <p className="text-sm text-orange-700 font-medium">Đang xử lý</p>
+                </div>
+                <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-2xl font-bold text-emerald-600">{mockData.importsStored}</p>
+                  <p className="text-sm text-emerald-700 font-medium">Đã nhập kho</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Export Overview */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+            <h2 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-cyan-500 pl-4">
+              Tổng quan xuất kho
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center">
+                    <ExportOutlined style={{ color: "#fff" }} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-700">Phiếu xuất</p>
+                    <p className="text-sm text-slate-500">Tổng số phiếu</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-cyan-600">{mockData.exportSlips}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <p className="text-2xl font-bold text-orange-600">{mockData.exportsInProgress}</p>
+                  <p className="text-sm text-orange-700 font-medium">Đang xử lý</p>
+                </div>
+                <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-2xl font-bold text-emerald-600">{mockData.exportsCompleted}</p>
+                  <p className="text-sm text-emerald-700 font-medium">Đã hoàn thành</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <Title level={4} className="mb-4 text-gray-700 font-semibold">
-            📤 Tổng quan xuất kho
-          </Title>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Phiếu xuất"
-                value={mockData.exportSlips}
-                icon={<ExportOutlined className="text-xl" />}
-                color="bg-indigo-50 text-indigo-600"
-              />
-            </Col>
-
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Đang xử lý"
-                value={mockData.exportsInProgress}
-                icon={<ClockCircleOutlined className="text-xl" />}
-                color="bg-orange-50 text-orange-600"
-              />
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Đã hoàn thành"
-                value={mockData.exportsCompleted}
-                icon={<CheckCircleOutlined className="text-xl" />}
-                color="bg-green-50 text-green-600"
-              />
-            </Col>
-          </Row>
-        </div>
-
-        <div>
-          <Title level={4} className="mb-4 text-gray-700 font-semibold">
-            👥 Tổng quan nhân sự
-          </Title>
-          <Row gutter={[20, 20]}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <StatisticCard
-                title="Nhân viên hoạt động"
-                value={mockData.activeStaff}
-                icon={<TeamOutlined className="text-xl" />}
-                color="bg-teal-50 text-teal-600"
-              />
-            </Col>
-          </Row>
-        </div>
+        {/* Staff Overview */}
+        {/* <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <h2 className="text-xl font-bold text-slate-800 mb-6 border-l-4 border-teal-500 pl-4">
+            Tổng quan nhân sự
+          </h2>
+          <div className="max-w-md">
+            <div className="flex items-center justify-between p-6 bg-gradient-to-r from-teal-50 to-teal-100 rounded-xl border border-teal-200">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-teal-500 rounded-lg flex items-center justify-center">
+                  <TeamOutlined className="text-white text-xl" />
+                </div>
+                <div>
+                  <p className="text-teal-600 font-medium text-sm uppercase tracking-wide">
+                    Nhân viên hoạt động
+                  </p>
+                  <p className="text-sm text-teal-700 mt-1">
+                    Đang làm việc hôm nay
+                  </p>
+                </div>
+              </div>
+              <span className="text-3xl font-bold text-teal-800">{mockData.activeStaff}</span>
+            </div>
+          </div>
+        </div> */}
       </div>
     </div>
   );
