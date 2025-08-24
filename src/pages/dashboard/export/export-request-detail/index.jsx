@@ -17,6 +17,7 @@ import {
   ArrowLeftOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
+  FileTextOutlined,
   UserAddOutlined,
 } from "@ant-design/icons";
 import useExportRequestService from "@/services/useExportRequestService";
@@ -30,6 +31,7 @@ import StatusTag from "@/components/commons/StatusTag";
 import UpdateExportDateTimeModal from "@/components/export-flow/export-detail/UpdateExportDateTimeModal";
 import ProductDetailTable from "@/components/export-flow/export-detail/ProductDetailTable";
 import ExportRequestConfirmModal from "@/components/export-flow/export-general/ExportRequestConfirmModal";
+import ExportRequestPDF from "@/components/export-flow/export-general/ExportRequestPDF";
 import dayjs from "dayjs";
 import useDepartmentService from "@/services/useDepartmentService";
 import useInventoryItemService from "@/services/useInventoryItemService";
@@ -145,6 +147,7 @@ const ExportRequestDetail = () => {
   const [selectedAutoChangeItem, setSelectedAutoChangeItem] = useState(null);
   const [itemMetadata, setItemMetadata] = useState(null);
   const [loadingItemMetadata, setLoadingItemMetadata] = useState(false);
+  const [pdfModalVisible, setPdfModalVisible] = useState(false);
 
   const getLocalStorageKey = () => `export_waiting_start_${exportRequestId}`;
 
@@ -1456,6 +1459,21 @@ const ExportRequestDetail = () => {
               Hủy phiếu xuất
             </Button>
           )}
+        {userRole === AccountRole.DEPARTMENT &&
+          exportRequest?.status === ExportStatus.COMPLETED && (
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              className="ml-4"
+              onClick={() => setPdfModalVisible(true)}
+            >
+              Xuất
+              <span className="font-bold" style={{ fontSize: "16px" }}>
+                PDF
+              </span>
+              cho phiếu xuất này
+            </Button>
+          )}
       </div>
       <Card className="mb-6">
         <Descriptions title="Thông tin phiếu xuất" bordered>
@@ -2082,6 +2100,17 @@ const ExportRequestDetail = () => {
           </div>
         </div>
       </Modal>
+      <ExportRequestPDF
+        visible={pdfModalVisible}
+        onCancel={() => setPdfModalVisible(false)}
+        exportRequest={exportRequest}
+        exportRequestDetails={allExportRequestDetails}
+        departmentInfo={departmentInfo}
+        assignedStaff={assignedStaff}
+        assignedKeeper={assignedKeeper}
+        providerInfo={providerInfo}
+        items={items}
+      />
     </div>
   );
 };
