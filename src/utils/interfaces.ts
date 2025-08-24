@@ -1,6 +1,7 @@
 import { ExportRequestResponse } from "@/services/useExportRequestService";
 import { ImportOrderResponse } from "@/services/useImportOrderService";
 import { ImportRequestResponse } from "@/services/useImportRequestService";
+import { StockCheckRequestResponse } from "@/services/useStockCheckService";
 import { ImportRequestType } from "@/components/commons/RequestTypeSelector";
 import { IconType } from "react-icons";
 
@@ -71,6 +72,7 @@ type TransactionLogTypeMap = {
     IMPORT_ORDER: ImportOrderResponse;
     IMPORT_REQUEST: ImportRequestResponse | ImportRequestResponse[]; // Có thể là array trong trường hợp CREATE multiple
     EXPORT_REQUEST: ExportRequestResponse;
+    STOCK_CHECK: StockCheckRequestResponse;
     // Có thể thêm các loại khác nếu cần
     // ACCOUNT: AccountResponse;
     // INVENTORY_ITEM: InventoryItemResponse;
@@ -104,6 +106,11 @@ export interface ImportOrderTransactionLog extends BaseTransactionLogResponse {
 export interface ExportRequestTransactionLog extends BaseTransactionLogResponse {
     type: 'EXPORT_REQUEST';
     responseContent: ExportRequestResponse;
+}
+
+export interface StockCheckRequestTransactionLog extends BaseTransactionLogResponse {
+    type: 'STOCK_CHECK';
+    responseContent: StockCheckRequestResponse;
 }
 
 /**

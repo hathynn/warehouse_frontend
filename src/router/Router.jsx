@@ -31,6 +31,8 @@ import StockCheckRequestDetail from "@/pages/dashboard/stock-check/stock-check-d
 import ConfigurationPage from "@/pages/dashboard/configuration";
 import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
 import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
+import ExportTransactionHistory from "@/pages/dashboard/transaction/export";
+import StockCheckTransactionHistory from "@/pages/dashboard/transaction/stock-check";
 
 export const Router = createBrowserRouter([
   {
@@ -166,6 +168,14 @@ export const Router = createBrowserRouter([
             path: ROUTES.PROTECTED.TRANSACTION_LOGS.IMPORT,
             element: <ImportTransactionHistory />,
           },
+          {
+            path: ROUTES.PROTECTED.TRANSACTION_LOGS.EXPORT,
+            element: <ExportTransactionHistory />,
+          },
+          {
+            path: ROUTES.PROTECTED.TRANSACTION_LOGS.STOCK_CHECK,
+            element: <StockCheckTransactionHistory />,
+          }
         ],
       },
     ],

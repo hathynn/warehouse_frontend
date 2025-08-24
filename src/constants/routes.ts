@@ -47,7 +47,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Transaction log routes
     "/transaction-logs/import",
     "/transaction-logs/export",
-
+    "/transaction-logs/stock-check",
     // Stock-check routes
     "/stock-check/create-request",
     "/stock-check/request-list",
@@ -81,7 +81,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Transaction log routes
     "/transaction-logs/import",
     "/transaction-logs/export",
-
+    "/transaction-logs/stock-check",
     // Stock-check routes
     "/stock-check/create-request",
     "/stock-check/request-list",
@@ -192,6 +192,7 @@ export const ROUTES = {
     TRANSACTION_LOGS: {
       IMPORT: "/transaction-logs/import",
       EXPORT: "/transaction-logs/export",
+      STOCK_CHECK: "/transaction-logs/stock-check",
     },
   },
 } as const;

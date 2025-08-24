@@ -39,7 +39,6 @@ const SummaryOverview = () => {
     fetchInventoryItemFigure();
   }, []);
 
-  // useMemo để tính toán statistics chỉ khi inventoryItemFigure thay đổi
   const inventoryItemOverviewStats = useMemo<InventoryItemOverviewStats>(() => {
     if (!inventoryItemFigure || inventoryItemFigure.length === 0) {
       return {

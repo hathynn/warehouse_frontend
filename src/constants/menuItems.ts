@@ -121,6 +121,11 @@ const transactionLogMenuItems: MenuItem[] = [
         label: "Lịch sử phiếu xuất",
         path: ROUTES.PROTECTED.TRANSACTION_LOGS.EXPORT,
       },
+      {
+        key: "stock-check-history",
+        label: "Lịch sử phiếu kiểm kho",
+        path: ROUTES.PROTECTED.TRANSACTION_LOGS.STOCK_CHECK,
+      },
     ],
   },
 ];
