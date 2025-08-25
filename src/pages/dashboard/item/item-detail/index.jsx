@@ -53,11 +53,13 @@ const ItemDetail = () => {
   const [reasonForChange, setReasonForChange] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [confirmationChecked, setConfirmationChecked] = useState(false);
+  const [inventoryFigure, setInventoryFigure] = useState(null);
+  const [figureLoading, setFigureLoading] = useState(false);
 
   const { getItemById } = useItemService();
   const { getCategoryById } = useCategoryService();
   const { getProviderById } = useProviderService();
-  const { getInventoryItemById, updateInventoryItem } =
+  const { getInventoryItemById, updateInventoryItem, getInventoryItemFigure } =
     useInventoryItemService();
 
   useEffect(() => {
@@ -123,6 +125,27 @@ const ItemDetail = () => {
     }
   };
 
+  const fetchInventoryFigure = async () => {
+    if (!id) return;
+
+    try {
+      setFigureLoading(true);
+      const response = await getInventoryItemFigure();
+
+      if (response && response.content) {
+        // Filter để lấy figure của item hiện tại
+        const currentItemFigure = response.content.find(
+          (figure) => figure.itemId === id
+        );
+        setInventoryFigure(currentItemFigure || null);
+      }
+    } catch (error) {
+      console.error("Error fetching inventory figure:", error);
+    } finally {
+      setFigureLoading(false);
+    }
+  };
+
   const fetchInventoryItems = async (inventoryItemIds) => {
     if (!inventoryItemIds || inventoryItemIds.length === 0) {
       return;
@@ -172,6 +195,12 @@ const ItemDetail = () => {
       }));
     }
   }, [inventoryItems, searchTerm]);
+
+  useEffect(() => {
+    if (id && canViewInventoryInfo()) {
+      fetchInventoryFigure();
+    }
+  }, [id, userRole]);
 
   const canViewInventoryInfo = () => {
     return (
@@ -550,6 +579,69 @@ const ItemDetail = () => {
           </Descriptions.Item>
         </Descriptions>
       </Card>
+
+      {canViewInventoryInfo() && (
+        <div className="mt-5">
+          <Card
+            title="Tổng quan hàng tồn kho"
+            className="shadow-lg"
+            loading={figureLoading}
+          >
+            {inventoryFigure ? (
+              <div className="grid grid-cols-5 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-2xl font-bold text-green-600 mb-1">
+                    {inventoryFigure.totalInventoryItemAvailable}
+                  </div>
+                  <div className="text-sm text-green-700 font-medium">
+                    Có sẵn
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="text-2xl font-bold text-red-600 mb-1">
+                    {inventoryFigure.totalInventoryItemUnAvailable}
+                  </div>
+                  <div className="text-sm text-red-700 font-medium">
+                    Không có sẵn
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-2xl font-bold text-orange-600 mb-1">
+                    {inventoryFigure.totalInventoryItemNeedLiquid}
+                  </div>
+                  <div className="text-sm text-orange-700 font-medium">
+                    Cần thanh lý
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">
+                    {inventoryFigure.totalInventoryItemReadToStore}
+                  </div>
+                  <div className="text-sm text-blue-700 font-medium">
+                    Chuẩn bị vào kho
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-2xl font-bold text-gray-600 mb-1">
+                    {inventoryFigure.totalInventoryItemNoLongerExist}
+                  </div>
+                  <div className="text-sm text-gray-700 font-medium">
+                    Không tồn tại
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                Không có dữ liệu tổng quan
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
 
       {canViewInventoryInfo() && (
         <div className="mt-5">

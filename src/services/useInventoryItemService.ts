@@ -60,6 +60,8 @@ export interface InventoryItemFigureResponse {
   totalInventoryItemAvailable: number;
   totalInventoryItemUnAvailable: number;
   totalInventoryItemNeedLiquid: number;
+  totalInventoryItemReadToStore: number;
+  totalInventoryItemNoLongerExist: number;
 }
 
 export interface AutoChangeInventoryItemRequest {
