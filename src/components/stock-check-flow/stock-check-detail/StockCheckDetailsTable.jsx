@@ -77,6 +77,116 @@ const StockCheckDetailsTable = ({
     }));
   };
 
+  // Render expanded row for WAREHOUSE_MANAGER
+  const renderWarehouseManagerExpandedRow = (record) => {
+    const checkedInventoryItems = record.checkedInventoryItemIds || [];
+
+    if (checkedInventoryItems.length === 0) {
+      return (
+        <div style={{ padding: "16px", textAlign: "center", color: "#999" }}>
+          Không có hàng tồn kho được kiểm đếm cho mã sản phẩm này
+        </div>
+      );
+    }
+
+    const statusConfig = {
+      AVAILABLE: { color: "success", text: "Có sẵn" },
+      UNAVAILABLE: { color: "error", text: "Không có sẵn" },
+      NEED_LIQUID: { color: "warning", text: "Thanh lý" },
+      NO_LONGER_EXIST: { color: "default", text: "Không tồn tại" },
+      READY_TO_STORE: { color: "default", text: "Chuẩn bị vô kho" },
+      UNKNOWN: { color: "default", text: "Không xác định" },
+    };
+
+    const wmExpandedColumns = [
+      {
+        title: "Mã sản phẩm tồn kho đã kiểm",
+        dataIndex: "inventoryItemId",
+        key: "inventoryItemId",
+        width: "40%",
+        render: (value) => (
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: "14px",
+              padding: "4px 8px",
+              backgroundColor: "#f5f5f5",
+              borderRadius: "4px",
+              border: "1px solid #d9d9d9",
+            }}
+          >
+            {value}
+          </div>
+        ),
+      },
+      {
+        title: "Quy cách đo lường",
+        dataIndex: "measurementValue",
+        key: "measurementValue",
+        width: "25%",
+        align: "center",
+        render: (value) => (
+          <div style={{ textAlign: "center", fontWeight: "600" }}>
+            {value || 0} {record.measurementUnit}
+          </div>
+        ),
+      },
+      {
+        title: "Trạng thái kiểm kê",
+        dataIndex: "status",
+        key: "status",
+        width: "35%",
+        align: "center",
+        render: (status) => {
+          const config = statusConfig[status] || statusConfig.UNKNOWN;
+          return <Tag color={config.color}>{config.text}</Tag>;
+        },
+      },
+    ];
+
+    // Create table data
+    const tableData = checkedInventoryItems.map((item, index) => ({
+      key: index,
+      inventoryItemId: item.inventoryItemId,
+      measurementValue: item.measurementValue,
+      status: item.status,
+    }));
+
+    return (
+      <div
+        style={{
+          margin: "16px 0",
+          padding: "16px",
+          backgroundColor: "#fafafa",
+          borderRadius: "8px",
+          border: "1px solid #e8e8e8",
+        }}
+      >
+        <div
+          style={{
+            marginBottom: "12px",
+            fontWeight: "600",
+            color: "#1677ff",
+            fontSize: "16px",
+          }}
+        >
+          Danh sách sản phẩm tồn kho đã kiểm - {record.itemId}
+        </div>
+
+        <Table
+          columns={wmExpandedColumns}
+          dataSource={tableData}
+          pagination={false}
+          size="small"
+          rowKey="key"
+          style={{ backgroundColor: "white" }}
+          bordered
+          rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
+        />
+      </div>
+    );
+  };
+
   const renderExpandedRow = (record) => {
     const rowData = expandedRowData[record.id];
     const inventoryItemsData = recordInventoryItems[record.id] || [];
@@ -388,10 +498,10 @@ const StockCheckDetailsTable = ({
 
   const baseColumns = [
     {
-      title: "Đã được duyệt",
+      title: "Đã duyệt",
       dataIndex: "isChecked",
       key: "isChecked",
-      width: "10%",
+      width: "7%",
       align: "center",
       render: (isChecked) => (
         <div className="flex justify-center approved-checkbox">
@@ -423,7 +533,7 @@ const StockCheckDetailsTable = ({
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: "18%",
+      width: "15%",
       render: (id, record) => (
         <div>
           <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
@@ -595,6 +705,71 @@ const StockCheckDetailsTable = ({
     },
   ];
 
+  // Get columns for WAREHOUSE_MANAGER
+  const getWarehouseManagerColumns = () => {
+    if (userRole !== AccountRole.WAREHOUSE_MANAGER) return [];
+
+    return [
+      {
+        title: "Số lượng đã kiểm",
+        dataIndex: "actualQuantity",
+        key: "wm_actualQuantity",
+        width: "37%",
+        align: "center",
+        render: (text, record) => {
+          // WAREHOUSE_MANAGER luôn thấy số thật, không bị ẩn như các role khác
+          const checkedCount = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.length
+            : 0;
+
+          return (
+            <div style={{ textAlign: "center" }}>
+              <span
+                className={"text-black-600 font-semibold"}
+                style={{ fontSize: "18px" }}
+              >
+                {checkedCount}
+              </span>{" "}
+              {record.unitType && (
+                <span className="text-gray-500">{record.unitType}</span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        title: "Tổng giá trị đã kiểm",
+        dataIndex: "actualMeasurementValue",
+        key: "wm_actualMeasurementValue",
+        width: "37%",
+        align: "center",
+        render: (text, record) => {
+          // WAREHOUSE_MANAGER luôn thấy số thật, không bị ẩn như các role khác
+          const totalCheckedMeasurement = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.reduce(
+                (sum, item) => sum + (item.measurementValue || 0),
+                0
+              )
+            : 0;
+
+          return (
+            <div style={{ textAlign: "center" }}>
+              <span
+                className={"text-black-600 font-semibold"}
+                style={{ fontSize: "18px" }}
+              >
+                {totalCheckedMeasurement}
+              </span>{" "}
+              {record.measurementUnit && (
+                <span className="text-gray-500">{record.measurementUnit}</span>
+              )}
+            </div>
+          );
+        },
+      },
+    ];
+  };
+
   const filteredBaseColumns = baseColumns.filter((column) => {
     // Chỉ hiện cột "Được duyệt" khi status là COMPLETED (áp dụng cho tất cả role)
     if (column.key === "isChecked" && stockCheckStatus !== "COMPLETED") {
@@ -602,10 +777,13 @@ const StockCheckDetailsTable = ({
     }
 
     if (userRole === AccountRole.WAREHOUSE_MANAGER) {
-      // Hide "Số lượng đã kiểm" and "Tổng giá trị đã kiểm" columns
+      // Ẩn các cột: quantity, measurementValue, status cho WAREHOUSE_MANAGER
       if (
-        column.key === "actualQuantity" ||
-        column.key === "actualMeasurementValue"
+        column.key === "quantity" ||
+        column.key === "measurementValue" ||
+        column.key === "status" ||
+        column.key === "actualQuantity" || // Thêm dòng này
+        column.key === "actualMeasurementValue" // Thêm dòng này
       ) {
         return false;
       }
@@ -641,10 +819,17 @@ const StockCheckDetailsTable = ({
     ),
   };
 
+  // Combine columns based on role
+  const warehouseManagerColumns = getWarehouseManagerColumns();
+  const finalColumns =
+    userRole === AccountRole.WAREHOUSE_MANAGER
+      ? [...filteredBaseColumns, ...warehouseManagerColumns]
+      : filteredBaseColumns;
+
   const columns =
     userRole === AccountRole.MANAGER && stockCheckStatus === "COUNT_CONFIRMED"
-      ? [checkboxColumn, ...filteredBaseColumns]
-      : filteredBaseColumns;
+      ? [checkboxColumn, ...finalColumns]
+      : finalColumns;
 
   return (
     <Card className="mb-6 mt-4">
@@ -665,7 +850,30 @@ const StockCheckDetailsTable = ({
         rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
         expandable={
           userRole === AccountRole.WAREHOUSE_MANAGER
-            ? undefined
+            ? {
+                expandedRowKeys,
+                onExpand: handleExpand,
+                expandedRowRender: renderWarehouseManagerExpandedRow,
+                expandIconColumnIndex: columns.length,
+                expandIcon: ({ expanded, onExpand, record }) => (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={expanded ? <UpOutlined /> : <DownOutlined />}
+                    onClick={(e) => onExpand(record, e)}
+                    style={{
+                      color: "#1677ff",
+                      border: "1px solid #1677ff",
+                      borderRadius: "50%",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  />
+                ),
+              }
             : {
                 expandedRowKeys,
                 onExpand: handleExpand,

@@ -99,136 +99,127 @@ const StockCheckConfirmationModal = ({
             title: "Mã sản phẩm",
             dataIndex: "itemId",
             key: "itemId",
-            width: "24%",
-          },
-          {
-            title: "Số lượng cần kiểm",
-            dataIndex: "quantity",
-            key: "quantity",
-            width: 140,
-            align: "left",
-            render: (text, record) => (
-              <span>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                  {text}
-                </span>{" "}
-                {record.unitType && (
-                  <span className="text-gray-500">{record.unitType}</span>
-                )}
-              </span>
-            ),
+            width: "40%",
           },
           // {
-          //   title: "Số lượng đã kiểm",
-          //   dataIndex: "actualQuantity",
-          //   key: "actualQuantity",
-          //   width: 150,
+          //   title: "Số lượng cần kiểm",
+          //   dataIndex: "quantity",
+          //   key: "quantity",
+          //   width: 140,
           //   align: "left",
-          //   render: (text, record) => {
-          //     const isLacking = text < record.quantity;
-          //     const isExcess = text > record.quantity;
-
-          //     return (
-          //       <span
-          //         className={
-          //           isLacking
-          //             ? "text-red-600 font-semibold"
-          //             : isExcess
-          //             ? "text-orange-600 font-semibold"
-          //             : "text-green-600 font-semibold"
-          //         }
-          //       >
-          //         <span style={{ fontWeight: "600", fontSize: "16px" }}>
-          //           {text}
-          //         </span>{" "}
-          //         {record.unitType && (
-          //           <span className="text-gray-500">{record.unitType}</span>
-          //         )}
-          //       </span>
-          //     );
-          //   },
+          //   render: (text, record) => (
+          //     <span>
+          //       <span style={{ fontWeight: "600", fontSize: "16px" }}>
+          //         {text}
+          //       </span>{" "}
+          //       {record.unitType && (
+          //         <span className="text-gray-500">{record.unitType}</span>
+          //       )}
+          //     </span>
+          //   ),
           // },
           {
-            title: "Tổng giá trị đo lường",
-            dataIndex: "measurementValue",
-            key: "measurementValue",
-            width: 180,
+            title: "Số lượng đã kiểm",
+            dataIndex: "actualQuantity",
+            key: "actualQuantity",
+            width: "30%",
             align: "left",
-            render: (text, record) => (
-              <span>
-                <span style={{ fontWeight: "600", fontSize: "16px" }}>
-                  {text}
-                </span>{" "}
-                {record.measurementUnit && (
-                  <span className="text-gray-500">
-                    {record.measurementUnit}
-                  </span>
-                )}
-              </span>
-            ),
+            render: (text, record) => {
+              // Sử dụng logic giống như trong StockCheckDetailsTable
+              const checkedCount = record.checkedInventoryItemIds
+                ? record.checkedInventoryItemIds.length
+                : 0;
+
+              return (
+                <span>
+                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                    {checkedCount}
+                  </span>{" "}
+                  {record.unitType && (
+                    <span className="text-gray-500">{record.unitType}</span>
+                  )}
+                </span>
+              );
+            },
           },
           // {
-          //   title: "Tổng giá trị đã kiểm",
-          //   dataIndex: "actualMeasurementValue",
-          //   key: "actualMeasurementValue",
+          //   title: "Tổng giá trị đo lường",
+          //   dataIndex: "measurementValue",
+          //   key: "measurementValue",
           //   width: 180,
           //   align: "left",
-          //   render: (text, record) => {
-          //     const isLacking = text < record.measurementValue;
-          //     const isExcess = text > record.measurementValue;
-
-          //     return (
-          //       <span
-          //         className={
-          //           isLacking
-          //             ? "text-red-600 font-semibold"
-          //             : isExcess
-          //             ? "text-orange-600 font-semibold"
-          //             : "text-green-600 font-semibold"
-          //         }
-          //       >
-          //         <span style={{ fontWeight: "600", fontSize: "16px" }}>
-          //           {text}
-          //         </span>{" "}
-          //         {record.measurementUnit && (
-          //           <span className="text-gray-500">
-          //             {record.measurementUnit}
-          //           </span>
-          //         )}
-          //       </span>
-          //     );
-          //   },
+          //   render: (text, record) => (
+          //     <span>
+          //       <span style={{ fontWeight: "600", fontSize: "16px" }}>
+          //         {text}
+          //       </span>{" "}
+          //       {record.measurementUnit && (
+          //         <span className="text-gray-500">
+          //           {record.measurementUnit}
+          //         </span>
+          //       )}
+          //     </span>
+          //   ),
           // },
           {
-            title: "Trạng thái kiểm kê",
-            dataIndex: "status",
-            key: "status",
-            width: 100,
-            onHeaderCell: () => ({
-              style: { textAlign: "center" },
-            }),
-            render: (status) => (
-              <div style={{ textAlign: "center" }}>
-                <Tag
-                  color={
-                    status === "LACK"
-                      ? "error"
-                      : status === "EXCESS"
-                      ? "error"
-                      : "success"
-                  }
-                >
-                  {status === "LACK"
-                    ? "Không trùng khớp"
-                    : status === "EXCESS"
-                    ? "Không trùng khớp"
-                    : "Trùng khớp"}
-                </Tag>
-              </div>
-            ),
+            title: "Tổng giá trị đã kiểm",
+            dataIndex: "actualMeasurementValue",
+            key: "actualMeasurementValue",
+            width: "30%",
+            align: "left",
+            render: (text, record) => {
+              // Sử dụng logic giống như trong StockCheckDetailsTable
+              const totalCheckedMeasurement = record.checkedInventoryItemIds
+                ? record.checkedInventoryItemIds.reduce(
+                    (sum, item) => sum + (item.measurementValue || 0),
+                    0
+                  )
+                : 0;
+
+              return (
+                <span>
+                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                    {totalCheckedMeasurement}
+                  </span>{" "}
+                  {record.measurementUnit && (
+                    <span className="text-gray-500">
+                      {record.measurementUnit}
+                    </span>
+                  )}
+                </span>
+              );
+            },
           },
+          // {
+          //   title: "Trạng thái kiểm kê",
+          //   dataIndex: "status",
+          //   key: "status",
+          //   width: 100,
+          //   onHeaderCell: () => ({
+          //     style: { textAlign: "center" },
+          //   }),
+          //   render: (status) => (
+          //     <div style={{ textAlign: "center" }}>
+          //       <Tag
+          //         color={
+          //           status === "LACK"
+          //             ? "error"
+          //             : status === "EXCESS"
+          //             ? "error"
+          //             : "success"
+          //         }
+          //       >
+          //         {status === "LACK"
+          //           ? "Không trùng khớp"
+          //           : status === "EXCESS"
+          //           ? "Không trùng khớp"
+          //           : "Trùng khớp"}
+          //       </Tag>
+          //     </div>
+          //   ),
+          // },
         ]}
-        rowClassName={(record) => (record.status === "LACK" ? "bg-red-50" : "")}
+        rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
       />
 
       {!hasViewedAllPages() && (

@@ -94,20 +94,29 @@ const CompleteStockCheckModal = ({
       width: 150,
       align: "left",
       render: (text, record) => {
-        const isLacking = text < record.quantity;
-        const isExcess = text > record.quantity;
+        // Sử dụng logic giống như trong StockCheckDetailsTable
+        const checkedCount = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.length
+          : 0;
+
+        const isLacking = checkedCount < record.quantity;
+        const isExcess = checkedCount > record.quantity;
 
         return (
           <span
             className={
-              isLacking
+              checkedCount === 0
+                ? "text-gray-600 font-semibold"
+                : isLacking
                 ? "text-red-600 font-semibold"
                 : isExcess
                 ? "text-orange-600 font-semibold"
                 : "text-green-600 font-semibold"
             }
           >
-            <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
+            <span style={{ fontWeight: "600", fontSize: "16px" }}>
+              {checkedCount}
+            </span>{" "}
             {record.unitType && (
               <span className="text-gray-500">{record.unitType}</span>
             )}
@@ -137,20 +146,32 @@ const CompleteStockCheckModal = ({
       width: 180,
       align: "left",
       render: (text, record) => {
-        const isLacking = text < record.measurementValue;
-        const isExcess = text > record.measurementValue;
+        // Sử dụng logic giống như trong StockCheckDetailsTable
+        const totalCheckedMeasurement = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.reduce(
+              (sum, item) => sum + (item.measurementValue || 0),
+              0
+            )
+          : 0;
+
+        const isLacking = totalCheckedMeasurement < record.measurementValue;
+        const isExcess = totalCheckedMeasurement > record.measurementValue;
 
         return (
           <span
             className={
-              isLacking
+              totalCheckedMeasurement === 0
+                ? "text-gray-600 font-semibold"
+                : isLacking
                 ? "text-red-600 font-semibold"
                 : isExcess
                 ? "text-orange-600 font-semibold"
                 : "text-green-600 font-semibold"
             }
           >
-            <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
+            <span style={{ fontWeight: "600", fontSize: "16px" }}>
+              {totalCheckedMeasurement}
+            </span>{" "}
             {record.measurementUnit && (
               <span className="text-gray-500">{record.measurementUnit}</span>
             )}
@@ -166,25 +187,33 @@ const CompleteStockCheckModal = ({
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
-      render: (status) => (
-        <div style={{ textAlign: "center" }}>
-          <Tag
-            color={
-              status === "LACK"
-                ? "error"
-                : status === "EXCESS"
-                ? "error"
-                : "success"
-            }
-          >
-            {status === "LACK"
-              ? "Không trùng khớp"
-              : status === "EXCESS"
-              ? "Không trùng khớp"
-              : "Trùng khớp"}
-          </Tag>
-        </div>
-      ),
+      render: (status, record) => {
+        // Sử dụng logic giống như trong StockCheckDetailsTable
+        const totalInventoryItems = record.inventoryItemIds
+          ? record.inventoryItemIds.length
+          : 0;
+        const checkedCount = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.length
+          : 0;
+
+        let statusConfig;
+
+        if (checkedCount === totalInventoryItems && totalInventoryItems > 0) {
+          statusConfig = { color: "success", text: "Trùng khớp" };
+        } else if (checkedCount > totalInventoryItems) {
+          statusConfig = { color: "error", text: "Thừa" };
+        } else if (checkedCount < totalInventoryItems) {
+          statusConfig = { color: "error", text: "Thiếu" };
+        } else {
+          statusConfig = { color: "default", text: "-" };
+        }
+
+        return (
+          <div style={{ textAlign: "center" }}>
+            <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
+          </div>
+        );
+      },
     },
   ];
 
