@@ -77,10 +77,9 @@ const StockCheckDetailsTable = ({
     }));
   };
 
-  // Render expanded content
   const renderExpandedRow = (record) => {
     const rowData = expandedRowData[record.id];
-    const inventoryItemsData = recordInventoryItems[record.id] || []; // Đổi tên biến này
+    const inventoryItemsData = recordInventoryItems[record.id] || [];
 
     if (
       !rowData ||
@@ -94,18 +93,18 @@ const StockCheckDetailsTable = ({
       );
     }
 
-    const { inventoryItemIds, checkedInventoryItemIds } = rowData;
+    const { inventoryItemIds } = rowData;
+
+    // Lấy checkedInventoryItemIds từ record gốc thay vì từ rowData
+    const checkedInventoryItemIds = record.checkedInventoryItemIds || [];
 
     // Filter inventory items thuộc về record này
-    const filteredInventoryItems = inventoryItemsData.filter(
-      (
-        item // Đổi tên biến này
-      ) => inventoryItemIds.includes(item.id)
+    const filteredInventoryItems = inventoryItemsData.filter((item) =>
+      inventoryItemIds.includes(item.id)
     );
 
     // Sort items by measurementValue first
     const sortedItems = [...filteredInventoryItems].sort((a, b) => {
-      // Dùng tên mới
       const valA = a.measurementValue || 0;
       const valB = b.measurementValue || 0;
       return valA - valB;
@@ -132,8 +131,10 @@ const StockCheckDetailsTable = ({
             key: item.id,
             measurementValue: measurementValue,
             inventoryItemId: item.id,
-            status: item.status, // Thêm status
-            isChecked: checkedInventoryItemIds.includes(item.id),
+            status: item.status, // Trạng thái trước kiểm
+            isChecked: checkedInventoryItemIds.some(
+              (checked) => checked.inventoryItemId === item.id
+            ),
             groupSize: items.length,
             isFirstInGroup: index === 0,
             originalGroupSize: items.length,
@@ -144,6 +145,7 @@ const StockCheckDetailsTable = ({
         groupIndex++;
       });
 
+    // Phần còn lại của logic pagination giữ nguyên...
     const currentPagination = expandedPagination[record.id] || {
       current: 1,
       pageSize: 10,
@@ -181,13 +183,14 @@ const StockCheckDetailsTable = ({
       };
     });
 
+    // Render expanded content
     const expandedColumns = [
       {
-        title: "Quy cách",
+        title: "Quy cách (trước kiểm)",
         dataIndex: "measurementValue",
         key: "measurementValue",
         align: "center",
-        width: "25%",
+        width: "20%",
         render: (value, item) => {
           if (!item.isFirstInGroup)
             return { children: null, props: { rowSpan: 0 } };
@@ -222,7 +225,7 @@ const StockCheckDetailsTable = ({
         title: "Mã sản phẩm tồn kho",
         dataIndex: "inventoryItemId",
         key: "inventoryItemId",
-        width: "40%",
+        width: "25%",
         render: (value) => (
           <div
             style={{
@@ -238,30 +241,13 @@ const StockCheckDetailsTable = ({
           </div>
         ),
       },
-      ...(stockCheckStatus !== "IN_PROGRESS" && stockCheckStatus !== "COUNTED"
-        ? [
-            {
-              title: "Trạng thái kiểm",
-              dataIndex: "isChecked",
-              key: "isChecked",
-              width: "17.5%",
-              align: "center",
-              render: (isChecked) => (
-                <Tag color={isChecked ? "success" : "error"}>
-                  {isChecked ? "Đã kiểm" : "Không tìm thấy"}
-                </Tag>
-              ),
-            },
-          ]
-        : []),
-      // Chỉ hiện cột "Trạng thái hàng" khi status KHÔNG phải COMPLETED
       ...(stockCheckStatus !== "COMPLETED"
         ? [
             {
-              title: "Trạng thái hàng",
+              title: "Trạng thái (trước kiểm)",
               dataIndex: "status",
               key: "status",
-              width: "17.5%",
+              width: "13%",
               align: "center",
               render: (status) => {
                 const statusConfig = {
@@ -278,6 +264,74 @@ const StockCheckDetailsTable = ({
                 };
 
                 return <Tag color={config.color}>{config.text}</Tag>;
+              },
+            },
+          ]
+        : []),
+
+      ...(stockCheckStatus !== "IN_PROGRESS" && stockCheckStatus !== "COUNTED"
+        ? [
+            {
+              title: "Trạng thái (sau kiểm)",
+              dataIndex: "inventoryItemId",
+              key: "afterCheckStatus",
+              width: "13%",
+              align: "center",
+              render: (inventoryItemId) => {
+                // Tìm trong checkedInventoryItemIds của record gốc
+                const checkedItem = rowData.checkedInventoryItemIds?.find(
+                  (item) => item.inventoryItemId === inventoryItemId
+                );
+
+                let status = "UNAVAILABLE"; // Mặc định là không tìm thấy
+                if (checkedItem) {
+                  status = checkedItem.status;
+                }
+
+                const statusConfig = {
+                  AVAILABLE: { color: "success", text: "Có sẵn" },
+                  UNAVAILABLE: { color: "error", text: "Không tìm thấy" },
+                  NEED_LIQUID: { color: "warning", text: "Thanh lý" },
+                  NO_LONGER_EXIST: { color: "default", text: "Không tồn tại" },
+                  READY_TO_STORE: { color: "default", text: "Chuẩn bị vô kho" },
+                };
+
+                const config = statusConfig[status] || {
+                  color: "default",
+                  text: status,
+                };
+
+                return <Tag color={config.color}>{config.text}</Tag>;
+              },
+            },
+          ]
+        : []),
+
+      ...(stockCheckStatus !== "IN_PROGRESS" && stockCheckStatus !== "COUNTED"
+        ? [
+            {
+              title: "Quy cách (sau kiểm)",
+              dataIndex: "inventoryItemId",
+              key: "afterCheckMeasurement",
+              width: "16%",
+              align: "center",
+              render: (inventoryItemId) => {
+                // Tìm trong checkedInventoryItemIds
+                const checkedItem = rowData.checkedInventoryItemIds?.find(
+                  (item) => item.inventoryItemId === inventoryItemId
+                );
+
+                if (checkedItem && checkedItem.measurementValue) {
+                  return (
+                    <div style={{ textAlign: "center", fontWeight: "600" }}>
+                      {checkedItem.measurementValue} {record.measurementUnit}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ textAlign: "center", color: "#999" }}>-</div>
+                );
               },
             },
           ]
@@ -350,18 +404,18 @@ const StockCheckDetailsTable = ({
             className={isChecked ? "text-blue-500" : "text-gray-400"}
           />
           <style>{`
-        .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner {
-          background-color: #1677ff !important;
-          border-color: #1677ff !important;
-        }
-        .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner::after {
-          border-color: #ffffff !important;
-        }
-        .approved-checkbox .ant-checkbox-disabled .ant-checkbox-inner {
-          background-color: #f5f5f5 !important;
-          border-color: #d9d9d9 !important;
-        }
-      `}</style>
+      .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner {
+        background-color: #1677ff !important;
+        border-color: #1677ff !important;
+      }
+      .approved-checkbox .ant-checkbox-disabled.ant-checkbox-checked .ant-checkbox-inner::after {
+        border-color: #ffffff !important;
+      }
+      .approved-checkbox .ant-checkbox-disabled .ant-checkbox-inner {
+        background-color: #f5f5f5 !important;
+        border-color: #d9d9d9 !important;
+      }
+    `}</style>
         </div>
       ),
     },
@@ -402,14 +456,27 @@ const StockCheckDetailsTable = ({
       width: "15%",
       align: "center",
       render: (text, record) => {
-        const isLacking = text < record.quantity;
-        const isExcess = text > record.quantity;
+        // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị 0
+        let checkedCount = 0;
+        if (
+          stockCheckStatus !== "IN_PROGRESS" &&
+          stockCheckStatus !== "COUNTED"
+        ) {
+          checkedCount = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.length
+            : 0;
+        }
+
+        const isLacking = checkedCount < record.quantity;
+        const isExcess = checkedCount > record.quantity;
 
         return (
           <div style={{ textAlign: "center" }}>
             <span
               className={
-                isLacking
+                checkedCount === 0
+                  ? "text-gray-600 font-semibold"
+                  : isLacking
                   ? "text-red-600 font-semibold"
                   : isExcess
                   ? "text-orange-600 font-semibold"
@@ -417,7 +484,7 @@ const StockCheckDetailsTable = ({
               }
               style={{ fontSize: "18px" }}
             >
-              {text}
+              {checkedCount}
             </span>{" "}
             {record.unitType && (
               <span className="text-gray-500">{record.unitType}</span>
@@ -448,14 +515,30 @@ const StockCheckDetailsTable = ({
       width: "20%",
       align: "center",
       render: (text, record) => {
-        const isLacking = text < record.measurementValue;
-        const isExcess = text > record.measurementValue;
+        // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị 0
+        let totalCheckedMeasurement = 0;
+        if (
+          stockCheckStatus !== "IN_PROGRESS" &&
+          stockCheckStatus !== "COUNTED"
+        ) {
+          totalCheckedMeasurement = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.reduce(
+                (sum, item) => sum + (item.measurementValue || 0),
+                0
+              )
+            : 0;
+        }
+
+        const isLacking = totalCheckedMeasurement < record.measurementValue;
+        const isExcess = totalCheckedMeasurement > record.measurementValue;
 
         return (
           <div style={{ textAlign: "center" }}>
             <span
               className={
-                isLacking
+                totalCheckedMeasurement === 0
+                  ? "text-gray-600 font-semibold"
+                  : isLacking
                   ? "text-red-600 font-semibold"
                   : isExcess
                   ? "text-orange-600 font-semibold"
@@ -463,7 +546,7 @@ const StockCheckDetailsTable = ({
               }
               style={{ fontSize: "18px" }}
             >
-              {text}
+              {totalCheckedMeasurement}
             </span>{" "}
             {record.measurementUnit && (
               <span className="text-gray-500">{record.measurementUnit}</span>
@@ -478,24 +561,36 @@ const StockCheckDetailsTable = ({
       key: "status",
       width: "12%",
       align: "center",
-      render: (status) => {
-        if (!status) {
+      render: (status, record) => {
+        // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị "-"
+        if (
+          stockCheckStatus === "IN_PROGRESS" ||
+          stockCheckStatus === "COUNTED"
+        ) {
           return "-";
         }
 
-        const statusConfig = {
-          LACK: { color: "error", text: "Không trùng khớp" },
-          MATCH: { color: "success", text: "Trùng khớp" },
-          EXCESS: { color: "error", text: "Không trùng khớp" },
-        };
+        // So sánh inventoryItemIds với checkedInventoryItemIds
+        const totalInventoryItems = record.inventoryItemIds
+          ? record.inventoryItemIds.length
+          : 0;
+        const checkedCount = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.length
+          : 0;
 
-        const config = statusConfig[status];
+        let statusConfig;
 
-        if (!config) {
-          return status;
+        if (checkedCount === totalInventoryItems && totalInventoryItems > 0) {
+          statusConfig = { color: "success", text: "Trùng khớp" };
+        } else if (checkedCount > totalInventoryItems) {
+          statusConfig = { color: "error", text: "Thừa" };
+        } else if (checkedCount < totalInventoryItems) {
+          statusConfig = { color: "error", text: "Thiếu" };
+        } else {
+          return "-";
         }
 
-        return <Tag color={config.color}>{config.text}</Tag>;
+        return <Tag color={statusConfig.color}>{statusConfig.text}</Tag>;
       },
     },
   ];

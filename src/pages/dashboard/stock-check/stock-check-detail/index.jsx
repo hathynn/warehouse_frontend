@@ -152,33 +152,46 @@ const StockCheckRequestDetail = () => {
 
       try {
         const response = await getStockCheckDetailById(stockCheckId);
-
-        if (response) {
+        // ĐỔI ĐIỀU KIỆN NÀY:
+        if (response && Array.isArray(response)) {
+          // ← Thay đổi ở đây
           // Enrich data với items info
-          const enrichedData = enrichDetailsWithLocalData(response, items);
+          const enrichedData = enrichDetailsWithLocalData(response, items); // ← Dùng response trực tiếp
 
-          // Sort: LACK và EXCESS lên đầu, MATCH xuống cuối
+          // Sort logic giữ nguyên...
           const sortedData = enrichedData.sort((a, b) => {
-            // Nếu a là MATCH và b không phải MATCH → a xuống sau
-            if (
-              a.status === DetailStatus.MATCH &&
-              b.status !== DetailStatus.MATCH
-            )
-              return 1;
-            // Nếu b là MATCH và a không phải MATCH → a lên trước
-            if (
-              b.status === DetailStatus.MATCH &&
-              a.status !== DetailStatus.MATCH
-            )
-              return -1;
-            // Các trường hợp khác giữ nguyên thứ tự
+            const getComputedStatus = (record) => {
+              const totalInventoryItems = record.inventoryItemIds
+                ? record.inventoryItemIds.length
+                : 0;
+              const checkedCount = record.checkedInventoryItemIds
+                ? record.checkedInventoryItemIds.length
+                : 0;
+
+              if (
+                checkedCount === totalInventoryItems &&
+                totalInventoryItems > 0
+              ) {
+                return "MATCH";
+              } else if (checkedCount > totalInventoryItems) {
+                return "EXCESS";
+              } else if (checkedCount < totalInventoryItems) {
+                return "LACK";
+              }
+              return "UNKNOWN";
+            };
+
+            const statusA = getComputedStatus(a);
+            const statusB = getComputedStatus(b);
+
+            if (statusA === "MATCH" && statusB !== "MATCH") return 1;
+            if (statusB === "MATCH" && statusA !== "MATCH") return -1;
             return 0;
           });
 
-          // Lưu all sorted data để dùng cho modal
           setAllStockCheckDetails(sortedData);
 
-          // Phân trang cho table chính SAU KHI ĐÃ SORT
+          // Pagination
           const startIndex = (page - 1) * pageSize;
           const endIndex = startIndex + pageSize;
           const paginatedData = sortedData.slice(startIndex, endIndex);
@@ -187,8 +200,10 @@ const StockCheckRequestDetail = () => {
           setPagination({
             current: page,
             pageSize: pageSize,
-            total: response.length,
+            total: response.length, // ← Đổi thành response.length
           });
+        } else {
+          console.log("No valid response");
         }
       } catch (error) {
         console.error("Error fetching stock check details:", error);
