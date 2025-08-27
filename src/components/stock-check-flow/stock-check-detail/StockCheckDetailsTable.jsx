@@ -393,14 +393,14 @@ const StockCheckDetailsTable = ({
                   (item) => item.inventoryItemId === inventoryItemId
                 );
 
-                let status = "UNAVAILABLE"; // Mặc định là không tìm thấy
+                let status = "UNAVAILABLE"; // Mặc định là mất
                 if (checkedItem) {
                   status = checkedItem.status;
                 }
 
                 const statusConfig = {
                   AVAILABLE: { color: "success", text: "Có sẵn" },
-                  UNAVAILABLE: { color: "error", text: "Không tìm thấy" },
+                  UNAVAILABLE: { color: "error", text: "Mất" },
                   NEED_LIQUID: { color: "warning", text: "Thanh lý" },
                   NO_LONGER_EXIST: { color: "default", text: "Không tồn tại" },
                   READY_TO_STORE: { color: "default", text: "Chuẩn bị vô kho" },

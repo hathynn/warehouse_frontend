@@ -232,12 +232,13 @@ const useInventoryItemService = () => {
     }
   };
 
-  const getInventoryItemFigure = async (): Promise<ResponseDTO<InventoryItemFigureResponse[]>> => {
+  const getInventoryItemFigure = async (): Promise<
+    ResponseDTO<InventoryItemFigureResponse[]>
+  > => {
     try {
       const response = await callApi("get", "/inventory-item/figure");
       return response;
-    }
-    catch (error) {
+    } catch (error) {
       throw error;
     }
   };

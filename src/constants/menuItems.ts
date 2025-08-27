@@ -134,10 +134,7 @@ const transactionLogMenuItems: MenuItem[] = [
 export const menuItems: RoleMenuConfig = {
   [AccountRole.MANAGER]: [
     ...baseMenuItems,
-    ...importMenuItems,
-    ...exportMenuItems,
     ...stockcheckMenuItems,
-    ...transactionLogMenuItems,
     {
       key: "inventory-items",
       icon: AiOutlineInbox,
