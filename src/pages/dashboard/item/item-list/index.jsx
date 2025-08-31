@@ -5,6 +5,8 @@ import { EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useSelector } from "react-redux";
 import { AccountRole } from "@/utils/enums";
 import { ROUTES } from "@/constants/routes";
+import { useCallback } from "react";
+import { debounce } from "lodash";
 import useItemService from "@/services/useItemService";
 import useInventoryItemService from "@/services/useInventoryItemService";
 import useCategoryService from "@/services/useCategoryService";
@@ -31,22 +33,69 @@ const ItemList = () => {
   const { getCategoryById } = useCategoryService();
   const { getProviderById } = useProviderService();
 
-  useEffect(() => {
-    fetchAllItems();
-  }, []);
+  const debouncedSearch = useCallback(
+    debounce((searchValue, allItemsData, allInventoryData) => {
+      let filtered = allItemsData;
+
+      if (searchValue.trim()) {
+        // Tìm item trực tiếp theo tên và ID
+        const directMatches = allItemsData.filter(
+          (item) =>
+            item.name?.toLowerCase().includes(searchValue.toLowerCase()) ||
+            item.id?.toLowerCase().includes(searchValue.toLowerCase())
+        );
+
+        // Chỉ search inventory khi có dữ liệu
+        let itemsFromInventory = [];
+        if (allInventoryData.length > 0) {
+          const matchingInventoryItems = allInventoryData.filter((invItem) =>
+            invItem.id?.toLowerCase().includes(searchValue.toLowerCase())
+          );
+
+          const itemIdsFromInventory = [
+            ...new Set(
+              matchingInventoryItems
+                .map((invItem) => invItem.itemId)
+                .filter(Boolean)
+            ),
+          ];
+
+          itemsFromInventory = allItemsData.filter((item) =>
+            itemIdsFromInventory.includes(item.id)
+          );
+        }
+
+        // Gộp kết quả và loại bỏ trùng lặp
+        const allMatches = [...directMatches, ...itemsFromInventory];
+        filtered = allMatches.filter(
+          (item, index, array) =>
+            array.findIndex((i) => i.id === item.id) === index
+        );
+      }
+
+      // Client-side pagination
+      const startIndex = (pagination.current - 1) * pagination.pageSize;
+      const endIndex = startIndex + pagination.pageSize;
+      const paginatedItems = filtered.slice(startIndex, endIndex);
+
+      setDisplayedItems(paginatedItems);
+      setPagination((prev) => ({
+        ...prev,
+        total: filtered.length,
+      }));
+    }, 300), // Delay 300ms
+    [pagination.current, pagination.pageSize]
+  );
 
   // Lấy toàn bộ data một lần
   const fetchAllItems = async () => {
     try {
       setLoading(true);
 
-      // Lấy cả items và inventory items
-      const [itemsResponse, inventoryResponse] = await Promise.all([
-        getItems(1, 200),
-        getAllInventoryItems(1, 5000),
-      ]);
-
+      // Step 1: Load items trước (nhanh hơn)
+      const itemsResponse = await getItems(1, 200);
       let itemsData = [];
+
       if (itemsResponse && itemsResponse.content) {
         itemsData = itemsResponse.content;
         setPagination((prev) => ({
@@ -61,124 +110,121 @@ const ItemList = () => {
         }));
       }
 
+      // Hiển thị items ngay lập tức
       setAllItems(itemsData);
 
-      // Lưu inventory items để search
-      if (inventoryResponse && inventoryResponse.content) {
-        setAllInventoryItems(inventoryResponse.content);
-      }
+      // Step 2: Load inventory items trong background (không block UI)
+      setTimeout(async () => {
+        try {
+          const inventoryResponse = await getAllInventoryItems(1, 5000);
+          if (inventoryResponse && inventoryResponse.content) {
+            setAllInventoryItems(inventoryResponse.content);
+          }
+        } catch (error) {
+          console.error("Error loading inventory items:", error);
+          // Không hiện message error để không làm phiền user
+        }
+      }, 100); // Delay 100ms để UI render trước
 
-      // Nếu là ADMIN, fetch thêm categories và providers
+      // Step 3: Load categories và providers nếu là ADMIN (cũng trong background)
       if (userRole === AccountRole.ADMIN && itemsData.length > 0) {
-        // Fetch categories
-        const uniqueCategoryIds = [
-          ...new Set(itemsData.map((item) => item.categoryId).filter(Boolean)),
-        ];
-        const categoryPromises = uniqueCategoryIds.map(async (categoryId) => {
+        setTimeout(async () => {
           try {
-            const response = await getCategoryById(categoryId);
-            return { id: categoryId, data: response.content };
+            // Fetch categories
+            const uniqueCategoryIds = [
+              ...new Set(
+                itemsData.map((item) => item.categoryId).filter(Boolean)
+              ),
+            ];
+
+            // Batch process categories (xử lý từng batch 10 items)
+            const categoryBatches = [];
+            for (let i = 0; i < uniqueCategoryIds.length; i += 10) {
+              categoryBatches.push(uniqueCategoryIds.slice(i, i + 10));
+            }
+
+            const categoriesMap = {};
+            for (const batch of categoryBatches) {
+              const categoryPromises = batch.map(async (categoryId) => {
+                try {
+                  const response = await getCategoryById(categoryId);
+                  return { id: categoryId, data: response.content };
+                } catch (error) {
+                  return { id: categoryId, data: null };
+                }
+              });
+
+              const batchResults = await Promise.all(categoryPromises);
+              batchResults.forEach(({ id, data }) => {
+                categoriesMap[id] = data;
+              });
+
+              // Update categories từng batch
+              setCategories((prev) => ({ ...prev, ...categoriesMap }));
+
+              // Delay giữa các batch để tránh quá tải
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            // Fetch providers tương tự
+            const allProviderIds = [
+              ...new Set(itemsData.flatMap((item) => item.providerIds || [])),
+            ];
+
+            const providerBatches = [];
+            for (let i = 0; i < allProviderIds.length; i += 10) {
+              providerBatches.push(allProviderIds.slice(i, i + 10));
+            }
+
+            const providersMap = {};
+            for (const batch of providerBatches) {
+              const providerPromises = batch.map(async (providerId) => {
+                try {
+                  const response = await getProviderById(providerId);
+                  return { id: providerId, data: response.content };
+                } catch (error) {
+                  return { id: providerId, data: null };
+                }
+              });
+
+              const batchResults = await Promise.all(providerPromises);
+              batchResults.forEach(({ id, data }) => {
+                providersMap[id] = data;
+              });
+
+              // Update providers từng batch
+              setProviders((prev) => ({ ...prev, ...providersMap }));
+
+              // Delay giữa các batch
+              await new Promise((resolve) => setTimeout(resolve, 50));
+            }
           } catch (error) {
-            return { id: categoryId, data: null };
+            console.error("Error loading additional data:", error);
           }
-        });
-
-        // Fetch providers
-        const allProviderIds = [
-          ...new Set(itemsData.flatMap((item) => item.providerIds || [])),
-        ];
-        const providerPromises = allProviderIds.map(async (providerId) => {
-          try {
-            const response = await getProviderById(providerId);
-            return { id: providerId, data: response.content };
-          } catch (error) {
-            return { id: providerId, data: null };
-          }
-        });
-
-        const [categoryResults, providerResults] = await Promise.all([
-          Promise.all(categoryPromises),
-          Promise.all(providerPromises),
-        ]);
-
-        // Build categories map
-        const categoriesMap = {};
-        categoryResults.forEach(({ id, data }) => {
-          categoriesMap[id] = data;
-        });
-        setCategories(categoriesMap);
-
-        // Build providers map
-        const providersMap = {};
-        providerResults.forEach(({ id, data }) => {
-          providersMap[id] = data;
-        });
-        setProviders(providersMap);
+        }, 200); // Delay 200ms
       }
     } catch (error) {
       message.error("Không thể tải danh sách hàng hóa");
       console.error("Error fetching items:", error);
     } finally {
-      setLoading(false);
+      setLoading(false); // Tắt loading ngay sau khi load xong items
     }
   };
 
-  // Handle search và pagination
   useEffect(() => {
-    let filtered = allItems;
+    fetchAllItems();
+  }, []);
 
-    if (searchTerm) {
-      // Tìm item trực tiếp theo tên và ID
-      const directMatches = allItems.filter(
-        (item) =>
-          item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.id?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  useEffect(() => {
+    debouncedSearch(searchTerm, allItems, allInventoryItems);
+  }, [searchTerm, allItems, allInventoryItems, debouncedSearch]);
 
-      // Tìm inventory items phù hợp với search term
-      const matchingInventoryItems = allInventoryItems.filter((invItem) =>
-        invItem.id?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-
-      // Lấy itemId từ các inventory items phù hợp
-      const itemIdsFromInventory = [
-        ...new Set(
-          matchingInventoryItems
-            .map((invItem) => invItem.itemId)
-            .filter(Boolean)
-        ),
-      ];
-
-      // Tìm items có ID trong danh sách itemIdsFromInventory
-      const itemsFromInventory = allItems.filter((item) =>
-        itemIdsFromInventory.includes(item.id)
-      );
-
-      // Gộp kết quả và loại bỏ trùng lặp
-      const allMatches = [...directMatches, ...itemsFromInventory];
-      filtered = allMatches.filter(
-        (item, index, array) =>
-          array.findIndex((i) => i.id === item.id) === index
-      );
-    }
-
-    // Client-side pagination
-    const startIndex = (pagination.current - 1) * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    const paginatedItems = filtered.slice(startIndex, endIndex);
-
-    setDisplayedItems(paginatedItems);
-    setPagination((prev) => ({
-      ...prev,
-      total: filtered.length,
-    }));
-  }, [
-    allItems,
-    allInventoryItems,
-    searchTerm,
-    pagination.current,
-    pagination.pageSize,
-  ]);
+  // Cleanup khi component unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
