@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, TablePaginationConfig, Tag, Drawer, Timeline, Input, DatePicker, Select } from "antd";
-import { ClockCircleOutlined, UserOutlined, EyeOutlined, SearchOutlined, CheckCircleOutlined, PlusCircleOutlined, EditOutlined, StopOutlined, UserSwitchOutlined, RedoOutlined } from "@ant-design/icons";
+import { ClockCircleOutlined, UserOutlined, EyeOutlined, SearchOutlined, CheckCircleOutlined, PlusCircleOutlined, EditOutlined, StopOutlined, UserSwitchOutlined, RedoOutlined, SyncOutlined, PlayCircleOutlined, LoadingOutlined, ExclamationCircleOutlined, CloseCircleOutlined, InboxOutlined, AuditOutlined, SafetyOutlined } from "@ant-design/icons";
 import useTransactionLogService from "@/services/useTransactionLogService";
 import useAccountService, { AccountResponse } from "@/services/useAccountService";
 import { AccountRoleForRequest } from "@/utils/enums";
@@ -39,6 +39,7 @@ interface TransactionDetail {
   assignedStaffName?: string;
   countingStaffId?: number;
   countingStaffName?: string;
+  status?: string;
 }
 
 const ExportTransactionHistory: React.FC = () => {
@@ -74,7 +75,7 @@ const ExportTransactionHistory: React.FC = () => {
     return staff ? staff.fullName : `Nhân viên ID: ${staffId}`;
   };
 
-  const getActionColor = (action: string): string => {
+  const getActionColor = (action: string, status?: string): string => {
     switch (action) {
       case 'CREATE':
         return 'default';
@@ -89,7 +90,7 @@ const ExportTransactionHistory: React.FC = () => {
       case 'CONFIRM_COUNTED':
         return 'green';
       case 'UPDATE_STATUS':
-        return 'red';
+        return status ? getStatusColor(status) : 'cyan';
       case 'UPDATE_DEPARTMENT':
         return 'purple';
       default:
@@ -97,7 +98,7 @@ const ExportTransactionHistory: React.FC = () => {
     }
   };
 
-  const getActionIconColor = (action: string): string => {
+  const getActionIconColor = (action: string, status?: string): string => {
     switch (action) {
       case 'CREATE':
         return '#6B7280'; // gray-500
@@ -112,7 +113,7 @@ const ExportTransactionHistory: React.FC = () => {
       case 'CONFIRM_COUNTED':
         return '#10B981'; // green-500
       case 'UPDATE_STATUS':
-        return '#EF4444'; // red-500
+        return status ? getStatusIconColor(status) : '#06B6D4'; // status-based or cyan-500
       case 'UPDATE_DEPARTMENT':
         return '#8B5CF6'; // purple-500
       default:
@@ -120,9 +121,9 @@ const ExportTransactionHistory: React.FC = () => {
     }
   };
 
-  const getActionIcon = (action: string) => {
+  const getActionIcon = (action: string, status?: string) => {
     const iconProps = {
-      style: { fontSize: '20px', color: getActionIconColor(action) }
+      style: { fontSize: '20px', color: getActionIconColor(action, status) }
     };
 
     switch (action) {
@@ -138,9 +139,9 @@ const ExportTransactionHistory: React.FC = () => {
         return <RedoOutlined {...iconProps} />;
       case 'COMPLETE':
       case 'CONFIRM_COUNTED':
-        return <CheckCircleOutlined {...iconProps} />;
+        return <SafetyOutlined {...iconProps} />;
       case 'UPDATE_STATUS':
-        return <StopOutlined {...iconProps} />;
+        return status ? getStatusIcon(status) : <SyncOutlined {...iconProps} />;
       case 'UPDATE_DEPARTMENT':
         return <WarehouseIcon {...iconProps} />;
       default:
@@ -148,7 +149,7 @@ const ExportTransactionHistory: React.FC = () => {
     }
   };
 
-  const getActionText = (action: string): string => {
+  const getActionText = (action: string, status?: string): string => {
     switch (action) {
       case 'CREATE':
         return 'Tạo mới';
@@ -167,7 +168,7 @@ const ExportTransactionHistory: React.FC = () => {
       case 'CONFIRM_COUNTED':
         return 'Xác nhận kiểm đếm';
       case 'UPDATE_STATUS':
-        return 'Cập nhật trạng thái';
+        return status ? getStatusText(status) : 'Cập nhật trạng thái';
       case 'UPDATE_DEPARTMENT':
         return 'Cập nhật phòng ban';
       default:
@@ -187,6 +188,101 @@ const ExportTransactionHistory: React.FC = () => {
         return 'Xuất trả';
       default:
         return exportType;
+    }
+  };
+
+  const getStatusText = (status: string): string => {
+    switch (status) {
+      case 'NOT_STARTED':
+        return 'Chưa bắt đầu';
+      case 'IN_PROGRESS':
+        return 'Đang thực hiện';
+      case 'COUNTED':
+        return 'Đã kiểm đếm';
+      case 'WAITING_EXPORT':
+        return 'Chờ xuất kho';
+      case 'COMPLETED':
+        return 'Hoàn thành';
+      case 'STORED':
+        return 'Đã lưu kho';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      case 'REJECTED':
+        return 'Đã từ chối';
+      default:
+        return status;
+    }
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'NOT_STARTED':
+        return 'default';
+      case 'IN_PROGRESS':
+        return 'processing';
+      case 'COUNTED':
+        return 'orange';
+      case 'WAITING_EXPORT':
+        return 'blue';
+      case 'COMPLETED':
+        return 'success';
+      case 'STORED':
+        return 'green';
+      case 'CANCELLED':
+        return 'error';
+      case 'REJECTED':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusIconColor = (status: string): string => {
+    switch (status) {
+      case 'NOT_STARTED':
+        return '#6B7280'; // gray-500
+      case 'IN_PROGRESS':
+        return '#1890FF'; // blue-500 (processing)
+      case 'COUNTED':
+        return '#FA8C16'; // orange-500
+      case 'WAITING_EXPORT':
+        return '#13C2C2'; // cyan-500
+      case 'COMPLETED':
+        return '#52C41A'; // green-500
+      case 'STORED':
+        return '#10B981'; // emerald-500
+      case 'CANCELLED':
+      case 'REJECTED':
+        return '#FF4D4F'; // red-500
+      default:
+        return '#6B7280'; // gray-500
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    const iconProps = {
+      style: { fontSize: '20px', color: getStatusIconColor(status) }
+    };
+
+    switch (status) {
+      case 'NOT_STARTED':
+        return <ClockCircleOutlined {...iconProps} />;
+      case 'IN_PROGRESS':
+        return <PlayCircleOutlined {...iconProps} />;
+      case 'COUNTED':
+        return <AuditOutlined {...iconProps} />;
+      case 'WAITING_EXPORT':
+        return <LoadingOutlined {...iconProps} />;
+      case 'COMPLETED':
+        return <CheckCircleOutlined {...iconProps} />;
+      case 'STORED':
+        return <InboxOutlined {...iconProps} />;
+      case 'CANCELLED':
+        return <CloseCircleOutlined {...iconProps} />;
+      case 'REJECTED':
+        return <ExclamationCircleOutlined {...iconProps} />;
+      default:
+        return <SyncOutlined {...iconProps} />;
     }
   };
 
@@ -339,6 +435,7 @@ const ExportTransactionHistory: React.FC = () => {
                 assignedStaffName: exportRequest.assignedWarehouseKeeperId ? getStaffNameById(exportRequest.assignedWarehouseKeeperId) : undefined,
                 countingStaffId: exportRequest.countingStaffId,
                 countingStaffName: exportRequest.countingStaffId ? getStaffNameById(exportRequest.countingStaffId) : undefined,
+                status: exportRequest.status,
               });
             }
           });
@@ -365,6 +462,7 @@ const ExportTransactionHistory: React.FC = () => {
               assignedStaffName: exportRequest.assignedWarehouseKeeperId ? getStaffNameById(exportRequest.assignedWarehouseKeeperId) : undefined,
               countingStaffId: exportRequest.countingStaffId,
               countingStaffName: exportRequest.countingStaffId ? getStaffNameById(exportRequest.countingStaffId) : undefined,
+              status: exportRequest.status,
             });
           }
         }
@@ -595,10 +693,10 @@ const ExportTransactionHistory: React.FC = () => {
                       className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2"
                       style={{
                         backgroundColor: 'transparent',
-                        borderColor: getActionIconColor(detail.action)
+                        borderColor: getActionIconColor(detail.action, detail.status)
                       }}
                     >
-                      {getActionIcon(detail.action)}
+                      {getActionIcon(detail.action, detail.status)}
                     </div>
                     <div className="mt-2 text-center text-sm text-gray-600">
                       <div className="font-medium">
@@ -634,8 +732,8 @@ const ExportTransactionHistory: React.FC = () => {
                           <span className="text-base font-medium text-blue-800">{detail.executorFullName}</span>
                         </div>
                         <div className="w-px h-5 bg-gray-300"></div>
-                        <Tag color={getActionColor(detail.action)} className="!text-sm !p-1 !font-medium !m-0">
-                          {getActionText(detail.action)}
+                        <Tag color={getActionColor(detail.action, detail.status)} className="!text-sm !p-1 !font-medium !m-0">
+                          {getActionText(detail.action, detail.status)}
                         </Tag>
                       </div>
 

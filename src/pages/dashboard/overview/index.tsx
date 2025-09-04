@@ -217,23 +217,20 @@ const SummaryOverview = () => {
                   <button
                     onClick={() => nav("/import/create-request")}
                     className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-medium 
-                     hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200
-                     shadow-md hover:shadow-lg"
+                     hover:from-blue-600 hover:to-blue-700 cursor-pointer"
                   >
                     Tạo phiếu nhập kho
                   </button>
                   <button
                     onClick={() => nav("/export/create-request")}
                     className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-medium 
-                     hover:from-emerald-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200
-                     shadow-md hover:shadow-lg"
+                     hover:from-emerald-600 hover:to-emerald-700 cursor-pointer"
                   >
                     Tạo phiếu xuất kho
                   </button>
                   <button
                     className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-medium 
-                     hover:from-amber-600 hover:to-amber-700 transform hover:scale-105 transition-all duration-200
-                     shadow-md hover:shadow-lg"
+                     hover:from-amber-600 hover:to-amber-700 cursor-pointer"
                   >
                     Tạo phiếu kiểm tra tồn kho
                   </button>
