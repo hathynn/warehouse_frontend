@@ -409,6 +409,7 @@ const StockCheckRequestInfoForm = ({
                 onPaginationChange={handleTablePaginationChange}
                 setPagination={setTablePagination}
                 onRemovedItemsNotification={() => {}}
+                readOnly={true}
               />
             ) : (
               <div className="text-center py-10 text-gray-500">

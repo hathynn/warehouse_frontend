@@ -91,32 +91,28 @@ const StockCheckRequestConfirmModal = ({
     },
     {
       width: "22%",
-      title: <span className="font-semibold">Tổng số lượng khả dụng</span>,
-      dataIndex: "numberOfAvailableItems",
-      key: "numberOfAvailableItems",
+      title: <span className="font-semibold">Giá trị mong muốn</span>,
+      dataIndex: "expectedMeasurementValue",
+      key: "expectedMeasurementValue",
+      align: "center",
       onHeaderCell: () => ({
         style: { textAlign: "center" },
       }),
       render: (_, record) => {
-        const itemMeta = items?.find(
-          (i) => String(i.id) === String(record.itemId)
-        );
-        const numberOfAvailableItems = itemMeta?.numberOfAvailableItems || 0;
-        const unitType = getItemInfo(record, "unitType");
-
+        const measurementUnit = getItemInfo(record, "measurementUnit");
         return (
           <span style={{ display: "block", textAlign: "center" }}>
             <strong style={{ fontSize: "17px" }}>
-              {numberOfAvailableItems}
+              {record.expectedMeasurementValue || 0}
             </strong>{" "}
-            {unitType}
+            {measurementUnit}
           </span>
         );
       },
     },
     {
       width: "20%",
-      title: <span className="font-semibold">Tổng giá trị khả dụng</span>,
+      title: <span className="font-semibold">Giá trị hệ thống</span>,
       dataIndex: "numberOfAvailableMeasurementValues",
       key: "numberOfAvailableMeasurementValues",
       onHeaderCell: () => ({

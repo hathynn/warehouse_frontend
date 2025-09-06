@@ -220,6 +220,9 @@ const StockCheckRequestCreate = () => {
           transformedData = validRows.map((row, index) => {
             try {
               const itemId = String(row[1]).trim(); // Column B
+              const expectedMeasurementValue = row[2]
+                ? String(row[2]).trim()
+                : ""; // Column C - Giá trị đo lường mong muốn
 
               if (!itemId) {
                 throw new Error(`Dòng ${startRow + index + 1}: Thiếu mã hàng`);
@@ -243,6 +246,7 @@ const StockCheckRequestCreate = () => {
                 unitType: foundItem.unitType,
                 measurementUnit: foundItem.measurementUnit || "Không xác định",
                 totalMeasurementValue: foundItem.totalMeasurementValue || "",
+                expectedMeasurementValue: expectedMeasurementValue || "", // Thêm field mới
               };
             } catch (rowError) {
               throw new Error(rowError.message);
@@ -395,8 +399,8 @@ const StockCheckRequestCreate = () => {
       // Prepare stock check details data
       const stockCheckDetailsData = data.map((item) => ({
         itemId: item.itemId,
-        quantity: item.numberOfAvailableItems || 0,
-        measurementValue: item.numberOfAvailableMeasurementValues || 0,
+        // quantity: item.numberOfAvailableItems || 0,
+        measurementValue: item.expectedMeasurementValue || 0,
       }));
 
       // Create stock check details
@@ -526,6 +530,11 @@ const StockCheckRequestCreate = () => {
               {!allPagesViewed && data.length > 0 && (
                 <span style={{ color: "red", marginLeft: 8 }}>
                   (Vui lòng xem tất cả các trang)
+                </span>
+              )}
+              {hasTableError && (
+                <span style={{ color: "red", marginLeft: 8 }}>
+                  (Vui lòng sửa lỗi nhập liệu)
                 </span>
               )}
             </Button>
