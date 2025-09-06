@@ -3,6 +3,7 @@ import { Table, Card, Tag, Button, Checkbox } from "antd";
 import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import PropTypes from "prop-types";
 import { AccountRole } from "@/utils/enums";
+import useInventoryItemService from "@/services/useInventoryItemService";
 
 const StockCheckDetailsTable = ({
   stockCheckDetails,
@@ -16,12 +17,12 @@ const StockCheckDetailsTable = ({
   onSelectDetail,
   onSelectAllDetails,
   allDetailIds,
-  getInventoryItemsByItemId,
 }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [expandedPagination, setExpandedPagination] = useState({});
   const [expandedRowData, setExpandedRowData] = useState({});
   const [recordInventoryItems, setRecordInventoryItems] = useState({});
+  const { getAllInventoryItemsByItemId } = useInventoryItemService();
 
   // Handle expand/collapse
   const handleExpand = async (expanded, record) => {
@@ -29,13 +30,19 @@ const StockCheckDetailsTable = ({
       // Fetch data for this row if not already fetched
       if (!expandedRowData[record.id]) {
         try {
-          // Gọi API để lấy inventory items by itemId
-          const [detailResponse, inventoryResponse] = await Promise.all([
+          const [detailResponse, allInventoryItems] = await Promise.all([
             getStockCheckDetailByDetailId(record.id),
-            getInventoryItemsByItemId(record.itemId),
+            getAllInventoryItemsByItemId(record.itemId), // Sử dụng function mới
           ]);
 
-          if (detailResponse && inventoryResponse) {
+          console.log(
+            `🔍 Fetched ${allInventoryItems.length} inventory items for ${record.itemId}`
+          );
+          console.log(
+            `🔍 Expected items in stock check: ${detailResponse?.inventoryItemIds?.length}`
+          );
+
+          if (detailResponse && allInventoryItems) {
             setExpandedRowData((prev) => ({
               ...prev,
               [record.id]: {
@@ -45,10 +52,10 @@ const StockCheckDetailsTable = ({
               },
             }));
 
-            // Lưu inventory items cho record này
+            // Lưu TẤT CẢ inventory items (không còn .content vì đã được xử lý trong service)
             setRecordInventoryItems((prev) => ({
               ...prev,
-              [record.id]: inventoryResponse.content || [],
+              [record.id]: allInventoryItems,
             }));
           }
         } catch (error) {
