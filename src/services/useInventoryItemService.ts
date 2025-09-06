@@ -68,6 +68,11 @@ export interface AutoChangeInventoryItemRequest {
   inventoryItemId: string;
 }
 
+interface PaginationOptions {
+  page?: number;
+  limit?: number;
+}
+
 const useInventoryItemService = () => {
   const { callApi, loading } = useApi();
 
@@ -222,12 +227,72 @@ const useInventoryItemService = () => {
 
   // Get inventory items by item ID
   const getInventoryItemsByItemId = async (
-    itemId: string
+    itemId: string,
+    options: PaginationOptions = {}
   ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
     try {
-      const response = await callApi("get", `/inventory-item/item/${itemId}`);
+      const { page = 1, limit = 10 } = options;
+      const response = await callApi("get", `/inventory-item/item/${itemId}`, {
+        params: { page, limit },
+      });
       return response;
     } catch (error) {
+      console.error("Không thể lấy mã tồn kho theo mã hàng");
+      throw error;
+    }
+  };
+
+  const getAllInventoryItemsByItemId = async (
+    itemId: string
+  ): Promise<InventoryItemResponse[]> => {
+    try {
+      // Lấy page đầu để biết total
+      const firstPage = await getInventoryItemsByItemId(itemId, {
+        page: 1,
+        limit: 50,
+      });
+
+      if (!firstPage?.content || firstPage.content.length === 0) {
+        return [];
+      }
+
+      const total = firstPage.metaDataDTO?.total || 0;
+
+      // Nếu page đầu đã có hết thì return luôn
+      if (firstPage.content.length >= total) {
+        return firstPage.content;
+      }
+
+      // Tính số pages cần thiết
+      const limit = 50;
+      const totalPages = Math.ceil(total / limit);
+
+      // Tạo promises cho các pages còn lại
+      const remainingPromises: Promise<ResponseDTO<InventoryItemResponse[]>>[] =
+        [];
+      for (let page = 2; page <= totalPages; page++) {
+        remainingPromises.push(
+          getInventoryItemsByItemId(itemId, { page, limit })
+        );
+      }
+
+      // Chờ tất cả requests hoàn thành
+      const remainingResponses = await Promise.all(remainingPromises);
+
+      // Gộp tất cả content lại
+      const allItems: InventoryItemResponse[] = [...firstPage.content];
+      remainingResponses.forEach((response) => {
+        if (response?.content) {
+          allItems.push(...response.content);
+        }
+      });
+
+      console.log(
+        `✅ Fetched ${allItems.length}/${total} inventory items for ${itemId}`
+      );
+      return allItems;
+    } catch (error) {
+      console.error("Error fetching all inventory items:", error);
       throw error;
     }
   };
@@ -239,6 +304,7 @@ const useInventoryItemService = () => {
       const response = await callApi("get", "/inventory-item/figure");
       return response;
     } catch (error) {
+      console.error("Không thể lấy được số liệu hàng tồn kho");
       throw error;
     }
   };
@@ -269,6 +335,7 @@ const useInventoryItemService = () => {
     changeInventoryItemExportDetail,
     autoChangeInventoryItem,
     getInventoryItemsByItemId,
+    getAllInventoryItemsByItemId,
     getInventoryItemFigure,
     updateInventoryItem,
   };
