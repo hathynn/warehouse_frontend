@@ -91,7 +91,7 @@ const StockCheckDetailsTable = ({
     if (checkedInventoryItems.length === 0) {
       return (
         <div style={{ padding: "16px", textAlign: "center", color: "#999" }}>
-          Không có hàng tồn kho được kiểm đếm cho mã sản phẩm này
+          Chưa hoặc không có hàng tồn kho được kiểm đếm cho mã sản phẩm này
         </div>
       );
     }
@@ -540,7 +540,7 @@ const StockCheckDetailsTable = ({
       title: "Mã sản phẩm",
       dataIndex: "itemId",
       key: "itemId",
-      width: "15%",
+      width: "23%",
       render: (id, record) => (
         <div>
           <span style={{ fontWeight: "bold", fontSize: "18px" }}>{id}</span>
@@ -551,70 +551,26 @@ const StockCheckDetailsTable = ({
         </div>
       ),
     },
+    // {
+    //   title: "Số lượng cần kiểm",
+    //   dataIndex: "quantity",
+    //   key: "quantity",
+    //   width: "15%",
+    //   align: "center",
+    //   render: (text, record) => (
+    //     <div style={{ textAlign: "center" }}>
+    //       <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
+    //       {record.unitType && (
+    //         <span className="text-gray-500">{record.unitType}</span>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
-      title: "Số lượng cần kiểm",
-      dataIndex: "quantity",
-      key: "quantity",
-      width: "15%",
-      align: "center",
-      render: (text, record) => (
-        <div style={{ textAlign: "center" }}>
-          <span style={{ fontWeight: "600", fontSize: "18px" }}>{text}</span>{" "}
-          {record.unitType && (
-            <span className="text-gray-500">{record.unitType}</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      title: "Số lượng đã kiểm",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      width: "15%",
-      align: "center",
-      render: (text, record) => {
-        // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị 0
-        let checkedCount = 0;
-        if (
-          stockCheckStatus !== "IN_PROGRESS" &&
-          stockCheckStatus !== "COUNTED"
-        ) {
-          checkedCount = record.checkedInventoryItemIds
-            ? record.checkedInventoryItemIds.length
-            : 0;
-        }
-
-        const isLacking = checkedCount < record.quantity;
-        const isExcess = checkedCount > record.quantity;
-
-        return (
-          <div style={{ textAlign: "center" }}>
-            <span
-              className={
-                checkedCount === 0
-                  ? "text-gray-600 font-semibold"
-                  : isLacking
-                  ? "text-red-600 font-semibold"
-                  : isExcess
-                  ? "text-orange-600 font-semibold"
-                  : "text-green-600 font-semibold"
-              }
-              style={{ fontSize: "18px" }}
-            >
-              {checkedCount}
-            </span>{" "}
-            {record.unitType && (
-              <span className="text-gray-500">{record.unitType}</span>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      title: "Tổng giá trị đo lường",
+      title: "Tổng giá trị đo lường mong muốn",
       dataIndex: "measurementValue",
       key: "measurementValue",
-      width: "15%",
+      width: "20%",
       align: "center",
       render: (text, record) => (
         <div style={{ textAlign: "center" }}>
@@ -673,6 +629,50 @@ const StockCheckDetailsTable = ({
       },
     },
     {
+      title: "Số lượng đã kiểm",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
+      width: "20%",
+      align: "center",
+      render: (text, record) => {
+        // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị 0
+        let checkedCount = 0;
+        if (
+          stockCheckStatus !== "IN_PROGRESS" &&
+          stockCheckStatus !== "COUNTED"
+        ) {
+          checkedCount = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.length
+            : 0;
+        }
+
+        const isLacking = checkedCount < record.quantity;
+        const isExcess = checkedCount > record.quantity;
+
+        return (
+          <div style={{ textAlign: "center" }}>
+            <span
+              className={
+                checkedCount === 0
+                  ? "text-gray-600 font-semibold"
+                  : isLacking
+                  ? "text-red-600 font-semibold"
+                  : isExcess
+                  ? "text-orange-600 font-semibold"
+                  : "text-green-600 font-semibold"
+              }
+              style={{ fontSize: "18px" }}
+            >
+              {checkedCount}
+            </span>{" "}
+            {record.unitType && (
+              <span className="text-gray-500">{record.unitType}</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       title: "Trạng thái kiểm kê",
       dataIndex: "status",
       key: "status",
@@ -718,37 +718,10 @@ const StockCheckDetailsTable = ({
 
     return [
       {
-        title: "Số lượng đã kiểm",
-        dataIndex: "actualQuantity",
-        key: "wm_actualQuantity",
-        width: "37%",
-        align: "center",
-        render: (text, record) => {
-          // WAREHOUSE_MANAGER luôn thấy số thật, không bị ẩn như các role khác
-          const checkedCount = record.checkedInventoryItemIds
-            ? record.checkedInventoryItemIds.length
-            : 0;
-
-          return (
-            <div style={{ textAlign: "center" }}>
-              <span
-                className={"text-black-600 font-semibold"}
-                style={{ fontSize: "18px" }}
-              >
-                {checkedCount}
-              </span>{" "}
-              {record.unitType && (
-                <span className="text-gray-500">{record.unitType}</span>
-              )}
-            </div>
-          );
-        },
-      },
-      {
         title: "Tổng giá trị đã kiểm",
         dataIndex: "actualMeasurementValue",
         key: "wm_actualMeasurementValue",
-        width: "37%",
+        width: "35%",
         align: "center",
         render: (text, record) => {
           // WAREHOUSE_MANAGER luôn thấy số thật, không bị ẩn như các role khác
@@ -769,6 +742,33 @@ const StockCheckDetailsTable = ({
               </span>{" "}
               {record.measurementUnit && (
                 <span className="text-gray-500">{record.measurementUnit}</span>
+              )}
+            </div>
+          );
+        },
+      },
+      {
+        title: "Số lượng đã kiểm",
+        dataIndex: "actualQuantity",
+        key: "wm_actualQuantity",
+        width: "35%",
+        align: "center",
+        render: (text, record) => {
+          // WAREHOUSE_MANAGER luôn thấy số thật, không bị ẩn như các role khác
+          const checkedCount = record.checkedInventoryItemIds
+            ? record.checkedInventoryItemIds.length
+            : 0;
+
+          return (
+            <div style={{ textAlign: "center" }}>
+              <span
+                className={"text-black-600 font-semibold"}
+                style={{ fontSize: "18px" }}
+              >
+                {checkedCount}
+              </span>{" "}
+              {record.unitType && (
+                <span className="text-gray-500">{record.unitType}</span>
               )}
             </div>
           );
