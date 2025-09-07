@@ -487,12 +487,10 @@ const ExportRequestCreate = () => {
           }
         } else if (finalExportType === "INTERNAL") {
           try {
-            // Kiểm tra cấu trúc file
             if (!jsonData || !Array.isArray(jsonData) || jsonData.length < 13) {
               throw new Error("File không đúng định dạng cho xuất nội bộ");
             }
 
-            // EXTRACT FORM DATA TỪ EXCEL - giả sử template mới có cấu trúc tương tự
             extractedFormData = {
               exportType: "INTERNAL",
               exportReason: "",
@@ -522,7 +520,6 @@ const ExportRequestCreate = () => {
               exportReason: extractedFormData.exportReason || prev.exportReason,
             }));
 
-            // Đọc dữ liệu sản phẩm - điều chỉnh theo template mới
             startRow = 9; // Giống như SELLING
             let dataRows = [];
 
@@ -637,7 +634,6 @@ const ExportRequestCreate = () => {
                 totalMeasurementValue: foundItem.totalMeasurementValue || "",
               };
             } else {
-              // ✅ RETURN và các loại khác dùng quantity
               const quantity = item["quantity"] || item["Số lượng"];
 
               if (!itemId || !quantity) {
@@ -646,7 +642,6 @@ const ExportRequestCreate = () => {
                 );
               }
 
-              // Logic cho RETURN giữ nguyên như cũ...
               if (finalExportType === "RETURN") {
                 // Code RETURN logic ở đây...
               }
@@ -809,7 +804,6 @@ const ExportRequestCreate = () => {
     let countingDate = formData.exportDate;
     let countingTime = "12:00:00";
 
-    // Nếu có inspectionDateTime, cắt chuỗi để lấy ngày và giờ
     if (formData.inspectionDateTime) {
       const [datePart, timePart] = formData.inspectionDateTime.split(" ");
       countingDate = datePart;
@@ -832,7 +826,6 @@ const ExportRequestCreate = () => {
     let countingDate = formData.exportDate;
     let countingTime = "12:00:00";
 
-    // Nếu có inspectionDateTime, cắt chuỗi để lấy ngày và giờ
     if (formData.inspectionDateTime) {
       const [datePart, timePart] = formData.inspectionDateTime.split(" ");
       countingDate = datePart;
@@ -883,7 +876,6 @@ const ExportRequestCreate = () => {
 
     // Selling validation
     if (formData.exportType === "SELLING") {
-      // Validate thông tin cơ bản
       if (!formData.exportDate) {
         return {
           isValid: false,
@@ -912,7 +904,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // Validate phone number format (optional)
       const phoneRegex = /^[0-9]{10,11}$/;
       const cleanPhone = formData.receiverPhone.replace(/[^0-9]/g, "");
       if (!phoneRegex.test(cleanPhone)) {
@@ -922,7 +913,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // Validate có data sản phẩm
       if (!data || data.length === 0) {
         return {
           isValid: false,
@@ -930,7 +920,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // Validate từng sản phẩm
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
 
@@ -948,7 +937,6 @@ const ExportRequestCreate = () => {
           };
         }
 
-        // Kiểm tra tồn kho nếu cần
         if (
           item.inventoryQuantity !== undefined &&
           item.quantity > item.inventoryQuantity
@@ -969,7 +957,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // ✅ THÊM validation cho returnImportData
       if (!returnImportData || !returnImportData.importOrderId) {
         return {
           isValid: false,
@@ -977,7 +964,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // ✅ THÊM validation cho providerId
       if (!returnImportData.providerId) {
         return {
           isValid: false,
@@ -986,7 +972,6 @@ const ExportRequestCreate = () => {
         };
       }
 
-      // ✅ THÊM validation cho selectedItems
       if (!data || data.length === 0) {
         return {
           isValid: false,
@@ -1069,20 +1054,18 @@ const ExportRequestCreate = () => {
         return;
       }
 
-      // Create export request
       const createdExport = await createExportRequest(formData.exportType);
       if (!createdExport) {
         toast.error("Không tạo được phiếu xuất");
         return;
       }
 
-      // Create export request details
       await createExportDetails(createdExport.exportRequestId);
 
-      // toast.success("Đã gửi chi tiết phiếu xuất thành công");
-      navigate(ROUTES.PROTECTED.EXPORT.REQUEST.LIST);
+      navigate(
+        `${ROUTES.PROTECTED.EXPORT.REQUEST.LIST}?tab=${formData.exportType}`
+      );
 
-      // Reset states after successful submission
       resetAllStates();
     } catch (error) {
       toast.error("Lỗi khi gửi chi tiết phiếu xuất");
@@ -1134,25 +1117,7 @@ const ExportRequestCreate = () => {
   };
 
   // Thêm function xử lý notification
-  const handleRemovedItemsNotification = (removedItems) => {
-    // Đảm bảo mỗi item có đủ thông tin measurementUnit
-    // const enrichedItems = removedItems.map((item) => ({
-    //   ...item,
-    //   measurementUnit:
-    //     item.measurementUnit ||
-    //     items.content?.find((i) => String(i.id) === String(item.itemId))
-    //       ?.measurementUnit ||
-    //     "",
-    // }));
-    // setRemovedItemsNotification({
-    //   visible: true,
-    //   items: enrichedItems,
-    // });
-    // // Tự động đóng sau 2 phút 30 giây
-    // setTimeout(() => {
-    //   setRemovedItemsNotification((prev) => ({ ...prev, visible: false }));
-    // }, 150000);
-  };
+  const handleRemovedItemsNotification = (removedItems) => {};
 
   return (
     <div className="container mx-auto p-3 pt-0">

@@ -13,6 +13,7 @@ import {
   Input,
   Select,
   Checkbox,
+  ConfigProvider,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -27,8 +28,17 @@ import useInventoryItemService, {
   ItemStatus,
 } from "@/services/useInventoryItemService";
 import { AccountRole } from "@/utils/enums";
+import { DatePicker, Space, Collapse, Badge, Slider } from "antd";
+import { FilterOutlined, ClearOutlined } from "@ant-design/icons";
+import moment from "moment";
+import locale from "antd/locale/vi_VN";
+import "moment/locale/vi";
+
+moment.locale("vi");
 
 const ItemDetail = () => {
+  const { RangePicker } = DatePicker;
+  const { Panel } = Collapse;
   const userRole = useSelector((state) => state.user.role);
   const { id } = useParams();
   const navigate = useNavigate();
@@ -55,18 +65,25 @@ const ItemDetail = () => {
   const [confirmationChecked, setConfirmationChecked] = useState(false);
   const [inventoryFigure, setInventoryFigure] = useState(null);
   const [figureLoading, setFigureLoading] = useState(false);
+  const [filterVisible, setFilterVisible] = useState(false);
+  const [filters, setFilters] = useState({
+    status: [],
+    measurementRange: { min: null, max: null },
+    dateRange: { start: null, end: null },
+    location: "",
+    hasExpired: null, // null: all, true: expired only, false: not expired only
+  });
+  const [activeFiltersCount, setActiveFiltersCount] = useState(0);
 
   const { getItemById } = useItemService();
   const { getCategoryById } = useCategoryService();
   const { getProviderById } = useProviderService();
-  const { getInventoryItemById, updateInventoryItem, getInventoryItemFigure } =
-    useInventoryItemService();
-
-  useEffect(() => {
-    if (id) {
-      fetchItemDetail();
-    }
-  }, [id]);
+  const {
+    getInventoryItemById,
+    updateInventoryItem,
+    getInventoryItemFigure,
+    getAllInventoryItemsByItemId,
+  } = useInventoryItemService();
 
   const fetchItemDetail = async () => {
     try {
@@ -110,13 +127,8 @@ const ItemDetail = () => {
           setProviders(providersMap);
         }
 
-        if (
-          response.content.inventoryItemIds &&
-          response.content.inventoryItemIds.length > 0
-        ) {
-          // Gọi ngay với inventoryItemIds từ response
-          fetchInventoryItems(response.content.inventoryItemIds);
-        }
+        // SỬA: Gọi với itemId thay vì inventoryItemIds
+        fetchInventoryItems(response.content.id); // Đổi từ inventoryItemIds sang id
       }
     } catch (error) {
       message.error("Không thể tải thông tin sản phẩm");
@@ -146,61 +158,212 @@ const ItemDetail = () => {
     }
   };
 
-  const fetchInventoryItems = async (inventoryItemIds) => {
-    if (!inventoryItemIds || inventoryItemIds.length === 0) {
+  const fetchInventoryItems = async (itemId) => {
+    if (!itemId) {
       return;
     }
 
     try {
       setInventoryLoading(true);
-      const inventoryPromises = inventoryItemIds.map(async (inventoryId) => {
-        try {
-          const response = await getInventoryItemById(inventoryId);
-          return response.content;
-        } catch (error) {
-          console.error(`Error fetching inventory item ${inventoryId}:`, error);
-          return null;
-        }
-      });
 
-      const results = await Promise.all(inventoryPromises);
-      const validItems = results.filter((item) => item !== null);
-      setInventoryItems(validItems);
-      setFilteredInventoryItems(validItems); // Thêm dòng này
+      // Sử dụng getAllInventoryItemsByItemId thay vì nhiều getInventoryItemById
+      const allInventoryItems = await getAllInventoryItemsByItemId(itemId);
+
+      setInventoryItems(allInventoryItems);
+      setFilteredInventoryItems(allInventoryItems);
       setInventoryPagination((prev) => ({
         ...prev,
-        total: validItems.length,
+        total: allInventoryItems.length,
       }));
     } catch (error) {
       message.error("Không thể tải danh sách hàng tồn kho");
+      console.error("Error fetching inventory items:", error);
     } finally {
       setInventoryLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!searchTerm) {
-      setFilteredInventoryItems(inventoryItems);
-    } else {
-      const filtered = inventoryItems.filter((item) =>
+  // Function để apply filters
+  const applyFilters = (items, currentFilters, searchTerm) => {
+    let filtered = [...items];
+
+    // Text search
+    if (searchTerm && searchTerm.trim()) {
+      filtered = filtered.filter((item) =>
         item.id?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredInventoryItems(filtered);
-
-      // Update pagination total
-      setInventoryPagination((prev) => ({
-        ...prev,
-        current: 1, // Reset to first page when searching
-        total: filtered.length,
-      }));
     }
-  }, [inventoryItems, searchTerm]);
+
+    // Status filter
+    if (currentFilters.status && currentFilters.status.length > 0) {
+      filtered = filtered.filter((item) =>
+        currentFilters.status.includes(item.status)
+      );
+    }
+
+    // Measurement value range filter
+    if (
+      currentFilters.measurementRange.min !== null ||
+      currentFilters.measurementRange.max !== null
+    ) {
+      filtered = filtered.filter((item) => {
+        const value = item.measurementValue || 0;
+        const min = currentFilters.measurementRange.min;
+        const max = currentFilters.measurementRange.max;
+
+        if (min !== null && max !== null) {
+          return value >= min && value <= max;
+        } else if (min !== null) {
+          return value >= min;
+        } else if (max !== null) {
+          return value <= max;
+        }
+        return true;
+      });
+    }
+
+    // Date range filter (imported date)
+    if (currentFilters.dateRange.start || currentFilters.dateRange.end) {
+      filtered = filtered.filter((item) => {
+        if (!item.importedDate) return false;
+
+        const itemDate = new Date(item.importedDate);
+        const startDate = currentFilters.dateRange.start;
+        const endDate = currentFilters.dateRange.end;
+
+        if (startDate && endDate) {
+          return itemDate >= startDate && itemDate <= endDate;
+        } else if (startDate) {
+          return itemDate >= startDate;
+        } else if (endDate) {
+          return itemDate <= endDate;
+        }
+        return true;
+      });
+    }
+
+    // Location filter
+    if (currentFilters.location && currentFilters.location.trim()) {
+      filtered = filtered.filter((item) =>
+        item.storedLocationName
+          ?.toLowerCase()
+          .includes(currentFilters.location.toLowerCase())
+      );
+    }
+
+    // Expired filter
+    if (currentFilters.hasExpired !== null) {
+      const now = new Date();
+      filtered = filtered.filter((item) => {
+        if (!item.expiredDate) return !currentFilters.hasExpired;
+
+        const expiredDate = new Date(item.expiredDate);
+        const isExpired = expiredDate < now;
+
+        return currentFilters.hasExpired ? isExpired : !isExpired;
+      });
+    }
+
+    return filtered;
+  };
+
+  // Function để count active filters
+  const countActiveFilters = (currentFilters) => {
+    let count = 0;
+
+    if (currentFilters.status && currentFilters.status.length > 0) count++;
+    if (
+      currentFilters.measurementRange.min !== null ||
+      currentFilters.measurementRange.max !== null
+    )
+      count++;
+    if (currentFilters.dateRange.start || currentFilters.dateRange.end) count++;
+    if (currentFilters.location && currentFilters.location.trim()) count++;
+    if (currentFilters.hasExpired !== null) count++;
+
+    return count;
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchItemDetail();
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const filtered = applyFilters(inventoryItems, filters, searchTerm);
+    setFilteredInventoryItems(filtered);
+
+    // Update pagination
+    setInventoryPagination((prev) => ({
+      ...prev,
+      current: 1,
+      total: filtered.length,
+    }));
+
+    // Update active filters count
+    setActiveFiltersCount(countActiveFilters(filters));
+  }, [inventoryItems, searchTerm, filters]);
 
   useEffect(() => {
     if (id && canViewInventoryInfo()) {
       fetchInventoryFigure();
     }
   }, [id, userRole]);
+
+  // Function để clear filters
+  const clearAllFilters = () => {
+    setFilters({
+      status: [],
+      measurementRange: { min: null, max: null }, // Reset về null
+      dateRange: { start: null, end: null },
+      location: "",
+      hasExpired: null,
+    });
+    setSearchTerm("");
+  };
+
+  // Function để handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterType]: value,
+    }));
+  };
+
+  // Get min and max measurement values for slider
+  const getMeasurementRange = () => {
+    if (inventoryItems.length === 0) return [0, 100];
+
+    const values = inventoryItems
+      .map((item) => item.measurementValue || 0)
+      .filter((val) => val > 0); // Chỉ lấy values > 0
+
+    if (values.length === 0) return [0, 100];
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    // Nếu min = max thì tạo range nhỏ
+    return min === max ? [Math.max(0, min - 10), min + 10] : [min, max];
+  };
+
+  // Status options for filter
+  const statusOptions = [
+    { label: "Có sẵn", value: ItemStatus.AVAILABLE, color: "success" },
+    { label: "Không có sẵn", value: ItemStatus.UNAVAILABLE, color: "error" },
+    { label: "Cần thanh lý", value: ItemStatus.NEED_LIQUID, color: "error" },
+    {
+      label: "Không tồn tại",
+      value: ItemStatus.NO_LONGER_EXIST,
+      color: "default",
+    },
+    {
+      label: "Chuẩn bị vô kho",
+      value: ItemStatus.READY_TO_STORE,
+      color: "default",
+    },
+  ];
 
   const canViewInventoryInfo = () => {
     return (
@@ -261,7 +424,8 @@ const ItemDetail = () => {
   };
 
   const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
+    const value = e.target.value;
+    setSearchTerm(value);
   };
 
   const handleViewInventoryDetail = (inventoryItem) => {
@@ -303,10 +467,8 @@ const ItemDetail = () => {
         reasonForDisposal: reasonForChange.trim(),
       });
 
-      // Refresh inventory items
-      if (item?.inventoryItemIds) {
-        await fetchInventoryItems(item.inventoryItemIds);
-      }
+      // SỬA: Refresh với itemId thay vì inventoryItemIds
+      await fetchInventoryItems(item.id); // Đổi từ item?.inventoryItemIds sang item.id
 
       setEditModalVisible(false);
       message.success("Cập nhật trạng thái thành công");
@@ -649,15 +811,200 @@ const ItemDetail = () => {
             title="Danh sách hàng tồn kho thuộc mặt hàng"
             className="shadow-lg mt-6"
           >
-            <div className="mb-4 flex items-center gap-4">
-              <span className="font-medium">Mã sản phẩm:</span>
-              <Input
-                placeholder="Tìm kiếm theo mã sản phẩm..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                style={{ width: 400 }}
-                allowClear
-              />
+            <div className="mb-4 space-y-4">
+              {/* Search và Filter buttons */}
+              <div className="flex items-center gap-4">
+                <span className="font-medium">Mã sản phẩm:</span>
+                <Input
+                  placeholder="Tìm kiếm theo mã sản phẩm..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  style={{ width: 400 }}
+                  allowClear
+                />
+
+                <Space>
+                  <Badge count={activeFiltersCount} offset={[-5, 5]}>
+                    <Button
+                      icon={<FilterOutlined />}
+                      onClick={() => setFilterVisible(!filterVisible)}
+                      type={filterVisible ? "primary" : "default"}
+                    >
+                      Bộ lọc
+                    </Button>
+                  </Badge>
+
+                  {activeFiltersCount > 0 && (
+                    <Button
+                      icon={<ClearOutlined />}
+                      onClick={clearAllFilters}
+                      type="text"
+                      danger
+                    >
+                      Xóa bộ lọc
+                    </Button>
+                  )}
+                </Space>
+              </div>
+
+              {/* Filter Panel */}
+              {filterVisible && (
+                <Card className="bg-gray-50" size="small">
+                  <div className="mb-4">
+                    <h4 className="font-medium text-gray-800 mb-4">
+                      Bộ lọc nâng cao
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Status Filter */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Trạng thái
+                        </label>
+                        <Select
+                          mode="multiple"
+                          placeholder="Chọn trạng thái"
+                          value={filters.status}
+                          onChange={(value) =>
+                            handleFilterChange("status", value)
+                          }
+                          style={{ width: "100%" }}
+                          maxTagCount={2}
+                        >
+                          {statusOptions.map((option) => (
+                            <Select.Option
+                              key={option.value}
+                              value={option.value}
+                            >
+                              <Tag color={option.color} size="small">
+                                {option.label}
+                              </Tag>
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </div>
+
+                      {/* Measurement Range Filter */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Giá trị đo lường ({item?.measurementUnit})
+                        </label>
+                        <div className="space-y-2">
+                          <Slider
+                            range
+                            min={getMeasurementRange()[0]}
+                            max={getMeasurementRange()[1]}
+                            value={[
+                              filters.measurementRange.min ??
+                                getMeasurementRange()[0],
+                              filters.measurementRange.max ??
+                                getMeasurementRange()[1],
+                            ]}
+                            onChange={(value) =>
+                              handleFilterChange("measurementRange", {
+                                min: value[0],
+                                max: value[1],
+                              })
+                            }
+                            tooltip={{
+                              formatter: (value) =>
+                                `${value} ${item?.measurementUnit}`,
+                            }}
+                          />
+                          <div className="flex justify-between text-xs text-gray-500">
+                            <span>
+                              {getMeasurementRange()[0]} {item?.measurementUnit}
+                            </span>
+                            <span>
+                              {getMeasurementRange()[1]} {item?.measurementUnit}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Date Range Filter với ConfigProvider */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Ngày nhập kho
+                        </label>
+                        <ConfigProvider locale={locale}>
+                          <DatePicker.RangePicker
+                            value={
+                              filters.dateRange.start && filters.dateRange.end
+                                ? [
+                                    moment(filters.dateRange.start),
+                                    moment(filters.dateRange.end),
+                                  ]
+                                : null
+                            }
+                            onChange={(dates) =>
+                              handleFilterChange("dateRange", {
+                                start: dates?.[0]?.toDate() || null,
+                                end: dates?.[1]?.toDate() || null,
+                              })
+                            }
+                            format="DD/MM/YYYY"
+                            style={{ width: "100%" }}
+                            placeholder={["Từ ngày", "Đến ngày"]}
+                          />
+                        </ConfigProvider>
+                      </div>
+
+                      {/* Location Filter */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Vị trí lưu trữ
+                        </label>
+                        <Input
+                          placeholder="Tìm theo vị trí..."
+                          value={filters.location}
+                          onChange={(e) =>
+                            handleFilterChange("location", e.target.value)
+                          }
+                          allowClear
+                        />
+                      </div>
+
+                      {/* Expiry Status Filter */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Tình trạng hết hạn
+                        </label>
+                        <Select
+                          placeholder="Chọn tình trạng"
+                          value={filters.hasExpired}
+                          onChange={(value) =>
+                            handleFilterChange("hasExpired", value)
+                          }
+                          style={{ width: "100%" }}
+                          allowClear
+                        >
+                          <Select.Option value={true}>
+                            <Tag color="error">Đã hết hạn</Tag>
+                          </Select.Option>
+                          <Select.Option value={false}>
+                            <Tag color="success">Còn hạn</Tag>
+                          </Select.Option>
+                        </Select>
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="md:col-span-2 lg:col-span-1">
+                        <label className="block text-sm font-medium mb-2">
+                          Kết quả lọc
+                        </label>
+                        <div className="bg-white p-3 rounded border">
+                          <div className="text-lg font-semibold text-blue-600">
+                            {filteredInventoryItems.length}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            / {inventoryItems.length} sản phẩm
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
 
             <Table

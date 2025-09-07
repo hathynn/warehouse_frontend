@@ -51,6 +51,19 @@ const SellingExportForm = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (!formData.exportDate && blockedDates.length > 0) {
+      const minExportDate = calculateMinExportDate();
+      const validDate = minExportDate.format("YYYY-MM-DD");
+
+      setFormData((prev) => ({
+        ...prev,
+        exportDate: validDate,
+        inspectionDateTime: minExportDate.format("YYYY-MM-DD HH:mm:ss"),
+      }));
+    }
+  }, [blockedDates, formData.exportDate]);
+
   // Chặn nhập quá 150 ký tự cho lí do xuất
   const handleReasonChange = (e) => {
     const value = e.target.value;
