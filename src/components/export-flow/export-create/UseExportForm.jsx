@@ -49,6 +49,20 @@ const UseExportForm = ({
     }
   }, []);
 
+  // Tự động điền ngày xuất hợp lệ gần nhất khi component mount
+  useEffect(() => {
+    if (!formData.exportDate && blockedDates.length > 0) {
+      const minExportDate = calculateMinExportDate();
+      const validDate = minExportDate.format("YYYY-MM-DD");
+
+      setFormData((prev) => ({
+        ...prev,
+        exportDate: validDate,
+        inspectionDateTime: minExportDate.format("YYYY-MM-DD HH:mm:ss"),
+      }));
+    }
+  }, [blockedDates, formData.exportDate]);
+
   const isDateBlocked = (date) => {
     const dateString = dayjs(date).format("YYYY-MM-DD");
     return blockedDates.includes(dateString);

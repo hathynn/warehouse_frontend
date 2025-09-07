@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tabs, Tooltip, TablePaginationConfig, Space } from "antd";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { SearchOutlined, PlusOutlined, EyeOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
@@ -25,6 +25,8 @@ const ExportRequestList = () => {
   // ========== DATA STATES ==========
   const [exportRequestsData, setExportRequestsData] = useState<ExportRequestResponse[]>([]);
   const [providerNames, setProviderNames] = useState({});
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   // ========== SERVICES ==========
   const { getAllExportRequests, loading } = useExportRequestService();
@@ -49,6 +51,11 @@ const ExportRequestList = () => {
       default:
         return 'no-bg-row';
     }
+  };
+
+  const fetchExportRequests = async (): Promise<void> => {
+    const response = await getAllExportRequests();
+    setExportRequestsData(response.content);
   };
 
   // ========== EFFECTS ==========
@@ -78,13 +85,20 @@ const ExportRequestList = () => {
     }
   }, [exportRequestsData]);
 
-  const fetchExportRequests = async (): Promise<void> => {
-    const response = await getAllExportRequests();
-    setExportRequestsData(response.content);
-  };
-
-
-
+  useEffect(() => {
+    if (location.pathname.includes('/export/request-list')) {
+      const tabFromUrl = searchParams.get('tab');
+      if (tabFromUrl && ['SELLING', 'RETURN', 'INTERNAL', 'LIQUIDATION'].includes(tabFromUrl.toUpperCase())) {
+        updateFilter({
+          selectedExportType: tabFromUrl.toUpperCase(),
+          pagination: {
+            ...pagination,
+            current: 1
+          }
+        });
+      }
+    }
+  }, [location.search, location.pathname]);
 
   // ========== EVENT HANDLERS ==========
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
