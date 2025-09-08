@@ -144,19 +144,50 @@ const StockCheckDetailsTable = ({
         key: "status",
         width: "35%",
         align: "center",
-        render: (status) => {
+        render: (status, item) => {
           const config = statusConfig[status] || statusConfig.UNKNOWN;
-          return <Tag color={config.color}>{config.text}</Tag>;
+          return (
+            <div style={{ textAlign: "center" }}>
+              <Tag color={config.color}>{config.text}</Tag>
+              {/* Hiển thị note nếu là NEED_LIQUID và có note */}
+              {status === "NEED_LIQUID" && item.note && (
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "red",
+                    marginTop: "4px",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "black",
+                    }}
+                  >
+                    Lý do:
+                  </span>{" "}
+                  <span
+                    style={{
+                      color: "black",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {item.note}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
         },
       },
     ];
 
-    // Create table data
+    // Create table data - QUAN TRỌNG: thêm note vào data
     const tableData = checkedInventoryItems.map((item, index) => ({
       key: index,
       inventoryItemId: item.inventoryItemId,
       measurementValue: item.measurementValue,
       status: item.status,
+      note: item.note, // Thêm dòng này
     }));
 
     return (
@@ -401,8 +432,10 @@ const StockCheckDetailsTable = ({
                 );
 
                 let status = "UNAVAILABLE"; // Mặc định là mất
+                let note = null;
                 if (checkedItem) {
                   status = checkedItem.status;
+                  note = checkedItem.note;
                 }
 
                 const statusConfig = {
@@ -418,7 +451,37 @@ const StockCheckDetailsTable = ({
                   text: status,
                 };
 
-                return <Tag color={config.color}>{config.text}</Tag>;
+                return (
+                  <div style={{ textAlign: "center" }}>
+                    <Tag color={config.color}>{config.text}</Tag>
+                    {/* Hiển thị note nếu là NEED_LIQUID và có note */}
+                    {status === "NEED_LIQUID" && note && (
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: "red",
+                          marginTop: "4px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "black",
+                          }}
+                        >
+                          Lý do:
+                        </span>{" "}
+                        <span
+                          style={{
+                            color: "black",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {note}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
               },
             },
           ]
@@ -430,7 +493,7 @@ const StockCheckDetailsTable = ({
               title: "Quy cách (sau kiểm)",
               dataIndex: "inventoryItemId",
               key: "afterCheckMeasurement",
-              width: "16%",
+              width: "13%",
               align: "center",
               render: (inventoryItemId) => {
                 // Tìm trong checkedInventoryItemIds

@@ -15,7 +15,6 @@ import Overview from "@/pages/dashboard/overview";
 import ItemList from "@/pages/dashboard/item/item-list";
 import ItemCreate from "@/pages/dashboard/item/item-create";
 import ItemDetail from "@/pages/dashboard/item/item-detail";
-import InventoryItemList from "@/pages/dashboard/inventory-item/inventory-item-list";
 import ImportRequestList from "@/pages/dashboard/import/import-request-list";
 import ImportRequestDetail from "@/pages/dashboard/import/import-request-detail";
 import ImportRequestCreate from "@/pages/dashboard/import/import-request-create";
@@ -33,6 +32,7 @@ import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
 import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
 import ExportTransactionHistory from "@/pages/dashboard/transaction/export";
 import StockCheckTransactionHistory from "@/pages/dashboard/transaction/stock-check";
+import InventoryItemList from "../pages/dashboard/inventory-item/inventory-item-list";
 
 export const Router = createBrowserRouter([
   {
@@ -175,7 +175,7 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.TRANSACTION_LOGS.STOCK_CHECK,
             element: <StockCheckTransactionHistory />,
-          }
+          },
         ],
       },
     ],

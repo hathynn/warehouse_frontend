@@ -88,6 +88,51 @@ const useInventoryItemService = () => {
       );
       return response;
     } catch (error) {
+      console.log("Error getting all inventory item by pagination" + error);
+      throw error;
+    }
+  };
+
+  const getAllInventoryItemsWithoutPagination = async () => {
+    try {
+      // Lấy page đầu để biết total
+      const firstPage = await getAllInventoryItems(1, 200);
+
+      if (!firstPage?.content || firstPage.content.length === 0) {
+        return [];
+      }
+
+      const total = firstPage.metaDataDTO?.total || 0;
+
+      // Nếu page đầu đã có hết thì return luôn
+      if (firstPage.content.length >= total) {
+        return firstPage.content;
+      }
+
+      // Tính số pages cần thiết
+      const limit = 50;
+      const totalPages = Math.ceil(total / limit);
+
+      // Tạo promises cho các pages còn lại
+      const remainingPromises = [];
+      for (let page = 2; page <= totalPages; page++) {
+        remainingPromises.push(getAllInventoryItems(page, limit));
+      }
+
+      // Chờ tất cả requests hoàn thành
+      const remainingResponses = await Promise.all(remainingPromises);
+
+      // Gộp tất cả content lại
+      const allItems = [...firstPage.content];
+      remainingResponses.forEach((response) => {
+        if (response?.content) {
+          allItems.push(...response.content);
+        }
+      });
+
+      return allItems;
+    } catch (error) {
+      console.error("Error fetching all inventory items:", error);
       throw error;
     }
   };
@@ -323,6 +368,22 @@ const useInventoryItemService = () => {
     }
   };
 
+  // Get inventory item history by ID
+  const getInventoryItemHistory = async (
+    inventoryItemId: string
+  ): Promise<ResponseDTO<InventoryItemResponse[]>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/inventory-item/history/${inventoryItemId}`
+      );
+      return response;
+    } catch (error) {
+      console.error("Không thể lấy lịch sử inventory item");
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllInventoryItems,
@@ -338,6 +399,8 @@ const useInventoryItemService = () => {
     getAllInventoryItemsByItemId,
     getInventoryItemFigure,
     updateInventoryItem,
+    getInventoryItemHistory,
+    getAllInventoryItemsWithoutPagination,
   };
 };
 

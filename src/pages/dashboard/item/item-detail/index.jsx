@@ -337,15 +337,14 @@ const ItemDetail = () => {
 
     const values = inventoryItems
       .map((item) => item.measurementValue || 0)
-      .filter((val) => val > 0); // Chỉ lấy values > 0
+      .filter((val) => val >= 0); // Lấy tất cả values >= 0
 
     if (values.length === 0) return [0, 100];
 
-    const min = Math.min(...values);
     const max = Math.max(...values);
 
-    // Nếu min = max thì tạo range nhỏ
-    return min === max ? [Math.max(0, min - 10), min + 10] : [min, max];
+    // Luôn bắt đầu từ 0, đến max (hoặc 100 nếu max = 0)
+    return [0, max === 0 ? 100 : max];
   };
 
   // Status options for filter
@@ -364,6 +363,16 @@ const ItemDetail = () => {
       color: "default",
     },
   ];
+
+  const formatLocation = (location) => {
+    if (!location) return "Không có vị trí";
+
+    return location
+      .replace(/Zone:/g, "Khu:")
+      .replace(/Floor:/g, "Tầng:")
+      .replace(/Row:/g, "Hàng:")
+      .replace(/Line:/g, "Cột:");
+  };
 
   const canViewInventoryInfo = () => {
     return (
@@ -993,12 +1002,12 @@ const ItemDetail = () => {
                           Kết quả lọc
                         </label>
                         <div className="bg-white p-3 rounded border">
-                          <div className="text-lg font-semibold text-blue-600">
+                          <span className="text-lg font-semibold text-blue-600">
                             {filteredInventoryItems.length}
-                          </div>
-                          <div className="text-sm text-gray-500">
+                          </span>
+                          <span className="text-sm text-gray-500">
                             / {inventoryItems.length} sản phẩm
-                          </div>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1065,7 +1074,7 @@ const ItemDetail = () => {
                 : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Vị trí lưu trữ">
-              {selectedInventoryItem.storedLocationName || "Không xác định"}
+              {formatLocation(selectedInventoryItem.storedLocationName)}
             </Descriptions.Item>
             <Descriptions.Item label="Sản phẩm kế thừa từ">
               {selectedInventoryItem.parentId || "Không có"}
