@@ -50,12 +50,12 @@ const QrCodeListingModal: React.FC<QrCodeListingModalProps> = ({
         ) : inventoryItems.length === 0 ? (
           <div className="col-span-3 py-8 text-center text-gray-500">Không có QRCode nào để in</div>
         ) : (
-          inventoryItems.map((item) => (
-            <div key={item.id} className="flex flex-col items-center p-4 bg-white border rounded-lg print:shadow-none print:border print:p-2">
-              <QRCode value={item.id.toString()} size={128} />
-              <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{item.itemId || '-'}</span></div>
-              <div className="text-sm text-gray-700">Tên sản phẩm: {item.itemName || '-'}</div>
-              <div className="mt-1 text-xs text-gray-500">ID QR: {item.id}</div>
+          inventoryItems.map((invItem) => (
+            <div key={invItem.id} className="flex flex-col items-center p-4 bg-white border rounded-lg print:shadow-none print:border print:p-2">
+              <QRCode value={invItem.id.toString()} size={128} />
+              <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{invItem.itemId || '-'}</span></div>
+              <div className="text-sm text-gray-700">Tên sản phẩm: {invItem.itemName || '-'}</div>
+              <div className="mt-1 text-xs text-gray-500">{invItem.id}</div>
             </div>
           ))
         )}

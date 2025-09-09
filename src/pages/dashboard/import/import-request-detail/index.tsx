@@ -5,7 +5,7 @@ import {
   Button,
   Spin
 } from "antd";
-import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, FileAddOutlined, UnorderedListOutlined, PlusOutlined, MinusOutlined } from "@ant-design/icons";
 import useImportRequestService from "@/services/useImportRequestService";
 import useImportRequestDetailService, { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import { ColumnsType } from "antd/es/table";
@@ -18,6 +18,7 @@ import useImportOrderService, { ImportOrderResponse } from "@/services/useImport
 import useDepartmentService, { DepartmentResponse } from "@/services/useDepartmentService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 import useImportOrderDetailService, { ImportOrderDetailResponse } from "@/services/useImportOrderDetailService";
+import useInventoryItemService, { InventoryItemResponse } from "@/services/useInventoryItemService";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import { getMinDateTime } from "@/utils/helpers";
 import dayjs from "dayjs";
@@ -56,6 +57,11 @@ const ImportRequestDetail: React.FC = () => {
     total: 0,
   });
 
+  // ========== EXPAND STATES ==========
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [childrenData, setChildrenData] = useState<Map<string, InventoryItemResponse[]>>(new Map());
+  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
+
   // ========== SERVICES ==========
   const {
     loading: importRequestLoading,
@@ -93,6 +99,10 @@ const ImportRequestDetail: React.FC = () => {
     loading: itemLoading,
     getItems
   } = useItemService();
+
+  const {
+    getInventoryItemById
+  } = useInventoryItemService();
 
   // ========== UTILITY FUNCTIONS ==========
   const getImportTypeText = (type: ImportType): string => {
@@ -366,6 +376,72 @@ const ImportRequestDetail: React.FC = () => {
     return itemsData.find(item => String(item.id) === String(itemId));
   };
 
+  // ========== EXPAND HANDLERS ==========
+  const handleToggleExpand = async (inventoryItemId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    const newLoadingChildren = new Set(loadingChildren);
+    
+    if (expandedRows.has(inventoryItemId)) {
+      // Collapse
+      newExpandedRows.delete(inventoryItemId);
+      setExpandedRows(newExpandedRows);
+    } else {
+      // Expand
+      newLoadingChildren.add(inventoryItemId);
+      setLoadingChildren(newLoadingChildren);
+      
+      try {
+        const response = await getInventoryItemById(inventoryItemId);
+        if (response?.content) {
+          const inventoryItem = response.content;
+          if (inventoryItem.childrenIds && inventoryItem.childrenIds.length > 0) {
+            // Fetch all children data
+            const childrenPromises = inventoryItem.childrenIds.map(childId => 
+              getInventoryItemById(childId.toString())
+            );
+            const childrenResponses = await Promise.all(childrenPromises);
+            const childrenItems = childrenResponses
+              .filter(response => response?.content)
+              .map(response => response.content!);
+            
+            // Store children data
+            const newChildrenData = new Map(childrenData);
+            newChildrenData.set(inventoryItemId, childrenItems);
+            setChildrenData(newChildrenData);
+            
+            // Add to expanded rows
+            newExpandedRows.add(inventoryItemId);
+            setExpandedRows(newExpandedRows);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching children data:', error);
+        toast.error('Không thể tải dữ liệu con');
+      } finally {
+        newLoadingChildren.delete(inventoryItemId);
+        setLoadingChildren(newLoadingChildren);
+      }
+    }
+  };
+
+  const renderExpandIcon = (inventoryItemId: string) => {
+    const isLoading = loadingChildren.has(inventoryItemId);
+    const isExpanded = expandedRows.has(inventoryItemId);
+    
+    if (isLoading) {
+      return <Spin size="small" />;
+    }
+    
+    return (
+      <Button
+        type="text"
+        size="small"
+        icon={isExpanded ? <MinusOutlined /> : <PlusOutlined />}
+        onClick={() => handleToggleExpand(inventoryItemId)}
+      />
+    );
+  };
+
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const getColumns = (importType: string): ColumnsType<ImportRequestDetailResponse> => {
     const baseColumns: ColumnsType<ImportRequestDetailResponse> = [
@@ -430,11 +506,41 @@ const ImportRequestDetail: React.FC = () => {
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
-          render: (id: string) => `#${id}`,
           align: "left" as const,
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
+          render: (id: string, record: any) => {
+            const isExpanded = expandedRows.has(id);
+            const children = childrenData.get(id) || [];
+            const hasChildren = children.length > 0;
+            
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {renderExpandIcon(id)}
+                  <span>#{id}</span>
+                </div>
+                {isExpanded && hasChildren && (
+                  <div style={{ marginTop: '4px', marginLeft: '24px' }}>
+                    {children.map((child, index) => (
+                      <div key={child.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        marginBottom: index < children.length - 1 ? '2px' : '0',
+                        fontSize: '13px',
+                        color: '#666'
+                      }}>
+                        <span>↳</span>
+                        <span>#{child.id}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          },
         },
         {
           width: '20%',

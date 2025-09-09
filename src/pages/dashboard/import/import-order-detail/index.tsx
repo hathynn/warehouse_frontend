@@ -41,10 +41,10 @@ import ImportOrderAssignStaffModal from "@/components/import-flow/import-order/I
 import QrCodeListingModal from "@/components/import-flow/import-order/QrCodeListingModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import { toast } from "react-toastify";
-import { MdApartment, MdLocationSearching } from "react-icons/md";
+import { MdApartment } from "react-icons/md";
+import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
 import { convertStoredLocationName } from "@/utils/helpers";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
-import { ImportRequestDetailResponse } from "@/services/useImportRequestDetailService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
 
 const ImportOrderDetail = () => {
@@ -80,6 +80,11 @@ const ImportOrderDetail = () => {
   // ========== FORM & UI STATES ==========
   const [confirmRequireCountingAgainResponsibilityChecked, setConfirmRequireCountingAgainResponsibilityChecked] = useState(false);
   const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
+  
+  // ========== EXPAND STATES ==========
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [childrenData, setChildrenData] = useState<Map<string, InventoryItemResponse[]>>(new Map());
+  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
@@ -119,6 +124,7 @@ const ImportOrderDetail = () => {
     loading: inventoryItemLoading,
     getByListImportOrderDetailIds,
     updateStoredLocation,
+    getInventoryItemById,
   } = useInventoryItemService();
   const {
     getItems
@@ -371,6 +377,73 @@ const ImportOrderDetail = () => {
     setShowUpdateInventoryItemLocationModal(true);
   };
 
+  // ========== EXPAND HANDLERS ==========
+  const handleToggleExpand = async (inventoryItemId: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    const newLoadingChildren = new Set(loadingChildren);
+    
+    if (expandedRows.has(inventoryItemId)) {
+      // Collapse
+      newExpandedRows.delete(inventoryItemId);
+      setExpandedRows(newExpandedRows);
+    } else {
+      // Expand
+      newLoadingChildren.add(inventoryItemId);
+      setLoadingChildren(newLoadingChildren);
+      
+      try {
+        const response = await getInventoryItemById(inventoryItemId);
+        if (response?.content) {
+          const inventoryItem = response.content;
+          if (inventoryItem.childrenIds && inventoryItem.childrenIds.length > 0) {
+            // Fetch all children data
+            const childrenPromises = inventoryItem.childrenIds.map(childId => 
+              getInventoryItemById(childId.toString())
+            );
+            const childrenResponses = await Promise.all(childrenPromises);
+            const childrenItems = childrenResponses
+              .filter(response => response?.content)
+              .map(response => response.content!);
+            
+            // Store children data
+            const newChildrenData = new Map(childrenData);
+            newChildrenData.set(inventoryItemId, childrenItems);
+            setChildrenData(newChildrenData);
+            
+            // Add to expanded rows
+            newExpandedRows.add(inventoryItemId);
+            setExpandedRows(newExpandedRows);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching children data:', error);
+        toast.error('Không thể tải dữ liệu con');
+      } finally {
+        newLoadingChildren.delete(inventoryItemId);
+        setLoadingChildren(newLoadingChildren);
+      }
+    }
+  };
+
+  const renderExpandIcon = (inventoryItemId: string) => {
+    const isLoading = loadingChildren.has(inventoryItemId);
+    const isExpanded = expandedRows.has(inventoryItemId);
+    
+    if (isLoading) {
+      return <Spin size="small" />;
+    }
+    
+    return (
+      <Button
+        type="text"
+        size="small"
+        icon={isExpanded ? <MinusOutlined /> : <PlusOutlined />}
+        onClick={() => handleToggleExpand(inventoryItemId)}
+      />
+    );
+  };
+
+
   // Table columns definition
   const getColumns = () => {
     const baseColumns: any[] = [
@@ -379,7 +452,7 @@ const ImportOrderDetail = () => {
     if (importRequestRelated?.importType === "RETURN") {
       baseColumns.push(
         {
-          width: '20%',
+          width: '25%',
           title: "Mã sản phẩm tồn kho",
           dataIndex: "inventoryItemId",
           key: "inventoryItemId",
@@ -387,7 +460,37 @@ const ImportOrderDetail = () => {
           onHeaderCell: () => ({
             style: { textAlign: 'center' as const }
           }),
-          render: (id: number) => `#${id}`,
+          render: (id: string, record: any) => {
+            const isExpanded = expandedRows.has(id);
+            const children = childrenData.get(id) || [];
+            const hasChildren = children.length > 0;
+            
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {renderExpandIcon(id)}
+                  <span>#{id}</span>
+                </div>
+                {isExpanded && hasChildren && (
+                  <div style={{ marginTop: '4px', marginLeft: '24px' }}>
+                    {children.map((child, index) => (
+                      <div key={child.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        marginBottom: index < children.length - 1 ? '2px' : '0',
+                        fontSize: '13px',
+                        color: '#666'
+                      }}>
+                        <span>↳</span>
+                        <span>#{child.id}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          },
         },
         {
           width: '15%',
@@ -869,6 +972,7 @@ const ImportOrderDetail = () => {
           Tôi chịu trách nhiệm về quyết định này.
         </Checkbox>
       </Modal>
+
     </div>
   );
 };
