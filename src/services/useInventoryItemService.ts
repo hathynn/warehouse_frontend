@@ -96,7 +96,7 @@ const useInventoryItemService = () => {
   const getAllInventoryItemsWithoutPagination = async () => {
     try {
       // Lấy page đầu để biết total
-      const firstPage = await getAllInventoryItems(1, 200);
+      const firstPage = await getAllInventoryItems(1, 10);
 
       if (!firstPage?.content || firstPage.content.length === 0) {
         return [];
@@ -110,7 +110,7 @@ const useInventoryItemService = () => {
       }
 
       // Tính số pages cần thiết
-      const limit = 50;
+      const limit = 400;
       const totalPages = Math.ceil(total / limit);
 
       // Tạo promises cho các pages còn lại
