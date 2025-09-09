@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Table,
   Input,
@@ -19,6 +19,7 @@ import {
   EyeOutlined,
   FilterOutlined,
   ClearOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import useInventoryItemService, {
   ItemStatus,
@@ -28,13 +29,16 @@ import moment from "moment";
 import locale from "antd/locale/vi_VN";
 import "moment/locale/vi";
 import PropTypes from "prop-types";
+import debounce from "lodash/debounce";
 
 moment.locale("vi");
 
 const InventoryItemList = () => {
+  // ===== 1. KHAI BÁO STATE =====
   const [inventoryItems, setInventoryItems] = useState([]);
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // Thêm state cho input value
   const [filteredItems, setFilteredItems] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -59,7 +63,10 @@ const InventoryItemList = () => {
   const [displayedItems, setDisplayedItems] = useState([]);
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [dataCache, setDataCache] = useState(null);
 
+  // ===== 2. HOOKS =====
   const {
     getAllInventoryItemsWithoutPagination,
     getInventoryItemHistory,
@@ -67,20 +74,42 @@ const InventoryItemList = () => {
   } = useInventoryItemService();
   const { getItems, loading: itemsLoading } = useItemService();
 
-  const fetchData = async () => {
+  // ===== 3. FUNCTIONS =====
+  const fetchData = async (forceRefresh = false) => {
+    // Nếu đã có cache và không force refresh thì return
+    if (dataCache && !forceRefresh) {
+      setAllInventoryItems(dataCache.inventoryItems);
+      setInventoryItems(dataCache.inventoryItems);
+      setItems(dataCache.items);
+      setIsInitialLoading(false);
+      return;
+    }
+
     try {
+      setIsInitialLoading(true);
       const [inventoryItems, itemsResponse] = await Promise.all([
         getAllInventoryItemsWithoutPagination(),
         getItems(),
       ]);
 
       if (inventoryItems && itemsResponse?.content) {
+        // Lưu vào cache
+        const cache = {
+          inventoryItems,
+          items: itemsResponse.content,
+          timestamp: Date.now(),
+        };
+        setDataCache(cache);
+        localStorage.setItem("inventoryCache", JSON.stringify(cache));
+
         setAllInventoryItems(inventoryItems);
         setInventoryItems(inventoryItems);
         setItems(itemsResponse.content);
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
+    } finally {
+      setIsInitialLoading(false);
     }
   };
 
@@ -98,7 +127,6 @@ const InventoryItemList = () => {
     }
   };
 
-  // Function để apply filters
   const applyFilters = (items, currentFilters, searchTerm) => {
     let filtered = [...items];
 
@@ -191,7 +219,6 @@ const InventoryItemList = () => {
     return filtered;
   };
 
-  // Function để count active filters
   const countActiveFilters = (currentFilters) => {
     let count = 0;
 
@@ -209,14 +236,11 @@ const InventoryItemList = () => {
     return count;
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
+  // ===== 4. MEMOIZED VALUES =====
+  const processedData = useMemo(() => {
     let filtered = applyFilters(allInventoryItems, filters, searchTerm);
 
-    // Apply sorting nếu có
+    // Apply sorting
     if (filters.sortField && filters.sortOrder) {
       filtered = [...filtered].sort((a, b) => {
         const aValue = a[filters.sortField] || 0;
@@ -227,39 +251,76 @@ const InventoryItemList = () => {
             ? aValue - bValue
             : bValue - aValue;
         }
-
-        // Cho các field khác nếu cần
         return 0;
       });
     }
 
-    setFilteredItems(filtered);
+    return filtered;
+  }, [allInventoryItems, filters, searchTerm]);
 
-    // Reset về trang 1 khi data thay đổi
-    const startIndex = (pagination.current - 1) * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value) => {
+        setSearchTerm(value);
+      }, 300),
+    []
+  );
 
-    // Kiểm tra nếu current page vượt quá số trang mới
-    const maxPage = Math.ceil(filtered.length / pagination.pageSize);
+  // ===== 5. EFFECTS =====
+
+  // Effect 1: Load data từ cache hoặc fetch mới khi mount
+  useEffect(() => {
+    const cachedData = localStorage.getItem("inventoryCache");
+    if (cachedData) {
+      try {
+        const cache = JSON.parse(cachedData);
+        // Cache còn fresh (dưới 1 giờ)
+        if (Date.now() - cache.timestamp < 60 * 60 * 1000) {
+          setDataCache(cache);
+          setAllInventoryItems(cache.inventoryItems);
+          setInventoryItems(cache.inventoryItems);
+          setItems(cache.items);
+          setIsInitialLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error parsing cache:", error);
+      }
+    }
+    // Nếu không có cache hoặc cache cũ, fetch mới
+    fetchData();
+  }, []);
+
+  // Effect 2: Update displayed items khi processedData hoặc pagination thay đổi
+  useEffect(() => {
+    const maxPage = Math.ceil(processedData.length / pagination.pageSize);
     const currentPage = pagination.current > maxPage ? 1 : pagination.current;
 
-    const finalStartIndex = (currentPage - 1) * pagination.pageSize;
-    const finalEndIndex = finalStartIndex + pagination.pageSize;
+    const startIndex = (currentPage - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
 
-    setDisplayedItems(filtered.slice(finalStartIndex, finalEndIndex));
+    setFilteredItems(processedData);
+    setDisplayedItems(processedData.slice(startIndex, endIndex));
     setActiveFiltersCount(countActiveFilters(filters));
 
-    // Update pagination nếu cần
     if (currentPage !== pagination.current) {
       setPagination((prev) => ({ ...prev, current: currentPage }));
     }
-  }, [
-    allInventoryItems,
-    searchTerm,
-    filters,
-    pagination.current,
-    pagination.pageSize,
-  ]);
+  }, [processedData, pagination.current, pagination.pageSize, filters]);
+
+  // Effect 3: Cleanup debounce khi unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  // ===== 6. HANDLERS =====
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchInput(value); // Update input value immediately
+    debouncedSearch(value); // Debounce actual search
+  };
 
   const clearAllFilters = () => {
     setFilters({
@@ -273,13 +334,13 @@ const InventoryItemList = () => {
       sortOrder: null,
     });
     setSearchTerm("");
+    setSearchInput(""); // Clear input display
     setPagination((prev) => ({
       ...prev,
       current: 1,
     }));
   };
 
-  // Function để handle filter changes
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({
       ...prev,
@@ -287,11 +348,10 @@ const InventoryItemList = () => {
     }));
   };
 
-  // Get min and max measurement values for slider
   const getMeasurementRange = () => {
-    if (allInventoryItems.length === 0) return [0, 100]; // Đổi từ inventoryItems thành allInventoryItems
+    if (allInventoryItems.length === 0) return [0, 100];
 
-    const values = allInventoryItems // Đổi từ inventoryItems thành allInventoryItems
+    const values = allInventoryItems
       .map((item) => item.measurementValue || 0)
       .filter((val) => val >= 0);
 
@@ -301,19 +361,13 @@ const InventoryItemList = () => {
     return [0, max === 0 ? 100 : max];
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-  };
-
   const handleTableChange = (newPagination, _, sorter) => {
-    // Update pagination
     setPagination({
       current: newPagination.current,
       pageSize: newPagination.pageSize,
       total: filteredItems.length,
     });
 
-    // Update sorting nếu có
     if (sorter) {
       setFilters((prev) => ({
         ...prev,
@@ -321,7 +375,6 @@ const InventoryItemList = () => {
         sortOrder: sorter.order || null,
       }));
 
-      // Reset về trang 1 khi sort
       if (sorter.field) {
         setPagination((prev) => ({
           ...prev,
@@ -337,6 +390,7 @@ const InventoryItemList = () => {
     await fetchInventoryHistory(inventoryItem.id);
   };
 
+  // ===== 7. HELPER FUNCTIONS =====
   const getStatusTag = (status) => {
     switch (status) {
       case ItemStatus.AVAILABLE:
@@ -360,7 +414,6 @@ const InventoryItemList = () => {
     }
   };
 
-  // Function để format location từ tiếng Anh sang tiếng Việt
   const formatLocation = (location) => {
     if (!location) return "Không có vị trí";
 
@@ -375,7 +428,7 @@ const InventoryItemList = () => {
     return items.find((item) => item.id === inventoryItem.itemId);
   };
 
-  // Status options for filter
+  // ===== 8. CONFIG DATA =====
   const statusOptions = [
     { label: "Có sẵn", value: ItemStatus.AVAILABLE, color: "success" },
     { label: "Không có sẵn", value: ItemStatus.UNAVAILABLE, color: "error" },
@@ -456,11 +509,10 @@ const InventoryItemList = () => {
     },
   ];
 
+  // ===== 9. SUB-COMPONENTS =====
   const InventoryTree = ({ historyData, selectedId, onSelectItem }) => {
-    // Tìm root items (những item không có parent)
     const rootItems = historyData.filter((item) => !item.parentId);
 
-    // Tạo map để dễ tìm children
     const childrenMap = {};
     historyData.forEach((item) => {
       if (item.parentId) {
@@ -505,23 +557,6 @@ const InventoryItemList = () => {
       );
     };
 
-    InventoryTree.propTypes = {
-      historyData: PropTypes.arrayOf(
-        PropTypes.shape({
-          id: PropTypes.string.isRequired,
-          parentId: PropTypes.string,
-          status: PropTypes.string,
-          measurementValue: PropTypes.number,
-        })
-      ).isRequired,
-      selectedId: PropTypes.string,
-      onSelectItem: PropTypes.func.isRequired,
-    };
-
-    InventoryTree.defaultProps = {
-      selectedId: null,
-    };
-
     return (
       <div className="max-h-60 overflow-y-auto">
         {rootItems.map((item) => renderTreeNode(item))}
@@ -529,11 +564,48 @@ const InventoryItemList = () => {
     );
   };
 
+  InventoryTree.propTypes = {
+    historyData: PropTypes.arrayOf(
+      PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        parentId: PropTypes.string,
+        status: PropTypes.string,
+        measurementValue: PropTypes.number,
+      })
+    ).isRequired,
+    selectedId: PropTypes.string,
+    onSelectItem: PropTypes.func.isRequired,
+  };
+
+  // ===== 10. LOADING STATE =====
+  if (isInitialLoading) {
+    return (
+      <Card className="shadow-lg">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // ===== 11. MAIN RENDER =====
   return (
     <div>
       <Card className="shadow-lg">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-bold">Quản lý hàng tồn kho</h1>
+          <Button
+            onClick={() => fetchData(true)}
+            loading={inventoryLoading}
+            icon={<ReloadOutlined />}
+          >
+            Làm mới dữ liệu
+          </Button>
         </div>
 
         <div className="mb-4 space-y-4">
@@ -542,11 +614,15 @@ const InventoryItemList = () => {
             <span className="font-medium">Mã sản phẩm:</span>
             <Input
               placeholder="Tìm kiếm theo mã sản phẩm..."
-              value={searchTerm}
+              value={searchInput}
               onChange={handleSearchChange}
               prefix={<SearchOutlined />}
               style={{ width: 400 }}
               allowClear
+              onClear={() => {
+                setSearchInput("");
+                setSearchTerm("");
+              }}
             />
 
             <Space>
@@ -703,16 +779,16 @@ const InventoryItemList = () => {
 
         <Table
           columns={columns}
-          dataSource={displayedItems} // Thay vì filteredItems
+          dataSource={displayedItems}
           rowKey="id"
           className="custom-table"
           loading={inventoryLoading || itemsLoading}
           onChange={handleTableChange}
           pagination={{
             ...pagination,
-            total: filteredItems.length, // Tổng số sau khi filter
+            total: filteredItems.length,
             showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50"],
+            pageSizeOptions: ["10", "20", "50", "100"],
             showTotal: (total, range) =>
               `${range?.[0] || 0}-${range?.[1] || 0} của ${total} sản phẩm`,
           }}
