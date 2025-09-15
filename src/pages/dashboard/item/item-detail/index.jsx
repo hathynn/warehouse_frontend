@@ -19,6 +19,7 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
   EditOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 const { TextArea } = Input;
 import useItemService from "@/services/useItemService";
@@ -28,17 +29,16 @@ import useInventoryItemService, {
   ItemStatus,
 } from "@/services/useInventoryItemService";
 import { AccountRole } from "@/utils/enums";
-import { DatePicker, Space, Collapse, Badge, Slider } from "antd";
+import { DatePicker, Space, Badge, Slider } from "antd";
 import { FilterOutlined, ClearOutlined } from "@ant-design/icons";
 import moment from "moment";
 import locale from "antd/locale/vi_VN";
 import "moment/locale/vi";
+import ImportExportModal from "@/components/commons/ImportExportModal";
 
 moment.locale("vi");
 
 const ItemDetail = () => {
-  const { RangePicker } = DatePicker;
-  const { Panel } = Collapse;
   const userRole = useSelector((state) => state.user.role);
   const { id } = useParams();
   const navigate = useNavigate();
@@ -79,16 +79,31 @@ const ItemDetail = () => {
   const [globalSearchTerm, setGlobalSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
+  const [importExportModalVisible, setImportExportModalVisible] =
+    useState(false);
+  const [itemImportExportData, setItemImportExportData] = useState(null);
 
-  const { getItemById } = useItemService();
+  const { getItemById, getItemImportExportNumber } = useItemService();
   const { getCategoryById } = useCategoryService();
   const { getProviderById } = useProviderService();
   const {
-    getInventoryItemById,
     updateInventoryItem,
     getInventoryItemFigure,
     getAllInventoryItemsByItemId,
   } = useInventoryItemService();
+
+  const fetchItemImportExportData = async (itemId) => {
+    if (!itemId) return;
+
+    try {
+      const response = await getItemImportExportNumber(itemId);
+      if (response && response.content) {
+        setItemImportExportData(response.content);
+      }
+    } catch (error) {
+      console.error("Error fetching import-export data:", error);
+    }
+  };
 
   const fetchItemDetail = async () => {
     try {
@@ -379,6 +394,9 @@ const ItemDetail = () => {
   useEffect(() => {
     if (id) {
       fetchItemDetail();
+      if (canViewInventoryInfo()) {
+        fetchItemImportExportData(id);
+      }
     }
   }, [id]);
 
@@ -444,6 +462,14 @@ const ItemDetail = () => {
     }));
   };
 
+  const handleOpenImportExportModal = () => {
+    setImportExportModalVisible(true);
+  };
+
+  const handleCloseImportExportModal = () => {
+    setImportExportModalVisible(false);
+  };
+
   // Get min and max measurement values for slider
   const getMeasurementRange = () => {
     if (inventoryItems.length === 0) return [0, 100];
@@ -494,19 +520,34 @@ const ItemDetail = () => {
   };
 
   const calculateAvailableQuantity = () => {
-    if (!item) return 0;
+    if (!itemImportExportData) return 0;
+    const inventoryBalance =
+      itemImportExportData.importMeasurementValue -
+      itemImportExportData.exportMeasurementValue;
     return Math.max(
       0,
-      (item.numberOfAvailableItems || 0) - (item.minimumStockQuantity || 0)
+      inventoryBalance -
+        (item?.minimumStockQuantity || 0) * (item?.measurementValue || 0)
+    );
+  };
+
+  const calculateCurrentInventory = () => {
+    if (!itemImportExportData) return 0;
+    return (
+      itemImportExportData.importMeasurementValue -
+      itemImportExportData.exportMeasurementValue
     );
   };
 
   const calculateAvailableValue = () => {
-    if (!item) return 0;
+    if (!itemImportExportData) return 0;
+    const inventoryBalance =
+      itemImportExportData.importMeasurementValue -
+      itemImportExportData.exportMeasurementValue;
     return Math.max(
       0,
-      (item.numberOfAvailableMeasurementValues || 0) -
-        (item.minimumStockQuantity || 0) * (item.measurementValue || 0)
+      inventoryBalance -
+        (item?.minimumStockQuantity || 0) * (item?.measurementValue || 0)
     );
   };
 
@@ -880,9 +921,23 @@ const ItemDetail = () => {
           Quay lại
         </Button>
 
-        <h1 className="text-2xl font-bold mb-4">
-          Chi tiết mặt hàng: {`${item.name} (${item.id})`}
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">
+            Chi tiết mặt hàng: {`${item.name} (${item.id})`}
+          </h1>
+
+          {canViewInventoryInfo() && (
+            <Button
+              type="primary"
+              icon={<BarChartOutlined />}
+              onClick={handleOpenImportExportModal}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+              size="large"
+            >
+              Xem báo cáo xuất nhập kho
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="shadow-lg">
@@ -913,7 +968,7 @@ const ItemDetail = () => {
           {/* Chỉ hiện cho MANAGER và DEPARTMENT */}
           {canViewInventoryInfo() && (
             <>
-              <Descriptions.Item label="Số lượng tồn kho">
+              {/* <Descriptions.Item label="Số lượng tồn kho">
                 <strong style={{ fontSize: "18px" }}>
                   {item.quantity || 0}
                 </strong>{" "}
@@ -925,11 +980,11 @@ const ItemDetail = () => {
                   {calculateAvailableQuantity()}
                 </strong>{" "}
                 {item.unitType}
-              </Descriptions.Item>
+              </Descriptions.Item> */}
 
               <Descriptions.Item label="Giá trị tồn kho">
                 <strong style={{ fontSize: "18px" }}>
-                  {item.totalMeasurementValue || 0}
+                  {calculateCurrentInventory()}
                 </strong>{" "}
                 {item.measurementUnit}
               </Descriptions.Item>
@@ -1411,6 +1466,13 @@ const ItemDetail = () => {
           </div>
         )}
       </Modal>
+      {/* Import Export Modal */}
+      <ImportExportModal
+        visible={importExportModalVisible}
+        onClose={handleCloseImportExportModal}
+        itemId={id}
+        item={item}
+      />
     </div>
   );
 };

@@ -44,6 +44,13 @@ export interface ItemResponse {
   numberOfAvailableMeasurementValues: number;
 }
 
+export interface ItemImportExportResponse {
+  importOrderIds: string[];
+  exportRequestIds: string[];
+  importMeasurementValue: number;
+  exportMeasurementValue: number;
+}
+
 const useItemService = () => {
   const { callApi, loading } = useApi();
   const [itemId, setItemId] = useState<number | null>(null);
@@ -157,6 +164,18 @@ const useItemService = () => {
     }
   };
 
+  const getItemImportExportNumber = async (
+    itemId: string
+  ): Promise<ResponseDTO<ItemImportExportResponse>> => {
+    try {
+      const response = await callApi("get", `/item/im-ex/${itemId}`);
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin import-export của sản phẩm");
+      throw error;
+    }
+  };
+
   return {
     loading,
     itemId,
@@ -167,6 +186,7 @@ const useItemService = () => {
     deleteItem,
     getItemsByCategory,
     getItemsByProvider,
+    getItemImportExportNumber,
   };
 };
 
