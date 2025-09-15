@@ -71,8 +71,13 @@ const ItemDetail = () => {
     measurementRange: { min: null, max: null },
     dateRange: { start: null, end: null },
     location: "",
-    hasExpired: null, // null: all, true: expired only, false: not expired only
+    hasExpired: null,
+    sortField: null,
+    sortOrder: null,
   });
+  const [activeTab, setActiveTab] = useState("available");
+  const [globalSearchTerm, setGlobalSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
   const [activeFiltersCount, setActiveFiltersCount] = useState(0);
 
   const { getItemById } = useItemService();
@@ -284,6 +289,93 @@ const ItemDetail = () => {
     return count;
   };
 
+  // Tab definitions
+  const inventoryTabs = [
+    {
+      key: "available",
+      label: "Có thể xuất",
+      statuses: [ItemStatus.AVAILABLE],
+      color: "success",
+      badge: "green",
+    },
+    {
+      key: "unavailable",
+      label: "Trong quá trình xuất",
+      statuses: [ItemStatus.UNAVAILABLE],
+      color: "warning",
+      badge: "orange",
+    },
+    {
+      key: "ready",
+      label: "Chuẩn bị vào kho",
+      statuses: [ItemStatus.READY_TO_STORE],
+      color: "processing",
+      badge: "blue",
+    },
+    {
+      key: "liquidated",
+      label: "Hàng thanh lý / Đã xuất",
+      statuses: [ItemStatus.NEED_LIQUID, ItemStatus.NO_LONGER_EXIST],
+      color: "default",
+      badge: "gray",
+    },
+  ];
+
+  // Function để filter theo tab và search
+  const getFilteredItemsByTab = (tabKey, items) => {
+    const tab = inventoryTabs.find((t) => t.key === tabKey);
+    if (!tab) return [];
+
+    return items.filter((item) => tab.statuses.includes(item.status));
+  };
+
+  // Function để search toàn cục
+  const handleGlobalSearch = (searchValue) => {
+    setGlobalSearchTerm(searchValue);
+
+    if (!searchValue.trim()) {
+      setSearchResults(null);
+      return;
+    }
+
+    // Search trong tất cả inventory items
+    const results = inventoryItems.filter((item) =>
+      item.id?.toLowerCase().includes(searchValue.toLowerCase())
+    );
+
+    // Nhóm kết quả theo tab
+    const groupedResults = {};
+    inventoryTabs.forEach((tab) => {
+      groupedResults[tab.key] = results.filter((item) =>
+        tab.statuses.includes(item.status)
+      );
+    });
+
+    setSearchResults({
+      total: results.length,
+      byTab: groupedResults,
+      items: results,
+    });
+  };
+
+  // Function để get current displayed items
+  const getCurrentDisplayedItems = () => {
+    if (searchResults && globalSearchTerm.trim()) {
+      return searchResults.byTab[activeTab] || [];
+    }
+
+    const tabItems = getFilteredItemsByTab(activeTab, inventoryItems);
+    return applyFilters(tabItems, filters, ""); // Không dùng searchTerm cũ nữa
+  };
+
+  // Function để count items cho badge
+  const getTabItemCount = (tabKey) => {
+    if (searchResults && globalSearchTerm.trim()) {
+      return searchResults.byTab[tabKey]?.length || 0;
+    }
+    return getFilteredItemsByTab(tabKey, inventoryItems).length;
+  };
+
   useEffect(() => {
     if (id) {
       fetchItemDetail();
@@ -291,19 +383,34 @@ const ItemDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    const filtered = applyFilters(inventoryItems, filters, searchTerm);
-    setFilteredInventoryItems(filtered);
+    const currentItems = getCurrentDisplayedItems();
+    let filtered = applyFilters(currentItems, filters, "");
 
-    // Update pagination
+    // Apply sorting nếu có
+    if (filters.sortField && filters.sortOrder) {
+      filtered = [...filtered].sort((a, b) => {
+        const aValue = a[filters.sortField] || 0;
+        const bValue = b[filters.sortField] || 0;
+
+        if (filters.sortField === "measurementValue") {
+          return filters.sortOrder === "ascend"
+            ? aValue - bValue
+            : bValue - aValue;
+        }
+
+        return 0;
+      });
+    }
+
+    setFilteredInventoryItems(filtered);
     setInventoryPagination((prev) => ({
       ...prev,
       current: 1,
       total: filtered.length,
     }));
 
-    // Update active filters count
     setActiveFiltersCount(countActiveFilters(filters));
-  }, [inventoryItems, searchTerm, filters]);
+  }, [inventoryItems, globalSearchTerm, searchResults, filters, activeTab]);
 
   useEffect(() => {
     if (id && canViewInventoryInfo()) {
@@ -315,12 +422,18 @@ const ItemDetail = () => {
   const clearAllFilters = () => {
     setFilters({
       status: [],
-      measurementRange: { min: null, max: null }, // Reset về null
+      measurementRange: { min: null, max: null },
       dateRange: { start: null, end: null },
       location: "",
       hasExpired: null,
+      sortField: null,
+      sortOrder: null,
     });
-    setSearchTerm("");
+    // Không clear globalSearchTerm ở đây
+    setInventoryPagination((prev) => ({
+      ...prev,
+      current: 1,
+    }));
   };
 
   // Function để handle filter changes
@@ -442,8 +555,17 @@ const ItemDetail = () => {
     setModalVisible(true);
   };
 
-  const handleInventoryTableChange = (pagination) => {
+  const handleInventoryTableChange = (pagination, _, sorter) => {
     setInventoryPagination(pagination);
+
+    // Update sorting nếu có
+    if (sorter) {
+      setFilters((prev) => ({
+        ...prev,
+        sortField: sorter.field || null,
+        sortOrder: sorter.order || null,
+      }));
+    }
   };
 
   const isFormComplete = () => {
@@ -509,7 +631,7 @@ const ItemDetail = () => {
       case ItemStatus.ALMOST_OUT_OF_DATE:
         return <Tag color="warning">Sắp hết hạn</Tag>;
       case ItemStatus.NEED_LIQUID:
-        return <Tag color="error">Thanh lý</Tag>;
+        return <Tag color="warning">Thanh lý</Tag>;
       case ItemStatus.NO_LONGER_EXIST:
         return <Tag color="default">Không tồn tại</Tag>;
       case ItemStatus.READY_TO_STORE:
@@ -579,13 +701,15 @@ const ItemDetail = () => {
     {
       title: "Giá trị đo lường",
       key: "measurementValue",
+      dataIndex: "measurementValue",
       align: "center",
       width: "15%",
-      render: (text, record) => (
+      sorter: true,
+      sortOrder:
+        filters.sortField === "measurementValue" ? filters.sortOrder : null,
+      render: (value, record) => (
         <span>
-          <strong style={{ fontSize: "16px" }}>
-            {record.measurementValue || 0}
-          </strong>{" "}
+          <strong style={{ fontSize: "16px" }}>{value || 0}</strong>{" "}
           {item?.measurementUnit}
         </span>
       ),
@@ -637,6 +761,94 @@ const ItemDetail = () => {
       ),
     },
   ];
+
+  // 8. JSX cho tabs và search mới
+  const renderInventoryTabs = () => (
+    <div className="mb-4">
+      {/* Global Search */}
+      <div className="mb-4 space-y-4">
+        <div className="flex items-center gap-4">
+          <span className="font-medium">Tìm kiếm toàn bộ:</span>
+          <Input
+            placeholder="Tìm kiếm mã sản phẩm trong tất cả trạng thái..."
+            value={globalSearchTerm}
+            onChange={(e) => handleGlobalSearch(e.target.value)}
+            style={{ width: 500 }}
+            allowClear
+            onClear={() => handleGlobalSearch("")}
+          />
+
+          {searchResults && (
+            <div className="flex items-center gap-2">
+              <Badge
+                count={searchResults.total}
+                overflowCount={999999}
+                style={{ backgroundColor: "#52c41a" }}
+              />
+              <span className="text-sm text-gray-600">kết quả</span>
+            </div>
+          )}
+        </div>
+
+        {/* Search Results Summary */}
+        {searchResults && globalSearchTerm.trim() && (
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="text-sm text-blue-800 mb-2">
+              <strong>Kết quả tìm kiếm "{globalSearchTerm}":</strong>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {inventoryTabs.map((tab) => {
+                const count = searchResults.byTab[tab.key]?.length || 0;
+                return (
+                  <div
+                    key={tab.key}
+                    className={`cursor-pointer px-3 py-1 rounded-full text-sm border-2 transition-all ${
+                      activeTab === tab.key
+                        ? "border-blue-500 bg-blue-100 text-blue-700"
+                        : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
+                    }`}
+                    onClick={() => setActiveTab(tab.key)}
+                  >
+                    {tab.label}: <strong>{count}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-4">
+        {inventoryTabs.map((tab) => {
+          const count = getTabItemCount(tab.key);
+          const isActive = activeTab === tab.key;
+
+          return (
+            <button
+              key={tab.key}
+              className={`px-4 py-2 border-b-2 font-medium text-sm transition-colors flex items-center gap-2 ${
+                isActive
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+              <Badge
+                count={count}
+                overflowCount={999999}
+                style={{
+                  backgroundColor: isActive ? "#1890ff" : "#d9d9d9",
+                  color: isActive ? "white" : "#666",
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -754,7 +966,7 @@ const ItemDetail = () => {
       {canViewInventoryInfo() && (
         <div className="mt-5">
           <Card
-            title="Tổng quan hàng tồn kho"
+            // title={`Tổng quan hàng thuộc ${item.name} (${item.id})`}
             className="shadow-lg"
             loading={figureLoading}
           >
@@ -778,15 +990,6 @@ const ItemDetail = () => {
                   </div>
                 </div>
 
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="text-2xl font-bold text-orange-600 mb-1">
-                    {inventoryFigure.totalInventoryItemNeedLiquid}
-                  </div>
-                  <div className="text-sm text-orange-700 font-medium">
-                    Cần thanh lý
-                  </div>
-                </div>
-
                 <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="text-2xl font-bold text-blue-600 mb-1">
                     {inventoryFigure.totalInventoryItemReadToStore}
@@ -796,12 +999,21 @@ const ItemDetail = () => {
                   </div>
                 </div>
 
+                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="text-2xl font-bold text-orange-600 mb-1">
+                    {inventoryFigure.totalInventoryItemNeedLiquid}
+                  </div>
+                  <div className="text-sm text-orange-700 font-medium">
+                    Cần thanh lý
+                  </div>
+                </div>
+
                 <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="text-2xl font-bold text-gray-600 mb-1">
                     {inventoryFigure.totalInventoryItemNoLongerExist}
                   </div>
                   <div className="text-sm text-gray-700 font-medium">
-                    Không tồn tại
+                    Không tồn tại (Đã xuất)
                   </div>
                 </div>
               </div>
@@ -817,21 +1029,14 @@ const ItemDetail = () => {
       {canViewInventoryInfo() && (
         <div className="mt-5">
           <Card
-            title="Danh sách hàng tồn kho thuộc mặt hàng"
+            title={`Danh sách hàng thuộc ${item.name} (${item.id})`}
             className="shadow-lg mt-6"
           >
+            {/* Render tabs */}
+            {renderInventoryTabs()}
             <div className="mb-4 space-y-4">
               {/* Search và Filter buttons */}
               <div className="flex items-center gap-4">
-                <span className="font-medium">Mã sản phẩm:</span>
-                <Input
-                  placeholder="Tìm kiếm theo mã sản phẩm..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  style={{ width: 400 }}
-                  allowClear
-                />
-
                 <Space>
                   <Badge count={activeFiltersCount} offset={[-5, 5]}>
                     <Button
