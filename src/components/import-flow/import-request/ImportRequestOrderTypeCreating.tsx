@@ -288,7 +288,7 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
               const sttCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A - STT
               const itemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B - Mã sản phẩm  
               const quantityCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Số lượng cần nhập
-              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 3 })]; // Column D - Mã nhà cung cấp
+              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 5 })]; // Column E - Mã nhà cung cấp
 
               // Skip header row and empty rows
               if (sttCell && String(sttCell.v).trim() === "Số thứ tự") continue;
@@ -513,8 +513,8 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
       {loading ? (
         <div className="flex flex-col items-center justify-center py-8">
           <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span className="text-gray-600 font-medium">Đang tải dữ liệu nhà cung cấp và sản phẩm...</span>
+            <div className="w-6 h-6 border-b-2 border-blue-500 rounded-full animate-spin"></div>
+            <span className="font-medium text-gray-600">Đang tải dữ liệu nhà cung cấp và sản phẩm...</span>
           </div>
         </div>
       ) : (
