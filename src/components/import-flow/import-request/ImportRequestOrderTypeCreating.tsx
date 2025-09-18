@@ -288,8 +288,7 @@ const ImportRequestOrderTypeCreating: React.FC<ImportRequestOrderTypeProps> = ({
               const sttCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 0 })]; // Column A - STT
               const itemIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 1 })]; // Column B - Mã sản phẩm  
               const quantityCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 2 })]; // Column C - Số lượng cần nhập
-              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 5 })]; // Column E - Mã nhà cung cấp
-
+              const providerIdCell = ws[XLSX.utils.encode_cell({ r: rowNum, c: 4 })]; // Column E - Mã nhà cung cấp
               // Skip header row and empty rows
               if (sttCell && String(sttCell.v).trim() === "Số thứ tự") continue;
               if (!itemIdCell || !quantityCell) continue;

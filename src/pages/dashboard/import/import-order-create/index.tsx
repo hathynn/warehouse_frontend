@@ -368,7 +368,7 @@ const ImportOrderCreate = () => {
           // Find headers in row 5
           const headers = [getCell('A10'), getCell('B10'), getCell('C10'), getCell('D10')];
           if (headers[0] !== 'Số thứ tự' || headers[1] !== 'Mã sản phẩm' ||
-            headers[2] !== 'Số lượng cần nhập' || headers[5] !== 'Mã nhà cung cấp') {
+            headers[2] !== 'Số lượng cần nhập' || headers[4] !== 'Mã nhà cung cấp') {
             toast.error("File Excel phải có header hàng hóa ở dòng 10: Số thứ tự, Mã sản phẩm, Số lượng cần nhập, Mã nhà cung cấp");
             return;
           }
