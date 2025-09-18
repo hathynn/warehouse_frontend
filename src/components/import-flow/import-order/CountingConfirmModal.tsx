@@ -8,6 +8,7 @@ interface CountingConfirmModalProps {
   importOrderDetails: ImportOrderDetailResponse[];
   onClose: () => void;
   onConfirm: () => Promise<void>;
+  isReturnImport?: boolean;
 }
 
 const CountingConfirmModal: React.FC<CountingConfirmModalProps> = ({
@@ -16,6 +17,7 @@ const CountingConfirmModal: React.FC<CountingConfirmModalProps> = ({
   importOrderDetails,
   onClose,
   onConfirm,
+  isReturnImport = false,
 }) => {
   const [countingConfirmResponsibilityChecked, setCountingConfirmResponsibilityChecked] = useState(false);
 
@@ -67,8 +69,8 @@ const CountingConfirmModal: React.FC<CountingConfirmModalProps> = ({
             },
             {
               title: "Thực tế",
-              key: "actualQuantity",
-              dataIndex: "actualQuantity",
+              key: isReturnImport ? "actualMeasurementValue" : "actualQuantity",
+              dataIndex: isReturnImport ? "actualMeasurementValue" : "actualQuantity",
               width: "25%",
               align: "right" as const,
               onHeaderCell: () => ({
@@ -77,8 +79,8 @@ const CountingConfirmModal: React.FC<CountingConfirmModalProps> = ({
             },
             {
               title: "Dự kiến",
-              key: "expectQuantity",
-              dataIndex: "expectQuantity",
+              key: isReturnImport ? "expectMeasurementValue" : "expectQuantity",
+              dataIndex: isReturnImport ? "expectMeasurementValue" : "expectQuantity",
               width: "25%",
               align: "right" as const,
               onHeaderCell: () => ({

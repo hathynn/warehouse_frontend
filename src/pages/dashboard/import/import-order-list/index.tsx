@@ -98,7 +98,7 @@ const ImportOrderList: React.FC = () => {
     const matchesImportRequestSearch = selectedImportRequest.length > 0 ?
       selectedImportRequest.includes(importOrder.importRequestId.toString()) : true;
     const matchesImportOrderSearch = importOrder.importOrderId.toString().toLowerCase().includes(searchImportOrderTerm.toLowerCase());
-    
+
     // Filter by import type
     const matchesImportType = importOrder.importType === selectedImportType;
 
@@ -190,14 +190,14 @@ const ImportOrderList: React.FC = () => {
 
     const formatted: ImportOrderData[] = (response.content ?? []).map(order => {
       const importOrderDetails = order.importOrderDetails || [];
-      
+
       // Find corresponding import request
       const importRequest = importRequests.find(req => req.importRequestId === order.importRequestId);
-      
+
       // Get provider name
       let providerName = "";
       let departmentName = "";
-      
+
       if (importRequest) {
         if (importRequest.importType === "ORDER") {
           const provider = providers.find(p => p.id === importRequest.providerId);
@@ -369,7 +369,7 @@ const ImportOrderList: React.FC = () => {
         );
       }
     },
-    {
+    ...userRole === AccountRole.WAREHOUSE_MANAGER ? [{
       width: "15%",
       title: "Phân công cho",
       dataIndex: "assignedStaffId",
@@ -382,8 +382,18 @@ const ImportOrderList: React.FC = () => {
         if (!assignedStaffId) return "-";
         const staff = staffs.find((s) => s.id === assignedStaffId);
         return staff?.fullName
-      },
-    },
+      }
+    }] : [{
+      width: "15%",
+      title: "Phụ trách",
+      dataIndex: "",
+      key: "",
+      align: "left" as const,
+      onHeaderCell: () => ({
+        style: { textAlign: 'center' as const }
+      }),
+      render: () => "Trần Thị Quản Lý"
+    }],
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -435,7 +445,7 @@ const ImportOrderList: React.FC = () => {
             : 'Danh sách tất cả đơn nhập'}
         </h1>
       </div>
-      
+
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="min-w-[240px]">
           <Input
@@ -491,12 +501,12 @@ const ImportOrderList: React.FC = () => {
           listHeight={160}
         />
       </div>
-      
+
       <div className="mb-4 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-tab]:!bg-gray-200 [&_.ant-tabs-tab]:!transition-none [&_.ant-tabs-tab]:!font-bold [&_.ant-tabs-tab-active]:!bg-white [&_.ant-tabs-tab-active]:!border-1 [&_.ant-tabs-tab-active]:!border-gray-400 [&_.ant-tabs-tab-active]:!border-b-0 [&_.ant-tabs-tab-active]:!transition-none [&_.ant-tabs-tab-active]:!border-bottom-width-0 [&_.ant-tabs-tab-active]:!border-bottom-style-none [&_.ant-tabs-tab-active]:!font-bold [&_.ant-tabs-tab-active]:!text-[17px]">
         <div className="flex justify-between">
           <Tabs
             activeKey={selectedImportType || "ORDER"}
-            onChange={(value) => updateFilter({ 
+            onChange={(value) => updateFilter({
               selectedImportType: value,
               pagination: { ...pagination, current: 1 }
             })}
@@ -529,7 +539,7 @@ const ImportOrderList: React.FC = () => {
           </Space>
         </div>
       </div>
-      
+
       <Table
         columns={columns}
         loading={loading}

@@ -583,10 +583,7 @@ const ImportOrderDetail = () => {
             style: { textAlign: 'center' as const }
           }),
         },
-      )
-    }
-    baseColumns.push(
-      {
+        {
         width: '10%',
         title: "Trạng thái",
         dataIndex: "status",
@@ -597,6 +594,9 @@ const ImportOrderDetail = () => {
           style: { textAlign: 'center' as const }
         }),
       },
+      )
+    }
+    baseColumns.push(
       ...(importOrderData?.status === ImportStatus.COMPLETED ||
         importOrderData?.status === ImportStatus.READY_TO_STORE ||
         importOrderData?.status === ImportStatus.STORED ? [
@@ -736,7 +736,7 @@ const ImportOrderDetail = () => {
         </div>
       )
     },
-    { label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 },
+    ...(userRole === AccountRole.WAREHOUSE_MANAGER ? [{ label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 }] :[{ label: "Phụ trách", value: "Trần Thị Quản Lý", span: 2 }]),
     { label: "Ghi chú", value: importOrderData?.note || "-", span: 3 }
   ];
 
