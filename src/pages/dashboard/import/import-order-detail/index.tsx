@@ -86,7 +86,7 @@ const ImportOrderDetail = () => {
   // ========== EXPAND STATES ==========
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [childrenData, setChildrenData] = useState<Map<string, InventoryItemResponse[]>>(new Map());
-  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
+  const [itemsWithChildren, setItemsWithChildren] = useState<Set<string>>(new Set());
 
   // ========== PAGINATION STATE ==========
   const [pagination, setPagination] = useState({
@@ -186,7 +186,37 @@ const ImportOrderDetail = () => {
       return;
     }
     const response = await getByListImportOrderDetailIds(detailIds);
-    setInventoryItemsData(response?.content || []);
+    const inventoryItems = response?.content || [];
+    setInventoryItemsData(inventoryItems);
+
+    // Check which items have children and fetch their children data
+    const itemsWithChildrenSet = new Set<string>();
+    const newChildrenData = new Map<string, InventoryItemResponse[]>();
+
+    for (const item of inventoryItems) {
+      try {
+        const itemResponse = await getInventoryItemById(item.id);
+        if (itemResponse?.content?.childrenIds && itemResponse.content.childrenIds.length > 0) {
+          itemsWithChildrenSet.add(item.id);
+
+          // Fetch children data immediately
+          const childrenPromises = itemResponse.content.childrenIds.map(childId =>
+            getInventoryItemById(childId.toString())
+          );
+          const childrenResponses = await Promise.all(childrenPromises);
+          const childrenItems = childrenResponses
+            .filter(response => response?.content)
+            .map(response => response.content!);
+
+          newChildrenData.set(item.id, childrenItems);
+        }
+      } catch (error) {
+        console.error(`Error checking children for item ${item.id}:`, error);
+      }
+    }
+
+    setItemsWithChildren(itemsWithChildrenSet);
+    setChildrenData(newChildrenData);
   };
 
   const fetchAssignedStaff = async () => {
@@ -400,61 +430,29 @@ const ImportOrderDetail = () => {
   };
 
   // ========== EXPAND HANDLERS ==========
-  const handleToggleExpand = async (inventoryItemId: string) => {
+  const handleToggleExpand = (inventoryItemId: string) => {
     const newExpandedRows = new Set(expandedRows);
-    const newLoadingChildren = new Set(loadingChildren);
-    
+
     if (expandedRows.has(inventoryItemId)) {
       // Collapse
       newExpandedRows.delete(inventoryItemId);
-      setExpandedRows(newExpandedRows);
     } else {
-      // Expand
-      newLoadingChildren.add(inventoryItemId);
-      setLoadingChildren(newLoadingChildren);
-      
-      try {
-        const response = await getInventoryItemById(inventoryItemId);
-        if (response?.content) {
-          const inventoryItem = response.content;
-          if (inventoryItem.childrenIds && inventoryItem.childrenIds.length > 0) {
-            // Fetch all children data
-            const childrenPromises = inventoryItem.childrenIds.map(childId => 
-              getInventoryItemById(childId.toString())
-            );
-            const childrenResponses = await Promise.all(childrenPromises);
-            const childrenItems = childrenResponses
-              .filter(response => response?.content)
-              .map(response => response.content!);
-            
-            // Store children data
-            const newChildrenData = new Map(childrenData);
-            newChildrenData.set(inventoryItemId, childrenItems);
-            setChildrenData(newChildrenData);
-            
-            // Add to expanded rows
-            newExpandedRows.add(inventoryItemId);
-            setExpandedRows(newExpandedRows);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching children data:', error);
-        toast.error('Không thể tải dữ liệu con');
-      } finally {
-        newLoadingChildren.delete(inventoryItemId);
-        setLoadingChildren(newLoadingChildren);
-      }
+      // Expand - data already loaded, just toggle visibility
+      newExpandedRows.add(inventoryItemId);
     }
+
+    setExpandedRows(newExpandedRows);
   };
 
   const renderExpandIcon = (inventoryItemId: string) => {
-    const isLoading = loadingChildren.has(inventoryItemId);
     const isExpanded = expandedRows.has(inventoryItemId);
-    
-    if (isLoading) {
-      return <Spin size="small" />;
+    const hasChildren = itemsWithChildren.has(inventoryItemId);
+
+    // Only show expand icon if item has children
+    if (!hasChildren) {
+      return null;
     }
-    
+
     return (
       <Button
         type="text"

@@ -55,6 +55,9 @@ const QrCodeListingModal: React.FC<QrCodeListingModalProps> = ({
               <QRCode value={invItem.id.toString()} size={128} />
               <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{invItem.itemId || '-'}</span></div>
               <div className="text-sm text-gray-700">Tên sản phẩm: {invItem.itemName || '-'}</div>
+              {invItem.parentId && (
+                <div className="text-sm text-blue-600">Mã cũ: <span className="font-mono">#{invItem.parentId}</span></div>
+              )}
               <div className="mt-1 text-xs text-gray-500">{invItem.id}</div>
             </div>
           ))

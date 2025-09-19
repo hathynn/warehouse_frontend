@@ -12,6 +12,11 @@ import useNotificationService, { NotificationResponse } from '@/services/useNoti
 import notificationWav from "@/assets/notification-sound.wav";
 import { usePusherContext } from '@/contexts/pusher/PusherContext';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface HeaderProps {
   title?: string;
@@ -285,7 +290,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
             }}
             dropdownRender={() => (
               <div className="w-[340px] max-h-[440px] overflow-y-auto bg-white rounded-xl shadow-lg p-0">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-200">
+                <div className="flex items-center justify-between px-4 py-2 bg-gray-200 border-b border-gray-200">
                   <span className="text-base font-bold">Thông báo</span>
                   {notifications.length > 0 && (
                     <button
@@ -322,7 +327,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                             </span>
                             <button
                               onClick={(e) => handleDeleteNotification(item, e)}
-                              className="ml-2 p-1 text-black hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200 flex items-center justify-center w-8 h-8"
+                              className="flex items-center justify-center w-8 h-8 p-1 ml-2 text-black transition-all duration-200 rounded-full hover:text-red-600 hover:bg-red-50"
                               title="Xoá thông báo này"
                             >
                               <svg
@@ -340,7 +345,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
                           </div>
                           {item.createdDate && (
                             <div className="mt-1 text-xs text-gray-500">
-                              Vào lúc {dayjs(item.createdDate).format('DD-MM-YYYY HH:mm')}
+                              Vào lúc {dayjs.utc(item.createdDate).local().format('DD-MM-YYYY HH:mm')}
                             </div>
                           )}
                         </div>
@@ -409,7 +414,7 @@ function Header({ title = "Dashboard" }: HeaderProps) {
       >
         <div style={{ marginBottom: '16px' }}>
           <p>Bạn có chắc chắn muốn xoá toàn bộ thông báo không?</p>
-          <p className='text-red-900 font-bold'>{notifications.length} thông báo sẽ bị xoá</p>
+          <p className='font-bold text-red-900'>{notifications.length} thông báo sẽ bị xoá</p>
         </div>
 
         <Checkbox

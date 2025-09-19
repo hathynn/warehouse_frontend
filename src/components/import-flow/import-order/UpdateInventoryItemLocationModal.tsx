@@ -146,7 +146,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     let title = "Click để chọn vị trí gợi ý";
 
     if (isCurrentLocation) {
-      color = 'bg-red-200 border-red-500';
+      color = 'bg-red-100 border-red-300';
       clickable = false;
       title = "Vị trí hiện tại - không thể chọn";
     } else if (isSelecting) {
@@ -174,7 +174,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
 
     if (isCurrentLocation) {
       return (
-        <div className="text-red-700 font-bold">Hiện tại</div>
+        <div className="font-bold text-red-500">Hiện tại</div>
       );
     }
 
@@ -346,6 +346,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     setInventoryItemsLocationResponsibilityChecked(false);
     setSelectingLocationId(null);
     setSuggestedLocations([]);
+    onClose();
   };
 
   const handleOnClose = () => {

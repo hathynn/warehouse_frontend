@@ -60,7 +60,7 @@ const ImportRequestDetail: React.FC = () => {
   // ========== EXPAND STATES ==========
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [childrenData, setChildrenData] = useState<Map<string, InventoryItemResponse[]>>(new Map());
-  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
+  const [itemsWithChildren, setItemsWithChildren] = useState<Set<string>>(new Set());
 
   // ========== SERVICES ==========
   const {
@@ -229,6 +229,12 @@ const ImportRequestDetail: React.FC = () => {
     }
   }, [importRequestData?.departmentId, importRequestData?.importType]);
 
+  useEffect(() => {
+    if (importRequestDetails.length > 0 && importRequestData?.importType === "RETURN") {
+      checkInventoryItemsWithChildren();
+    }
+  }, [importRequestDetails, importRequestData?.importType]);
+
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportRequestData = async () => {
     if (!importRequestId) return;
@@ -300,7 +306,45 @@ const ImportRequestDetail: React.FC = () => {
     if (response?.content) {
       setItemsData(response.content);
     }
+  };
 
+  const checkInventoryItemsWithChildren = async () => {
+    if (!importRequestDetails.length) return;
+
+    const itemsWithChildrenSet = new Set<string>();
+    const newChildrenData = new Map<string, InventoryItemResponse[]>();
+
+    // Only check RETURN type items which have inventoryItemId
+    const returnItems = importRequestDetails.filter(detail =>
+      detail.inventoryItemId && importRequestData?.importType === "RETURN"
+    );
+
+    for (const detail of returnItems) {
+      if (!detail.inventoryItemId) continue;
+
+      try {
+        const itemResponse = await getInventoryItemById(detail.inventoryItemId);
+        if (itemResponse?.content?.childrenIds && itemResponse.content.childrenIds.length > 0) {
+          itemsWithChildrenSet.add(detail.inventoryItemId);
+
+          // Fetch children data immediately
+          const childrenPromises = itemResponse.content.childrenIds.map(childId =>
+            getInventoryItemById(childId.toString())
+          );
+          const childrenResponses = await Promise.all(childrenPromises);
+          const childrenItems = childrenResponses
+            .filter(response => response?.content)
+            .map(response => response.content!);
+
+          newChildrenData.set(detail.inventoryItemId, childrenItems);
+        }
+      } catch (error) {
+        console.error(`Error checking children for item ${detail.inventoryItemId}:`, error);
+      }
+    }
+
+    setItemsWithChildren(itemsWithChildrenSet);
+    setChildrenData(newChildrenData);
   };
 
   // ========== NAVIGATION HANDLERS ==========
@@ -377,61 +421,29 @@ const ImportRequestDetail: React.FC = () => {
   };
 
   // ========== EXPAND HANDLERS ==========
-  const handleToggleExpand = async (inventoryItemId: string) => {
+  const handleToggleExpand = (inventoryItemId: string) => {
     const newExpandedRows = new Set(expandedRows);
-    const newLoadingChildren = new Set(loadingChildren);
-    
+
     if (expandedRows.has(inventoryItemId)) {
       // Collapse
       newExpandedRows.delete(inventoryItemId);
-      setExpandedRows(newExpandedRows);
     } else {
-      // Expand
-      newLoadingChildren.add(inventoryItemId);
-      setLoadingChildren(newLoadingChildren);
-      
-      try {
-        const response = await getInventoryItemById(inventoryItemId);
-        if (response?.content) {
-          const inventoryItem = response.content;
-          if (inventoryItem.childrenIds && inventoryItem.childrenIds.length > 0) {
-            // Fetch all children data
-            const childrenPromises = inventoryItem.childrenIds.map(childId => 
-              getInventoryItemById(childId.toString())
-            );
-            const childrenResponses = await Promise.all(childrenPromises);
-            const childrenItems = childrenResponses
-              .filter(response => response?.content)
-              .map(response => response.content!);
-            
-            // Store children data
-            const newChildrenData = new Map(childrenData);
-            newChildrenData.set(inventoryItemId, childrenItems);
-            setChildrenData(newChildrenData);
-            
-            // Add to expanded rows
-            newExpandedRows.add(inventoryItemId);
-            setExpandedRows(newExpandedRows);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching children data:', error);
-        toast.error('Không thể tải dữ liệu con');
-      } finally {
-        newLoadingChildren.delete(inventoryItemId);
-        setLoadingChildren(newLoadingChildren);
-      }
+      // Expand - data already loaded, just toggle visibility
+      newExpandedRows.add(inventoryItemId);
     }
+
+    setExpandedRows(newExpandedRows);
   };
 
   const renderExpandIcon = (inventoryItemId: string) => {
-    const isLoading = loadingChildren.has(inventoryItemId);
     const isExpanded = expandedRows.has(inventoryItemId);
-    
-    if (isLoading) {
-      return <Spin size="small" />;
+    const hasChildren = itemsWithChildren.has(inventoryItemId);
+
+    // Only show expand icon if item has children
+    if (!hasChildren) {
+      return null;
     }
-    
+
     return (
       <Button
         type="text"
