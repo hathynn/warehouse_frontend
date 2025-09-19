@@ -27,6 +27,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
 
   const [selectingLocationId, setSelectingLocationId] = useState<number | null>(null);
   const [suggestedLocations, setSuggestedLocations] = useState<StoredLocationResponse[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<StoredLocationResponse | null>(null);
 
   const [inventoryItemsLocationConfirmModalOpen, setInventoryItemsLocationConfirmModalOpen] = useState(false);
   const [inventoryItemsLocationResponsibilityChecked, setInventoryItemsLocationResponsibilityChecked] = useState(false);
@@ -36,11 +37,45 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
       // Tìm vị trí hiện tại của item để lấy locationId
       const currentInventoryItem = inventoryItems.find(inv => inv.itemId === selectedItem?.itemId.toString());
       if (currentInventoryItem?.storedLocationId) {
+        // Parse current location from storedLocationName
+        parseCurrentLocation(currentInventoryItem.storedLocationName);
         // Fetch suggested locations
         fetchSuggestedLocations(selectedItem?.itemId.toString(), currentInventoryItem.storedLocationId);
       }
     }
   }, [selectedItem, open, inventoryItems]);
+
+  const parseCurrentLocation = (storedLocationName: string) => {
+    // Parse từ format "Zone: A, Floor: 1, Row: R1, Line: L2"
+    const parts = storedLocationName.split(', ');
+    if (parts.length === 4) {
+      const zone = parts[0].replace('Zone: ', '');
+      const floor = parts[1].replace('Floor: ', '');
+      const row = parts[2].replace('Row: ', '');
+      const line = parts[3].replace('Line: ', '');
+
+      // Không cần capacity vì chỉ hiển thị "Hiện tại"
+
+      // Tạo mock StoredLocationResponse cho vị trí hiện tại
+      const mockCurrentLocation: StoredLocationResponse = {
+        id: -1, // ID âm để phân biệt với suggested locations
+        zone,
+        floor,
+        row,
+        line,
+        isRoad: false,
+        isDoor: false,
+        isUsed: true,
+        isFulled: false,
+        inventoryItemIds: [],
+        currentCapacity: 0,
+        maximumCapacityForItem: 0,
+        itemId: selectedItem?.itemId.toString() || ''
+      };
+
+      setCurrentLocation(mockCurrentLocation);
+    }
+  };
 
   const fetchSuggestedLocations = async (itemId: string, locationId: number) => {
       const response = await suggestLocations(itemId, locationId);
@@ -57,14 +92,21 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     return `Khu vực ${location.floor}, Khu ${location.zone}, Dãy ${location.row}, Hàng ${location.line}`;
   };
 
-  // Lọc chỉ những vị trí được suggest và không phải road/door/used/fulled
+  // Lọc chỉ những vị trí được suggest và không phải road/door/used/fulled, bao gồm cả vị trí hiện tại
   const getFilteredStoredLocationData = () => {
     if (!selectedItem) return [];
-    return suggestedLocations.filter(location => 
-      !location.isRoad && 
-      !location.isDoor && 
+    const filtered = suggestedLocations.filter(location =>
+      !location.isRoad &&
+      !location.isDoor &&
       !location.isFulled
     );
+
+    // Thêm vị trí hiện tại vào danh sách để hiển thị
+    if (currentLocation) {
+      filtered.push(currentLocation);
+    }
+
+    return filtered;
   };
 
   const filteredStoredLocationData = getFilteredStoredLocationData();
@@ -91,27 +133,34 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   const warehouseData = organizeWarehouseData();
   const zones = Object.keys(warehouseData).sort();
   const floors = ['1', '2', '3', '4', '5'];
-  const rows = ['R1', 'R2', 'R3', 'R4'];
-  const lines = ['L1', 'L2', 'L3', 'L4'];
-
   // Hàm tạo props cho cell
   const getCellProps = (location: StoredLocationResponse | undefined) => {
+    if (!location) return { color: '', onClick: () => {}, title: '', clickable: true, isCurrentLocation: false };
+
     const isSelecting = selectingLocationId === location.id;
     const isEmpty = location.currentCapacity === 0;
+    const isCurrentLocation = location.id === -1; // Vị trí hiện tại có id = -1
 
     let color = 'bg-green-100 border-green-400';
+    let clickable = true;
+    let title = "Click để chọn vị trí gợi ý";
 
-    if (isSelecting) {
+    if (isCurrentLocation) {
+      color = 'bg-red-200 border-red-500';
+      clickable = false;
+      title = "Vị trí hiện tại - không thể chọn";
+    } else if (isSelecting) {
       color = 'bg-blue-300 ring-4 ring-blue-600 ring-opacity-90 transform scale-105 z-20 relative border-2';
-    }
-    else if (isEmpty) {
+    } else if (isEmpty) {
       color = 'bg-gray-100';
     }
 
     return {
       color,
-      onClick: () => handleLocationClick(location),
-      title: "Click để chọn vị trí gợi ý"
+      onClick: clickable ? () => handleLocationClick(location) : () => {},
+      title,
+      clickable,
+      isCurrentLocation
     };
   };
 
@@ -119,8 +168,15 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   const getCellText = (location: StoredLocationResponse | undefined) => {
     if (!location) return '';
 
+    const isCurrentLocation = location.id === -1;
     const isSuggested = suggestedLocations.some(suggested => suggested.id === location.id);
     const isEmpty = location.currentCapacity === 0;
+
+    if (isCurrentLocation) {
+      return (
+        <div className="text-red-700 font-bold">Hiện tại</div>
+      );
+    }
 
     if (isSuggested) {
       if (isEmpty) {
@@ -163,7 +219,8 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
     Object.keys(zoneFloorData).forEach(row => {
       Object.keys(zoneFloorData[row]).forEach(line => {
         const location = zoneFloorData[row][line];
-        if (location && suggestedLocations.some(suggested => suggested.id === location.id)) {
+        // Hiển thị cả suggested locations và current location (id = -1)
+        if (location && (suggestedLocations.some(suggested => suggested.id === location.id) || location.id === -1)) {
           relevantLocations.push({ row, line, location });
         }
       });
@@ -192,7 +249,7 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
             return (
               <div
                 key={`${zone}-${floor}-${row}-${line}`}
-                className={`w-14 h-12 border border-gray-300 flex items-center justify-center font-medium transition-all duration-300 relative group ${cellProps.color} cursor-pointer hover:transform hover:scale-110 hover:brightness-110`}
+                className={`w-14 h-12 border border-gray-300 flex items-center justify-center font-medium transition-all duration-300 relative group ${cellProps.color} ${cellProps.clickable ? 'cursor-pointer hover:transform hover:scale-110 hover:brightness-110' : 'cursor-not-allowed'}`}
                 onClick={cellProps.onClick}
                 title={cellProps.title}
               >
@@ -201,11 +258,13 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
                   <div className="text-[10px]">{getCellText(location)}</div>
                 </div>
 
-                {/* Tooltip hover */}
-                <div className="absolute z-20 px-2 py-1 mb-2 text-xs text-white transition-opacity duration-200 transform -translate-x-1/2 bg-gray-800 rounded opacity-0 pointer-events-none bottom-full left-1/2 group-hover:opacity-100 whitespace-nowrap">
-                  Chọn vị trí để di chuyển
-                  <div className="absolute transform -translate-x-1/2 top-full left-1/2"></div>
-                </div>
+                {/* Tooltip hover - chỉ hiển thị cho vị trí có thể click */}
+                {cellProps.clickable && (
+                  <div className="absolute z-20 px-2 py-1 mb-2 text-xs text-white transition-opacity duration-200 transform -translate-x-1/2 bg-gray-800 rounded opacity-0 pointer-events-none bottom-full left-1/2 group-hover:opacity-100 whitespace-nowrap">
+                    Chọn vị trí để di chuyển
+                    <div className="absolute transform -translate-x-1/2 top-full left-1/2"></div>
+                  </div>
+                )}
               </div>
             );
           })}

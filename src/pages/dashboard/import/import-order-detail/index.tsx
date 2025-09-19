@@ -39,6 +39,7 @@ import CountingConfirmModal from "@/components/import-flow/import-order/Counting
 import ExtendImportOrderModal from "@/components/import-flow/import-order/ExtendImportOrderModal";
 import ImportOrderAssignStaffModal from "@/components/import-flow/import-order/ImportOrderAssignStaffModal";
 import QrCodeListingModal from "@/components/import-flow/import-order/QrCodeListingModal";
+import AutoChooseLocationConfirmModal from "@/components/import-flow/import-order/AutoChooseLocationConfirmModal";
 import { AccountRole, ImportStatus } from "@/utils/enums";
 import { toast } from "react-toastify";
 import { MdApartment } from "react-icons/md";
@@ -75,6 +76,7 @@ const ImportOrderDetail = () => {
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [showUpdateInventoryItemLocationModal, setShowUpdateInventoryItemLocationModal] = useState(false);
   const [showInventoryItemsLocationConfirmModal, setShowInventoryItemsLocationConfirmModal] = useState(false);
+  const [showAutoChooseLocationConfirmModal, setShowAutoChooseLocationConfirmModal] = useState(false);
   const [selectedItemForLocationUpdate, setSelectedItemForLocationUpdate] = useState<ImportOrderDetailResponse | null>(null);
 
   // ========== FORM & UI STATES ==========
@@ -129,6 +131,10 @@ const ImportOrderDetail = () => {
   const {
     getItems
   } = useItemService();
+  const {
+    loading: storedLocationLoading,
+    autoChooseLocationForImport
+  } = useStoredLocationService();
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportOrderData = async () => {
     if (!importOrderId) return;
@@ -370,6 +376,22 @@ const ImportOrderDetail = () => {
       fetchImportOrderData(),
       fetchImportOrderDetails(),
     ]);
+  };
+
+  const handleAutoChooseLocation = async () => {
+    try {
+      const response = await autoChooseLocationForImport(inventoryItemsData.map(item => item.id));
+      if (response?.content) {
+        toast.success("Đã tự động chọn vị trí lưu kho thành công");
+        await Promise.all([
+          fetchImportOrderData(),
+          fetchImportOrderDetails(),
+          fetchInventoryItemsData(),
+        ]);
+      }
+    } catch (error) {
+      console.error('Error auto choosing location:', error);
+    }
   };
 
   const handleUpdateItemLocation = (item: ImportOrderDetailResponse) => {
@@ -635,6 +657,7 @@ const ImportOrderDetail = () => {
                 <Button
                   type="primary"
                   size="small"
+                  disabled={storedLocationLoading}
                   onClick={() => handleUpdateItemLocation(record)}
                 >
                   Cập nhật vị trí
@@ -813,13 +836,24 @@ const ImportOrderDetail = () => {
         <div className="flex items-center justify-end gap-4 mt-16 mb-4">
           <>
             {importOrderData?.status === ImportStatus.COMPLETED && (
-              <Button
-                type="primary"
-                icon={<MdApartment />}
-                onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
-              >
-                Xác nhận vị trí lưu kho
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  icon={<MdApartment />}
+                  loading={storedLocationLoading}
+                  onClick={() => setShowAutoChooseLocationConfirmModal(true)}
+                >
+                  Cập nhật vị trí tự động
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<MdApartment />}
+                  loading={storedLocationLoading}
+                  onClick={() => setShowInventoryItemsLocationConfirmModal(true)}
+                >
+                  Xác nhận vị trí lưu kho
+                </Button>
+              </>
             )}
             {(importOrderData?.status === ImportStatus.READY_TO_STORE || importOrderData?.status === ImportStatus.STORED) && (
               <Button
@@ -972,6 +1006,22 @@ const ImportOrderDetail = () => {
           Tôi chịu trách nhiệm về quyết định này.
         </Checkbox>
       </Modal>
+
+      {/* Modal xác nhận cập nhật vị trí tự động */}
+      <AutoChooseLocationConfirmModal
+        open={showAutoChooseLocationConfirmModal}
+        loading={false}
+        inventoryItems={inventoryItemsData}
+        importOrderDetails={importOrderDetails}
+        isReturnImport={importRequestRelated?.importType === "RETURN"}
+        onClose={() => {
+          setShowAutoChooseLocationConfirmModal(false);
+        }}
+        onConfirm={async () => {
+          setShowAutoChooseLocationConfirmModal(false);
+          await handleAutoChooseLocation();
+        }}
+      />
 
     </div>
   );

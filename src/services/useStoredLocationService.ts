@@ -41,9 +41,20 @@ const useStoredLocationService = () => {
         }
     };
 
+    const autoChooseLocationForImport = async (inventoryItemIds: string[]): Promise<ResponseDTO<StoredLocationResponse[]>> => {
+        try {
+            const response = await callApi("post", "/stored-location/import-auto-choose", inventoryItemIds);
+            return response;
+        } catch (error) {
+            toast.error("Không thể tự động chọn vị trí cho nhập kho");
+            throw error;
+        }
+    };
+
     return {
         getAllStoredLocations,
         suggestLocations,
+        autoChooseLocationForImport,
         loading
     };
 };
