@@ -108,7 +108,7 @@ const transactionLogMenuItems: MenuItem[] = [
   {
     key: "transaction-logs",
     icon: AiOutlineHistory,
-    label: "Quản lý lịch sử xuất nhập",
+    label: "Quản lý lịch sử kho",
     path: "",
     children: [
       {
