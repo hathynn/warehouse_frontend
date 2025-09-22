@@ -124,7 +124,7 @@ const ImportOrderAssignStaffModal: React.FC<ImportOrderAssignStaffModalProps> = 
           Phân công
         </Button>,
       ]}
-      width={700}
+      width={720}
       className="!top-[50px]"
       maskClosable={!loading}
     >
@@ -163,6 +163,10 @@ const ImportOrderAssignStaffModal: React.FC<ImportOrderAssignStaffModalProps> = 
               />
             </div>
             <Table
+              style={{
+                height: "540px",
+                overflowY: "auto"
+              }}
               dataSource={filteredAndSortedStaffs}
               rowKey="id"
               pagination={false}

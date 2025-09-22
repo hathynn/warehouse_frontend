@@ -61,10 +61,10 @@ const AssignCountingStaffModal = ({
           <h3 className="text-xl font-semibold text-blue-900">
             Phân công nhân viên kho kiểm đếm
           </h3>
-          <p className="text-lg text-blue-700 mt-1">
+          <p className="mt-1 text-lg text-blue-700">
             Phiếu xuất #{exportRequest?.exportRequestId}
           </p>
-          <p className="text-sm text-gray-700 mt-2 flex items-center">
+          <p className="flex items-center mt-2 text-sm text-gray-700">
             <InfoCircleOutlined className="mr-2 text-blue-500" />
             Sau {getRemainingAssignTime() || "..."}, bạn sẽ không thể phân công
             lại nhân viên
@@ -91,14 +91,14 @@ const AssignCountingStaffModal = ({
       className="!top-[50px]"
     >
       {loadingStaff ? (
-        <div className="flex justify-center items-center py-8">
+        <div className="flex items-center justify-center py-8">
           <Spin size="large" />
         </div>
       ) : (
         <div className="space-y-6">
           {/* Current Assignment Info */}
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <h4 className="text-base font-medium text-gray-700 mb-3">
+          <div className="p-4 border rounded-lg bg-gray-50">
+            <h4 className="mb-3 text-base font-medium text-gray-700">
               Nhân viên đang được phân công
             </h4>
             <div className="grid grid-cols-2 gap-4">
@@ -115,7 +115,7 @@ const AssignCountingStaffModal = ({
 
           {/* Staff List */}
           <div>
-            <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center justify-between mb-3">
               <h4 className="text-base font-medium text-gray-700">
                 Danh sách nhân viên có thể phân công
               </h4>
@@ -128,6 +128,10 @@ const AssignCountingStaffModal = ({
               />
             </div>
             <Table
+              style={{
+                height: "540px",
+                overflowY: "auto"
+              }}
               dataSource={getFilteredAndSortedStaffs()}
               rowKey="id"
               pagination={false}
@@ -140,8 +144,8 @@ const AssignCountingStaffModal = ({
                   selectedStaffId === record.id
                     ? "!bg-blue-100"
                     : record.id === exportRequest?.countingStaffId
-                    ? "!opacity-50 !cursor-not-allowed"
-                    : "",
+                      ? "!opacity-50 !cursor-not-allowed"
+                      : "",
               })}
               columns={[
                 {
@@ -164,11 +168,10 @@ const AssignCountingStaffModal = ({
                   width: "30%",
                   render: (time, record) => (
                     <span
-                      className={`font-medium ${
-                        record.id === exportRequest?.countingStaffId
+                      className={`font-medium ${record.id === exportRequest?.countingStaffId
                           ? "text-gray-400"
                           : "text-blue-600"
-                      }`}
+                        }`}
                     >
                       {time || "8 tiếng 0 phút"}
                     </span>
