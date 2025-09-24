@@ -30,6 +30,7 @@ import locale from "antd/locale/vi_VN";
 import "moment/locale/vi";
 import PropTypes from "prop-types";
 import debounce from "lodash/debounce";
+import QRCode from "react-qr-code";
 
 moment.locale("vi");
 
@@ -65,6 +66,8 @@ const InventoryItemList = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [dataCache, setDataCache] = useState(null);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [qrItem, setQrItem] = useState(null);
 
   // ===== 2. HOOKS =====
   const {
@@ -390,6 +393,16 @@ const InventoryItemList = () => {
     await fetchInventoryHistory(inventoryItem.id);
   };
 
+  const openQrModal = (record) => {
+    setQrItem(record);
+    setQrModalVisible(true);
+  };
+
+  const closeQrModal = () => {
+    setQrModalVisible(false);
+    setQrItem(null);
+  };
+
   // ===== 7. HELPER FUNCTIONS =====
   const getStatusTag = (status) => {
     switch (status) {
@@ -481,7 +494,7 @@ const InventoryItemList = () => {
       title: "Vị trí",
       dataIndex: "storedLocationName",
       key: "storedLocationName",
-      width: "15%",
+      width: "17%",
       render: (location) => formatLocation(location),
     },
     {
@@ -491,6 +504,17 @@ const InventoryItemList = () => {
       align: "center",
       width: "14%",
       render: (status) => getStatusTag(status),
+    },
+    {
+      title: "QR",
+      key: "qrAction",
+      align: "center",
+      width: "10%",
+      render: (_, record) => (
+        <Button type="default" onClick={() => openQrModal(record)}>
+          Xem QR
+        </Button>
+      ),
     },
     {
       title: "Chi tiết",
@@ -906,6 +930,46 @@ const InventoryItemList = () => {
                 )}
               </Descriptions>
             </Card>
+          </div>
+        )}
+      </Modal>
+      <Modal
+        title="QR sản phẩm"
+        open={qrModalVisible}
+        onCancel={closeQrModal}
+        footer={[
+          <Button key="close" onClick={closeQrModal}>
+            Đóng
+          </Button>,
+        ]}
+        width={500}
+      >
+        {qrItem && (
+          <div className="space-y-3 text-sm mt-5">
+            <div>
+              <span className="font-medium">Mã hàng:</span> <br />
+              <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+                {qrItem.id}
+              </span>
+            </div>
+            <div>
+              <span className="font-medium">Vị trí:</span>{" "}
+              {formatLocation(qrItem.storedLocationName)}
+            </div>
+            <div>
+              <span className="font-medium">Giá trị đo lường:</span>{" "}
+              <strong style={{ fontSize: "16px", fontWeight: "bold" }}>
+                {qrItem.measurementValue || 0}
+              </strong>{" "}
+              {getInventoryItemInfoFromItem(qrItem)?.measurementUnit}
+            </div>
+            <div className="flex justify-center pt-2">
+              <QRCode
+                value={qrItem.id?.toString() ?? ""}
+                size={192}
+                style={{ width: 192, height: 192 }}
+              />
+            </div>
           </div>
         )}
       </Modal>
