@@ -32,11 +32,18 @@ export interface ImportRequestResponse {
   departmentId: number;
 }
 
+export interface ImportRequestNumberResponse {
+  numberOfOngoingImport: number;
+  numberOfFinishImport: number;
+}
+
 const useImportRequestService = () => {
   const { callApi, loading } = useApiService();
 
   // Get all import requests
-  const getAllImportRequests = async (): Promise<ResponseDTO<ImportRequestResponse[]>> => {
+  const getAllImportRequests = async (): Promise<
+    ResponseDTO<ImportRequestResponse[]>
+  > => {
     try {
       const response = await callApi("get", "/import-request");
       return response;
@@ -47,9 +54,14 @@ const useImportRequestService = () => {
   };
 
   // Get import request by ID
-  const getImportRequestById = async (importRequestId: string): Promise<ResponseDTO<ImportRequestResponse>> => {
+  const getImportRequestById = async (
+    importRequestId: string
+  ): Promise<ResponseDTO<ImportRequestResponse>> => {
     try {
-      const response = await callApi("get", `/import-request/${importRequestId}`);
+      const response = await callApi(
+        "get",
+        `/import-request/${importRequestId}`
+      );
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin phiếu nhập");
@@ -59,12 +71,12 @@ const useImportRequestService = () => {
 
   // Get paginated import requests
   const getImportRequestsByPage = async (
-    page = 1, 
+    page = 1,
     limit = 10
   ): Promise<ResponseDTO<ImportRequestResponse[]>> => {
     try {
       const response = await callApi(
-        "get", 
+        "get",
         `/import-request/page?page=${page}&limit=${limit}`
       );
       return response;
@@ -74,7 +86,9 @@ const useImportRequestService = () => {
     }
   };
 
-  const createReturnImportRequest = async (request: ImportRequestCreateRequest): Promise<ResponseDTO<ImportRequestResponse>> => {
+  const createReturnImportRequest = async (
+    request: ImportRequestCreateRequest
+  ): Promise<ResponseDTO<ImportRequestResponse>> => {
     try {
       const response = await callApi("post", "/import-request/return", request);
       return response;
@@ -84,12 +98,30 @@ const useImportRequestService = () => {
     }
   };
 
+  const getImportRequestNumber = async (
+    fromDate: string,
+    toDate: string
+  ): Promise<ResponseDTO<ImportRequestNumberResponse>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/import-request/number?fromDate=${fromDate}&toDate=${toDate}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thống kê số lượng phiếu nhập");
+      console.error("Error fetching import request number:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllImportRequests,
     getImportRequestsByPage,
     getImportRequestById,
-    createReturnImportRequest
+    createReturnImportRequest,
+    getImportRequestNumber,
   };
 };
 

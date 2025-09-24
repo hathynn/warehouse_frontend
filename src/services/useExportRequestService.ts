@@ -32,6 +32,11 @@ export interface ExportRequestResponse {
   updatedDate: string;
 }
 
+export interface ExportRequestNumberResponse {
+  numberOfOngoingExport: number;
+  numberOfFinishExport: number;
+}
+
 // Khi tạo mới, có thể thiếu một số trường như id, createdDate, updatedDate, ...
 // Những trường này sẽ được backend tự động set khi tạo mới.
 export interface ExportRequestRequest {
@@ -326,6 +331,23 @@ const useExportRequestService = () => {
     }
   };
 
+  const getExportRequestNumber = async (
+    fromDate: string,
+    toDate: string
+  ): Promise<ResponseDTO<ExportRequestNumberResponse>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/export-request/number?fromDate=${fromDate}&toDate=${toDate}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thống kê số lượng phiếu xuất");
+      console.error("Error fetching export request number:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     getAllExportRequests,
@@ -341,6 +363,7 @@ const useExportRequestService = () => {
     renewExportRequest,
     createExportRequestReturn,
     updateExportRequestDepartment,
+    getExportRequestNumber,
   };
 };
 
