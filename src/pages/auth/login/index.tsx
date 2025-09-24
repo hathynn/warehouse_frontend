@@ -4,6 +4,7 @@ import { setCredentials, setUserInfo } from "@/contexts/redux/features/userSlice
 import useAccountService, { AuthenticationRequest } from "@/services/useAccountService";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { jwtDecode } from "jwt-decode";
+import logo from "@/assets/logo.png";
 
 // Interface for JWT decoded token
 interface DecodedToken {
@@ -62,6 +63,11 @@ const Login = () => {
   return (
     <div className="space-y-8">
       <div>
+        {/* Thêm logo */}
+        <div className="flex justify-center">
+          <img src={logo} alt="Logo" className="h-16 w-auto" />
+        </div>
+
         <h2 className="text-3xl font-bold text-gray-900 text-center">
           Đăng nhập vào tài khoản
         </h2>
