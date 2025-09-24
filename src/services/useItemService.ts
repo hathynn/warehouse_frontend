@@ -51,6 +51,11 @@ export interface ItemImportExportResponse {
   exportMeasurementValue: number;
 }
 
+export interface ItemFiguresResponse {
+  totalInStock: number;
+  totalOutOfStock: number;
+}
+
 const useItemService = () => {
   const { callApi, loading } = useApi();
   const [itemId, setItemId] = useState<number | null>(null);
@@ -176,6 +181,18 @@ const useItemService = () => {
     }
   };
 
+  const getItemFigures = async (): Promise<
+    ResponseDTO<ItemFiguresResponse>
+  > => {
+    try {
+      const response = await callApi("get", "/item/figures");
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin thống kê sản phẩm");
+      throw error;
+    }
+  };
+
   return {
     loading,
     itemId,
@@ -187,6 +204,7 @@ const useItemService = () => {
     getItemsByCategory,
     getItemsByProvider,
     getItemImportExportNumber,
+    getItemFigures,
   };
 };
 

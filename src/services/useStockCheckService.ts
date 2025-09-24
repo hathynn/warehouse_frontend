@@ -47,6 +47,11 @@ export interface UpdateStockCheckStatusRequest {
   status: string;
 }
 
+export interface StockCheckNumberResponse {
+  numberOfOngoingStockCheck: number;
+  numberOfFinishStockCheck: number;
+}
+
 const useStockCheckService = () => {
   const { callApi, loading } = useApi();
 
@@ -188,6 +193,23 @@ const useStockCheckService = () => {
     }
   };
 
+  const getStockCheckNumber = async (
+    fromDate: string,
+    toDate: string
+  ): Promise<ResponseDTO<StockCheckNumberResponse>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/stock-check/number?fromDate=${fromDate}&toDate=${toDate}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thống kê số lượng phiếu kiểm kho");
+      console.error("Error fetching stock check number:", error);
+      throw error;
+    }
+  };
+
   return {
     loading,
     createStockCheckRequest,
@@ -196,6 +218,7 @@ const useStockCheckService = () => {
     assignStaffToStockCheck,
     updateStockCheckStatus,
     completeStockCheck,
+    getStockCheckNumber,
   };
 };
 
