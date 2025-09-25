@@ -5,6 +5,7 @@ export const BASE_ROUTES = {
   LOGIN: "/login",
   REGISTER: "/register",
   OVERVIEW: "/overview",
+  QRCODE: "/qr-codes",
 } as const;
 
 // Default landing route for each role
@@ -48,10 +49,14 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     "/transaction-logs/import",
     "/transaction-logs/export",
     "/transaction-logs/stock-check",
+
     // Stock-check routes
     "/stock-check/create-request",
     "/stock-check/request-list",
     "/stock-check/request-detail/:id",
+
+    //Qr-code route
+    "/qr-codes",
   ],
   [AccountRole.MANAGER]: [
     "/overview",
@@ -82,6 +87,7 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     "/transaction-logs/import",
     "/transaction-logs/export",
     "/transaction-logs/stock-check",
+
     // Stock-check routes
     "/stock-check/create-request",
     "/stock-check/request-list",
@@ -109,6 +115,9 @@ export const ROUTE_PERMISSIONS: Record<AccountRole, string[]> = {
     // Stock-check routes
     "/stock-check/request-list",
     "/stock-check/request-detail/:id",
+
+    //Qr-code route
+    "/qr-codes",
   ],
   [AccountRole.ACCOUNTING]: [
     // Add accounting specific routes here
@@ -133,6 +142,8 @@ export const ROUTES = {
   // Protected routes
   PROTECTED: {
     OVERVIEW: BASE_ROUTES.OVERVIEW,
+
+    QRCODE: BASE_ROUTES.QRCODE,
 
     // Import routes
     IMPORT: {

@@ -10,6 +10,7 @@ import {
   AiOutlineCompass,
   AiOutlineFileText,
   AiOutlineTag,
+  AiOutlineQrcode,
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -194,6 +195,12 @@ export const menuItems: RoleMenuConfig = {
           path: ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION,
         },
       ],
+    },
+    {
+      key: "qrcode",
+      icon: AiOutlineQrcode,
+      label: "Tra cứu QR Code",
+      path: ROUTES.PROTECTED.QRCODE,
     },
   ],
 

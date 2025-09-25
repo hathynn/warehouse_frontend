@@ -32,7 +32,8 @@ import ImportTransactionHistory from "@/pages/dashboard/transaction/import";
 import WarehouseSection from "@/pages/dashboard/inventory-item/warehouse-section";
 import ExportTransactionHistory from "@/pages/dashboard/transaction/export";
 import StockCheckTransactionHistory from "@/pages/dashboard/transaction/stock-check";
-import InventoryItemList from "../pages/dashboard/inventory-item/inventory-item-list";
+import InventoryItemList from "@/pages/dashboard/inventory-item/inventory-item-list";
+import QrCodeExport from "@/pages/dashboard/qr-codes";
 
 export const Router = createBrowserRouter([
   {
@@ -175,6 +176,12 @@ export const Router = createBrowserRouter([
           {
             path: ROUTES.PROTECTED.TRANSACTION_LOGS.STOCK_CHECK,
             element: <StockCheckTransactionHistory />,
+          },
+
+          //QR code route
+          {
+            path: ROUTES.PROTECTED.QRCODE,
+            element: <QrCodeExport />,
           },
         ],
       },
