@@ -38,11 +38,11 @@ const QrCodeListingModal: React.FC<QrCodeListingModalProps> = ({
           In
         </Button>,
       ]}
-      width={900}
+      width={1080}
       className="!top-[50px] print:!block"
       maskClosable={!loading}
     >
-      <div id="qr-print-area" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2 md:grid-cols-3 print:grid-cols-3 print:gap-4">
+      <div id="qr-print-area" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2 md:grid-cols-4 print:grid-cols-4 print:gap-4">
         {loading ? (
           <div className="flex items-center justify-center col-span-3 py-8">
             <Spin size="large" />
@@ -52,13 +52,13 @@ const QrCodeListingModal: React.FC<QrCodeListingModalProps> = ({
         ) : (
           inventoryItems.map((invItem) => (
             <div key={invItem.id} className="flex flex-col items-center p-4 bg-white border rounded-lg print:shadow-none print:border print:p-2">
-              <QRCode value={invItem.id.toString()} size={128} />
-              <div className="mt-2 text-base font-semibold">Mã sản phẩm: <span className="font-mono">#{invItem.itemId || '-'}</span></div>
-              <div className="text-sm text-gray-700">Tên sản phẩm: {invItem.itemName || '-'}</div>
+              <QRCode value={invItem.id.toString()} size={96} />
+              <div className="mt-2 text-xs text-center">#{invItem.id || '-'}</div>
               {invItem.parentId && (
-                <div className="text-sm text-blue-600">Mã cũ: <span className="font-mono">#{invItem.parentId}</span></div>
+                <div className="text-xs text-gray-700">Mã cũ: #{invItem.parentId}</div>
               )}
-              <div className="mt-1 text-xs text-gray-500">{invItem.id}</div>
+              <div className="mt-1 text-xs">Mã mặt hàng: {invItem.itemId}</div>
+              <div className="text-sm text-gray-700">{invItem.itemName || '-'}</div>
             </div>
           ))
         )}
