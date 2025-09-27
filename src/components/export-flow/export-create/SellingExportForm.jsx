@@ -81,7 +81,7 @@ const SellingExportForm = ({
   // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
   const calculateMinExportDate = () => {
     const now = dayjs();
-    const INSPECTION_HOURS = 12;
+    const INSPECTION_HOURS = 3;
     let calculationTime = now;
     let remainingHours = INSPECTION_HOURS;
 
@@ -200,7 +200,7 @@ const SellingExportForm = ({
           {!formData.exportDate && (
             <div className="text-blue-800 text-xs mt-1">
               <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
-              <span className="font-bold text-red-800">12h</span> kiểm đếm.
+              <span className="font-bold text-red-800">3h</span> kiểm đếm.
             </div>
           )}
         </div>
