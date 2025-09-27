@@ -80,7 +80,7 @@ const UseExportForm = ({
   // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
   const calculateMinExportDate = () => {
     const now = dayjs();
-    const INSPECTION_HOURS = 3;
+    const INSPECTION_HOURS = 12;
     let calculationTime = now;
     let remainingHours = INSPECTION_HOURS;
 
@@ -197,12 +197,10 @@ const UseExportForm = ({
               />
             </div>
           </ConfigProvider>
-          {!formData.exportDate && (
-            <div className="text-blue-800 text-xs mt-1">
-              <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
-              <span className="font-bold text-red-800">3h</span> kiểm đếm.
-            </div>
-          )}
+          <div className="text-blue-800 text-xs mt-1">
+            <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
+            <span className="font-bold text-red-800">12h</span> kiểm đếm.
+          </div>
         </div>
 
         {/* Hạn kiểm đếm dự kiến */}

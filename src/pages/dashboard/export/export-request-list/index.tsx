@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Table, Button, Input, Tabs, Tooltip, TablePaginationConfig, Space } from "antd";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { SearchOutlined, PlusOutlined, EyeOutlined } from "@ant-design/icons";
+import { SearchOutlined, PlusOutlined, EyeOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import { ROUTES } from "@/constants/routes";
 import useExportRequestService, { ExportRequestResponse } from "@/services/useExportRequestService";
 import { useSelector } from "react-redux";
@@ -11,6 +11,9 @@ import dayjs from "dayjs";
 import { LegendItem } from "@/components/commons/LegendItem";
 import { ExportRequestFilterState, useExportRequestFilter } from "@/hooks/useExportRequestFilter";
 import useProviderService from "@/services/useProviderService";
+import { Select, DatePicker } from "antd";
+const { RangePicker } = DatePicker;
+const { Option } = Select;
 
 const ExportRequestList = () => {
   // ========== FILTER STATES ==========
@@ -19,7 +22,7 @@ const ExportRequestList = () => {
     searchTerm,
     selectedExportType,
     selectedStatusFilter,
-    pagination
+    pagination,
   } = filterState as ExportRequestFilterState;
 
   // ========== DATA STATES ==========
@@ -27,6 +30,15 @@ const ExportRequestList = () => {
   const [providerNames, setProviderNames] = useState({});
   const [searchParams] = useSearchParams();
   const location = useLocation();
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [advancedSearchFields, setAdvancedSearchFields] = useState({
+    exportRequestId: '',
+    exportDate: '',
+    createdDate: '',
+    createdBy: '',
+    receiverName: '',
+    status: []
+  });
 
   // ========== SERVICES ==========
   const { getAllExportRequests, loading } = useExportRequestService();
@@ -131,12 +143,41 @@ const ExportRequestList = () => {
 
   // ========== COMPUTED VALUES & RENDER LOGIC ==========
   const filteredItems = exportRequestsData?.filter((item) => {
+    // Basic search
     const idStr = item.exportRequestId ? item.exportRequestId.toString() : "";
-    const matchesSearch = idStr
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+    const matchesBasicSearch = idStr.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Nếu tab là ALL thì không lọc status
+    // Advanced search
+    let matchesAdvancedSearch = true;
+    if (showAdvancedSearch) {
+      if (advancedSearchFields.exportRequestId &&
+        !idStr.toLowerCase().includes(advancedSearchFields.exportRequestId.toLowerCase())) {
+        matchesAdvancedSearch = false;
+      }
+      if (advancedSearchFields.createdBy &&
+        !item.createdBy?.toLowerCase().includes(advancedSearchFields.createdBy.toLowerCase())) {
+        matchesAdvancedSearch = false;
+      }
+      if (advancedSearchFields.receiverName &&
+        !(item.receiverName || providerNames[item.providerId] || "")
+          .toLowerCase().includes(advancedSearchFields.receiverName.toLowerCase())) {
+        matchesAdvancedSearch = false;
+      }
+      if (advancedSearchFields.exportDate &&
+        !dayjs(item.exportDate).format("DD-MM-YYYY").includes(advancedSearchFields.exportDate)) {
+        matchesAdvancedSearch = false;
+      }
+      if (advancedSearchFields.createdDate &&
+        !dayjs(item.createdDate).format("DD-MM-YYYY").includes(advancedSearchFields.createdDate)) {
+        matchesAdvancedSearch = false;
+      }
+      if (advancedSearchFields.status.length > 0 &&
+        !advancedSearchFields.status.includes(item.status)) {
+        matchesAdvancedSearch = false;
+      }
+    }
+
+    // Status filter logic (giữ nguyên)
     let matchesStatusFilter = true;
     switch (selectedStatusFilter) {
       case "WAITING_CONFIRM":
@@ -158,11 +199,16 @@ const ExportRequestList = () => {
         matchesStatusFilter = true;
     }
 
-    // Filter theo exportType
+    // Export type filter (giữ nguyên)
     const matchesExportType =
       selectedExportType === "ALL" ? true : selectedExportType.includes(item.type);
 
-    return matchesSearch && matchesStatusFilter && matchesExportType;
+    // Quyết định dùng search nào
+    const finalSearch = showAdvancedSearch ? matchesAdvancedSearch : matchesBasicSearch;
+    return finalSearch && matchesStatusFilter && matchesExportType;
+  }).sort((a, b) => {
+    // Sort theo mã phiếu xuất từ lớn xuống nhỏ (PX-YYYYMMDD-XXX format)
+    return b.exportRequestId.localeCompare(a.exportRequestId);
   });
 
   const columns = [
@@ -178,25 +224,25 @@ const ExportRequestList = () => {
       dataIndex: "exportDate",
       key: "exportDate",
       render: (date: string) => dayjs(date).format("DD-MM-YYYY"),
+      sorter: (a, b) => dayjs(a.exportDate).unix() - dayjs(b.exportDate).unix(),
     },
     {
       title: "Ngày tạo",
       dataIndex: "createdDate",
       key: "createdDate",
       render: (date: string) => dayjs(date).format("DD-MM-YYYY"),
+      sorter: (a, b) => dayjs(a.createdDate).unix() - dayjs(b.createdDate).unix(),
     },
     {
       title: "Người lập phiếu",
       dataIndex: "createdBy",
       key: "createdBy",
     },
-
     {
       title: "Người nhận hàng",
       dataIndex: "receiverName",
       key: "receiver",
       render: (receiverName, record) => {
-        // Ưu tiên receiverName, nếu không có thì dùng provider name
         return receiverName || providerNames[record.providerId] || "—";
       }
     },
@@ -207,6 +253,18 @@ const ExportRequestList = () => {
       align: "center" as "center",
       width: 200,
       render: (status: string) => <StatusTag status={status} type="export" />,
+      sorter: (a, b) => {
+        const statusOrder = {
+          'IN_PROGRESS': 1,
+          'COUNTED': 2,
+          'COUNT_CONFIRMED': 3,
+          'WAITING_EXPORT': 4,
+          'EXTENDED': 5,
+          'COMPLETED': 6,
+          'CANCELLED': 7
+        };
+        return statusOrder[a.status] - statusOrder[b.status];
+      },
     },
     {
       title: "Chi tiết",
@@ -243,16 +301,138 @@ const ExportRequestList = () => {
       </div>
 
       <div className="flex items-center justify-between mb-3">
-        <div className="flex flex-wrap gap-2 items-center">
-          <div className="min-w-[300px]">
-            <Input
-              placeholder="Tìm theo mã phiếu xuất"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              prefix={<SearchOutlined />}
-              className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
-            />
+        <div className="flex flex-col gap-3 w-full">
+          {/* Basic Search */}
+          <div className="flex gap-3 items-center">
+            <div className="min-w-[300px]">
+              <Input
+                placeholder="Tìm theo mã phiếu xuất"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                prefix={<SearchOutlined />}
+                className="!border-gray-400 [&_input::placeholder]:!text-gray-400"
+              />
+            </div>
+            <Button
+              type="default"
+              onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
+              icon={showAdvancedSearch ? <UpOutlined /> : <DownOutlined />}
+            >
+              Tìm kiếm nâng cao
+            </Button>
           </div>
+
+          {/* Advanced Search */}
+          {showAdvancedSearch && (
+            <div className="bg-gray-50 p-4 rounded border">
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Mã phiếu xuất</label>
+                  <Input
+                    placeholder="Nhập mã phiếu xuất"
+                    value={advancedSearchFields.exportRequestId}
+                    onChange={(e) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      exportRequestId: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Người lập phiếu</label>
+                  <Input
+                    placeholder="Nhập tên người lập phiếu"
+                    value={advancedSearchFields.createdBy}
+                    onChange={(e) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      createdBy: e.target.value
+                    })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Người nhận hàng</label>
+                  <Input
+                    placeholder="Nhập tên người nhận"
+                    value={advancedSearchFields.receiverName}
+                    onChange={(e) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      receiverName: e.target.value
+                    })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ngày xuất</label>
+                  <DatePicker
+                    placeholder="Chọn ngày xuất"
+                    value={advancedSearchFields.exportDate ? dayjs(advancedSearchFields.exportDate, "DD-MM-YYYY") : null}
+                    onChange={(date) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      exportDate: date ? date.format("DD-MM-YYYY") : ''
+                    })}
+                    format="DD-MM-YYYY"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ngày tạo</label>
+                  <DatePicker
+                    placeholder="Chọn ngày tạo"
+                    value={advancedSearchFields.createdDate ? dayjs(advancedSearchFields.createdDate, "DD-MM-YYYY") : null}
+                    onChange={(date) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      createdDate: date ? date.format("DD-MM-YYYY") : ''
+                    })}
+                    format="DD-MM-YYYY"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Trạng thái phiếu</label>
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn trạng thái"
+                    value={advancedSearchFields.status}
+                    onChange={(values) => setAdvancedSearchFields({
+                      ...advancedSearchFields,
+                      status: values
+                    })}
+                    className="w-full"
+                  >
+                    <Option value="IN_PROGRESS">Đang xử lý</Option>
+                    <Option value="COUNTED">Đã kiểm đếm</Option>
+                    <Option value="COUNT_CONFIRMED">Đã xác nhận kiểm đếm</Option>
+                    <Option value="WAITING_EXPORT">Chờ xuất kho</Option>
+                    <Option value="EXTENDED">Đã gia hạn</Option>
+                    <Option value="COMPLETED">Đã hoàn tất</Option>
+                    <Option value="CANCELLED">Đã hủy</Option>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    // Trigger search - logic sẽ được handle trong filteredItems
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+                <Button
+                  onClick={() => setAdvancedSearchFields({
+                    exportRequestId: '',
+                    exportDate: '',
+                    createdDate: '',
+                    createdBy: '',
+                    receiverName: '',
+                    status: []
+                  })}
+                >
+                  Xóa bộ lọc
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

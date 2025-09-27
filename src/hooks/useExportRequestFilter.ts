@@ -6,6 +6,15 @@ export interface ExportRequestFilterState {
   pagination: TablePaginationConfig;
   selectedStatusFilter: string | null;
   selectedExportType: string;
+  advancedSearchFields: {
+    exportRequestId: string;
+    exportDate: string;
+    createdDate: string;
+    createdBy: string;
+    receiverName: string;
+    status: string[];
+  };
+  showAdvancedSearch: boolean;
 }
 
 const defaultExportRequestFilterState: ExportRequestFilterState = {
@@ -17,6 +26,15 @@ const defaultExportRequestFilterState: ExportRequestFilterState = {
     pageSize: 10,
     total: 0,
   },
+  advancedSearchFields: {
+    exportRequestId: "",
+    exportDate: "",
+    createdDate: "",
+    createdBy: "",
+    receiverName: "",
+    status: [],
+  },
+  showAdvancedSearch: false,
 };
 
 export const useExportRequestFilter = createFilterHook(
