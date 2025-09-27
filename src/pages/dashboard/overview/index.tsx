@@ -663,7 +663,7 @@ const SummaryOverview = () => {
             </div>
           </div>
 
-          {/* Status Details Table - Simplified */}
+          {/* Status Details Table */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
             <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
               <div className="w-4 h-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-full mr-3"></div>
@@ -676,6 +676,10 @@ const SummaryOverview = () => {
                   <tr className="border-b border-slate-200">
                     <th className="text-left py-3 px-4 font-semibold text-slate-700">Loại hàng</th>
                     <th className="text-center py-3 px-4 font-semibold text-emerald-700">Khả dụng</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Đã xuất kho</th>
+                    <th className="text-center py-3 px-4 font-semibold text-red-700">Thanh lý</th>
+                    <th className="text-center py-3 px-4 font-semibold text-orange-700">Chuẩn bị xuất</th>
+                    <th className="text-center py-3 px-4 font-semibold text-blue-700">Đang nhập kho</th>
                     <th className="text-center py-3 px-4 font-semibold text-slate-700">Tổng</th>
                   </tr>
                 </thead>
@@ -689,6 +693,18 @@ const SummaryOverview = () => {
                     </td>
                     <td className="text-center py-3 px-4 text-emerald-600 font-semibold">
                       {inventoryItemOverviewStats.fabric.totalInventoryItemAvailable.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-gray-600 font-semibold">
+                      {inventoryItemOverviewStats.fabric.totalInventoryItemNoLongerExist.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-red-600 font-semibold">
+                      {inventoryItemOverviewStats.fabric.totalInventoryItemNeedLiquid.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-orange-600 font-semibold">
+                      {inventoryItemOverviewStats.fabric.totalInventoryItemUnAvailable.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-blue-600 font-semibold">
+                      {inventoryItemOverviewStats.fabric.totalInventoryItemReadToStore.toLocaleString()}
                     </td>
                     <td className="text-center py-3 px-4 text-slate-800 font-bold">
                       {Object.values(inventoryItemOverviewStats.fabric).reduce((a, b) => a + b, 0).toLocaleString()}
@@ -704,26 +720,22 @@ const SummaryOverview = () => {
                     <td className="text-center py-3 px-4 text-emerald-600 font-semibold">
                       {inventoryItemOverviewStats.accessories.totalInventoryItemAvailable.toLocaleString()}
                     </td>
+                    <td className="text-center py-3 px-4 text-gray-600 font-semibold">
+                      {inventoryItemOverviewStats.accessories.totalInventoryItemNoLongerExist.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-red-600 font-semibold">
+                      {inventoryItemOverviewStats.accessories.totalInventoryItemNeedLiquid.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-orange-600 font-semibold">
+                      {inventoryItemOverviewStats.accessories.totalInventoryItemUnAvailable.toLocaleString()}
+                    </td>
+                    <td className="text-center py-3 px-4 text-blue-600 font-semibold">
+                      {inventoryItemOverviewStats.accessories.totalInventoryItemReadToStore.toLocaleString()}
+                    </td>
                     <td className="text-center py-3 px-4 text-slate-800 font-bold">
                       {Object.values(inventoryItemOverviewStats.accessories).reduce((a, b) => a + b, 0).toLocaleString()}
                     </td>
                   </tr>
-                  {/* <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
-                    <td className="py-3 px-4 text-slate-800">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mr-2"></div>
-                        Tổng cộng
-                      </div>
-                    </td>
-                    <td className="text-center py-3 px-4 text-emerald-700 text-lg">
-                      {(inventoryItemOverviewStats.fabric.totalInventoryItemAvailable +
-                        inventoryItemOverviewStats.accessories.totalInventoryItemAvailable).toLocaleString()}
-                    </td>
-                    <td className="text-center py-3 px-4 text-slate-800 text-lg">
-                      {(Object.values(inventoryItemOverviewStats.fabric).reduce((a, b) => a + b, 0) +
-                        Object.values(inventoryItemOverviewStats.accessories).reduce((a, b) => a + b, 0)).toLocaleString()}
-                    </td>
-                  </tr> */}
                 </tbody>
               </table>
             </div>
