@@ -463,20 +463,20 @@ const InventoryItemList = () => {
       title: "Mã sản phẩm",
       dataIndex: "id",
       key: "id",
-      width: "28%",
+      width: "22%",
     },
     {
       title: "Tên mặt hàng",
       dataIndex: "itemName",
       key: "itemName",
-      width: "15%",
+      width: "13%",
     },
     {
       title: "Giá trị đo lường",
       key: "measurementValue",
       dataIndex: "measurementValue",
       align: "center",
-      width: "15%",
+      width: "13%",
       sorter: true,
       sortOrder:
         filters.sortField === "measurementValue" ? filters.sortOrder : null,

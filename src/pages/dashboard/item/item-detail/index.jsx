@@ -417,6 +417,13 @@ const ItemDetail = () => {
     return applyFilters(tabItems, filters, ""); // Không dùng searchTerm cũ nữa
   };
 
+  const getPaginatedData = (data, pagination) => {
+    const { current, pageSize } = pagination;
+    const startIndex = (current - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return data.slice(startIndex, endIndex);
+  };
+
   // Function để count items cho badge
   const getTabItemCount = (tabKey) => {
     if (searchResults && globalSearchTerm.trim()) {
@@ -449,17 +456,27 @@ const ItemDetail = () => {
             ? aValue - bValue
             : bValue - aValue;
         }
-
         return 0;
       });
     }
 
     setFilteredInventoryItems(filtered);
-    setInventoryPagination((prev) => ({
-      ...prev,
-      current: 1,
-      total: filtered.length,
-    }));
+
+    // Chỉ reset current về 1 khi data thay đổi đáng kể
+    setInventoryPagination((prev) => {
+      const shouldResetPage =
+        prev.total !== filtered.length ||
+        globalSearchTerm !== prev.lastSearchTerm ||
+        activeTab !== prev.lastTab;
+
+      return {
+        ...prev,
+        current: shouldResetPage ? 1 : prev.current,
+        total: filtered.length,
+        lastSearchTerm: globalSearchTerm,
+        lastTab: activeTab,
+      };
+    });
 
     setActiveFiltersCount(countActiveFilters(filters));
   }, [inventoryItems, globalSearchTerm, searchResults, filters, activeTab]);
@@ -651,6 +668,7 @@ const ItemDetail = () => {
     setEditingInventoryItem(inventoryItem);
     setNewStatus(null);
     setReasonForChange("");
+    setConfirmationChecked(false); // ⚠️ Thêm dòng này
     setEditModalVisible(true);
   };
 
@@ -1262,15 +1280,13 @@ const ItemDetail = () => {
               <>
                 <Descriptions.Item label="Giá trị tồn kho">
                   <strong style={{ fontSize: "18px" }}>
-                    {calculateCurrentInventory()}
+                    {item?.totalMeasurementValue}
                   </strong>{" "}
                   {item.measurementUnit}
                 </Descriptions.Item>
 
-                <Descriptions.Item label="Giá trị khả dụng">
-                  <strong style={{ fontSize: "18px" }}>
-                    {calculateAvailableValue()}
-                  </strong>{" "}
+                <Descriptions.Item label="Số lượng tồn kho">
+                  <strong style={{ fontSize: "18px" }}>{item?.quantity}</strong>{" "}
                   {item.measurementUnit}
                 </Descriptions.Item>
               </>
@@ -1281,6 +1297,15 @@ const ItemDetail = () => {
                 {item.minimumStockQuantity || 0}
               </strong>{" "}
               {item.unitType}
+              <span style={{ color: "#666", fontSize: "14px" }}>
+                {" "}
+                (
+                {(
+                  (item.minimumStockQuantity || 0) *
+                  (item.measurementValue || 0)
+                ).toLocaleString("vi-VN")}{" "}
+                {item.measurementUnit})
+              </span>
             </Descriptions.Item>
 
             <Descriptions.Item label="Tồn kho tối đa">
@@ -1288,6 +1313,15 @@ const ItemDetail = () => {
                 {item.maximumStockQuantity || 0}
               </strong>{" "}
               {item.unitType}
+              <span style={{ color: "#666", fontSize: "14px" }}>
+                {" "}
+                (
+                {(
+                  (item.maximumStockQuantity || 0) *
+                  (item.measurementValue || 0)
+                ).toLocaleString("vi-VN")}{" "}
+                {item.measurementUnit})
+              </span>
             </Descriptions.Item>
 
             <Descriptions.Item label="Nhà cung cấp" span={2}>
@@ -1557,16 +1591,37 @@ const ItemDetail = () => {
 
             <Table
               columns={inventoryColumns}
-              dataSource={filteredInventoryItems}
+              dataSource={getPaginatedData(
+                filteredInventoryItems,
+                inventoryPagination
+              )}
               rowKey="id"
               loading={inventoryLoading}
               pagination={{
-                ...inventoryPagination,
+                current: inventoryPagination.current,
+                pageSize: inventoryPagination.pageSize,
+                total: filteredInventoryItems.length,
                 showSizeChanger: false,
                 showTotal: (total, range) =>
                   `${range[0]}-${range[1]} của ${total} sản phẩm`,
+                onChange: (page, pageSize) => {
+                  setInventoryPagination((prev) => ({
+                    ...prev,
+                    current: page,
+                    pageSize: pageSize,
+                  }));
+                },
               }}
-              onChange={handleInventoryTableChange}
+              onChange={(_, __, sorter) => {
+                // Chỉ xử lý sorting
+                if (sorter) {
+                  setFilters((prev) => ({
+                    ...prev,
+                    sortField: sorter.field || null,
+                    sortOrder: sorter.order || null, // null khi user click lần thứ 3
+                  }));
+                }
+              }}
             />
           </Card>
         </div>

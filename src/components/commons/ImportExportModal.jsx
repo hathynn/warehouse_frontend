@@ -228,7 +228,9 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
         <div className="flex items-center">
           <div className="flex items-center gap-2">
             <BarChartOutlined className="text-blue-600 text-xl" />
-            <span>Báo cáo xuất nhập kho - {item?.name}</span>
+            <span style={{ fontSize: "20px" }}>
+              Báo cáo xuất nhập kho - {item?.name}
+            </span>
           </div>
           <Popover content={infoContent} title="Thông tin" trigger="click">
             <Button
