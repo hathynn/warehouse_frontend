@@ -29,12 +29,20 @@ import useInventoryItemService, {
   ItemStatus,
 } from "@/services/useInventoryItemService";
 import { AccountRole } from "@/utils/enums";
-import { DatePicker, Space, Badge, Slider } from "antd";
-import { FilterOutlined, ClearOutlined } from "@ant-design/icons";
+import { DatePicker, Space, Badge, Slider, Form, InputNumber } from "antd";
+import {
+  FilterOutlined,
+  ClearOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import moment from "moment";
 import locale from "antd/locale/vi_VN";
 import "moment/locale/vi";
 import ImportExportModal from "@/components/commons/ImportExportModal";
+import dayjs from "dayjs";
 
 moment.locale("vi");
 
@@ -82,10 +90,18 @@ const ItemDetail = () => {
   const [importExportModalVisible, setImportExportModalVisible] =
     useState(false);
   const [itemImportExportData, setItemImportExportData] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editForm] = Form.useForm();
+  const [selectedProviders, setSelectedProviders] = useState([]);
+  const [allProviders, setAllProviders] = useState([]);
+  const [providerModalVisible, setProviderModalVisible] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [originalProviders, setOriginalProviders] = useState([]);
 
-  const { getItemById, getItemImportExportNumber } = useItemService();
+  const { getItemById, getItemImportExportNumber, updateItem } =
+    useItemService();
   const { getCategoryById } = useCategoryService();
-  const { getProviderById } = useProviderService();
+  const { getProviderById, getAllProviders } = useProviderService();
   const {
     updateInventoryItem,
     getInventoryItemFigure,
@@ -96,7 +112,14 @@ const ItemDetail = () => {
     if (!itemId) return;
 
     try {
-      const response = await getItemImportExportNumber(itemId);
+      const toDate = dayjs().format("YYYY-MM-DD");
+      const fromDate = dayjs().startOf("month").format("YYYY-MM-DD");
+
+      const response = await getItemImportExportNumber(
+        itemId,
+        fromDate,
+        toDate
+      );
       if (response && response.content) {
         setItemImportExportData(response.content);
       }
@@ -200,6 +223,17 @@ const ItemDetail = () => {
       console.error("Error fetching inventory items:", error);
     } finally {
       setInventoryLoading(false);
+    }
+  };
+
+  const fetchAllProviders = async () => {
+    try {
+      const response = await getAllProviders();
+      if (response && response.content) {
+        setAllProviders(response.content);
+      }
+    } catch (error) {
+      console.error("Error fetching providers:", error);
     }
   };
 
@@ -489,7 +523,7 @@ const ItemDetail = () => {
   // Status options for filter
   const statusOptions = [
     { label: "Có sẵn", value: ItemStatus.AVAILABLE, color: "success" },
-    { label: "Không có sẵn", value: ItemStatus.UNAVAILABLE, color: "error" },
+    { label: "Chuẩn bị xuất", value: ItemStatus.UNAVAILABLE, color: "error" },
     { label: "Cần thanh lý", value: ItemStatus.NEED_LIQUID, color: "error" },
     {
       label: "Không tồn tại",
@@ -651,7 +685,7 @@ const ItemDetail = () => {
     }
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEditAdvance = () => {
     setEditModalVisible(false);
     setEditingInventoryItem(null);
     setNewStatus(null);
@@ -659,12 +693,104 @@ const ItemDetail = () => {
     setConfirmationChecked(false); // Reset checkbox
   };
 
+  // Function để bắt đầu edit mode
+  const handleStartEdit = () => {
+    setIsEditMode(true);
+    // Set form values với data hiện tại
+    editForm.setFieldsValue({
+      name: item.name,
+      description: item.description,
+      measurementValue: item.measurementValue,
+      minimumStockQuantity: item.minimumStockQuantity,
+      maximumStockQuantity: item.maximumStockQuantity,
+      daysUntilDue: item.daysUntilDue,
+    });
+
+    // Set selected providers và lưu providers ban đầu
+    const initialProviders = item.providerIds || [];
+    setSelectedProviders(initialProviders);
+    setOriginalProviders(initialProviders); // Lưu providers ban đầu
+
+    // Load all providers
+    fetchAllProviders();
+  };
+
+  // Function để cancel edit
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    editForm.resetFields();
+    setSelectedProviders([]);
+    setAllProviders([]);
+    setOriginalProviders([]); // Reset original providers
+  };
+
+  // Function để save changes
+  const handleSaveChanges = async () => {
+    try {
+      const values = await editForm.validateFields();
+      setEditLoading(true);
+
+      const updateData = {
+        id: item.id,
+        name: values.name,
+        description: values.description,
+        measurementUnit: item.measurementUnit, // giữ nguyên
+        measurementValue: values.measurementValue,
+        totalMeasurementValue: item.totalMeasurementValue, // giữ nguyên
+        unitType: item.unitType, // giữ nguyên
+        daysUntilDue: values.daysUntilDue,
+        minimumStockQuantity: values.minimumStockQuantity,
+        maximumStockQuantity: values.maximumStockQuantity,
+        countingMinutes: item.countingMinutes, // giữ nguyên
+        categoryId: item.categoryId, // giữ nguyên
+        providerIds: selectedProviders,
+      };
+
+      await updateItem(updateData);
+
+      // Refresh item data
+      await fetchItemDetail();
+
+      setIsEditMode(false);
+      message.success("Cập nhật thông tin sản phẩm thành công");
+    } catch (error) {
+      console.error("Error updating item:", error);
+      message.error("Không thể cập nhật thông tin sản phẩm");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // Function để handle provider selection
+  const handleProviderSelect = (providerId) => {
+    if (!selectedProviders.includes(providerId)) {
+      setSelectedProviders([...selectedProviders, providerId]);
+
+      // Thêm provider vào providers map để hiển thị name
+      const selectedProvider = allProviders.find((p) => p.id === providerId);
+      if (selectedProvider) {
+        setProviders((prev) => ({
+          ...prev,
+          [providerId]: selectedProvider,
+        }));
+      }
+    }
+    setProviderModalVisible(false);
+  };
+  // Function để remove provider
+  const handleRemoveProvider = (providerId) => {
+    setSelectedProviders(selectedProviders.filter((id) => id !== providerId));
+  };
+
+  // Helper function để check admin role
+  const isAdmin = () => userRole === AccountRole.ADMIN;
+
   const getStatusTag = (status) => {
     switch (status) {
       case ItemStatus.AVAILABLE:
         return <Tag color="success">Có sẵn</Tag>;
       case ItemStatus.UNAVAILABLE:
-        return <Tag color="error">Không có sẵn</Tag>;
+        return <Tag color="error">Chuẩn bị xuất</Tag>;
       case ItemStatus.DISPOSED:
         return <Tag color="default">Đã hủy</Tag>;
       case ItemStatus.SAFE:
@@ -720,7 +846,7 @@ const ItemDetail = () => {
       case ItemStatus.AVAILABLE:
         return { label: "Có sẵn", color: "success" };
       case ItemStatus.UNAVAILABLE:
-        return { label: "Không có sẵn", color: "error" };
+        return { label: "Chuẩn bị xuất", color: "error" };
       case ItemStatus.NEED_LIQUID:
         return { label: "Cần Thanh lý", color: "error" };
       case ItemStatus.NO_LONGER_EXIST:
@@ -926,96 +1052,249 @@ const ItemDetail = () => {
             Chi tiết mặt hàng: {`${item.name} (${item.id})`}
           </h1>
 
-          {canViewInventoryInfo() && (
-            <Button
-              type="primary"
-              icon={<BarChartOutlined />}
-              onClick={handleOpenImportExportModal}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-              size="large"
-            >
-              Xem báo cáo xuất nhập kho
-            </Button>
-          )}
+          <div className="flex gap-3">
+            {isAdmin() && (
+              <Button
+                type={isEditMode ? "default" : "primary"}
+                icon={isEditMode ? <CloseOutlined /> : <EditOutlined />}
+                onClick={isEditMode ? handleCancelEdit : handleStartEdit}
+                size="large"
+                className={
+                  isEditMode
+                    ? ""
+                    : "bg-green-600 border-green-600 hover:bg-green-700"
+                }
+              >
+                {isEditMode ? "Hủy chỉnh sửa" : "Cập nhật thông tin sản phẩm"}
+              </Button>
+            )}
+
+            {canViewInventoryInfo() && (
+              <Button
+                type="primary"
+                icon={<BarChartOutlined />}
+                onClick={handleOpenImportExportModal}
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                size="large"
+              >
+                Xem báo cáo xuất nhập kho
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       <Card className="shadow-lg">
-        <Descriptions
-          bordered
-          column={2}
-          labelStyle={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
-        >
-          <Descriptions.Item label="Tên mặt hàng" span={1}>
-            {item.name}
-          </Descriptions.Item>
+        {isEditMode ? (
+          <Form form={editForm} layout="vertical">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Form.Item
+                label="Tên mặt hàng"
+                name="name"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên mặt hàng" },
+                ]}
+              >
+                <Input size="large" />
+              </Form.Item>
 
-          <Descriptions.Item label="Mô tả" span={2}>
-            {item.description || "Không có mô tả"}
-          </Descriptions.Item>
+              <Form.Item
+                label="Giá trị đo lường chuẩn"
+                name="measurementValue"
+                rules={[
+                  { required: true, message: "Vui lòng nhập giá trị đo lường" },
+                ]}
+              >
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={0}
+                  addonAfter={`${item?.measurementUnit} / ${item?.unitType}`}
+                />
+              </Form.Item>
 
-          <Descriptions.Item label="Giá trị đo lường chuẩn">
-            <strong style={{ fontSize: "16px" }}>
-              {item.measurementValue || 0}
-            </strong>{" "}
-            {item?.measurementUnit} {"/"} {item?.unitType}
-          </Descriptions.Item>
+              <Form.Item
+                label="Mô tả"
+                name="description"
+                className="md:col-span-2"
+              >
+                <TextArea rows={3} />
+              </Form.Item>
 
-          <Descriptions.Item label="Danh mục hàng">
-            {category ? category.name : "Không xác định"}
-          </Descriptions.Item>
+              <Form.Item
+                label="Tồn kho tối thiểu"
+                name="minimumStockQuantity"
+                rules={[
+                  {
+                    required: true,
+                    message: "Vui lòng nhập tồn kho tối thiểu",
+                  },
+                ]}
+              >
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={0}
+                  addonAfter={item?.unitType}
+                />
+              </Form.Item>
 
-          {/* Chỉ hiện cho MANAGER và DEPARTMENT */}
-          {canViewInventoryInfo() && (
-            <>
-              {/* <Descriptions.Item label="Số lượng tồn kho">
-                <strong style={{ fontSize: "18px" }}>
-                  {item.quantity || 0}
-                </strong>{" "}
-                {item.unitType}
-              </Descriptions.Item>
+              <Form.Item
+                label="Tồn kho tối đa"
+                name="maximumStockQuantity"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tồn kho tối đa" },
+                ]}
+              >
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={0}
+                  addonAfter={item?.unitType}
+                />
+              </Form.Item>
 
-              <Descriptions.Item label="Số lượng khả dụng">
-                <strong style={{ fontSize: "18px" }}>
-                  {calculateAvailableQuantity()}
-                </strong>{" "}
-                {item.unitType}
-              </Descriptions.Item> */}
+              <Form.Item label="Số ngày đến hạn" name="daysUntilDue">
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={0}
+                  addonAfter="ngày"
+                />
+              </Form.Item>
 
-              <Descriptions.Item label="Giá trị tồn kho">
-                <strong style={{ fontSize: "18px" }}>
-                  {calculateCurrentInventory()}
-                </strong>{" "}
-                {item.measurementUnit}
-              </Descriptions.Item>
+              <Form.Item label="Nhà cung cấp" className="md:col-span-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="dashed"
+                      icon={<PlusOutlined />}
+                      onClick={() => setProviderModalVisible(true)}
+                    >
+                      Thêm nhà cung cấp
+                    </Button>
+                  </div>
 
-              <Descriptions.Item label="Giá trị khả dụng">
-                <strong style={{ fontSize: "18px" }}>
-                  {calculateAvailableValue()}
-                </strong>{" "}
-                {item.measurementUnit}
-              </Descriptions.Item>
-            </>
-          )}
+                  {selectedProviders.length > 0 && (
+                    <div className="space-y-2">
+                      {selectedProviders.map((providerId) => {
+                        const provider = providers[providerId];
+                        const isOriginal =
+                          originalProviders.includes(providerId);
 
-          <Descriptions.Item label="Tồn kho tối thiểu">
-            <strong style={{ fontSize: "16px" }}>
-              {item.minimumStockQuantity || 0}
-            </strong>{" "}
-            {item.unitType}
-          </Descriptions.Item>
+                        return (
+                          <div
+                            key={providerId}
+                            className={`flex items-center justify-between p-3 rounded ${
+                              isOriginal
+                                ? "bg-blue-50 border border-blue-200"
+                                : "bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isOriginal && (
+                                <Tag color="blue" size="small">
+                                  Ban đầu
+                                </Tag>
+                              )}
+                              <span>
+                                {provider
+                                  ? provider.name
+                                  : `Provider ${providerId}`}
+                              </span>
+                            </div>
+                            {!isOriginal && (
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleRemoveProvider(providerId)}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </Form.Item>
+            </div>
 
-          <Descriptions.Item label="Tồn kho tối đa">
-            <strong style={{ fontSize: "16px" }}>
-              {item.maximumStockQuantity || 0}
-            </strong>{" "}
-            {item.unitType}
-          </Descriptions.Item>
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+              <Button onClick={handleCancelEdit}>Hủy</Button>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={handleSaveChanges}
+                loading={editLoading}
+              >
+                Lưu thay đổi
+              </Button>
+            </div>
+          </Form>
+        ) : (
+          <Descriptions
+            bordered
+            column={2}
+            labelStyle={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
+          >
+            {/* Giữ nguyên tất cả Descriptions.Item hiện có */}
+            <Descriptions.Item label="Tên mặt hàng" span={1}>
+              {item.name}
+            </Descriptions.Item>
 
-          <Descriptions.Item label="Nhà cung cấp" span={2}>
-            {renderProviders()}
-          </Descriptions.Item>
-        </Descriptions>
+            <Descriptions.Item label="Mô tả" span={2}>
+              {item.description || "Không có mô tả"}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Giá trị đo lường chuẩn">
+              <strong style={{ fontSize: "16px" }}>
+                {item.measurementValue || 0}
+              </strong>{" "}
+              {item?.measurementUnit} {"/"} {item?.unitType}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Danh mục hàng">
+              {category ? category.name : "Không xác định"}
+            </Descriptions.Item>
+
+            {canViewInventoryInfo() && (
+              <>
+                <Descriptions.Item label="Giá trị tồn kho">
+                  <strong style={{ fontSize: "18px" }}>
+                    {calculateCurrentInventory()}
+                  </strong>{" "}
+                  {item.measurementUnit}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="Giá trị khả dụng">
+                  <strong style={{ fontSize: "18px" }}>
+                    {calculateAvailableValue()}
+                  </strong>{" "}
+                  {item.measurementUnit}
+                </Descriptions.Item>
+              </>
+            )}
+
+            <Descriptions.Item label="Tồn kho tối thiểu">
+              <strong style={{ fontSize: "16px" }}>
+                {item.minimumStockQuantity || 0}
+              </strong>{" "}
+              {item.unitType}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Tồn kho tối đa">
+              <strong style={{ fontSize: "16px" }}>
+                {item.maximumStockQuantity || 0}
+              </strong>{" "}
+              {item.unitType}
+            </Descriptions.Item>
+
+            <Descriptions.Item label="Nhà cung cấp" span={2}>
+              {renderProviders()}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
       </Card>
 
       {canViewInventoryInfo() && (
@@ -1041,7 +1320,7 @@ const ItemDetail = () => {
                     {inventoryFigure.totalInventoryItemUnAvailable}
                   </div>
                   <div className="text-sm text-red-700 font-medium">
-                    Không có sẵn
+                    Chuẩn bị xuất
                   </div>
                 </div>
 
@@ -1357,7 +1636,7 @@ const ItemDetail = () => {
         title="Chỉnh sửa trạng thái sản phẩm"
         open={editModalVisible}
         onOk={handleUpdateStatus}
-        onCancel={handleCancelEdit}
+        onCancel={handleCancelEditAdvance}
         confirmLoading={updateLoading}
         width={600}
         okText="Cập nhật"
@@ -1466,6 +1745,7 @@ const ItemDetail = () => {
           </div>
         )}
       </Modal>
+
       {/* Import Export Modal */}
       <ImportExportModal
         visible={importExportModalVisible}
@@ -1473,6 +1753,43 @@ const ItemDetail = () => {
         itemId={id}
         item={item}
       />
+
+      {/* Provider Selection Modal */}
+      <Modal
+        title="Chọn nhà cung cấp"
+        open={providerModalVisible}
+        onCancel={() => setProviderModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <Table
+          dataSource={allProviders.filter(
+            (p) => !selectedProviders.includes(p.id)
+          )}
+          rowKey="id"
+          pagination={false}
+          columns={[
+            {
+              title: "Tên nhà cung cấp",
+              dataIndex: "name",
+              key: "name",
+            },
+            {
+              title: "Hành động",
+              key: "action",
+              align: "center",
+              render: (_, record) => (
+                <Button
+                  type="primary"
+                  onClick={() => handleProviderSelect(record.id)}
+                >
+                  Chọn
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </Modal>
     </div>
   );
 };

@@ -942,13 +942,13 @@ const InventoryItemList = () => {
             Đóng
           </Button>,
         ]}
-        width={500}
+        width={600}
       >
         {qrItem && (
           <div className="space-y-3 text-sm mt-5">
             <div>
               <span className="font-medium">Mã hàng:</span> <br />
-              <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+              <span style={{ fontSize: "23px", fontWeight: "bold" }}>
                 {qrItem.id}
               </span>
             </div>
