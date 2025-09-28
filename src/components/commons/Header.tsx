@@ -25,11 +25,12 @@ interface HeaderProps {
 const getRoleDisplayName = (role: AccountRole): string => {
   const roleMap: Record<AccountRole, string> = {
     [AccountRole.DEPARTMENT]: "Phòng Kế Hoạch",
-    [AccountRole.WAREHOUSE_MANAGER]: "Quản Lý Kho",
-    [AccountRole.STAFF]: "Nhân Viên",
+    [AccountRole.WAREHOUSE_MANAGER]: "Trưởng Kho",
+    [AccountRole.STAFF]: "Thủ kho",
     [AccountRole.ACCOUNTING]: "Kế Toán",
     [AccountRole.ADMIN]: "Quản Trị Viên",
-    [AccountRole.MANAGER]: "Người Điều Hành Kho"
+    [AccountRole.MANAGER]: "Quản lý trưởng",
+    [AccountRole.OTHER]: "Nhân viên nội bộ"
   };
   return roleMap[role] || role;
 };
@@ -245,21 +246,21 @@ function Header({ title = "Dashboard" }: HeaderProps) {
   };
 
   const userMenuItems = [
-    {
-      key: 'profile',
-      icon: <UserOutlined />,
-      label: 'Thông tin cá nhân',
-      onClick: () => navigate('/profile')
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: 'Cài đặt',
-      onClick: () => navigate('/settings')
-    },
-    {
-      type: 'divider',
-    },
+    // {
+    //   key: 'profile',
+    //   icon: <UserOutlined />,
+    //   label: 'Thông tin cá nhân',
+    //   onClick: () => navigate('/profile')
+    // },
+    // {
+    //   key: 'settings',
+    //   icon: <SettingOutlined />,
+    //   label: 'Cài đặt',
+    //   onClick: () => navigate('/settings')
+    // },
+    // {
+    //   type: 'divider',
+    // },
     {
       key: 'logout',
       icon: <LogoutOutlined />,

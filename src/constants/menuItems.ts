@@ -11,6 +11,7 @@ import {
   AiOutlineFileText,
   AiOutlineTag,
   AiOutlineQrcode,
+  AiOutlineUser,
 } from "react-icons/ai";
 import { MenuItem } from "@/utils/interfaces";
 
@@ -101,6 +102,15 @@ const manageItemMenuItems: MenuItem[] = [
     icon: AiOutlineTag,
     label: "Quản lý các mặt hàng",
     path: ROUTES.PROTECTED.ITEM.LIST,
+  },
+];
+
+const manageAccountMenuItems: MenuItem[] = [
+  {
+    key: "account-list",
+    icon: AiOutlineUser,
+    label: "Quản lý tài khoản",
+    path: ROUTES.PROTECTED.ACCOUNT.LIST,
   },
 ];
 
@@ -254,8 +264,7 @@ export const menuItems: RoleMenuConfig = {
   [AccountRole.ACCOUNTING]: [...baseMenuItems],
 
   [AccountRole.ADMIN]: [
-    ...baseMenuItems,
     ...configurationMenuItems,
-    ...manageItemMenuItems,
+    ...manageAccountMenuItems,
   ],
 };

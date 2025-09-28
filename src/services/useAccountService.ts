@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 // Interface to match AccountResponse.java
 export interface AccountResponse {
   id: number;
+  username: string;
   email: string;
   phone: string;
   fullName: string;
@@ -39,6 +40,22 @@ export interface RegisterResponse {
   status: string;
   isEnable: boolean;
   isBlocked: boolean;
+}
+
+export type AccountStatusForRequest =
+  | "ACTIVE"
+  | "INACTIVE"
+  | "ON_LEAVE"
+  | "TERMINATED";
+
+export interface UpdateAccountRequest {
+  id: number;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  status?: AccountStatusForRequest;
+  isEnable?: boolean;
+  password?: string;
 }
 
 // Interface to match AuthenticationRequest.java
@@ -80,6 +97,27 @@ const useAccountService = () => {
       throw new Error("Registration failed");
     } catch (error) {
       toast.error("Đăng ký tài khoản thất bại");
+      throw error;
+    }
+  };
+
+  /**
+   * Update an existing account
+   * @param request - The update request data
+   * @returns Promise resolving to AccountResponse
+   */
+  const updateAccount = async (
+    request: UpdateAccountRequest
+  ): Promise<AccountResponse> => {
+    try {
+      const response = await callApi("put", "/account/update", request);
+      if (response && response.content) {
+        toast.success("Cập nhật tài khoản thành công");
+        return response.content;
+      }
+      throw new Error("Account update failed");
+    } catch (error) {
+      toast.error("Cập nhật tài khoản thất bại");
       throw error;
     }
   };
@@ -251,6 +289,7 @@ const useAccountService = () => {
     findAccountByEmail,
     findAccountByUsername,
     findAccountById,
+    updateAccount,
   };
 };
 

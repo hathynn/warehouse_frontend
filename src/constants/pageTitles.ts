@@ -25,6 +25,9 @@ export const pageTitles: PageTitlesType = {
   [ROUTES.PROTECTED.ITEM.CREATE]: "Tạo vật phẩm",
   [ROUTES.PROTECTED.ITEM.DETAIL(':id')]: "Chi tiết vật phẩm",
 
+  // Account pages
+  [ROUTES.PROTECTED.ACCOUNT.LIST]: "Quản lý tài khoản",
+
   // Inventory item pages
   [ROUTES.PROTECTED.INVENTORY_ITEM.LIST]: "Danh sách hàng hoá trong kho",
   [ROUTES.PROTECTED.INVENTORY_ITEM.WAREHOUSE_SECTION]: "Khu vực kho",
@@ -40,4 +43,3 @@ export const pageTitles: PageTitlesType = {
   [ROUTES.PUBLIC.LOGIN]: "Đăng nhập",
   [ROUTES.PUBLIC.REGISTER]: "Đăng ký",
 };
-
