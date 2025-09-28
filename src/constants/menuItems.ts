@@ -100,7 +100,7 @@ const manageItemMenuItems: MenuItem[] = [
   {
     key: "item-list",
     icon: AiOutlineTag,
-    label: "Quản lý các mặt hàng",
+    label: "Quản lý danh mục hàng",
     path: ROUTES.PROTECTED.ITEM.LIST,
   },
 ];

@@ -56,7 +56,13 @@ const QrCodeExport = () => {
             request.status === "IN_PROGRESS" &&
             (request.type === "SELLING" || request.type === "INTERNAL")
         );
-        setExportRequests(inProgressRequests);
+
+        // Sắp xếp theo exportRequestId từ lớn đến nhỏ
+        const sortedRequests = inProgressRequests.sort((a, b) => {
+          return b.exportRequestId.localeCompare(a.exportRequestId);
+        });
+
+        setExportRequests(sortedRequests);
       }
     } catch (error) {
       console.error("Error fetching export requests:", error);
