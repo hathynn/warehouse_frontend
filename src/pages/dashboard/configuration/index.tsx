@@ -10,6 +10,8 @@ const fieldDescriptions = {
   createRequestTimeAtLeast: "Khoảng thời gian tối thiểu (tính bằng giờ) từ lúc tạo đơn đến lúc nhận hàng. Ví dụ: Nếu đặt là 4, bạn chỉ có thể chọn nhận hàng sau ít nhất 4 giờ kể từ bây giờ.",
   timeToAllowAssign: "Số giờ trước khi nhận hàng mà bạn có thể thay đổi nhân viên được phân công. Sau thời gian này, không thể thay đổi nhân viên nữa. Ví dụ: Nếu đặt là 2, bạn chỉ có thể đổi nhân viên trước giờ nhận hàng 2 tiếng.",
   timeToAllowConfirm: "Khoảng thời gian cho phép xác nhận công việc từ thời điểm nhận hàng",
+  maxAllowedDaysForExtend: "Số ngày tối đa được phép gia hạn thêm cho một đơn nhập.",
+  maxAllowedDaysForImportRequestProcess: "Số ngày tối đa để xử lý một phiếu yêu cầu nhập kể từ ngày tạo.",
 };
 
 const getLabel = (label: string, field: keyof typeof fieldDescriptions) => (
@@ -47,6 +49,8 @@ const ConfigurationPage: React.FC = () => {
           timeToAllowConfirm: config.timeToAllowConfirm
             ? Number(config.timeToAllowConfirm.split(":")[0])
             : undefined,
+          maxAllowedDaysForExtend: config.maxAllowedDaysForExtend,
+          maxAllowedDaysForImportRequestProcess: config.maxAllowedDaysForImportRequestProcess,
         });
       }
     })();
@@ -72,7 +76,7 @@ const ConfigurationPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-5">
+    <div className="container p-5 mx-auto">
       <Card title={<span style={{ fontSize: 18, fontWeight: 600 }}>Cấu hình hệ thống</span>} bordered>
         <Spin spinning={loading}>
           <Form form={form} layout="vertical" onFinish={onFinish}>
@@ -137,8 +141,34 @@ const ConfigurationPage: React.FC = () => {
               />
             </Form.Item>
 
+            <Form.Item
+              label={getLabel("Số ngày tối đa được gia hạn", "maxAllowedDaysForExtend")}
+              name="maxAllowedDaysForExtend"
+              rules={[{ required: true, message: "Bắt buộc" }]}
+            >
+              <InputNumber
+                min={1}
+                step={1}
+                addonAfter="ngày"
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={getLabel("Thời gian xử lý tối đa cho yêu cầu nhập", "maxAllowedDaysForImportRequestProcess")}
+              name="maxAllowedDaysForImportRequestProcess"
+              rules={[{ required: true, message: "Bắt buộc" }]}
+            >
+              <InputNumber
+                min={1}
+                step={1}
+                addonAfter="ngày"
+                size="large"
+              />
+            </Form.Item>
+
             <Form.Item>
-              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} style={{ fontSize: 16, padding: '0 20px' }}>
+              <Button type="primary" htmlType="submit" icon={<SaveOutlined />} style={{ fontSize: 16, padding: "0 20px" }}>
                 Lưu cấu hình
               </Button>
             </Form.Item>
