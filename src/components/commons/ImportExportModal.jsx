@@ -16,6 +16,8 @@ import {
   Empty,
   Button,
   Popover,
+  Select,
+  DatePicker,
 } from "antd";
 import {
   //   RiseOutlined,
@@ -26,9 +28,16 @@ import {
   CopyOutlined,
   CheckCircleOutlined,
   DatabaseOutlined,
+  CalendarOutlined,
 } from "@ant-design/icons";
 import PropTypes from "prop-types";
 import useItemService from "@/services/useItemService";
+import dayjs from "dayjs";
+import { ConfigProvider } from "antd";
+import viVN from "antd/locale/vi_VN";
+import { useMemo } from "react";
+
+const { Option } = Select;
 
 const { Panel } = Collapse;
 const { Text } = Typography;
@@ -37,14 +46,31 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
   const [loading, setLoading] = useState(false);
   const [importExportData, setImportExportData] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [dateFilter, setDateFilter] = useState("month");
+  const [selectedQuarter, setSelectedQuarter] = useState(
+    Math.ceil((new Date().getMonth() + 1) / 3)
+  );
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [customDateRange, setCustomDateRange] = useState(null);
+
   const { getItemImportExportNumber } = useItemService();
 
-  const fetchImportExportData = async () => {
+  const fetchImportExportData = async (fromDate = null, toDate = null) => {
     if (!itemId) return;
 
     try {
       setLoading(true);
-      const response = await getItemImportExportNumber(itemId);
+
+      // Sử dụng dates từ parameter hoặc fallback to default
+      const finalFromDate =
+        fromDate || dayjs().startOf("month").format("YYYY-MM-DD");
+      const finalToDate = toDate || dayjs().format("YYYY-MM-DD");
+
+      const response = await getItemImportExportNumber(
+        itemId,
+        finalFromDate,
+        finalToDate
+      );
 
       if (response && response.content) {
         setImportExportData(response.content);
@@ -57,11 +83,99 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
     }
   };
 
+  // Thêm useMemo để tính date range
+  const getDateRange = useMemo(() => {
+    let fromDate, toDate;
+
+    switch (dateFilter) {
+      case "month": {
+        fromDate = dayjs().startOf("month").format("YYYY-MM-DD");
+        toDate = dayjs().format("YYYY-MM-DD");
+        break;
+      }
+      case "quarter": {
+        const quarterStart = (selectedQuarter - 1) * 3;
+        fromDate = dayjs()
+          .year(selectedYear)
+          .month(quarterStart)
+          .startOf("month")
+          .format("YYYY-MM-DD");
+        toDate = dayjs()
+          .year(selectedYear)
+          .month(quarterStart + 2)
+          .endOf("month")
+          .format("YYYY-MM-DD");
+        if (dayjs(toDate).isAfter(dayjs())) {
+          toDate = dayjs().format("YYYY-MM-DD");
+        }
+        break;
+      }
+      case "year": {
+        fromDate = dayjs()
+          .year(selectedYear)
+          .startOf("year")
+          .format("YYYY-MM-DD");
+        toDate = dayjs().year(selectedYear).endOf("year").format("YYYY-MM-DD");
+        if (dayjs(toDate).isAfter(dayjs())) {
+          toDate = dayjs().format("YYYY-MM-DD");
+        }
+        break;
+      }
+      case "custom": {
+        if (customDateRange) {
+          fromDate = customDateRange[0];
+          toDate = customDateRange[1];
+        } else {
+          fromDate = dayjs().startOf("month").format("YYYY-MM-DD");
+          toDate = dayjs().format("YYYY-MM-DD");
+        }
+        break;
+      }
+      default: {
+        fromDate = dayjs().startOf("month").format("YYYY-MM-DD");
+        toDate = dayjs().format("YYYY-MM-DD");
+      }
+    }
+
+    return { fromDate, toDate };
+  }, [dateFilter, selectedQuarter, selectedYear, customDateRange]);
+
   useEffect(() => {
     if (visible && itemId) {
-      fetchImportExportData();
+      const { fromDate, toDate } = getDateRange;
+      fetchImportExportData(fromDate, toDate);
     }
   }, [visible, itemId]);
+
+  // Thêm useEffect mới để reload khi date thay đổi
+  useEffect(() => {
+    if (visible && itemId) {
+      const { fromDate, toDate } = getDateRange;
+      fetchImportExportData(fromDate, toDate);
+    }
+  }, [getDateRange, visible, itemId]);
+
+  // Helper functions
+  const getCurrentYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= currentYear - 10; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  const getQuartersForYear = () => {
+    const currentYear = new Date().getFullYear();
+    const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+
+    if (selectedYear === currentYear) {
+      return Array.from({ length: currentQuarter }, (_, i) => i + 1);
+    } else if (selectedYear < currentYear) {
+      return [1, 2, 3, 4];
+    }
+    return [];
+  };
 
   const calculateInventoryBalance = () => {
     if (!importExportData) return 0;
@@ -82,9 +196,6 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
   };
 
   const formatOrderId = (id) => {
-    if (id.length > 15) {
-      return `${id.substring(0, 8)}...${id.substring(id.length - 4)}`;
-    }
     return id;
   };
 
@@ -134,6 +245,113 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
       width={800}
       centered
     >
+      {/* Thêm Date Filter Section */}
+      <div className="mb-6">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <CalendarOutlined className="text-slate-600" />
+            <span className="font-semibold text-slate-700 text-lg">
+              Thống kê theo thời gian
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={dateFilter}
+              onChange={setDateFilter}
+              className="min-w-[130px]"
+              size="middle"
+            >
+              <Option value="month">Tháng hiện tại</Option>
+              <Option value="quarter">Theo quý</Option>
+              <Option value="year">Theo năm</Option>
+              <Option value="custom">Tùy chọn</Option>
+            </Select>
+
+            {dateFilter === "quarter" && (
+              <>
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  className="min-w-[90px]"
+                  size="middle"
+                >
+                  {getCurrentYears().map((year) => (
+                    <Option key={year} value={year}>
+                      {year}
+                    </Option>
+                  ))}
+                </Select>
+                <Select
+                  value={selectedQuarter}
+                  onChange={setSelectedQuarter}
+                  className="min-w-[90px]"
+                  size="middle"
+                >
+                  {getQuartersForYear().map((quarter) => (
+                    <Option key={quarter} value={quarter}>
+                      Q{quarter}
+                    </Option>
+                  ))}
+                </Select>
+              </>
+            )}
+
+            {dateFilter === "year" && (
+              <Select
+                value={selectedYear}
+                onChange={setSelectedYear}
+                className="min-w-[90px]"
+                size="middle"
+              >
+                {getCurrentYears().map((year) => (
+                  <Option key={year} value={year}>
+                    {year}
+                  </Option>
+                ))}
+              </Select>
+            )}
+
+            {dateFilter === "custom" && (
+              <ConfigProvider locale={viVN}>
+                <DatePicker.RangePicker
+                  value={
+                    customDateRange
+                      ? [dayjs(customDateRange[0]), dayjs(customDateRange[1])]
+                      : null
+                  }
+                  onChange={(dates) => {
+                    if (dates && dates[0] && dates[1]) {
+                      setCustomDateRange([
+                        dates[0].format("YYYY-MM-DD"),
+                        dates[1].format("YYYY-MM-DD"),
+                      ]);
+                    } else {
+                      setCustomDateRange(null);
+                    }
+                  }}
+                  // disabledDate={(current) =>
+                  //   current && current > dayjs().endOf("day")
+                  // }
+                  format="DD/MM/YYYY"
+                  size="middle"
+                  placeholder={["Ngày bắt đầu", "Ngày kết thúc"]}
+                />
+              </ConfigProvider>
+            )}
+          </div>
+        </div>
+
+        {/* Date Range Display */}
+        <div className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+          <span className="text-sm text-slate-600 font-medium">
+            Khoảng thời gian:{" "}
+            {dayjs(getDateRange.fromDate).format("DD/MM/YYYY")} -{" "}
+            {dayjs(getDateRange.toDate).format("DD/MM/YYYY")}
+          </span>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex flex-col justify-center items-center py-16">
           <Spin size="large" />

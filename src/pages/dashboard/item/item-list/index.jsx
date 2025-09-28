@@ -303,8 +303,9 @@ const ItemList = () => {
             },
           },
           {
-            title: "Giá trị đo lường",
+            title: "Giá trị đo lường chuẩn",
             key: "measurementValue",
+            align: "center",
             render: (text, record) => (
               <span>
                 <strong style={{ fontSize: "16px" }}>
@@ -349,10 +350,23 @@ const ItemList = () => {
             key: "name",
           },
           {
+            title: "Giá trị đo lường chuẩn",
+            key: "measurementValue",
+            align: "center",
+            render: (text, record) => (
+              <span>
+                <strong style={{ fontSize: "16px" }}>
+                  {record.measurementValue || 0}
+                </strong>{" "}
+                {record?.measurementUnit} {"/"} {record?.unitType}
+              </span>
+            ),
+          },
+          {
             title: "Số lượng tồn kho",
             dataIndex: "quantity",
             key: "quantity",
-            align: "left",
+            align: "center",
             render: (text, record) => (
               <span>
                 <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
@@ -360,29 +374,29 @@ const ItemList = () => {
               </span>
             ),
           },
-          {
-            title: "Số lượng khả dụng",
-            key: "availableQuantity",
-            align: "left",
-            render: (text, record) => {
-              const availableQty = Math.max(
-                0,
-                (record.numberOfAvailableItems || 0) -
-                  (record.minimumStockQuantity || 0)
-              );
-              return (
-                <span>
-                  <strong style={{ fontSize: "17px" }}>{availableQty}</strong>{" "}
-                  {record.unitType}
-                </span>
-              );
-            },
-          },
+          // {
+          //   title: "Số lượng khả dụng",
+          //   key: "availableQuantity",
+          //   align: "left",
+          //   render: (text, record) => {
+          //     const availableQty = Math.max(
+          //       0,
+          //       (record.numberOfAvailableItems || 0) -
+          //         (record.minimumStockQuantity || 0)
+          //     );
+          //     return (
+          //       <span>
+          //         <strong style={{ fontSize: "17px" }}>{availableQty}</strong>{" "}
+          //         {record.unitType}
+          //       </span>
+          //     );
+          //   },
+          // },
           {
             title: "Giá trị tồn kho",
             dataIndex: "totalMeasurementValue",
             key: "totalMeasurementValue",
-            align: "left",
+            align: "center",
             render: (text, record) => (
               <span>
                 <strong style={{ fontSize: "17px" }}>{text || "0"}</strong>{" "}
@@ -390,25 +404,25 @@ const ItemList = () => {
               </span>
             ),
           },
-          {
-            title: "Giá trị khả dụng",
-            key: "availableValue",
-            align: "left",
-            render: (text, record) => {
-              const availableValue = Math.max(
-                0,
-                (record.numberOfAvailableMeasurementValues || 0) -
-                  (record.minimumStockQuantity || 0) *
-                    (record.measurementValue || 0)
-              );
-              return (
-                <span>
-                  <strong style={{ fontSize: "17px" }}>{availableValue}</strong>{" "}
-                  {record.measurementUnit}
-                </span>
-              );
-            },
-          },
+          // {
+          //   title: "Giá trị khả dụng",
+          //   key: "availableValue",
+          //   align: "left",
+          //   render: (text, record) => {
+          //     const availableValue = Math.max(
+          //       0,
+          //       (record.numberOfAvailableMeasurementValues || 0) -
+          //         (record.minimumStockQuantity || 0) *
+          //           (record.measurementValue || 0)
+          //     );
+          //     return (
+          //       <span>
+          //         <strong style={{ fontSize: "17px" }}>{availableValue}</strong>{" "}
+          //         {record.measurementUnit}
+          //       </span>
+          //     );
+          //   },
+          // },
           {
             title: "Chi tiết",
             key: "detail",

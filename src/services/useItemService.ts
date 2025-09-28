@@ -8,14 +8,17 @@ export interface ItemRequest {
   id?: string;
   name: string;
   description: string;
-  measurementUnit: number;
+  measurementUnit: string;
+  measurementValue?: number;
   totalMeasurementValue?: number;
   unitType: string;
   daysUntilDue?: number;
   minimumStockQuantity?: number;
   maximumStockQuantity?: number;
   categoryId: number;
-  providerId: number;
+  providerId?: number;
+  providerCode?: string;
+  providerIds?: number[];
   countingMinutes?: number;
 }
 
@@ -170,10 +173,15 @@ const useItemService = () => {
   };
 
   const getItemImportExportNumber = async (
-    itemId: string
+    itemId: string,
+    fromDate: string,
+    toDate: string
   ): Promise<ResponseDTO<ItemImportExportResponse>> => {
     try {
-      const response = await callApi("get", `/item/im-ex/${itemId}`);
+      const response = await callApi(
+        "get",
+        `/item/im-ex/${itemId}?fromDate=${fromDate}&toDate=${toDate}`
+      );
       return response;
     } catch (error) {
       toast.error("Không thể lấy thông tin import-export của sản phẩm");
