@@ -170,9 +170,10 @@ const ExportRequestDetail = () => {
   };
   // Hàm lấy thông tin phiếu xuất
   const fetchExportRequestData = useCallback(async () => {
-    if (!exportRequestId) return;
+    if (!exportRequestId) return null; // ✅ THÊM return null
     const data = await getExportRequestById(exportRequestId);
     setExportRequest(data);
+    return data; // ✅ THÊM: return data để dùng ngay
   }, [exportRequestId, getExportRequestById]);
 
   const enrichDetailsWithLocalData = (details, itemsData) => {
@@ -431,29 +432,25 @@ const ExportRequestDetail = () => {
 
   useEffect(() => {
     if (latestNotification) {
+      // ✅ Chỉ cần check xem notification có liên quan đến exportRequestId này không
       const isExportRequestEvent =
-        latestNotification.type ===
-          `export-request-counted-${exportRequestId}` ||
-        latestNotification.type ===
-          `import-order-completed-${exportRequestId}` ||
-        latestNotification.type ===
-          `export-request-confirmed-${exportRequestId}` ||
-        latestNotification.type ===
-          `export-request-cancelled-${exportRequestId}` ||
-        latestNotification.type ===
-          `export-request-extended-${exportRequestId}` ||
-        latestNotification.type ===
-          `export-request-completed-${exportRequestId}`;
+        latestNotification.type?.includes(`-${exportRequestId}`) &&
+        latestNotification.type?.startsWith("export-request-");
+
       if (isExportRequestEvent) {
-        console.log("🔄 Reloading for event:", latestNotification.type); // ✅ Debug
+        console.log("🔄 Reloading for event:", latestNotification.type);
+        console.log("📌 Current status:", exportRequest?.status); // Debug
+
+        // ✅ QUAN TRỌNG: Luôn fetch data mới từ backend, không dựa vào event name
         reloadExportRequestDetail();
       }
     }
-  }, [latestNotification]);
+  }, [latestNotification, exportRequestId]);
 
   // ========== UTILITY FUNCTIONS ==========
   const reloadExportRequestDetail = async () => {
-    // ✅ THÊM async
+    console.log("🔄 Starting reload..."); // Debug
+
     // Reset UI states
     setAssignModalVisible(false);
     setConfirmModalVisible(false);
@@ -477,27 +474,47 @@ const ExportRequestDetail = () => {
     setSelectedAutoChangeItem(null);
     setInventorySearchText("");
 
-    // ✅ SỬA: Đợi các fetch hoàn thành
     try {
-      await fetchExportRequestData();
+      // ✅ 1. Fetch exportRequest MỚI NHẤT từ backend
+      console.log("📡 Fetching fresh export request..."); // Debug
+      const freshExportRequest = await getExportRequestById(exportRequestId);
+      console.log("✅ Fresh status:", freshExportRequest?.status); // Debug
 
-      // ✅ QUAN TRỌNG: Reset về trang 1 và force refresh allExportRequestDetails
+      // ✅ 2. Set state NGAY với data mới
+      setExportRequest(freshExportRequest);
+
+      // ✅ 3. Reset về trang 1
       setPagination((prev) => ({
         ...prev,
         current: 1,
       }));
 
+      // ✅ 4. Fetch details với data mới
       await fetchDetails(1, pagination.pageSize);
 
-      // ✅ THÊM: Fetch lại assigned staff nếu có
-      if (exportRequest?.countingStaffId) {
-        await fetchAssignedCountingStaff();
+      // ✅ 5. Fetch assigned staff với freshExportRequest
+      if (freshExportRequest?.countingStaffId) {
+        const staffResponse = await findAccountById(
+          freshExportRequest.countingStaffId
+        );
+        setAssignedStaff(staffResponse);
+      } else {
+        setAssignedStaff(null); // ✅ THÊM: Clear nếu không còn
       }
-      if (exportRequest?.assignedWareHouseKeeperId) {
-        await fetchAssignedKeeper();
+
+      if (freshExportRequest?.assignedWareHouseKeeperId) {
+        const keeperResponse = await findAccountById(
+          freshExportRequest.assignedWareHouseKeeperId
+        );
+        setAssignedKeeper(keeperResponse);
+      } else {
+        setAssignedKeeper(null); // ✅ THÊM: Clear nếu không còn
       }
+
+      console.log("✅ Reload completed successfully"); // Debug
     } catch (error) {
-      console.error("Error reloading export request detail:", error);
+      console.error("❌ Error reloading export request detail:", error);
+      message.error("Không thể tải lại thông tin phiếu xuất");
     }
   };
 
