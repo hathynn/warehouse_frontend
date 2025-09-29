@@ -214,27 +214,20 @@ const ExportRequestDetail = () => {
           }));
         }
 
-        // ✅ Chỉ fetch all data một lần khi chưa có
-        if (allExportRequestDetails.length === 0 && page === 1) {
-          const allResp = await getExportRequestDetails(
-            exportRequestId,
-            1,
-            1000
+        const allResp = await getExportRequestDetails(exportRequestId, 1, 1000);
+        if (allResp && allResp.content) {
+          const allEnriched = enrichDetailsWithLocalData(
+            allResp.content,
+            items
           );
-          if (allResp && allResp.content) {
-            const allEnriched = enrichDetailsWithLocalData(
-              allResp.content,
-              items
-            );
-            setAllExportRequestDetails(allEnriched);
-          }
+          setAllExportRequestDetails(allEnriched);
         }
       } catch (error) {
         console.error("Error fetching export request details:", error);
         message.error("Không thể tải chi tiết phiếu xuất");
       }
     },
-    [exportRequestId, items, allExportRequestDetails.length]
+    [exportRequestId, items] // ✅ SỬA: Bỏ allExportRequestDetails.length khỏi dependency
   );
 
   const fetchInventoryItems = async (exportRequestDetailId) => {
@@ -452,13 +445,16 @@ const ExportRequestDetail = () => {
         latestNotification.type ===
           `export-request-completed-${exportRequestId}`;
       if (isExportRequestEvent) {
+        console.log("🔄 Reloading for event:", latestNotification.type); // ✅ Debug
         reloadExportRequestDetail();
       }
     }
   }, [latestNotification]);
 
   // ========== UTILITY FUNCTIONS ==========
-  const reloadExportRequestDetail = () => {
+  const reloadExportRequestDetail = async () => {
+    // ✅ THÊM async
+    // Reset UI states
     setAssignModalVisible(false);
     setConfirmModalVisible(false);
     setCompleteModalVisible(false);
@@ -481,14 +477,27 @@ const ExportRequestDetail = () => {
     setSelectedAutoChangeItem(null);
     setInventorySearchText("");
 
-    // Refetch all data
-    fetchExportRequestData();
-    fetchDetails();
-    if (exportRequest?.countingStaffId) {
-      fetchAssignedCountingStaff();
-    }
-    if (exportRequest?.assignedWareHouseKeeperId) {
-      fetchAssignedKeeper();
+    // ✅ SỬA: Đợi các fetch hoàn thành
+    try {
+      await fetchExportRequestData();
+
+      // ✅ QUAN TRỌNG: Reset về trang 1 và force refresh allExportRequestDetails
+      setPagination((prev) => ({
+        ...prev,
+        current: 1,
+      }));
+
+      await fetchDetails(1, pagination.pageSize);
+
+      // ✅ THÊM: Fetch lại assigned staff nếu có
+      if (exportRequest?.countingStaffId) {
+        await fetchAssignedCountingStaff();
+      }
+      if (exportRequest?.assignedWareHouseKeeperId) {
+        await fetchAssignedKeeper();
+      }
+    } catch (error) {
+      console.error("Error reloading export request detail:", error);
     }
   };
 
