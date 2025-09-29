@@ -266,5 +266,6 @@ export const menuItems: RoleMenuConfig = {
   [AccountRole.ADMIN]: [
     ...configurationMenuItems,
     ...manageAccountMenuItems,
+    ...manageItemMenuItems,
   ],
 };
