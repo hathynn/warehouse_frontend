@@ -15,6 +15,13 @@ interface CheckedInventoryItem {
   status?: "NEED_LIQUID" | "AVAILABLE" | "UNAVAILABLE"; // dùng union type để chặt chẽ
 }
 
+export interface InventoryItemDetail {
+  inventoryItemId: string;
+  measurementValue: number;
+  status: string | null;
+  note: string | null;
+}
+
 // Response từ API GET /stock-check-detail/{stockCheckId}
 export interface StockCheckDetailResponse {
   id: number;
@@ -23,9 +30,10 @@ export interface StockCheckDetailResponse {
   actualQuantity: number;
   actualMeasurementValue: number;
   status: string | null;
+  isChecked: boolean; // thêm field này
   stockCheckRequestId: string;
   itemId: string;
-  inventoryItemIds: string[];
+  inventoryItemIds: InventoryItemDetail[]; // ĐỔI từ string[] sang InventoryItemDetail[]
   checkedInventoryItemIds?: CheckedInventoryItem[];
 }
 
@@ -77,10 +85,9 @@ const useStockCheckDetailService = () => {
         `/stock-check-detail/${stockCheckId}`
       );
 
-      console.log("🔧 Service response:", response);
       console.log("🔧 Service response.content:", response.content);
 
-      return response.content; // ← Có thể vấn đề ở đây!
+      return response.content;
     } catch (error) {
       toast.error("Không thể lấy chi tiết phiếu kiểm kho");
       console.error("Error fetching stock check detail:", error);

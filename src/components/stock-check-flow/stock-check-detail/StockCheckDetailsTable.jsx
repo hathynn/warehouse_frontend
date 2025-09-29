@@ -127,7 +127,7 @@ const StockCheckDetailsTable = ({
         ),
       },
       {
-        title: "Quy cách đo lường",
+        title: "Giá trị đo lường",
         dataIndex: "measurementValue",
         key: "measurementValue",
         width: "25%",
@@ -242,26 +242,30 @@ const StockCheckDetailsTable = ({
     }
 
     const { inventoryItemIds } = rowData;
-
-    // Lấy checkedInventoryItemIds từ record gốc thay vì từ rowData
     const checkedInventoryItemIds = record.checkedInventoryItemIds || [];
+
+    // ✅ TẠO MAP để lookup measurementValue từ inventoryItemIds (array of objects mới)
+    const inventoryItemMeasurementMap = {};
+    inventoryItemIds.forEach((item) => {
+      inventoryItemMeasurementMap[item.inventoryItemId] = item.measurementValue;
+    });
 
     // Filter inventory items thuộc về record này
     const filteredInventoryItems = inventoryItemsData.filter((item) =>
-      inventoryItemIds.includes(item.id)
+      inventoryItemIds.some((invItem) => invItem.inventoryItemId === item.id)
     );
 
-    // Sort items by measurementValue first
+    // ✅ Sort items by measurementValue từ inventoryItemIds (không phải từ inventory item object)
     const sortedItems = [...filteredInventoryItems].sort((a, b) => {
-      const valA = a.measurementValue || 0;
-      const valB = b.measurementValue || 0;
+      const valA = inventoryItemMeasurementMap[a.id] || 0;
+      const valB = inventoryItemMeasurementMap[b.id] || 0;
       return valA - valB;
     });
 
-    // Group ALL items by measurementValue BEFORE pagination
+    // ✅ Group by measurementValue từ inventoryItemIds
     const groupedByMeasurement = {};
     sortedItems.forEach((item) => {
-      const measurementValue = item.measurementValue || 0;
+      const measurementValue = inventoryItemMeasurementMap[item.id] || 0;
       if (!groupedByMeasurement[measurementValue]) {
         groupedByMeasurement[measurementValue] = [];
       }
@@ -277,9 +281,9 @@ const StockCheckDetailsTable = ({
         items.forEach((item, index) => {
           allTableData.push({
             key: item.id,
-            measurementValue: measurementValue,
+            measurementValue: measurementValue, // ✅ Đây là measurementValue từ inventoryItemIds
             inventoryItemId: item.id,
-            status: item.status, // Trạng thái trước kiểm
+            status: item.status,
             isChecked: checkedInventoryItemIds.some(
               (checked) => checked.inventoryItemId === item.id
             ),
@@ -293,19 +297,17 @@ const StockCheckDetailsTable = ({
         groupIndex++;
       });
 
-    // Phần còn lại của logic pagination giữ nguyên...
+    // Phần pagination giữ nguyên...
     const currentPagination = expandedPagination[record.id] || {
       current: 1,
       pageSize: 10,
     };
 
-    // Apply pagination AFTER grouping
     const startIndex =
       (currentPagination.current - 1) * currentPagination.pageSize;
     const endIndex = startIndex + currentPagination.pageSize;
     const paginatedData = allTableData.slice(startIndex, endIndex);
 
-    // Recalculate group spans for current page
     const tableData = paginatedData.map((item, idx) => {
       const isFirstOnPage =
         idx === 0 ||
@@ -334,7 +336,7 @@ const StockCheckDetailsTable = ({
     // Render expanded content
     const expandedColumns = [
       {
-        title: "Quy cách (trước kiểm)",
+        title: "Giá trị đo (trước kiểm)",
         dataIndex: "measurementValue",
         key: "measurementValue",
         align: "center",
@@ -426,8 +428,8 @@ const StockCheckDetailsTable = ({
               width: "13%",
               align: "center",
               render: (inventoryItemId) => {
-                // Tìm trong checkedInventoryItemIds của record gốc
-                const checkedItem = rowData.checkedInventoryItemIds?.find(
+                // ✅ LẤY TỪ record.checkedInventoryItemIds (props component), KHÔNG phải rowData
+                const checkedItem = record.checkedInventoryItemIds?.find(
                   (item) => item.inventoryItemId === inventoryItemId
                 );
 
@@ -454,7 +456,6 @@ const StockCheckDetailsTable = ({
                 return (
                   <div style={{ textAlign: "center" }}>
                     <Tag color={config.color}>{config.text}</Tag>
-                    {/* Hiển thị note nếu là NEED_LIQUID và có note */}
                     {status === "NEED_LIQUID" && note && (
                       <div
                         style={{
@@ -463,19 +464,8 @@ const StockCheckDetailsTable = ({
                           marginTop: "4px",
                         }}
                       >
-                        <span
-                          style={{
-                            color: "black",
-                          }}
-                        >
-                          Lý do:
-                        </span>{" "}
-                        <span
-                          style={{
-                            color: "black",
-                            fontWeight: "600",
-                          }}
-                        >
+                        <span style={{ color: "black" }}>Lý do:</span>{" "}
+                        <span style={{ color: "black", fontWeight: "600" }}>
                           {note}
                         </span>
                       </div>
@@ -490,18 +480,26 @@ const StockCheckDetailsTable = ({
       ...(stockCheckStatus !== "IN_PROGRESS" && stockCheckStatus !== "COUNTED"
         ? [
             {
-              title: "Quy cách (sau kiểm)",
+              title: "Giá trị đo (sau kiểm)",
               dataIndex: "inventoryItemId",
               key: "afterCheckMeasurement",
               width: "13%",
               align: "center",
-              render: (inventoryItemId) => {
-                // Tìm trong checkedInventoryItemIds
-                const checkedItem = rowData.checkedInventoryItemIds?.find(
+              render: (inventoryItemId, rowItem) => {
+                // Lấy từ record.checkedInventoryItemIds
+                const checkedItem = record.checkedInventoryItemIds?.find(
                   (item) => item.inventoryItemId === inventoryItemId
                 );
 
-                if (checkedItem && checkedItem.measurementValue) {
+                // Nếu không tìm thấy hoặc measurementValue là null/undefined
+                if (!checkedItem || checkedItem.measurementValue == null) {
+                  return (
+                    <div style={{ textAlign: "center", color: "#999" }}>-</div>
+                  );
+                }
+
+                // ✅ BỎ QUA so sánh nếu status là UNAVAILABLE (mất)
+                if (checkedItem.status === "UNAVAILABLE") {
                   return (
                     <div style={{ textAlign: "center", fontWeight: "600" }}>
                       {checkedItem.measurementValue} {record.measurementUnit}
@@ -509,8 +507,39 @@ const StockCheckDetailsTable = ({
                   );
                 }
 
+                // ✅ LẤY giá trị trước kiểm từ inventoryItemMeasurementMap
+                const beforeValue =
+                  inventoryItemMeasurementMap[inventoryItemId] || 0;
+                const afterValue = checkedItem.measurementValue;
+                const difference = afterValue - beforeValue;
+
+                // Nếu không chênh lệch
+                if (difference === 0) {
+                  return (
+                    <div style={{ textAlign: "center", fontWeight: "600" }}>
+                      {afterValue} {record.measurementUnit}
+                    </div>
+                  );
+                }
+
+                // Có chênh lệch - hiển thị cả giá trị và chênh lệch
                 return (
-                  <div style={{ textAlign: "center", color: "#999" }}>-</div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontWeight: "600" }}>
+                      {afterValue} {record.measurementUnit}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        marginTop: "4px",
+                        color: difference > 0 ? "#52c41a" : "#ff4d4f", // xanh lá nếu dương, đỏ nếu âm
+                        fontWeight: "600",
+                      }}
+                    >
+                      (chênh lệch: {difference > 0 ? "+" : ""}
+                      {difference})
+                    </div>
+                  </div>
                 );
               },
             },
@@ -633,7 +662,7 @@ const StockCheckDetailsTable = ({
       title: "Tổng giá trị đo lường mong muốn",
       dataIndex: "measurementValue",
       key: "measurementValue",
-      width: "20%",
+      width: "18%",
       align: "center",
       render: (text, record) => (
         <div style={{ textAlign: "center" }}>
@@ -648,7 +677,7 @@ const StockCheckDetailsTable = ({
       title: "Tổng giá trị đã kiểm",
       dataIndex: "actualMeasurementValue",
       key: "actualMeasurementValue",
-      width: "20%",
+      width: "18%",
       align: "center",
       render: (text, record) => {
         // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị 0
@@ -739,7 +768,7 @@ const StockCheckDetailsTable = ({
       title: "Trạng thái kiểm kê",
       dataIndex: "status",
       key: "status",
-      width: "12%",
+      width: "15%",
       align: "center",
       render: (status, record) => {
         // Nếu đang ở state IN_PROGRESS hoặc COUNTED thì hiển thị "-"
@@ -750,7 +779,7 @@ const StockCheckDetailsTable = ({
           return "-";
         }
 
-        // So sánh inventoryItemIds với checkedInventoryItemIds
+        // So sánh số lượng (logic cũ)
         const totalInventoryItems = record.inventoryItemIds
           ? record.inventoryItemIds.length
           : 0;
@@ -761,16 +790,55 @@ const StockCheckDetailsTable = ({
         let statusConfig;
 
         if (checkedCount === totalInventoryItems && totalInventoryItems > 0) {
-          statusConfig = { color: "success", text: "Trùng khớp" };
+          statusConfig = { color: "success", text: "Trùng khớp về số lượng" };
         } else if (checkedCount > totalInventoryItems) {
-          statusConfig = { color: "error", text: "Thừa" };
+          statusConfig = { color: "error", text: "Thừa về số lượng" };
         } else if (checkedCount < totalInventoryItems) {
-          statusConfig = { color: "error", text: "Thiếu" };
+          statusConfig = { color: "error", text: "Thiếu về số lượng" };
         } else {
           return "-";
         }
 
-        return <Tag color={statusConfig.color}>{statusConfig.text}</Tag>;
+        // ✅ THÊM: So sánh giá trị đo lường
+        const expectedMeasurement = record.measurementValue || 0;
+        const totalCheckedMeasurement = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.reduce(
+              (sum, item) => sum + (item.measurementValue || 0),
+              0
+            )
+          : 0;
+
+        let measurementNote = "";
+        let measurementColor = "#000"; // Mặc định màu đen
+
+        if (totalCheckedMeasurement === expectedMeasurement) {
+          measurementNote = "(Bằng với giá trị mong muốn)";
+          measurementColor = "#000"; // Đen
+        } else if (totalCheckedMeasurement < expectedMeasurement) {
+          measurementNote = "(Nhỏ hơn giá trị mong muốn)";
+          measurementColor = "#ff4d4f"; // Đỏ
+        } else if (totalCheckedMeasurement > expectedMeasurement) {
+          measurementNote = "(Lớn hơn giá trị mong muốn)";
+          measurementColor = "#52c41a"; // Xanh lá
+        }
+
+        return (
+          <div style={{ textAlign: "center" }}>
+            <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
+            {/* Dòng note so sánh giá trị đo lường */}
+            <div
+              style={{
+                marginLeft: "-5px",
+                fontSize: "11px",
+                marginTop: "4px",
+                color: measurementColor,
+                fontWeight: "500",
+              }}
+            >
+              {measurementNote}
+            </div>
+          </div>
+        );
       },
     },
   ];

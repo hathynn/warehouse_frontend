@@ -1287,7 +1287,7 @@ const ItemDetail = () => {
 
                 <Descriptions.Item label="Số lượng tồn kho">
                   <strong style={{ fontSize: "18px" }}>{item?.quantity}</strong>{" "}
-                  {item.measurementUnit}
+                  {item.unitType}
                 </Descriptions.Item>
               </>
             )}
