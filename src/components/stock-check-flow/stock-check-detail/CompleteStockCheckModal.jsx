@@ -72,58 +72,22 @@ const CompleteStockCheckModal = ({
       key: "itemId",
       width: "16%",
     },
-    {
-      title: "Số lượng cần kiểm",
-      dataIndex: "quantity",
-      key: "quantity",
-      width: 140,
-      align: "left",
-      render: (text, record) => (
-        <span>
-          <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
-          {record.unitType && (
-            <span className="text-gray-500">{record.unitType}</span>
-          )}
-        </span>
-      ),
-    },
-    {
-      title: "Số lượng đã kiểm",
-      dataIndex: "actualQuantity",
-      key: "actualQuantity",
-      width: 150,
-      align: "left",
-      render: (text, record) => {
-        // Sử dụng logic giống như trong StockCheckDetailsTable
-        const checkedCount = record.checkedInventoryItemIds
-          ? record.checkedInventoryItemIds.length
-          : 0;
+    // {
+    //   title: "Số lượng cần kiểm",
+    //   dataIndex: "quantity",
+    //   key: "quantity",
+    //   width: 140,
+    //   align: "left",
+    //   render: (text, record) => (
+    //     <span>
+    //       <span style={{ fontWeight: "600", fontSize: "16px" }}>{text}</span>{" "}
+    //       {record.unitType && (
+    //         <span className="text-gray-500">{record.unitType}</span>
+    //       )}
+    //     </span>
+    //   ),
+    // },
 
-        const isLacking = checkedCount < record.quantity;
-        const isExcess = checkedCount > record.quantity;
-
-        return (
-          <span
-            className={
-              checkedCount === 0
-                ? "text-gray-600 font-semibold"
-                : isLacking
-                ? "text-red-600 font-semibold"
-                : isExcess
-                ? "text-orange-600 font-semibold"
-                : "text-green-600 font-semibold"
-            }
-          >
-            <span style={{ fontWeight: "600", fontSize: "16px" }}>
-              {checkedCount}
-            </span>{" "}
-            {record.unitType && (
-              <span className="text-gray-500">{record.unitType}</span>
-            )}
-          </span>
-        );
-      },
-    },
     {
       title: "Tổng giá trị đo lường",
       dataIndex: "measurementValue",
@@ -180,6 +144,43 @@ const CompleteStockCheckModal = ({
       },
     },
     {
+      title: "Số lượng đã kiểm",
+      dataIndex: "actualQuantity",
+      key: "actualQuantity",
+      width: 150,
+      align: "left",
+      render: (text, record) => {
+        // Sử dụng logic giống như trong StockCheckDetailsTable
+        const checkedCount = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.length
+          : 0;
+
+        const isLacking = checkedCount < record.quantity;
+        const isExcess = checkedCount > record.quantity;
+
+        return (
+          <span
+            className={
+              checkedCount === 0
+                ? "text-gray-600 font-semibold"
+                : isLacking
+                ? "text-red-600 font-semibold"
+                : isExcess
+                ? "text-orange-600 font-semibold"
+                : "text-green-600 font-semibold"
+            }
+          >
+            <span style={{ fontWeight: "600", fontSize: "16px" }}>
+              {checkedCount}
+            </span>{" "}
+            {record.unitType && (
+              <span className="text-gray-500">{record.unitType}</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
@@ -188,7 +189,7 @@ const CompleteStockCheckModal = ({
         style: { textAlign: "center" },
       }),
       render: (status, record) => {
-        // Sử dụng logic giống như trong StockCheckDetailsTable
+        // So sánh số lượng (logic cũ)
         const totalInventoryItems = record.inventoryItemIds
           ? record.inventoryItemIds.length
           : 0;
@@ -199,18 +200,53 @@ const CompleteStockCheckModal = ({
         let statusConfig;
 
         if (checkedCount === totalInventoryItems && totalInventoryItems > 0) {
-          statusConfig = { color: "success", text: "Trùng khớp" };
+          statusConfig = { color: "success", text: "Trùng khớp về số lượng" };
         } else if (checkedCount > totalInventoryItems) {
-          statusConfig = { color: "error", text: "Thừa" };
+          statusConfig = { color: "error", text: "Thừa về số lượng" };
         } else if (checkedCount < totalInventoryItems) {
-          statusConfig = { color: "error", text: "Thiếu" };
+          statusConfig = { color: "error", text: "Thiếu về số lượng" };
         } else {
           statusConfig = { color: "default", text: "-" };
+        }
+
+        // ✅ THÊM: So sánh giá trị đo lường
+        const expectedMeasurement = record.measurementValue || 0;
+        const totalCheckedMeasurement = record.checkedInventoryItemIds
+          ? record.checkedInventoryItemIds.reduce(
+              (sum, item) => sum + (item.measurementValue || 0),
+              0
+            )
+          : 0;
+
+        let measurementNote = "";
+        let measurementColor = "#000"; // Mặc định màu đen
+
+        if (totalCheckedMeasurement === expectedMeasurement) {
+          measurementNote = "(Bằng với giá trị mong muốn)";
+          measurementColor = "#000"; // Đen
+        } else if (totalCheckedMeasurement < expectedMeasurement) {
+          measurementNote = "(Nhỏ hơn giá trị mong muốn)";
+          measurementColor = "#ff4d4f"; // Đỏ
+        } else if (totalCheckedMeasurement > expectedMeasurement) {
+          measurementNote = "(Lớn hơn giá trị mong muốn)";
+          measurementColor = "#52c41a"; // Xanh lá
         }
 
         return (
           <div style={{ textAlign: "center" }}>
             <Tag color={statusConfig.color}>{statusConfig.text}</Tag>
+            {/* Dòng note so sánh giá trị đo lường */}
+            <div
+              style={{
+                marginLeft: "-5px",
+                fontSize: "11px",
+                marginTop: "4px",
+                color: measurementColor,
+                fontWeight: "500",
+              }}
+            >
+              {measurementNote}
+            </div>
           </div>
         );
       },
