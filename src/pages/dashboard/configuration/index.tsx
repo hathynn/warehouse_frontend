@@ -7,12 +7,14 @@ import dayjs from "dayjs";
 const fieldDescriptions = {
   workingTimeStart: "Thời gian bắt đầu ca làm việc trong ngày của nhân viên (định dạng HH:mm).",
   workingTimeEnd: "Thời gian kết thúc ca làm việc trong ngày của nhân viên (định dạng HH:mm).",
-  createRequestTimeAtLeast: "Khoảng thời gian tối thiểu (tính bằng giờ) từ lúc tạo đơn đến lúc nhận hàng. Ví dụ: Nếu đặt là 4, bạn chỉ có thể chọn nhận hàng sau ít nhất 4 giờ kể từ bây giờ.",
-  timeToAllowAssign: "Số giờ trước khi nhận hàng mà bạn có thể thay đổi nhân viên được phân công. Sau thời gian này, không thể thay đổi nhân viên nữa. Ví dụ: Nếu đặt là 2, bạn chỉ có thể đổi nhân viên trước giờ nhận hàng 2 tiếng.",
+  createRequestTimeAtLeast: "Khoảng thời gian tối thiểu (tính bằng giờ) từ lúc tạo đơn đến lúc nhận hàng.",
+  timeToAllowAssign: "Số giờ trước khi nhận hàng mà bạn có thể thay đổi nhân viên được phân công.",
   timeToAllowConfirm: "Khoảng thời gian cho phép xác nhận công việc từ thời điểm nhận hàng",
   maxAllowedDaysForExtend: "Số ngày tối đa được phép gia hạn thêm cho một đơn nhập.",
   maxAllowedDaysForImportRequestProcess: "Số ngày tối đa để xử lý một phiếu yêu cầu nhập kể từ ngày tạo.",
-};
+  dayWillBeCancelRequest:
+    "Ngày hiệu lực tối đa cho phiếu xuất. Hết số ngày này mà chưa hoàn tất thì phiếu tự động hủy.",
+} as const;
 
 const getLabel = (label: string, field: keyof typeof fieldDescriptions) => (
   <span style={{ fontSize: 16, fontWeight: 500 }}>
@@ -38,8 +40,8 @@ const ConfigurationPage: React.FC = () => {
         setInitialConfig(config);
         form.setFieldsValue({
           ...config,
-          workingTimeStart: dayjs(config.workingTimeStart, "HH:mm"),
-          workingTimeEnd: dayjs(config.workingTimeEnd, "HH:mm"),
+          workingTimeStart: dayjs(config.workingTimeStart, ["HH:mm:ss", "HH:mm"]),
+          workingTimeEnd: dayjs(config.workingTimeEnd, ["HH:mm:ss", "HH:mm"]),
           createRequestTimeAtLeast: config.createRequestTimeAtLeast
             ? Number(config.createRequestTimeAtLeast.split(":")[0])
             : undefined,
@@ -49,6 +51,7 @@ const ConfigurationPage: React.FC = () => {
           timeToAllowConfirm: config.timeToAllowConfirm
             ? Number(config.timeToAllowConfirm.split(":")[0])
             : undefined,
+          dayWillBeCancelRequest: config.dayWillBeCancelRequest,
           maxAllowedDaysForExtend: config.maxAllowedDaysForExtend,
           maxAllowedDaysForImportRequestProcess: config.maxAllowedDaysForImportRequestProcess,
         });
@@ -58,19 +61,20 @@ const ConfigurationPage: React.FC = () => {
 
   const onFinish = async (values: any) => {
     const payload: ConfigurationDto = {
-      ...initialConfig,
+      ...(initialConfig as ConfigurationDto),
       ...values,
-      workingTimeStart: values.workingTimeStart.format("HH:mm"),
-      workingTimeEnd: values.workingTimeEnd.format("HH:mm"),
+      workingTimeStart: values.workingTimeStart.format("HH:mm:ss"),
+      workingTimeEnd: values.workingTimeEnd.format("HH:mm:ss"),
       createRequestTimeAtLeast: values.createRequestTimeAtLeast
-        ? values.createRequestTimeAtLeast.toString().padStart(2, "0") + ":00"
-        : undefined,
+        ? values.createRequestTimeAtLeast.toString().padStart(2, "0") + ":00:00"
+        : (initialConfig?.createRequestTimeAtLeast ?? "00:00:00"),
       timeToAllowAssign: values.timeToAllowAssign
-        ? values.timeToAllowAssign.toString().padStart(2, "0") + ":00"
-        : undefined,
+        ? values.timeToAllowAssign.toString().padStart(2, "0") + ":00:00"
+        : (initialConfig?.timeToAllowAssign ?? "00:00:00"),
       timeToAllowConfirm: values.timeToAllowConfirm
-        ? values.timeToAllowConfirm.toString().padStart(2, "0") + ":00"
-        : undefined,
+        ? values.timeToAllowConfirm.toString().padStart(2, "0") + ":00:00"
+        : (initialConfig?.timeToAllowConfirm ?? "00:00:00"),
+      dayWillBeCancelRequest: values.dayWillBeCancelRequest, // pass through (days)
     };
     await saveConfiguration(payload);
   };
@@ -165,6 +169,14 @@ const ConfigurationPage: React.FC = () => {
                 addonAfter="ngày"
                 size="large"
               />
+            </Form.Item>
+
+            <Form.Item
+              label={getLabel("Ngày hiệu lực tối đa cho phiếu xuất", "dayWillBeCancelRequest")}
+              name="dayWillBeCancelRequest"
+              rules={[{ required: true, message: "Bắt buộc" }]}
+            >
+              <InputNumber min={1} step={1} addonAfter="ngày" size="large" />
             </Form.Item>
 
             <Form.Item>

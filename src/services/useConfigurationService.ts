@@ -1,25 +1,28 @@
+// services/useConfigurationService.ts
 import useApi from "../hooks/useApi";
 import { toast } from "react-toastify";
 
-// Interface to match ConfigurationDto.java
+// Match backend response exactly
 export interface ConfigurationDto {
   id: number;
-  itemIds: number[];
-  workingTimeStart: string; // LocalTime as string, e.g. "08:00:00"
-  workingTimeEnd: string;
-  createRequestTimeAtLeast: string;
-  timeToAllowAssign: string;
-  timeToAllowConfirm: string;
-  timeToAllowCancel: string;
+  itemIds: string[]; // NOTE: array of strings from backend
+  workingTimeStart: string; // "HH:mm:ss"
+  workingTimeEnd: string; // "HH:mm:ss"
+  createRequestTimeAtLeast: string; // "HH:mm:ss"
+  timeToAllowAssign: string; // "HH:mm:ss"
+  timeToAllowConfirm: string; // "HH:mm:ss"
+  timeToAllowCancel: string; // "HH:mm:ss"
+  dayWillBeCancelRequest: number; // days
   daysToAllowExtend: number;
   maxAllowedDaysForExtend: number;
   maxAllowedDaysForImportRequestProcess: number;
+  maxDispatchErrorPercent: number;
+  maxPercentOfItemForExport: number;
 }
 
 const useConfigurationService = () => {
   const { callApi, loading } = useApi();
 
-  // Fetch the configuration
   const getConfiguration = async (): Promise<ConfigurationDto | null> => {
     try {
       const response = await callApi("get", "/configuration");
@@ -33,8 +36,9 @@ const useConfigurationService = () => {
     }
   };
 
-  // Save/update the configuration
-  const saveConfiguration = async (config: ConfigurationDto): Promise<ConfigurationDto> => {
+  const saveConfiguration = async (
+    config: ConfigurationDto
+  ): Promise<ConfigurationDto> => {
     try {
       const response = await callApi("post", "/configuration/save", config);
       toast.success("Lưu cấu hình thành công");
