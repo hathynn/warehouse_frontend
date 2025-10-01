@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Table,
@@ -148,6 +148,8 @@ const ExportRequestDetail = () => {
   const [itemMetadata, setItemMetadata] = useState(null);
   const [loadingItemMetadata, setLoadingItemMetadata] = useState(false);
   const [pdfModalVisible, setPdfModalVisible] = useState(false);
+  const latestFetchRef = useRef(0);
+  const isReloadingRef = useRef(false);
 
   const getLocalStorageKey = () => `export_waiting_start_${exportRequestId}`;
 
@@ -432,24 +434,35 @@ const ExportRequestDetail = () => {
 
   useEffect(() => {
     if (latestNotification) {
-      // ✅ Chỉ cần check xem notification có liên quan đến exportRequestId này không
       const isExportRequestEvent =
         latestNotification.type?.includes(`-${exportRequestId}`) &&
         latestNotification.type?.startsWith("export-request-");
 
       if (isExportRequestEvent) {
         console.log("🔄 Reloading for event:", latestNotification.type);
-        console.log("📌 Current status:", exportRequest?.status); // Debug
+        console.log("📌 Current status:", exportRequest?.status);
 
-        // ✅ QUAN TRỌNG: Luôn fetch data mới từ backend, không dựa vào event name
-        reloadExportRequestDetail();
+        // ✅ CRITICAL: Prevent multiple concurrent reloads
+        if (!isReloadingRef.current) {
+          reloadExportRequestDetail();
+        } else {
+          console.log("⚠️ Reload already in progress, skipping...");
+        }
       }
     }
   }, [latestNotification, exportRequestId]);
 
   // ========== UTILITY FUNCTIONS ==========
   const reloadExportRequestDetail = async () => {
-    console.log("🔄 Starting reload..."); // Debug
+    // ✅ THÊM: Mark as reloading
+    if (isReloadingRef.current) {
+      console.log("⚠️ Reload already running, aborting...");
+      return;
+    }
+
+    isReloadingRef.current = true;
+    const currentFetchId = ++latestFetchRef.current;
+    console.log(`🔄 Starting reload #${currentFetchId}...`);
 
     // Reset UI states
     setAssignModalVisible(false);
@@ -475,46 +488,67 @@ const ExportRequestDetail = () => {
     setInventorySearchText("");
 
     try {
-      // ✅ 1. Fetch exportRequest MỚI NHẤT từ backend
-      console.log("📡 Fetching fresh export request..."); // Debug
-      const freshExportRequest = await getExportRequestById(exportRequestId);
-      console.log("✅ Fresh status:", freshExportRequest?.status); // Debug
+      // ✅ THÊM: Small delay để tránh gọi quá nhanh
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
-      // ✅ 2. Set state NGAY với data mới
+      console.log(`📡 Fetching fresh export request #${currentFetchId}...`);
+      const freshExportRequest = await getExportRequestById(exportRequestId);
+
+      // ✅ CRITICAL: Chỉ update nếu đây là fetch mới nhất
+      if (currentFetchId !== latestFetchRef.current) {
+        console.log(
+          `⚠️ Fetch #${currentFetchId} outdated, latest is #${latestFetchRef.current}. Discarding.`
+        );
+        return;
+      }
+
+      console.log(
+        `✅ Fresh status #${currentFetchId}:`,
+        freshExportRequest?.status
+      );
+
       setExportRequest(freshExportRequest);
 
-      // ✅ 3. Reset về trang 1
       setPagination((prev) => ({
         ...prev,
         current: 1,
       }));
 
-      // ✅ 4. Fetch details với data mới
       await fetchDetails(1, pagination.pageSize);
 
-      // ✅ 5. Fetch assigned staff với freshExportRequest
       if (freshExportRequest?.countingStaffId) {
         const staffResponse = await findAccountById(
           freshExportRequest.countingStaffId
         );
-        setAssignedStaff(staffResponse);
+        // ✅ Check lại trước khi set
+        if (currentFetchId === latestFetchRef.current) {
+          setAssignedStaff(staffResponse);
+        }
       } else {
-        setAssignedStaff(null); // ✅ THÊM: Clear nếu không còn
+        setAssignedStaff(null);
       }
 
       if (freshExportRequest?.assignedWareHouseKeeperId) {
         const keeperResponse = await findAccountById(
           freshExportRequest.assignedWareHouseKeeperId
         );
-        setAssignedKeeper(keeperResponse);
+        // ✅ Check lại trước khi set
+        if (currentFetchId === latestFetchRef.current) {
+          setAssignedKeeper(keeperResponse);
+        }
       } else {
-        setAssignedKeeper(null); // ✅ THÊM: Clear nếu không còn
+        setAssignedKeeper(null);
       }
 
-      console.log("✅ Reload completed successfully"); // Debug
+      console.log(`✅ Reload #${currentFetchId} completed successfully`);
     } catch (error) {
-      console.error("❌ Error reloading export request detail:", error);
+      console.error(`❌ Error reloading #${currentFetchId}:`, error);
       message.error("Không thể tải lại thông tin phiếu xuất");
+    } finally {
+      // ✅ THÊM: Chỉ clear flag nếu đây là fetch mới nhất
+      if (currentFetchId === latestFetchRef.current) {
+        isReloadingRef.current = false;
+      }
     }
   };
 
