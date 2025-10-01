@@ -6,12 +6,12 @@ import { toast } from "react-toastify";
 export interface ConfigurationDto {
   id: number;
   itemIds: string[]; // NOTE: array of strings from backend
-  workingTimeStart: string; // "HH:mm:ss"
-  workingTimeEnd: string; // "HH:mm:ss"
-  createRequestTimeAtLeast: string; // "HH:mm:ss"
-  timeToAllowAssign: string; // "HH:mm:ss"
-  timeToAllowConfirm: string; // "HH:mm:ss"
-  timeToAllowCancel: string; // "HH:mm:ss"
+  workingTimeStart: string; // LocalTime as string, e.g. "08:00:00"
+  workingTimeEnd: string;
+  createRequestTimeAtLeast: string;
+  timeToAllowAssign: string;
+  timeToAllowConfirm: string;
+  timeToAllowCancel: string;
   dayWillBeCancelRequest: number; // days
   daysToAllowExtend: number;
   maxAllowedDaysForExtend: number;

@@ -7,8 +7,8 @@ import dayjs from "dayjs";
 const fieldDescriptions = {
   workingTimeStart: "Thời gian bắt đầu ca làm việc trong ngày của nhân viên (định dạng HH:mm).",
   workingTimeEnd: "Thời gian kết thúc ca làm việc trong ngày của nhân viên (định dạng HH:mm).",
-  createRequestTimeAtLeast: "Khoảng thời gian tối thiểu (tính bằng giờ) từ lúc tạo đơn đến lúc nhận hàng.",
-  timeToAllowAssign: "Số giờ trước khi nhận hàng mà bạn có thể thay đổi nhân viên được phân công.",
+  createRequestTimeAtLeast: "Khoảng thời gian tối thiểu (tính bằng giờ) từ lúc tạo đơn đến lúc nhận hàng. Ví dụ: Nếu đặt là 4, bạn chỉ có thể chọn nhận hàng sau ít nhất 4 giờ kể từ bây giờ.",
+  timeToAllowAssign: "Số giờ trước khi nhận hàng mà bạn có thể thay đổi nhân viên được phân công. Sau thời gian này, không thể thay đổi nhân viên nữa. Ví dụ: Nếu đặt là 2, bạn chỉ có thể đổi nhân viên trước giờ nhận hàng 2 tiếng.",
   timeToAllowConfirm: "Khoảng thời gian cho phép xác nhận công việc từ thời điểm nhận hàng",
   maxAllowedDaysForExtend: "Số ngày tối đa được phép gia hạn thêm cho một đơn nhập.",
   maxAllowedDaysForImportRequestProcess: "Số ngày tối đa để xử lý một phiếu yêu cầu nhập kể từ ngày tạo.",
@@ -40,8 +40,8 @@ const ConfigurationPage: React.FC = () => {
         setInitialConfig(config);
         form.setFieldsValue({
           ...config,
-          workingTimeStart: dayjs(config.workingTimeStart, ["HH:mm:ss", "HH:mm"]),
-          workingTimeEnd: dayjs(config.workingTimeEnd, ["HH:mm:ss", "HH:mm"]),
+          workingTimeStart: dayjs(config.workingTimeStart, "HH:mm"),
+          workingTimeEnd: dayjs(config.workingTimeEnd, "HH:mm"),
           createRequestTimeAtLeast: config.createRequestTimeAtLeast
             ? Number(config.createRequestTimeAtLeast.split(":")[0])
             : undefined,
@@ -61,19 +61,19 @@ const ConfigurationPage: React.FC = () => {
 
   const onFinish = async (values: any) => {
     const payload: ConfigurationDto = {
-      ...(initialConfig as ConfigurationDto),
+      ...(initialConfig),
       ...values,
-      workingTimeStart: values.workingTimeStart.format("HH:mm:ss"),
-      workingTimeEnd: values.workingTimeEnd.format("HH:mm:ss"),
+      workingTimeStart: values.workingTimeStart.format("HH:mm"),
+      workingTimeEnd: values.workingTimeEnd.format("HH:mm"),
       createRequestTimeAtLeast: values.createRequestTimeAtLeast
-        ? values.createRequestTimeAtLeast.toString().padStart(2, "0") + ":00:00"
-        : (initialConfig?.createRequestTimeAtLeast ?? "00:00:00"),
+        ? values.createRequestTimeAtLeast.toString().padStart(2, "0") + ":00"
+        : undefined,
       timeToAllowAssign: values.timeToAllowAssign
-        ? values.timeToAllowAssign.toString().padStart(2, "0") + ":00:00"
-        : (initialConfig?.timeToAllowAssign ?? "00:00:00"),
+        ? values.timeToAllowAssign.toString().padStart(2, "0") + ":00"
+        : undefined,
       timeToAllowConfirm: values.timeToAllowConfirm
-        ? values.timeToAllowConfirm.toString().padStart(2, "0") + ":00:00"
-        : (initialConfig?.timeToAllowConfirm ?? "00:00:00"),
+        ? values.timeToAllowConfirm.toString().padStart(2, "0") + ":00"
+        : undefined,
       dayWillBeCancelRequest: values.dayWillBeCancelRequest, // pass through (days)
     };
     await saveConfiguration(payload);
