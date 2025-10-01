@@ -19,6 +19,24 @@ const usePaperService = () => {
   const { callApi, loading } = useApi();
   const [paperId, setPaperId] = useState<number | null>(null);
 
+  // Lấy papers theo import order ID
+  const getPapersByImportOrderId = async (
+    importOrderId: string,
+    page = 1,
+    limit = 10
+  ): Promise<ResponseDTO<PaperResponse[]>> => {
+    try {
+      const response = await callApi(
+        "get",
+        `/paper/import-order/${importOrderId}?page=${page}&limit=${limit}`
+      );
+      return response;
+    } catch (error) {
+      toast.error("Không thể lấy thông tin chứng từ của đơn nhập");
+      throw error;
+    }
+  };
+
   // Lấy papers theo export request ID
   const getPapersByExportRequestId = async (
     exportRequestId: string,
@@ -41,6 +59,7 @@ const usePaperService = () => {
     loading,
     paperId,
     setPaperId,
+    getPapersByImportOrderId,
     getPapersByExportRequestId,
   };
 };

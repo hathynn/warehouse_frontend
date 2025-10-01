@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 export interface ImportOrderDetailResponse {
   importOrderDetailId: string;
   importOrderId: string;
+  providerCode: string;
   itemId: number;
   itemName: string;
   inventoryItemId: string;

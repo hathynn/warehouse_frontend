@@ -6,6 +6,7 @@ import { ResponseDTO } from "@/utils/interfaces";
 export interface ImportRequestDetailResponse {
   importRequestDetailId: string;
   importRequestId: string;
+  providerCode: string;
   itemId: string;
   itemName: string;
   actualQuantity: number;

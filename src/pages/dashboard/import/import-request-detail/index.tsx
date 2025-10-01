@@ -463,7 +463,7 @@ const ImportRequestDetail: React.FC = () => {
     if (importType === 'ORDER') {
       baseColumns.push(
         {
-          width: '15%',
+          width: '12%',
           title: "Mã sản phẩm",
           dataIndex: "itemId",
           key: "itemId",
@@ -474,7 +474,18 @@ const ImportRequestDetail: React.FC = () => {
           }),
         },
         {
-          width: '25%',
+          width: '17%',
+          title: "Mã từ nhà cung cấp",
+          dataIndex: "providerCode",
+          key: "providerCode",
+          render: (id: number) => `#${id}`,
+          align: "left" as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '22%',
           title: "Tên sản phẩm",
           dataIndex: "itemName",
           key: "itemName",

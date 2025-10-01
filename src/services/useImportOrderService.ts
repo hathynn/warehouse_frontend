@@ -47,6 +47,7 @@ export interface ImportOrderResponse {
   updatedDate: string;
   paperIds?: number;
   assignedStaffId?: number;
+  importType?: string;
 }
 
 const useImportOrderService = () => {

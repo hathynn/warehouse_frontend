@@ -14,6 +14,7 @@ import {
   ClockCircleOutlined,
   RedoOutlined,
   CheckCircleOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import useImportOrderService from "@/services/useImportOrderService";
 import useImportOrderDetailService from "@/services/useImportOrderDetailService";
@@ -47,6 +48,8 @@ import { PlusOutlined, MinusOutlined } from "@ant-design/icons";
 import { convertStoredLocationName } from "@/utils/helpers";
 import useImportRequestService, { ImportRequestResponse } from "@/services/useImportRequestService";
 import useItemService, { ItemResponse } from "@/services/useItemService";
+import useProviderService, { ProviderResponse } from "@/services/useProviderService";
+import ImportOrderPDFPreviewModal from "@/components/import-flow/import-order/ImportOrderPDFPreviewModal";
 
 const ImportOrderDetail = () => {
   // ========== ROUTER & PARAMS ==========
@@ -66,6 +69,7 @@ const ImportOrderDetail = () => {
   const [configuration, setConfiguration] = useState<ConfigurationDto | null>(null);
   const [inventoryItemsData, setInventoryItemsData] = useState<InventoryItemResponse[]>([]);
   const [itemsData, setItemsData] = useState<ItemResponse[]>([]);
+  const [providerInfo, setProviderInfo] = useState<ProviderResponse | null>(null);
 
   // ========== MODAL STATES ==========
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -78,11 +82,12 @@ const ImportOrderDetail = () => {
   const [showInventoryItemsLocationConfirmModal, setShowInventoryItemsLocationConfirmModal] = useState(false);
   const [showAutoChooseLocationConfirmModal, setShowAutoChooseLocationConfirmModal] = useState(false);
   const [selectedItemForLocationUpdate, setSelectedItemForLocationUpdate] = useState<ImportOrderDetailResponse | null>(null);
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
 
   // ========== FORM & UI STATES ==========
   const [confirmRequireCountingAgainResponsibilityChecked, setConfirmRequireCountingAgainResponsibilityChecked] = useState(false);
   const [cancelImportOrderResponsibilityChecked, setCancelImportOrderResponsibilityChecked] = useState(false);
-  
+
   // ========== EXPAND STATES ==========
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [childrenData, setChildrenData] = useState<Map<string, InventoryItemResponse[]>>(new Map());
@@ -135,6 +140,9 @@ const ImportOrderDetail = () => {
     loading: storedLocationLoading,
     autoChooseLocationForImport
   } = useStoredLocationService();
+  const {
+    getProviderById
+  } = useProviderService();
   // ========== DATA FETCHING FUNCTIONS ==========
   const fetchImportOrderData = async () => {
     if (!importOrderId) return;
@@ -161,6 +169,15 @@ const ImportOrderDetail = () => {
     if (!importOrderData?.importRequestId) return;
     const response = await getImportRequestById(importOrderData.importRequestId);
     setImportRequestRelated(response?.content || null);
+  };
+
+  const fetchProviderInfo = async () => {
+    if (!importRequestRelated?.providerId) {
+      setProviderInfo(null);
+      return;
+    }
+    const response = await getProviderById(importRequestRelated.providerId);
+    setProviderInfo(response?.content || null);
   };
 
   const fetchInitialData = async () => {
@@ -257,6 +274,10 @@ const ImportOrderDetail = () => {
     fetchImportRequestRelated();
     fetchAssignedStaff();
   }, [importOrderData]);
+
+  useEffect(() => {
+    fetchProviderInfo();
+  }, [importRequestRelated]);
 
   useEffect(() => {
     if (latestNotification) {
@@ -484,7 +505,7 @@ const ImportOrderDetail = () => {
             const isExpanded = expandedRows.has(id);
             const children = childrenData.get(id) || [];
             const hasChildren = children.length > 0;
-            
+
             return (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -494,9 +515,9 @@ const ImportOrderDetail = () => {
                 {isExpanded && hasChildren && (
                   <div style={{ marginTop: '4px', marginLeft: '24px' }}>
                     {children.map((child, index) => (
-                      <div key={child.id} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                      <div key={child.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: '4px',
                         marginBottom: index < children.length - 1 ? '2px' : '0',
                         fontSize: '13px',
@@ -562,10 +583,21 @@ const ImportOrderDetail = () => {
     } else {
       baseColumns.push(
         {
-          width: '15%',
+          width: '12%',
           title: "Mã sản phẩm",
           dataIndex: "itemId",
           key: "itemId",
+          render: (id: number) => `#${id}`,
+          align: 'left' as const,
+          onHeaderCell: () => ({
+            style: { textAlign: 'center' as const }
+          }),
+        },
+        {
+          width: '15%',
+          title: "Mã từ nhà cung cấp",
+          dataIndex: "providerCode",
+          key: "providerCode",
           render: (id: number) => `#${id}`,
           align: 'left' as const,
           onHeaderCell: () => ({
@@ -603,17 +635,6 @@ const ImportOrderDetail = () => {
             style: { textAlign: 'center' as const }
           }),
         },
-        {
-        width: '10%',
-        title: "Trạng thái",
-        dataIndex: "status",
-        key: "status",
-        render: (status: string) => <StatusTag status={status} type="detail" />,
-        align: 'center' as const,
-        onHeaderCell: () => ({
-          style: { textAlign: 'center' as const }
-        }),
-      },
       )
     }
     baseColumns.push(
@@ -757,7 +778,7 @@ const ImportOrderDetail = () => {
         </div>
       )
     },
-    ...(userRole === AccountRole.WAREHOUSE_MANAGER ? [{ label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 }] :[{ label: "Phụ trách", value: "Trần Thị Quản Lý", span: 2 }]),
+    ...(userRole === AccountRole.WAREHOUSE_MANAGER ? [{ label: "Phân công cho", value: assignedStaff?.fullName || "-", span: 2 }] : [{ label: "Phụ trách", value: "Trần Thị Quản Lý", span: 2 }]),
     { label: "Ghi chú", value: importOrderData?.note || "-", span: 3 }
   ];
 
@@ -826,6 +847,20 @@ const ImportOrderDetail = () => {
             </div>
           </>
         )}
+        {(importOrderData?.status === ImportStatus.COUNTED ||
+          importOrderData?.status === ImportStatus.COMPLETED ||
+          importOrderData?.status === ImportStatus.READY_TO_STORE ||
+          importOrderData?.status === ImportStatus.STORED
+        ) && userRole === AccountRole.DEPARTMENT && (
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={() => setShowPdfPreviewModal(true)}
+              disabled={!importOrderData || importOrderDetails.length === 0}
+            >
+              Xem trước đơn nhập PDF
+            </Button>
+          )}
       </div>
 
       <DetailCard title="Thông tin đơn nhập" items={infoItems} />
@@ -1019,6 +1054,17 @@ const ImportOrderDetail = () => {
           setShowAutoChooseLocationConfirmModal(false);
           await handleAutoChooseLocation();
         }}
+      />
+
+      <ImportOrderPDFPreviewModal
+        visible={showPdfPreviewModal}
+        onCancel={() => setShowPdfPreviewModal(false)}
+        importOrder={importOrderData}
+        importOrderDetails={importOrderDetails}
+        importRequest={importRequestRelated}
+        assignedStaff={assignedStaff}
+        providerInfo={providerInfo}
+        itemsData={itemsData}
       />
 
     </div>
