@@ -15,6 +15,7 @@ import type { ColumnsType } from "antd/es/table";
 import { ReloadOutlined } from "@ant-design/icons";
 import useAccountService, {
   AccountResponse,
+  RegisterRequest,
   UpdateAccountRequest,
 } from "@/services/useAccountService";
 import { AccountRoleForRequest } from "@/utils/enums";
@@ -40,7 +41,7 @@ const ROLE_LABEL_MAP: Record<ManageableRole, string> = {
   [AccountRoleForRequest.DEPARTMENT]: "PHÒNG KẾ HOẠCH",
   [AccountRoleForRequest.STAFF]: "THỦ KHO",
   [AccountRoleForRequest.WAREHOUSE_MANAGER]: "TRƯỞNG KHO",
-  [AccountRoleForRequest.MANAGER]: "QUẢN LÝ TRƯỞNG",
+  [AccountRoleForRequest.MANAGER]: "QUẢN LÝ",
   [AccountRoleForRequest.OTHER]: "NHÂN VIÊN NỘI BỘ"
 };
 
@@ -62,7 +63,7 @@ const sortAccountsByName = (list: AccountResponse[]) =>
   );
 
 const AccountList: React.FC = () => {
-  const { getAccountsByRole, updateAccount } = useAccountService();
+  const { getAccountsByRole, updateAccount, register } = useAccountService();
 
   const [accounts, setAccounts] = useState<AccountResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,8 +73,11 @@ const AccountList: React.FC = () => {
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [editingAccount, setEditingAccount] =
     useState<AccountResponse | null>(null);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const [updateForm] = Form.useForm<UpdateAccountRequest>();
+  const [createForm] = Form.useForm<RegisterRequest>();
 
   const fetchAccounts = useCallback(
     async (role: RoleFilter) => {
@@ -112,10 +116,20 @@ const AccountList: React.FC = () => {
     setUpdateModalVisible(true);
   };
 
+  const openCreateModal = () => {
+    createForm.resetFields();
+    setCreateModalVisible(true);
+  };
+
   const closeUpdateModal = () => {
     setUpdateModalVisible(false);
     setEditingAccount(null);
     updateForm.resetFields();
+  };
+
+  const closeCreateModal = () => {
+    setCreateModalVisible(false);
+    createForm.resetFields();
   };
 
   useEffect(() => {
@@ -158,6 +172,33 @@ const AccountList: React.FC = () => {
       }
     } finally {
       setUpdateSubmitting(false);
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    try {
+      const values = await createForm.validateFields();
+      setCreateSubmitting(true);
+      await register({
+        fullName: values.fullName.trim(),
+        username: values.username.trim(),
+        email: values.email.trim(),
+        phone: values.phone.trim(),
+        password: values.password.trim(),
+        role: values.role,
+      });
+      closeCreateModal();
+      fetchAccounts(roleFilter);
+    } catch (error: unknown) {
+      const isValidationError =
+        typeof error === "object" &&
+        error !== null &&
+        Reflect.has(error as object, "errorFields");
+      if (!isValidationError) {
+        message.error("Không thể tạo tài khoản");
+      }
+    } finally {
+      setCreateSubmitting(false);
     }
   };
 
@@ -217,6 +258,9 @@ const AccountList: React.FC = () => {
       <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
         <h1 className="m-0 text-xl font-bold">Danh sách tài khoản</h1>
         <Space size="middle" wrap>
+          <Button type="primary" onClick={openCreateModal}>
+            Tạo tài khoản
+          </Button>
           <Button
             icon={<ReloadOutlined />}
             onClick={() => fetchAccounts(roleFilter)}
@@ -318,6 +362,77 @@ const AccountList: React.FC = () => {
             tooltip="Để trống nếu không muốn đổi mật khẩu"
           >
             <Input.Password placeholder="Nhập mật khẩu mới" visibilityToggle />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Tạo tài khoản"
+        open={createModalVisible}
+        onCancel={closeCreateModal}
+        onOk={handleCreateAccount}
+        confirmLoading={createSubmitting}
+        okText="Tạo"
+        cancelText="Hủy"
+        destroyOnClose
+      >
+        <Form form={createForm} layout="vertical" preserve={false}>
+          <Form.Item
+            label="Tên đăng nhập"
+            name="username"
+            rules={[{ required: true, message: "Vui lòng nhập tên đăng nhập" }]}
+          >
+            <Input placeholder="Nhập tên đăng nhập" />
+          </Form.Item>
+          <Form.Item
+            label="Họ và tên"
+            name="fullName"
+            rules={[{ required: true, message: "Vui lòng nhập họ và tên" }]}
+          >
+            <Input placeholder="Nhập họ và tên" />
+          </Form.Item>
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[{ required: true, type: "email", message: "Email không hợp lệ" }]}
+          >
+            <Input placeholder="Nhập email" />
+          </Form.Item>
+          <Form.Item
+            label="Số điện thoại"
+            name="phone"
+            rules={[
+              { required: true, message: "Vui lòng nhập số điện thoại" },
+              {
+                pattern: /^\+?[0-9]{10,12}$/,
+                message: "Số điện thoại không hợp lệ",
+              },
+            ]}
+          >
+            <Input placeholder="Nhập số điện thoại" />
+          </Form.Item>
+          <Form.Item
+            label="Mật khẩu"
+            name="password"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu" },
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" },
+            ]}
+          >
+            <Input.Password placeholder="Nhập mật khẩu" visibilityToggle />
+          </Form.Item>
+          <Form.Item
+            label="Vai trò"
+            name="role"
+            rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
+          >
+            <Select
+              options={MANAGEABLE_ROLES.map((role) => ({
+                label: ROLE_LABEL_MAP[role],
+                value: role,
+              }))}
+              placeholder="Chọn vai trò"
+            />
           </Form.Item>
         </Form>
       </Modal>

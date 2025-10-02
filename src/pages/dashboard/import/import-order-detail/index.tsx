@@ -858,7 +858,11 @@ const ImportOrderDetail = () => {
               onClick={() => setShowPdfPreviewModal(true)}
               disabled={!importOrderData || importOrderDetails.length === 0}
             >
-              Xem trước đơn nhập PDF
+              Xuất
+              <span className="font-bold">
+                PDF
+              </span> 
+              cho đơn nhập này
             </Button>
           )}
       </div>

@@ -176,35 +176,42 @@ const DashboardLayout: React.FC = () => {
           theme="light"
         >
           {/* Logo Area */}
-          <div style={{
-            height: '100px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: '1px solid #f0f0f0',
-            padding: '8px 24px',
-            gap: '4px'
-          }}>
+          <div
+            style={{
+              height: '100px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottom: '1px solid #f0f0f0',
+              padding: '8px 16px',
+              gap: '4px',
+            }}
+          >
             <img
               src={logo}
               alt="Logo"
               style={{
-                height: '55px',
+                height: collapsed ? '32px' : '64px',
                 width: 'auto',
-                objectFit: 'contain',
-                // marginTop: '20px'
+                objectFit: 'cover',
+                flexShrink: 0
               }}
             />
-            <span style={{
-              fontSize: collapsed ? '12px' : '14px',
-              fontWeight: 700,
-              color: '#1e293b',
-              textAlign: 'center',
-              lineHeight: '1.2'
-            }}>
-              {collapsed ? "KV" : "Hệ thống quản lý kho vải"}
-            </span>
+            {/* Chỉ hiển thị text khi không collapse */}
+            {!collapsed && (
+              <span
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  color: '#1e293b',
+                  textAlign: 'center',
+                  lineHeight: '1.2',
+                }}
+              >
+                Hệ thống quản lý kho vải
+              </span>
+            )}
           </div>
 
           {/* Navigation Menu */}
