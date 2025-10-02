@@ -83,7 +83,11 @@ const ExportRequestCreate = () => {
   // SERVICE HOOKS
   const [items, setItems] = useState([]);
   const { loading: itemLoading, getItems } = useItemService();
-  const { loading: providerLoading, getAllProviders } = useProviderService();
+  const {
+    loading: providerLoading,
+    getAllProviders,
+    getProviderById,
+  } = useProviderService();
 
   const {
     createExportRequestProduction,
@@ -779,8 +783,11 @@ const ExportRequestCreate = () => {
   // FORM SUBMISSION
   // =============================================================================
   const buildReturnPayload = () => {
-    let providerId = null;
+    console.log("=== DEBUG buildReturnPayload ===");
+    console.log("1. Current formData:", formData);
+    console.log("2. Current returnImportData:", returnImportData);
 
+    let providerId = null;
     if (returnImportData && returnImportData.providerId) {
       providerId = returnImportData.providerId;
     } else if (returnImportData && returnImportData.importOrder) {
@@ -789,7 +796,14 @@ const ExportRequestCreate = () => {
       providerId = data[0].providerId;
     }
 
-    return {
+    console.log("3. ProviderId resolved to:", providerId);
+    console.log("4. FormData receiver fields:", {
+      receiverName: formData.receiverName,
+      receiverPhone: formData.receiverPhone,
+      receiverAddress: formData.receiverAddress,
+    });
+
+    const payload = {
       countingDate: formData.exportDate,
       countingTime: "23:59:59",
       exportDate: formData.exportDate,
@@ -797,7 +811,13 @@ const ExportRequestCreate = () => {
       exportReason: formData.exportReason,
       providerId: providerId,
       type: "RETURN",
+      receiverName: formData.receiverName || "",
+      receiverPhone: formData.receiverPhone || "",
+      receiverAddress: formData.receiverAddress || "",
     };
+
+    console.log("5. Final payload:", payload);
+    return payload;
   };
 
   const buildProductionPayload = () => {
@@ -1046,8 +1066,11 @@ const ExportRequestCreate = () => {
    * Handle form submission
    */
   const handleSubmit = async () => {
+    console.log("=== DEBUG handleSubmit ===");
+    console.log("1. FormData at submit:", formData);
+    console.log("2. ReturnImportData at submit:", returnImportData);
+
     try {
-      // Validate form data
       const validation = validateFormData();
       if (!validation.isValid) {
         toast.error(validation.errorMessage);
@@ -1055,17 +1078,17 @@ const ExportRequestCreate = () => {
       }
 
       const createdExport = await createExportRequest(formData.exportType);
+      console.log("3. Created export response:", createdExport);
+
       if (!createdExport) {
         toast.error("Không tạo được phiếu xuất");
         return;
       }
 
       await createExportDetails(createdExport.exportRequestId);
-
       navigate(
         `${ROUTES.PROTECTED.EXPORT.REQUEST.LIST}?tab=${formData.exportType}`
       );
-
       resetAllStates();
     } catch (error) {
       toast.error("Lỗi khi gửi chi tiết phiếu xuất");
@@ -1089,17 +1112,72 @@ const ExportRequestCreate = () => {
     }
   };
 
-  const handleReturnImportConfirm = (data) => {
+  const handleReturnImportConfirm = async (data) => {
+    console.log("=== DEBUG handleReturnImportConfirm ===");
+    console.log("1. Input data:", data);
+    console.log("2. ProviderId:", data.providerId);
+    console.log("3. Initial providerInfo:", data.providerInfo);
+
+    // Store initial data
     setReturnImportData({
       ...data,
       selectedItems: data.selectedItems.map((item) => ({
         ...item,
         importOrderDetailId: item.importOrderDetailId,
       })),
-      providerId: data.providerId, // ✅ THÊM providerId từ UseExportFirstStep
-      providerInfo: data.providerInfo, // ✅ THÊM providerInfo từ UseExportFirstStep
+      providerId: data.providerId,
+      providerInfo: data.providerInfo,
     });
 
+    // Fetch full provider info if we have providerId
+    if (data.providerId) {
+      try {
+        console.log("4. Fetching provider with ID:", data.providerId);
+        const providerResponse = await getProviderById(data.providerId);
+        const fullProviderInfo = providerResponse?.content;
+
+        console.log("5. Full provider response:", providerResponse);
+        console.log("6. Provider content:", fullProviderInfo);
+
+        if (fullProviderInfo) {
+          // Update formData với thông tin provider
+          const updatedFormData = {
+            receiverName: fullProviderInfo.name || "",
+            receiverPhone:
+              fullProviderInfo.phone || fullProviderInfo.phoneNumber || "",
+            receiverAddress: fullProviderInfo.address || "",
+          };
+
+          console.log("7. Setting formData with:", updatedFormData);
+
+          setFormData((prev) => {
+            const newFormData = {
+              ...prev,
+              ...updatedFormData,
+            };
+            console.log("8. New formData after update:", newFormData);
+            return newFormData;
+          });
+
+          // Update returnImportData
+          setReturnImportData((prev) => ({
+            ...prev,
+            providerInfo: {
+              id: data.providerId,
+              name: fullProviderInfo.name || "",
+              phone:
+                fullProviderInfo.phone || fullProviderInfo.phoneNumber || "",
+              address: fullProviderInfo.address || "",
+            },
+          }));
+        }
+      } catch (error) {
+        console.error("9. Error fetching provider:", error);
+        toast.error("Không thể lấy thông tin nhà cung cấp");
+      }
+    }
+
+    // Transform data
     const transformedData = data.selectedItems.map((item) => ({
       itemId: item.itemId,
       itemName: item.itemName,
@@ -1110,6 +1188,8 @@ const ExportRequestCreate = () => {
       totalMeasurementValue: item.totalMeasurementValue || "",
       inventoryQuantity: item.actualQuantity || 0,
       importOrderDetailId: item.importOrderDetailId,
+      providerId: data.providerId,
+      providerName: data.providerInfo?.name,
     }));
 
     setData(transformedData);

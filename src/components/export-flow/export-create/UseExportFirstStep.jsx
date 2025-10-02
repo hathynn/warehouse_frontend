@@ -254,12 +254,13 @@ const UseExportFirstStep = ({
       const providerId = providerData[selectedOrder.importRequestId] || null;
       const currentProviderInfo = providerId ? providerInfo[providerId] : null;
 
-      // ✅ FORMAT lại providerInfo để match với expected structure
+      // ✅ FORMAT đầy đủ thông tin provider
       const formattedProviderInfo = currentProviderInfo
         ? {
             id: providerId,
             name: currentProviderInfo.name,
-            // thêm các fields khác nếu cần
+            phone: currentProviderInfo.phone || "", // ✅ THÊM phone
+            address: currentProviderInfo.address || "", // ✅ THÊM address
           }
         : null;
 
@@ -283,7 +284,7 @@ const UseExportFirstStep = ({
         importOrderId: selectedOrder.importOrderId,
         importRequestId: selectedOrder.importRequestId,
         providerId: providerId,
-        providerInfo: formattedProviderInfo, // ✅ SỬ DỤNG FORMATTED DATA
+        providerInfo: formattedProviderInfo, // ✅ Bây giờ đã có phone và address
       });
     }
   };

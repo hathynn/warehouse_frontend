@@ -25,7 +25,7 @@ const EXPORT_OPTIONS: RequestOption[] = [
     { value: "SELLING", label: "Xuất bán" },
     { value: "RETURN", label: "Xuất trả nhà cung cấp" },
     { value: "INTERNAL", label: "Xuất nội bộ" },
-    { value: "LIQUIDATION", label: "Xuất thanh lý" },
+    // { value: "LIQUIDATION", label: "Xuất thanh lý" },
 ];
 
 const IMPORT_OPTIONS: RequestOption[] = [

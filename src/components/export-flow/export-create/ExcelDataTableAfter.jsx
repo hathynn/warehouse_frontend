@@ -81,7 +81,7 @@ const ExcelDataTableAfter = ({
       render: (text) => <div>{text}</div>,
     },
     {
-      width: "12%",
+      width: "16%",
       title: "Tên hàng",
       dataIndex: "itemName",
       key: "itemName",
@@ -149,7 +149,7 @@ const ExcelDataTableAfter = ({
       : null,
     // Cột Quy cách - LẤY từ database metadata
     {
-      width: "18%",
+      width: "14%",
       title: <span className="font-semibold">Quy cách</span>,
       dataIndex: "unitType",
       key: "unitType",
@@ -176,7 +176,7 @@ const ExcelDataTableAfter = ({
     // Cột Nhà cung cấp cho RETURN
     exportType === "RETURN"
       ? {
-          width: "35%",
+          width: "20%",
           title: "Nhà cung cấp",
           dataIndex: "providerName",
           key: "providerName",
