@@ -209,12 +209,13 @@ const UseExportFirstStep = ({
       setError(null);
       const response = await getAllImportOrders();
       if (response?.content) {
-        // Lọc chỉ lấy các đơn có status COMPLETED
+        // Lọc các đơn có status COMPLETED VÀ exportRequestId === null
         const completedOrders = response.content.filter(
-          (order) => order.status === "COMPLETED"
+          (order) =>
+            order.status === "COMPLETED" && order.exportRequestId === null
         );
 
-        // ✅ THÊM: Lọc bỏ các đơn có tất cả actualQuantity = 0
+        // Lọc bỏ các đơn có tất cả actualQuantity = 0
         const validOrders = completedOrders.filter((order) => {
           return order.importOrderDetails.some(
             (detail) => detail.actualQuantity > 0
