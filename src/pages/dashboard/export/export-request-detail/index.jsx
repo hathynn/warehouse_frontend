@@ -492,7 +492,12 @@ const ExportRequestDetail = () => {
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       console.log(`📡 Fetching fresh export request #${currentFetchId}...`);
+      const timestamp = Date.now();
+      console.log(
+        `🔗 Calling API: /export-request/${exportRequestId} at ${timestamp}`
+      );
       const freshExportRequest = await getExportRequestById(exportRequestId);
+      console.log(`📦 Response status from API:`, freshExportRequest?.status);
 
       // ✅ CRITICAL: Chỉ update nếu đây là fetch mới nhất
       if (currentFetchId !== latestFetchRef.current) {

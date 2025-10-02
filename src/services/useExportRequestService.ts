@@ -93,7 +93,16 @@ const useExportRequestService = () => {
     id: String
   ): Promise<ExportRequestResponse | null> => {
     try {
-      const response = await callApi("get", `/export-request/${id}`);
+      // Tạo chuỗi random kết hợp timestamp
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 9);
+      const cacheBuster = `${timestamp}_${randomStr}`;
+
+      const response = await callApi(
+        "get",
+        `/export-request/${id}?_cb=${cacheBuster}`
+      );
+
       if (response && response.content) {
         return response.content;
       }

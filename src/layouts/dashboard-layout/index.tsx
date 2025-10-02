@@ -11,6 +11,7 @@ import { menuItems } from "@/constants/menuItems";
 import { AccountRole } from "@/utils/enums";
 import { ItemType } from "antd/es/menu/interface";
 import { MenuItem } from "@/utils/interfaces";
+import logo from "@/assets/logo.png";
 
 const { Sider } = Layout;
 const SIDER_WIDTH = 280;
@@ -22,22 +23,22 @@ const getPageTitle = (path: string): string => {
   // Handle dynamic routes with IDs
   const normalizedPath = path.replace(/\/\d+/g, '/:id');
   return pageTitles[normalizedPath] || "Hệ thống quản lý kho vải";
-}; 
+};
 
 const DashboardLayout: React.FC = () => {
   // Responsive state
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  
+
   // Update window width on resize
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  
+
   // Automatically collapse sidebar on smaller screens
   const [collapsed, setCollapsed] = useState(windowWidth < IPAD_13_BREAKPOINT);
-  
+
   // Update collapsed state when window width changes
   useEffect(() => {
     if (windowWidth < IPAD_13_BREAKPOINT) {
@@ -63,18 +64,18 @@ const DashboardLayout: React.FC = () => {
           setSelectedKeys([item.key]);
           return;
         }
-        
+
         // Special case for import order routes
-        if (item.key === "import-order" && 
-            (location.pathname === "/import/orders" || 
-             location.pathname.startsWith("/import/order-list/") || 
-             location.pathname.startsWith("/import/order-detail/") ||
-             location.pathname.startsWith("/import/create-order/"))) {
+        if (item.key === "import-order" &&
+          (location.pathname === "/import/orders" ||
+            location.pathname.startsWith("/import/order-list/") ||
+            location.pathname.startsWith("/import/order-detail/") ||
+            location.pathname.startsWith("/import/create-order/"))) {
           setSelectedKeys([item.key]);
           setOpenKeys(["import"]);
           return;
         }
-        
+
         // Check children
         if (item.children) {
           const childMatch = item.children.find(child =>
@@ -85,14 +86,14 @@ const DashboardLayout: React.FC = () => {
             setOpenKeys([item.key]);
             return;
           }
-          
+
           // Special case for child items
           for (const child of item.children) {
-            if (child.key === "import-order" && 
-                (location.pathname === "/import/orders" || 
-                 location.pathname.startsWith("/import/order-list/") || 
-                 location.pathname.startsWith("/import/order-detail/") ||
-                 location.pathname.startsWith("/import/create-order/"))) {
+            if (child.key === "import-order" &&
+              (location.pathname === "/import/orders" ||
+                location.pathname.startsWith("/import/order-list/") ||
+                location.pathname.startsWith("/import/order-detail/") ||
+                location.pathname.startsWith("/import/create-order/"))) {
               setSelectedKeys([child.key]);
               setOpenKeys([item.key]);
               return;
@@ -129,12 +130,12 @@ const DashboardLayout: React.FC = () => {
       const baseItem = {
         key: item.key,
         icon: item.icon ? React.createElement(item.icon, {
-          style: { 
+          style: {
             fontSize: '20px',
             marginRight: '8px'
           }
         }) : null,
-        label: <span style={{ 
+        label: <span style={{
           fontSize: '15px',
           fontWeight: 600
         }}>{item.label}</span>,
@@ -152,7 +153,7 @@ const DashboardLayout: React.FC = () => {
 
   return (
     <Layout className="min-h-screen">
-      <Layout style={{ 
+      <Layout style={{
         minWidth: MIN_CONTENT_WIDTH,
         overflowX: 'auto'
       }}>
@@ -176,17 +177,31 @@ const DashboardLayout: React.FC = () => {
         >
           {/* Logo Area */}
           <div style={{
-            height: '64px',
+            height: '100px',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             borderBottom: '1px solid #f0f0f0',
-            padding: '0 24px'
+            padding: '8px 24px',
+            gap: '4px'
           }}>
+            <img
+              src={logo}
+              alt="Logo"
+              style={{
+                height: '55px',
+                width: 'auto',
+                objectFit: 'contain',
+                // marginTop: '20px'
+              }}
+            />
             <span style={{
-              fontSize: '18px',
+              fontSize: collapsed ? '12px' : '14px',
               fontWeight: 700,
-              color: '#1e293b'
+              color: '#1e293b',
+              textAlign: 'center',
+              lineHeight: '1.2'
             }}>
               {collapsed ? "KV" : "Hệ thống quản lý kho vải"}
             </span>
@@ -218,7 +233,7 @@ const DashboardLayout: React.FC = () => {
         </Sider>
 
         {/* Main Content Area */}
-        <Layout 
+        <Layout
           style={{
             marginLeft: collapsed ? COLLAPSED_WIDTH : SIDER_WIDTH,
             transition: 'margin-left 0.2s',
@@ -226,9 +241,9 @@ const DashboardLayout: React.FC = () => {
             overflow: 'auto'
           }}
         >
-          <div style={{ 
+          <div style={{
             padding: '24px',
-            minWidth: '100%' 
+            minWidth: '100%'
           }}>
             {/* Header */}
             <Header title={getPageTitle(location.pathname)} />
