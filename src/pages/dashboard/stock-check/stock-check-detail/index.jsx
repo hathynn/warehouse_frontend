@@ -791,7 +791,7 @@ const StockCheckRequestDetail = () => {
       {/* Stock Check Details Table */}
       <div className="flex items-center justify-between mb-4 mt-5">
         <h2 className="font-bold" style={{ fontSize: "20px" }}>
-          Chi tiết phiếu kiểm kho
+          Danh sách chi tiết sản phẩm kiểm kho
         </h2>
         <div className="flex gap-2">
           {userRole === AccountRole.WAREHOUSE_MANAGER &&
@@ -982,7 +982,7 @@ const StockCheckRequestDetail = () => {
             <span className="font-bold">#{stockCheckRequest?.id}</span>?
           </p>
           <p className="text-red-600 font-semibold">
-            ⚠️ Hành động này không thể hoàn tác!
+            Hành động này không thể hoàn tác!
           </p>
         </div>
       </Modal>

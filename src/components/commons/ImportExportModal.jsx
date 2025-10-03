@@ -90,7 +90,7 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
     switch (dateFilter) {
       case "month": {
         fromDate = dayjs().startOf("month").format("YYYY-MM-DD");
-        toDate = dayjs().format("YYYY-MM-DD");
+        toDate = dayjs().add(1, "day").format("YYYY-MM-DD"); // Cộng thêm 1 ngày
         break;
       }
       case "quarter": {
@@ -106,7 +106,7 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
           .endOf("month")
           .format("YYYY-MM-DD");
         if (dayjs(toDate).isAfter(dayjs())) {
-          toDate = dayjs().format("YYYY-MM-DD");
+          toDate = dayjs().add(1, "day").format("YYYY-MM-DD"); // Cộng thêm 1 ngày
         }
         break;
       }
@@ -117,7 +117,7 @@ const ImportExportModal = ({ visible, onClose, itemId, item }) => {
           .format("YYYY-MM-DD");
         toDate = dayjs().year(selectedYear).endOf("year").format("YYYY-MM-DD");
         if (dayjs(toDate).isAfter(dayjs())) {
-          toDate = dayjs().format("YYYY-MM-DD");
+          toDate = dayjs().add(1, "day").format("YYYY-MM-DD"); // Cộng thêm 1 ngày
         }
         break;
       }
