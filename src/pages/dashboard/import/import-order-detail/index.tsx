@@ -1015,6 +1015,7 @@ const ImportOrderDetail = () => {
           await fetchImportOrderData();
           await fetchInventoryItemsData();
         }}
+        isReturnImport={importRequestRelated?.importType === "RETURN"}
       />
 
       {/* Modal yêu cầu kiểm đếm lại */}
