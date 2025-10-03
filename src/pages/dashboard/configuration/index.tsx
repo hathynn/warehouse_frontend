@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Form, InputNumber, TimePicker, Button, Spin, Tooltip } from "antd";
+import { Card, Form, InputNumber, TimePicker, Button, Spin, Tooltip, Switch } from "antd";
 import { SaveOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import useConfigurationService, { ConfigurationDto } from "@/services/useConfigurationService";
 import dayjs from "dayjs";
@@ -14,6 +14,8 @@ const fieldDescriptions = {
   maxAllowedDaysForImportRequestProcess: "Số ngày tối đa để xử lý một phiếu yêu cầu nhập kể từ ngày tạo.",
   dayWillBeCancelRequest:
     "Ngày hiệu lực tối đa cho phiếu xuất. Hết số ngày này mà chưa hoàn tất thì phiếu tự động hủy.",
+  timeToAllowCounting: "Thời gian tối đa để kiểm đếm và đóng gói cho một phiếu xuất",
+  warehouseIsChecking: "Khi bật, sẽ khóa tất cả hoạt động của kho trong quá trình kiểm tra.",
 } as const;
 
 const getLabel = (label: string, field: keyof typeof fieldDescriptions) => (
@@ -51,9 +53,13 @@ const ConfigurationPage: React.FC = () => {
           timeToAllowConfirm: config.timeToAllowConfirm
             ? Number(config.timeToAllowConfirm.split(":")[0])
             : undefined,
+          timeToAllowCounting: config.timeToAllowCounting
+            ? Number(config.timeToAllowCounting.split(":")[0])
+            : undefined,
           dayWillBeCancelRequest: config.dayWillBeCancelRequest,
           maxAllowedDaysForExtend: config.maxAllowedDaysForExtend,
           maxAllowedDaysForImportRequestProcess: config.maxAllowedDaysForImportRequestProcess,
+          warehouseIsChecking: config.warehouseIsChecking,
         });
       }
     })();
@@ -74,7 +80,11 @@ const ConfigurationPage: React.FC = () => {
       timeToAllowConfirm: values.timeToAllowConfirm
         ? values.timeToAllowConfirm.toString().padStart(2, "0") + ":00"
         : undefined,
-      dayWillBeCancelRequest: values.dayWillBeCancelRequest, // pass through (days)
+      timeToAllowCounting: values.timeToAllowCounting
+        ? values.timeToAllowCounting.toString().padStart(2, "0") + ":00"
+        : undefined,
+      dayWillBeCancelRequest: values.dayWillBeCancelRequest,
+      warehouseIsChecking: values.warehouseIsChecking,
     };
     await saveConfiguration(payload);
   };
@@ -84,100 +94,140 @@ const ConfigurationPage: React.FC = () => {
       <Card title={<span style={{ fontSize: 18, fontWeight: 600 }}>Cấu hình hệ thống</span>} bordered>
         <Spin spinning={loading}>
           <Form form={form} layout="vertical" onFinish={onFinish}>
-            <Form.Item
-              label={getLabel("Giờ bắt đầu ca làm việc", "workingTimeStart")}
-              name="workingTimeStart"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <TimePicker
-                format="HH:mm"
-                size="large"
-              />
-            </Form.Item>
+            <div className="grid grid-cols-2 gap-6">
+              {/* Cột trái */}
+              <div>
+                <Form.Item
+                  label={getLabel("Giờ bắt đầu ca làm việc", "workingTimeStart")}
+                  name="workingTimeStart"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <TimePicker
+                    format="HH:mm"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Giờ kết thúc ca làm việc", "workingTimeEnd")}
-              name="workingTimeEnd"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <TimePicker
-                format="HH:mm"
-                size="large"
-              />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Giờ kết thúc ca làm việc", "workingTimeEnd")}
+                  name="workingTimeEnd"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <TimePicker
+                    format="HH:mm"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Thời gian đặt trước tối thiểu", "createRequestTimeAtLeast")}
-              name="createRequestTimeAtLeast"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber
-                min={1}
-                step={1}
-                addonAfter="giờ"
-                size="large"
-              />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Thời gian đặt trước tối thiểu", "createRequestTimeAtLeast")}
+                  name="createRequestTimeAtLeast"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="giờ"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Thời hạn phân công lại nhân viên", "timeToAllowAssign")}
-              name="timeToAllowAssign"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber
-                min={1}
-                step={1}
-                addonAfter="giờ"
-                size="large"
-              />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Thời hạn phân công lại nhân viên", "timeToAllowAssign")}
+                  name="timeToAllowAssign"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="giờ"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Khoảng thời gian cho phép xác nhận công việc", "timeToAllowConfirm")}
-              name="timeToAllowConfirm"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber
-                min={1}
-                step={1}
-                addonAfter="giờ"
-                size="large"
-              />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Khoảng thời gian cho phép xác nhận công việc", "timeToAllowConfirm")}
+                  name="timeToAllowConfirm"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="giờ"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
+              </div>
 
-            <Form.Item
-              label={getLabel("Số ngày tối đa được gia hạn", "maxAllowedDaysForExtend")}
-              name="maxAllowedDaysForExtend"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber
-                min={1}
-                step={1}
-                addonAfter="ngày"
-                size="large"
-              />
-            </Form.Item>
+              {/* Cột phải */}
+              <div>
+                <Form.Item
+                  label={getLabel("Thời gian tối đa để kiểm đếm", "timeToAllowCounting")}
+                  name="timeToAllowCounting"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="giờ"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Thời gian xử lý tối đa cho yêu cầu nhập", "maxAllowedDaysForImportRequestProcess")}
-              name="maxAllowedDaysForImportRequestProcess"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber
-                min={1}
-                step={1}
-                addonAfter="ngày"
-                size="large"
-              />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Số ngày tối đa được gia hạn", "maxAllowedDaysForExtend")}
+                  name="maxAllowedDaysForExtend"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="ngày"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              label={getLabel("Ngày hiệu lực tối đa cho phiếu xuất", "dayWillBeCancelRequest")}
-              name="dayWillBeCancelRequest"
-              rules={[{ required: true, message: "Bắt buộc" }]}
-            >
-              <InputNumber min={1} step={1} addonAfter="ngày" size="large" />
-            </Form.Item>
+                <Form.Item
+                  label={getLabel("Thời gian xử lý tối đa cho yêu cầu nhập", "maxAllowedDaysForImportRequestProcess")}
+                  name="maxAllowedDaysForImportRequestProcess"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="ngày"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={getLabel("Ngày hiệu lực tối đa cho phiếu xuất", "dayWillBeCancelRequest")}
+                  name="dayWillBeCancelRequest"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber min={1} step={1} addonAfter="ngày" size="large" className="w-full" />
+                </Form.Item>
+
+                <Form.Item
+                  label={getLabel("Khóa kho khi kiểm tra", "warehouseIsChecking")}
+                  name="warehouseIsChecking"
+                  valuePropName="checked"
+                >
+                  <Switch checkedChildren="BẬT" unCheckedChildren="TẮT" />
+                </Form.Item>
+                <div style={{ marginTop: -16, marginBottom: 24, fontSize: 13, color: "red" }}>
+                  Cần khóa lại tất cả hoạt động của kho khi có hoạt động kiểm tra kho.
+                </div>
+              </div>
+            </div>
 
             <Form.Item>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} style={{ fontSize: 16, padding: "0 20px" }}>

@@ -130,7 +130,7 @@ const AssignCountingStaffModal = ({
             <Table
               style={{
                 height: "540px",
-                overflowY: "auto"
+                overflowY: "auto",
               }}
               dataSource={getFilteredAndSortedStaffs()}
               rowKey="id"
@@ -144,8 +144,8 @@ const AssignCountingStaffModal = ({
                   selectedStaffId === record.id
                     ? "!bg-blue-100"
                     : record.id === exportRequest?.countingStaffId
-                      ? "!opacity-50 !cursor-not-allowed"
-                      : "",
+                    ? "!opacity-50 !cursor-not-allowed"
+                    : "",
               })}
               columns={[
                 {
@@ -153,30 +153,30 @@ const AssignCountingStaffModal = ({
                   dataIndex: "id",
                   key: "id",
                   render: (id) => `#${id}`,
-                  width: "25%",
+                  width: "45%",
                 },
                 {
                   title: "Họ tên",
                   dataIndex: "fullName",
                   key: "fullName",
-                  width: "45%",
+                  width: "55%",
                 },
-                {
-                  title: "Thời gian rảnh còn lại",
-                  dataIndex: "remainingTime",
-                  key: "remainingTime",
-                  width: "30%",
-                  render: (time, record) => (
-                    <span
-                      className={`font-medium ${record.id === exportRequest?.countingStaffId
-                          ? "text-gray-400"
-                          : "text-blue-600"
-                        }`}
-                    >
-                      {time || "8 tiếng 0 phút"}
-                    </span>
-                  ),
-                },
+                // {
+                //   title: "Thời gian rảnh còn lại",
+                //   dataIndex: "remainingTime",
+                //   key: "remainingTime",
+                //   width: "30%",
+                //   render: (time, record) => (
+                //     <span
+                //       className={`font-medium ${record.id === exportRequest?.countingStaffId
+                //           ? "text-gray-400"
+                //           : "text-blue-600"
+                //         }`}
+                //     >
+                //       {time || "8 tiếng 0 phút"}
+                //     </span>
+                //   ),
+                // },
               ]}
             />
           </div>

@@ -138,25 +138,26 @@ const AssignKeeperStaffModal = ({
                   dataIndex: "id",
                   key: "id",
                   render: (id) => `#${id}`,
-                  width: "25%",
+                  width: "45%",
                 },
                 {
                   title: "Họ tên",
                   dataIndex: "fullName",
                   key: "fullName",
-                  width: "45%",
+                  width: "55%",
+                  // align: "center",
                 },
-                {
-                  title: "Thời gian rảnh còn lại",
-                  dataIndex: "remainingTime",
-                  key: "remainingTime",
-                  width: "30%",
-                  render: (time) => (
-                    <span className="font-medium text-blue-600">
-                      {time || "8 tiếng 0 phút"}
-                    </span>
-                  ),
-                },
+                // {
+                //   title: "Thời gian rảnh còn lại",
+                //   dataIndex: "remainingTime",
+                //   key: "remainingTime",
+                //   width: "30%",
+                //   render: (time) => (
+                //     <span className="font-medium text-blue-600">
+                //       {time || "8 tiếng 0 phút"}
+                //     </span>
+                //   ),
+                // },
               ]}
             />
           </div>
