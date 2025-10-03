@@ -914,6 +914,11 @@ const StockCheckDetailsTable = ({
       return false;
     }
 
+    // Ẩn cột "Trạng thái kiểm kê" khi status là CANCELLED (áp dụng cho tất cả role)
+    if (column.key === "status" && stockCheckStatus === "CANCELLED") {
+      return false;
+    }
+
     if (userRole === AccountRole.WAREHOUSE_MANAGER) {
       // Ẩn các cột: quantity, measurementValue, status cho WAREHOUSE_MANAGER
       if (
@@ -987,7 +992,9 @@ const StockCheckDetailsTable = ({
         className="[&_.ant-table-cell]:!p-3"
         rowClassName={(_, index) => (index % 2 === 1 ? "bg-gray-100" : "")}
         expandable={
-          userRole === AccountRole.WAREHOUSE_MANAGER
+          stockCheckStatus === "CANCELLED"
+            ? undefined // Ẩn dropdown khi status là CANCELLED
+            : userRole === AccountRole.WAREHOUSE_MANAGER
             ? {
                 expandedRowKeys,
                 onExpand: handleExpand,

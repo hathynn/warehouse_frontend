@@ -16,6 +16,7 @@ const fieldDescriptions = {
     "Ngày hiệu lực tối đa cho phiếu xuất. Hết số ngày này mà chưa hoàn tất thì phiếu tự động hủy.",
   timeToAllowCounting: "Thời gian tối đa để kiểm đếm và đóng gói cho một phiếu xuất",
   warehouseIsChecking: "Khi bật, sẽ khóa tất cả hoạt động của kho trong quá trình kiểm tra.",
+  periodicCreatingStockCheck: "Chu kỳ tự động tạo phiếu kiểm kho định kỳ. Ví dụ: nếu đặt là 4, cứ mỗi 4 tháng hệ thống sẽ tự động tạo phiếu kiểm kho tất cả mặt hàng.",
 } as const;
 
 const getLabel = (label: string, field: keyof typeof fieldDescriptions) => (
@@ -56,10 +57,11 @@ const ConfigurationPage: React.FC = () => {
           timeToAllowCounting: config.timeToAllowCounting
             ? Number(config.timeToAllowCounting.split(":")[0])
             : undefined,
-          dayWillBeCancelRequest: config.dayWillBeCancelRequest,
-          maxAllowedDaysForExtend: config.maxAllowedDaysForExtend,
-          maxAllowedDaysForImportRequestProcess: config.maxAllowedDaysForImportRequestProcess,
-          warehouseIsChecking: config.warehouseIsChecking,
+          dayWillBeCancelRequest: config?.dayWillBeCancelRequest,
+          maxAllowedDaysForExtend: config?.maxAllowedDaysForExtend,
+          maxAllowedDaysForImportRequestProcess: config?.maxAllowedDaysForImportRequestProcess,
+          warehouseIsChecking: config?.warehouseIsChecking,
+          periodicCreatingStockCheck: config?.periodicCreatingStockCheck,
         });
       }
     })();
@@ -83,8 +85,9 @@ const ConfigurationPage: React.FC = () => {
       timeToAllowCounting: values.timeToAllowCounting
         ? values.timeToAllowCounting.toString().padStart(2, "0") + ":00"
         : undefined,
-      dayWillBeCancelRequest: values.dayWillBeCancelRequest,
-      warehouseIsChecking: values.warehouseIsChecking,
+      dayWillBeCancelRequest: values?.dayWillBeCancelRequest,
+      warehouseIsChecking: values?.warehouseIsChecking,
+      periodicCreatingStockCheck: values?.periodicCreatingStockCheck,
     };
     await saveConfiguration(payload);
   };
@@ -158,6 +161,20 @@ const ConfigurationPage: React.FC = () => {
                     min={1}
                     step={1}
                     addonAfter="giờ"
+                    size="large"
+                    className="w-full"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={getLabel("Chu kỳ tạo phiếu kiểm kho định kỳ", "periodicCreatingStockCheck")}
+                  name="periodicCreatingStockCheck"
+                  rules={[{ required: true, message: "Bắt buộc" }]}
+                >
+                  <InputNumber
+                    min={1}
+                    step={1}
+                    addonAfter="tháng"
                     size="large"
                     className="w-full"
                   />
