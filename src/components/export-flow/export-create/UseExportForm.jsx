@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
 import holidaysData from "@/assets/data/holidays-2025.json";
+import useConfigurationService from "@/services/useConfigurationService";
 
 const UseExportForm = ({
   formData,
@@ -16,6 +17,9 @@ const UseExportForm = ({
 }) => {
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [blockedDates, setBlockedDates] = useState([]);
+  const { getConfiguration } = useConfigurationService();
+  const [inspectionHours, setInspectionHours] = useState(null); // ✅ ĐỔI: null thay vì 12
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false); // ✅ THÊM
 
   // THÊM useEffect để xử lý auto-fill từ Excel
   useEffect(() => {
@@ -28,7 +32,7 @@ const UseExportForm = ({
 
       setHasAutoFilled(true); // ĐÁNH DẤU ĐÃ AUTO-FILL
     }
-  }, [excelFormData, hasAutoFilled]);
+  }, [excelFormData, hasAutoFilled, setFormData]);
 
   useEffect(() => {
     setHasAutoFilled(false);
@@ -49,9 +53,28 @@ const UseExportForm = ({
     }
   }, []);
 
-  // Tự động điền ngày xuất hợp lệ gần nhất khi component mount
+  // ✅ SỬA: Load config trước, đợi xong mới tính toán
   useEffect(() => {
-    if (!formData.exportDate && blockedDates.length > 0) {
+    (async () => {
+      const config = await getConfiguration();
+      if (config?.timeToAllowCounting) {
+        const hours = Number(config.timeToAllowCounting.split(":")[0]);
+        setInspectionHours(hours);
+      } else {
+        setInspectionHours(12); // ✅ Fallback nếu không có config
+      }
+      setIsConfigLoaded(true); // ✅ ĐÁNH DẤU ĐÃ LOAD XONG
+    })();
+  }, []);
+
+  // ✅ SỬA: Tự động điền ngày xuất SAU KHI config đã load
+  useEffect(() => {
+    if (
+      !formData.exportDate &&
+      blockedDates.length > 0 &&
+      inspectionHours &&
+      isConfigLoaded
+    ) {
       const minExportDate = calculateMinExportDate();
       const validDate = minExportDate.format("YYYY-MM-DD");
 
@@ -61,7 +84,7 @@ const UseExportForm = ({
         inspectionDateTime: minExportDate.format("YYYY-MM-DD HH:mm:ss"),
       }));
     }
-  }, [blockedDates, formData.exportDate]);
+  }, [blockedDates, formData.exportDate, inspectionHours, isConfigLoaded]); // ✅ THÊM isConfigLoaded
 
   const isDateBlocked = (date) => {
     const dateString = dayjs(date).format("YYYY-MM-DD");
@@ -80,7 +103,7 @@ const UseExportForm = ({
   // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
   const calculateMinExportDate = () => {
     const now = dayjs();
-    const INSPECTION_HOURS = 12;
+    const INSPECTION_HOURS = inspectionHours || 12; // ✅ THÊM fallback cho an toàn
     let calculationTime = now;
     let remainingHours = INSPECTION_HOURS;
 
@@ -199,7 +222,11 @@ const UseExportForm = ({
           </ConfigProvider>
           <div className="text-blue-800 text-xs mt-1">
             <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
-            <span className="font-bold text-red-800">12h</span> kiểm đếm.
+            <span className="font-bold text-red-800">
+              {inspectionHours ?? "..."}h{" "}
+              {/* ✅ SỬA: Hiển thị '...' nếu chưa load */}
+            </span>{" "}
+            kiểm đếm.
           </div>
         </div>
 
@@ -315,7 +342,7 @@ UseExportForm.propTypes = {
     departmentRepresentativePhone: PropTypes.string,
     note: PropTypes.string,
     type: PropTypes.string,
-    exportType: PropTypes.string, // Added missing prop type
+    exportType: PropTypes.string,
   }).isRequired,
   setFormData: PropTypes.func.isRequired,
   openDepartmentModal: PropTypes.func.isRequired,

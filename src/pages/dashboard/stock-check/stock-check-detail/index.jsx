@@ -111,6 +111,7 @@ const StockCheckRequestDetail = () => {
 
   const [completeModalVisible, setCompleteModalVisible] = useState(false);
   const [completeChecked, setCompleteChecked] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
   // Fetch stock check request data
   const fetchStockCheckRequest = useCallback(async () => {
@@ -328,6 +329,20 @@ const StockCheckRequestDetail = () => {
   // Handlers
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleCancelStockCheck = async () => {
+    try {
+      await updateStockCheckStatus(stockCheckId, StockcheckStatus.CANCELLED);
+      message.success("Đã hủy phiếu kiểm kho");
+
+      setCancelModalVisible(false);
+      await fetchStockCheckRequest();
+      fetchStockCheckDetails();
+    } catch (error) {
+      console.error("Lỗi khi hủy phiếu kiểm kho", error);
+      message.error("Không thể hủy phiếu kiểm kho. Vui lòng thử lại.");
+    }
   };
 
   const handleCreateNewStockCheck = async () => {
@@ -673,6 +688,20 @@ const StockCheckRequestDetail = () => {
               Phân công lại nhân viên kiểm kê
             </Button>
           )}
+
+        {/* ✅ THÊM BUTTON HỦY PHIẾU */}
+        {userRole === AccountRole.DEPARTMENT &&
+          stockCheckRequest?.status !== StockcheckStatus.COMPLETED &&
+          stockCheckRequest?.status !== StockcheckStatus.CANCELLED && (
+            <Button
+              danger
+              className="ml-auto"
+              style={{ minWidth: 120, fontWeight: 600 }}
+              onClick={() => setCancelModalVisible(true)}
+            >
+              Hủy phiếu kiểm kho
+            </Button>
+          )}
       </div>
 
       {/* Stock Check Request Information */}
@@ -930,6 +959,33 @@ const StockCheckRequestDetail = () => {
         selectedDetailIds={selectedDetailIds}
         loading={stockCheckLoading}
       />
+
+      {/* Modal xác nhận hủy phiếu kiểm kho */}
+      <Modal
+        open={cancelModalVisible}
+        onCancel={() => setCancelModalVisible(false)}
+        onOk={handleCancelStockCheck}
+        title={
+          <span style={{ fontWeight: 700, fontSize: "18px", color: "#ff4d4f" }}>
+            Xác nhận hủy phiếu kiểm kho
+          </span>
+        }
+        okText="Xác nhận hủy"
+        cancelText="Quay lại"
+        okButtonProps={{ danger: true }}
+        confirmLoading={stockCheckLoading}
+        centered
+      >
+        <div className="py-4">
+          <p className="text-base mb-3">
+            Bạn có chắc chắn muốn hủy phiếu kiểm kho{" "}
+            <span className="font-bold">#{stockCheckRequest?.id}</span>?
+          </p>
+          <p className="text-red-600 font-semibold">
+            ⚠️ Hành động này không thể hoàn tác!
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };

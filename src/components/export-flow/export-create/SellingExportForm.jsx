@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/es/date-picker/locale/vi_VN";
 import holidaysData from "@/assets/data/holidays-2025.json";
+import useConfigurationService from "@/services/useConfigurationService";
 
 const SellingExportForm = ({
   formData,
@@ -15,6 +16,9 @@ const SellingExportForm = ({
 }) => {
   const [hasAutoFilled, setHasAutoFilled] = useState(false);
   const [blockedDates, setBlockedDates] = useState([]);
+  const [inspectionHours, setInspectionHours] = useState(null);
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
+  const { getConfiguration } = useConfigurationService();
 
   useEffect(() => {
     if (excelFormData && !hasAutoFilled) {
@@ -52,7 +56,13 @@ const SellingExportForm = ({
   }, []);
 
   useEffect(() => {
-    if (!formData.exportDate && blockedDates.length > 0) {
+    if (
+      !formData.exportDate &&
+      blockedDates.length > 0 &&
+      inspectionHours &&
+      isConfigLoaded
+    ) {
+      // ✅ THÊM isConfigLoaded
       const minExportDate = calculateMinExportDate();
       const validDate = minExportDate.format("YYYY-MM-DD");
 
@@ -62,7 +72,20 @@ const SellingExportForm = ({
         inspectionDateTime: minExportDate.format("YYYY-MM-DD HH:mm:ss"),
       }));
     }
-  }, [blockedDates, formData.exportDate]);
+  }, [blockedDates, formData.exportDate, inspectionHours, isConfigLoaded]);
+
+  useEffect(() => {
+    (async () => {
+      const config = await getConfiguration();
+      if (config?.timeToAllowCounting) {
+        const hours = Number(config.timeToAllowCounting.split(":")[0]);
+        setInspectionHours(hours);
+      } else {
+        setInspectionHours(12); // ✅ Fallback nếu không có config
+      }
+      setIsConfigLoaded(true); // ✅ THÊM
+    })();
+  }, []);
 
   // Chặn nhập quá 150 ký tự cho lí do xuất
   const handleReasonChange = (e) => {
@@ -81,7 +104,7 @@ const SellingExportForm = ({
   // Tính ngày xuất sớm nhất dựa trên giờ hành chính và thời gian kiểm đếm
   const calculateMinExportDate = () => {
     const now = dayjs();
-    const INSPECTION_HOURS = 12;
+    const INSPECTION_HOURS = inspectionHours; // ✅ THAY ĐỔI
     let calculationTime = now;
     let remainingHours = INSPECTION_HOURS;
 
@@ -199,7 +222,11 @@ const SellingExportForm = ({
           </ConfigProvider>
           <div className="text-blue-800 text-xs mt-1">
             <span className="font-bold">Thông tin: </span> Mất tối đa{" "}
-            <span className="font-bold text-red-800">12h</span> kiểm đếm.
+            <span className="font-bold text-red-800">
+              {inspectionHours ?? "..."}h{" "}
+              {/* ✅ SỬA: Hiển thị '...' nếu chưa load */}
+            </span>{" "}
+            kiểm đếm.
           </div>
         </div>
 

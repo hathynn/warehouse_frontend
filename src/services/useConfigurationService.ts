@@ -12,6 +12,8 @@ export interface ConfigurationDto {
   timeToAllowAssign: string;
   timeToAllowConfirm: string;
   timeToAllowCancel: string;
+  timeToAllowCounting: string; // ✅ THÊM MỚI - thêm sau timeToAllowCancel
+  warehouseIsChecking: boolean; // ✅ THÊM MỚI - thêm sau maxPercentOfItemForExport
   dayWillBeCancelRequest: number; // days
   daysToAllowExtend: number;
   maxAllowedDaysForExtend: number;

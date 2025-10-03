@@ -1861,7 +1861,7 @@ const ExportRequestDetail = () => {
           </span>
         }
         footer={null}
-        width={selectedOldItem ? 1400 : 690}
+        width={selectedOldItem ? 1400 : 600}
         style={{ transition: "all 0.3s ease" }}
       >
         <div style={{ display: "flex", gap: "20px" }}>
@@ -1939,52 +1939,52 @@ const ExportRequestDetail = () => {
                   ...(userRole === AccountRole.WAREHOUSE_MANAGER &&
                   [ExportStatus.IN_PROGRESS].includes(exportRequest?.status)
                     ? [
-                        {
-                          title: "Thao tác",
-                          key: "action",
-                          width: 212,
-                          align: "center",
-                          render: (_, record) =>
-                            !record.isTrackingForExport ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  size="small"
-                                  icon={<SwapOutlined />}
-                                  onClick={() => {
-                                    setSelectedAutoChangeItem(record);
-                                    setConfirmAutoChangeModalVisible(true);
-                                  }}
-                                  style={{
-                                    backgroundColor: "#f6ffed",
-                                    color: "#52c41a",
-                                    borderColor: "#52c41a",
-                                  }}
-                                  className="hover:bg-green-50"
-                                >
-                                  Đổi
-                                </Button>
-                                <Button
-                                  size="small"
-                                  icon={<SwapOutlined />}
-                                  onClick={() => {
-                                    setSelectedOldItem(record);
-                                    // setExpandedModal(true);
-                                    fetchAvailableInventoryItems(
-                                      selectedExportRequestDetail?.itemId
-                                    );
-                                  }}
-                                  style={{
-                                    backgroundColor: "#fffbe6",
-                                    color: "#d4a017",
-                                    borderColor: "#d4a017",
-                                  }}
-                                  className="hover:bg-blue-50"
-                                >
-                                  Chọn thủ công
-                                </Button>
-                              </div>
-                            ) : null,
-                        },
+                        // {
+                        //   title: "Thao tác",
+                        //   key: "action",
+                        //   width: 212,
+                        //   align: "center",
+                        //   render: (_, record) =>
+                        //     !record.isTrackingForExport ? (
+                        //       <div className="flex gap-2">
+                        //         <Button
+                        //           size="small"
+                        //           icon={<SwapOutlined />}
+                        //           onClick={() => {
+                        //             setSelectedAutoChangeItem(record);
+                        //             setConfirmAutoChangeModalVisible(true);
+                        //           }}
+                        //           style={{
+                        //             backgroundColor: "#f6ffed",
+                        //             color: "#52c41a",
+                        //             borderColor: "#52c41a",
+                        //           }}
+                        //           className="hover:bg-green-50"
+                        //         >
+                        //           Đổi
+                        //         </Button>
+                        //         <Button
+                        //           size="small"
+                        //           icon={<SwapOutlined />}
+                        //           onClick={() => {
+                        //             setSelectedOldItem(record);
+                        //             // setExpandedModal(true);
+                        //             fetchAvailableInventoryItems(
+                        //               selectedExportRequestDetail?.itemId
+                        //             );
+                        //           }}
+                        //           style={{
+                        //             backgroundColor: "#fffbe6",
+                        //             color: "#d4a017",
+                        //             borderColor: "#d4a017",
+                        //           }}
+                        //           className="hover:bg-blue-50"
+                        //         >
+                        //           Chọn thủ công
+                        //         </Button>
+                        //       </div>
+                        //     ) : null,
+                        // },
                       ]
                     : []),
                 ]}
