@@ -191,17 +191,17 @@ const ImportOrderAssignStaffModal: React.FC<ImportOrderAssignStaffModalProps> = 
                   key: "fullName",
                   width: '45%',
                 },
-                {
-                  title: "Thời gian rảnh còn lại",
-                  dataIndex: "remainingTime",
-                  key: "remainingTime",
-                  width: '30%',
-                  render: (time, record) => (
-                    <span className={`font-medium ${record.id === importOrderData?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
-                      {time || "8 tiếng 0 phút"}
-                    </span>
-                  )
-                }
+                // {
+                //   title: "Thời gian rảnh còn lại",
+                //   dataIndex: "remainingTime",
+                //   key: "remainingTime",
+                //   width: '30%',
+                //   render: (time, record) => (
+                //     <span className={`font-medium ${record.id === importOrderData?.assignedStaffId ? 'text-gray-400' : 'text-blue-600'}`}>
+                //       {time || "8 tiếng 0 phút"}
+                //     </span>
+                //   )
+                // }
               ]}
             />
           </div>
