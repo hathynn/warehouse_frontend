@@ -84,6 +84,10 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
 
   // Hàm tái sử dụng để tìm StoredLocationResponse từ location id
   const findLocationById = (locationId: number): StoredLocationResponse | undefined => {
+    if (locationId === -1 && currentLocation) {
+      return currentLocation;
+    }
+
     return suggestedLocations.find(location => location.id === locationId);
   };
 
@@ -91,6 +95,8 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   const getFullLocationName = (location: StoredLocationResponse): string => {
     return `Khu vực ${location.floor}, Khu ${location.zone}, Dãy ${location.row}, Hàng ${location.line}`;
   };
+
+  const selectedLocation = selectingLocationId !== null ? findLocationById(selectingLocationId) ?? null : null;
 
   // Lọc chỉ những vị trí được suggest và không phải road/door/used/fulled, bao gồm cả vị trí hiện tại
   const getFilteredStoredLocationData = () => {
@@ -325,9 +331,6 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
   ];
 
   const handleOnUpdateInventoryItemsLocationConfirm = async () => {
-    if (!selectingLocationId) return;
-
-    const selectedLocation = findLocationById(selectingLocationId);
     if (!selectedLocation) return;
 
     const changedInventoryItems = inventoryItems.filter(
@@ -382,16 +385,16 @@ const UpdateInventoryItemLocationModal: React.FC<UpdateInventoryItemLocationModa
         title={
           <div className="text-center">
             <p className="text-base text-blue-900">Vui lòng chọn vị trí để cập nhật cho sản phẩm này</p>
-            {selectingLocationId &&  (
+            {selectedLocation &&  (
               <div className="p-2 mt-2 border border-orange-300 rounded-md bg-orange-50">
                 <p className="text-sm font-medium text-blue-800">
                   {}
-                  Vị trí được chọn: <span className="font-bold">#{getFullLocationName(findLocationById(selectingLocationId))}</span>
+                  Vị trí được chọn: <span className="font-bold">#{getFullLocationName(selectedLocation)}</span>
                 </p>
                 <Button
                   type="primary"
                   onClick={handleInventoryItemsLocationConfirm}
-                  disabled={!selectingLocationId}
+                  disabled={!selectedLocation}
                   className="mt-1"
                 >
                   Xác nhận vị trí mới
